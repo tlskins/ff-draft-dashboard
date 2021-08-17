@@ -1,10 +1,19 @@
 import Head from 'next/head'
+import React, { useEffect } from "react"
+
+import { GetHarrisRanks } from "../behavior/harris"
+
 
 export default function Home() {
+  useEffect(async () => {
+    const harrisRanks = await GetHarrisRanks()
+    console.log('harrisRanks', harrisRanks)
+  }, [])
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <Head>
-        <title>Create Next App</title>
+        <title>Draft Dashboard</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
