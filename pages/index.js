@@ -1,14 +1,66 @@
 import Head from 'next/head'
-import React, { useEffect } from "react"
+import React, { useEffect, useState, useRef } from "react"
 
 import { GetHarrisRanks } from "../behavior/harris"
 
 
+const useFocus = () => {
+  const htmlElRef = useRef(null)
+  const setFocus = () => {htmlElRef.current &&  htmlElRef.current.focus()}
+
+  return [ htmlElRef, setFocus ] 
+}
+
 export default function Home() {
+  const [availPlayers, setAvailPlayers] = useState([])
+  const [filteredAvailPlayers, setFilteredAvailPlayers] = useState([])
+  const [numTeams, _] = useState(12)
+  const [currPick, setCurrPick] = useState(1)
+  const [search, setSearch] = useState("")
+  const [currRoundIdx, setCurrRoundIdx] = useState(null)
+  const [rounds, setRounds] = useState([])
+  const [inputRef, setInputFocus] = useFocus()
+
+  const currRound = currRoundIdx !== null && rounds[currRoundIdx]
+  let currRoundPicks = currRound && currRound.map( (_, idx) => idx + 1 )
+  if ( currRoundIdx % 2 == 1 ) {
+    currRoundPicks = currRoundPicks.reverse()
+  }
+
+  const onSearch = e => {
+    const text = e.target.value
+    setSearch(text)
+    if ( text.length > 1 ) {
+      const regex = new RegExp(text, 'gi');
+      const filtered = availPlayers.filter( player => regex.test(player.matchName) )
+      setFilteredAvailPlayers(filtered)
+    } else {
+      setFilteredAvailPlayers([])
+    }
+  }
+
+  const onSelectPick = i => () => {
+    setCurrPick(currRoundPicks[i] + currRoundIdx * numTeams)
+    setInputFocus()
+  }
+
   useEffect(async () => {
-    const harrisRanks = await GetHarrisRanks()
-    console.log('harrisRanks', harrisRanks)
+    const resp = await GetHarrisRanks()
+    if ( resp ) {
+      const { QB, RB, WR, TE } = resp
+      const availPlayers = [ ...QB, ...RB, ...WR, ...TE ]
+      console.log('harrisRanks', availPlayers)
+      setAvailPlayers(availPlayers)
+    }
   }, [])
+
+  useEffect(() => {
+    setRounds([new Array(numTeams).fill(null)])
+    setCurrRoundIdx(0)
+  }, [numTeams])
+
+  console.log('currRound', currRound)
+  const roundsGridClass = `grid-cols-${numTeams}`
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -18,6 +70,56 @@ export default function Home() {
       </Head>
 
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
+
+        <div className="flex flex-col border rounded">
+          <div className="flex flex-row">
+            <div className="flex flex-col">
+              <div className={`grid ${roundsGridClass} gap-1`}>
+                { currRoundPicks && currRoundPicks.map( pickNum => (
+                  <div className="p-1 m-1 rounded border font-bold"
+                    key={pickNum}
+                  >
+                    { pickNum }
+                  </div>
+                ))}
+              </div>
+              <div className={`grid ${roundsGridClass} gap-1`}>
+                { currRound && currRound.map( (pick, i) => (
+                  <div className="p-1 m-1 rounded border hover:bg-blue-200 cursor-pointer"
+                    onClick={ onSelectPick( i ) }
+                    key={i}
+                  >
+                    { pick ? pick.name : "N/A" }
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col relative">
+              <div className="relative">
+                <div>Pick # { currPick }</div>
+                <input type="text"
+                  className="border-2 rounded m-1"
+                  value={search}
+                  onChange={onSearch}
+                  ref={inputRef}
+                />
+                { filteredAvailPlayers.length > 0 &&
+                  <div className="absolute w-100 z-10 border overflow-y-scroll h-48 bg-white border-gray-400 shadow-lg">
+                    { filteredAvailPlayers.map( (player,i) => (
+                      <p className="cursor-pointer p-0.5 hover:bg-gray-200 text-sm"
+                        key={i}
+                      >
+                        { player.name }
+                      </p>
+                    ))}
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
         <h1 className="text-6xl font-bold">
           Welcome to{' '}
           <a className="text-blue-600" href="https://nextjs.org">
