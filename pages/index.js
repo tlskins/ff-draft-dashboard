@@ -1,5 +1,6 @@
 import Head from 'next/head'
 import React, { useEffect, useState, useRef } from "react"
+import { CSVLink, CSVDownload } from "react-csv"
 
 import { GetHarrisRanks } from "../behavior/harris"
 
@@ -14,6 +15,7 @@ const useFocus = () => {
 export default function Home() {
   const [availPlayers, setAvailPlayers] = useState([])
   const [numTeams, _] = useState(12)
+  const [draftStarted, setDraftStarted] = useState(false)
 
   // rounds
   const [currPick, setCurrPick] = useState(1)
@@ -38,11 +40,11 @@ export default function Home() {
 
   // ranks
   const [posRanks, setPosRanks] = useState({
-    QB: [],
-    RB: [],
-    WR: [],
-    TE: [],
+    QB: [], RB: [], WR: [], TE: [],
   })
+
+  // csv
+  const [csvData, setCsvData] = useState(null)
 
   const onSearch = e => {
     const text = e.target.value
@@ -80,6 +82,9 @@ export default function Home() {
     if ( currRoundPick === 12 ) {
       setRounds([...rounds, newRound()])
     }
+    if ( !draftStarted ) {
+      setDraftStarted(true)
+    }
   }
 
   useEffect(async () => {
@@ -102,6 +107,26 @@ export default function Home() {
     setRounds([newRound()])
   }, [numTeams])
 
+  const onSetCsvData = () => {
+    if ( draftStarted ) {
+      return
+    }
+    
+    // get all unique keys in data
+    const allKeys = {}
+    availPlayers.forEach( p => Object.keys(p).forEach(key => {
+      allKeys[key] = 1
+    }))
+    const keys = Object.keys(allKeys)
+
+    const ranksData = availPlayers.map( player => {
+      return keys.map( key => player[key])
+    })
+    const csvData = [keys, ...ranksData]
+    console.log(csvData)
+    setCsvData(csvData)
+  }
+
   console.log('render', isEvenRound, roundIdx, currPick, currRoundPick)
 
   return (
@@ -112,6 +137,21 @@ export default function Home() {
       </Head>
 
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
+
+        <div className="flex flex-row">
+          { !draftStarted &&
+            <input type="button"
+              className="border rounded p-1"
+              value="Export CSV"
+              onClick={ onSetCsvData }
+            />
+          }
+          { csvData && 
+            <CSVLink data={csvData}>
+              Download
+            </CSVLink>
+          }
+        </div>
 
         <div className="flex flex-row border rounded">
           <div className="flex flex-col">
