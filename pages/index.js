@@ -86,7 +86,6 @@ export default function Home() {
   const [isUpload, setIsUpload] = useState(false)
 
   // nav
-
   const onNavRoundUp = () => {
     if ( isEvenRound ) {
       setCurrPick(currPick - (2*(currRoundPick-1)+1))
@@ -140,6 +139,7 @@ export default function Home() {
     const posRank = posRanks[player.position]
     setPosRanks({
       ...posRanks,
+      purge: posRanks.purge.filter( p => p.id !== player.id ),
       [player.position]: posRank.filter( p => p.id !== player.id ),
     })
     setCurrPick(currPick+1)
@@ -153,13 +153,22 @@ export default function Home() {
 
   const onPurgePlayer = player => {    
     setAvailPlayers(availPlayers.filter( p => p.id !== player.id ))
-    setPosRanks({
-      ...posRanks,
-      purge: [...posRanks.purge, player],
-      [player.position]: posRanks[player.position].filter( p => p.id !== player.id ),
-    })
-    if ( !draftStarted ) {
-      setDraftStarted(true)
+    const purgeIdx = posRanks.purge.findIndex( p => p.id === player.id )
+
+    if ( purgeIdx === -1 ) {
+      setPosRanks({
+        ...posRanks,
+        purge: [...posRanks.purge, player],
+        [player.position]: posRanks[player.position].filter( p => p.id !== player.id ),
+      })
+    } else {
+      let posRank = [...posRanks[player.position], player]
+      posRank = posRank.sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
+      setPosRanks({
+        ...posRanks,
+        purge: posRanks.purge.filter( p => p.id !== player.id ),
+        [player.position]: posRank,
+      })
     }
   }
 
@@ -187,7 +196,7 @@ export default function Home() {
     setAvailPlayers([...availPlayers, player])
   }
 
-  useEffect(async () => {
+  const onLoadHarrisRanks = async () => {
     const resp = await GetHarrisRanks()
     if ( resp ) {
       let { QB, RB, WR, TE } = resp
@@ -201,7 +210,7 @@ export default function Home() {
       setAvailPlayers(availPlayers)
       setPosRanks({ QB, RB, WR, TE, purge: []})
     }
-  }, [])
+  }
 
   useEffect(() => {
     setRounds([newRound(numTeams)])
@@ -257,7 +266,15 @@ export default function Home() {
 
         <div className="flex flex-row">
           <div className="flex flex-col">
-            { (!draftStarted && !csvData) &&
+            <input type="button"
+              className="border rounded p-1 m-2 cursor-pointer bg-blue-200"
+              value="Load Harris Ranks"
+              onClick={ onLoadHarrisRanks }
+            />
+          </div>
+
+          <div className="flex flex-col">
+            { (!draftStarted && !csvData && availPlayers.length > 0) &&
               <input type="button"
                 className="border rounded p-1 m-2 cursor-pointer bg-green-200"
                 value="Export CSV"
