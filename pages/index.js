@@ -1,6 +1,7 @@
 import Head from 'next/head'
 import React, { useEffect, useState, useRef } from "react"
 import { CSVLink, CSVDownload } from "react-csv"
+import CSVReader from 'react-csv-reader'
 
 import { GetHarrisRanks } from "../behavior/harris"
 
@@ -10,6 +11,34 @@ const useFocus = () => {
   const setFocus = () => {htmlElRef.current &&  htmlElRef.current.focus()}
 
   return [ htmlElRef, setFocus ] 
+}
+
+const getTierStyle = tier => {
+  console.log('getTierStyle', tier)
+  switch(tier) {
+    case 1:
+      return "bg-yellow-50 text-black"
+    case 2:
+      return "bg-yellow-100 text-black"
+    case 3:
+      return "bg-yellow-200 text-black"
+    case 4:
+      return "bg-yellow-300 text-black"
+    case 5:
+      return "bg-yellow-400 text-black"
+    case 6:
+      return "bg-yellow-500 text-black"
+    case 7:
+      return "bg-yellow-600 text-black"
+    case 8:
+      return "bg-yellow-700 text-white"
+    case 9:
+      return "bg-yellow-800 text-white"
+    case 10:
+      return "bg-yellow-900 text-white"
+    default:
+      return ""
+  }
 }
 
 export default function Home() {
@@ -45,6 +74,7 @@ export default function Home() {
 
   // csv
   const [csvData, setCsvData] = useState(null)
+  const [isUpload, setIsUpload] = useState(false)
 
   const onSearch = e => {
     const text = e.target.value
@@ -127,6 +157,27 @@ export default function Home() {
     setCsvData(csvData)
   }
 
+  const papaparseOptions = {
+    header: true,
+    dynamicTyping: true,
+    skipEmptyLines: true,
+    // transformHeader: header =>
+    //   header
+    //     .toLowerCase()
+    //     .replace(/\W/g, '_')
+  }
+
+  const onFileLoaded = (players, fileInfo) => {
+    console.log('uploaded', players, fileInfo)
+    const QB = players.filter( p => !!p.harrisPPRRank && p.position === "QB" ).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
+    const RB = players.filter( p => !!p.harrisPPRRank && p.position === "RB" ).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
+    const WR = players.filter( p => !!p.harrisPPRRank && p.position === "WR" ).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
+    const TE = players.filter( p => !!p.harrisPPRRank && p.position === "TE" ).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
+    setAvailPlayers(players)
+    setPosRanks({ QB, RB, WR, TE })
+    setIsUpload(false)
+  }
+
   console.log('render', isEvenRound, roundIdx, currPick, currRoundPick)
 
   return (
@@ -139,18 +190,40 @@ export default function Home() {
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
 
         <div className="flex flex-row">
-          { !draftStarted &&
-            <input type="button"
-              className="border rounded p-1"
-              value="Export CSV"
-              onClick={ onSetCsvData }
-            />
-          }
-          { csvData && 
-            <CSVLink data={csvData}>
-              Download
-            </CSVLink>
-          }
+          <div className="flex flex-col">
+            { (!draftStarted && !csvData) &&
+              <input type="button"
+                className="border rounded p-1 m-2 cursor-pointer bg-green-200"
+                value="Export CSV"
+                onClick={ onSetCsvData }
+              />
+            }
+            { csvData && 
+              <CSVLink data={csvData}
+                className="border rounded p-1 m-2 cursor-pointer bg-green-300"
+              >
+                Download
+              </CSVLink>
+            }
+          </div>
+
+          <div className="flex flex-col">
+            { !isUpload &&
+              <input type="button"
+                className="border rounded p-1 m-2 cursor-pointer bg-green-200"
+                value="Upload CSV"
+                onClick={ () => setIsUpload(true) }
+              />
+            }
+            { isUpload &&
+              <CSVReader
+                cssClass="flex flex-col text-left text-sm border rounded p-1 m-2"
+                label="Upload Ranks"
+                onFileLoaded={ onFileLoaded }
+                parserOptions={papaparseOptions}
+              />
+            }
+          </div>
         </div>
 
         <div className="flex flex-row border rounded">
@@ -189,7 +262,7 @@ export default function Home() {
                       onClick={ onSelectPick( i ) }
                       key={i}
                     >
-                      { pick ? pick.name : "N/A" }
+                      { pick ? pick.name : "" }
                     </td>
                   )
                 })}
@@ -296,13 +369,22 @@ export default function Home() {
                 className="flex flex-col"
               >
                 <div> { posName }</div>
-                { posGroup.slice(0,10).map( (player,j) => {
+                { posGroup.slice(0,10).map( (player) => {
+                  const tierStyle = getTierStyle(player.tier)
+                  const { name, id, team, tier, harrisPPRRank } = player
                   return(
-                    <div key={j}
-                      className="p-1 text-center border rounded cursor-pointer hover:bg-blue-200"
+                    <div key={id}
+                      className={`px-2 py-1 mx-1 text-center border rounded cursor-pointer hover:bg-blue-200 ${tierStyle}`}
                       onClick={ () => onSelectPlayer(player) }
                     >
-                      { player.name } - { player.team } ({ player.harrisPPRRank })
+                      <div className="flex flex-col text-center">
+                        <p className="text-sm font-semibold">
+                          { name }
+                        </p>
+                        <p className="text-xs">
+                          { team } - #{ harrisPPRRank} - Tier { tier ? tier : "?" }
+                        </p>
+                      </div>
                     </div>
                   )
                 })}
