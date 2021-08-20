@@ -2,6 +2,17 @@ import Head from 'next/head'
 import React, { useEffect, useState, useRef } from "react"
 import { CSVLink, CSVDownload } from "react-csv"
 import CSVReader from 'react-csv-reader'
+import { 
+  AiFillCaretDown,
+  AiFillCaretUp,
+  AiFillCheckCircle,
+} from 'react-icons/ai'
+import {
+  TiDelete,
+} from 'react-icons/ti'
+import {
+  BsLink,
+} from 'react-icons/bs'
 
 import { GetHarrisRanks } from "../behavior/harris"
 
@@ -13,8 +24,9 @@ const useFocus = () => {
   return [ htmlElRef, setFocus ] 
 }
 
+const newRound = numTeams => new Array(numTeams).fill(null)
+
 const getTierStyle = tier => {
-  console.log('getTierStyle', tier)
   switch(tier) {
     case 1:
       return "bg-yellow-50 text-black"
@@ -45,6 +57,7 @@ export default function Home() {
   const [availPlayers, setAvailPlayers] = useState([])
   const [numTeams, _] = useState(12)
   const [draftStarted, setDraftStarted] = useState(false)
+  const [shownPlayerId, setShownPlayerId] = useState(null)
 
   // rounds
   const [currPick, setCurrPick] = useState(1)
@@ -56,11 +69,6 @@ export default function Home() {
   let currRoundPick = currPick % numTeams
   if ( currRoundPick === 0 ) currRoundPick = 12
 
-  let currRoundPicks = currRound.map( (_, idx) => idx + 1 )
-
-  
-  const newRound = () => new Array(numTeams).fill(null)
-
   // autocomplete
   const [search, setSearch] = useState("")
   const [inputRef, setInputFocus] = useFocus()
@@ -69,12 +77,35 @@ export default function Home() {
 
   // ranks
   const [posRanks, setPosRanks] = useState({
-    QB: [], RB: [], WR: [], TE: [],
+    QB: [], RB: [], WR: [], TE: [], purge: [],
   })
+  const playerColumns = [[posRanks.QB, "QB"], [posRanks.RB, "RB"], [posRanks.WR, "WR"], [posRanks.TE, "TE"], [posRanks.purge, "Purge"]]
 
   // csv
   const [csvData, setCsvData] = useState(null)
   const [isUpload, setIsUpload] = useState(false)
+
+  // nav
+
+  const onNavRoundUp = () => {
+    if ( isEvenRound ) {
+      setCurrPick(currPick - (2*(currRoundPick-1)+1))
+    } else {
+      if ( roundIdx > 0 ) setCurrPick(currPick - (2*currRoundPick)+1)
+    }
+  }
+
+  const onNavRoundDown = () => {
+    if ( roundIdx === rounds.length-1 ) {
+      // dont allow new round if curr round is empty
+      if ( isRoundEmpty ) {
+        return
+      }
+      setRounds([...rounds, newRound(numTeams)])
+    }
+
+    setCurrPick(currPick + (2*(numTeams-currRoundPick)+1))
+  }
 
   const onSearch = e => {
     const text = e.target.value
@@ -88,8 +119,8 @@ export default function Home() {
     }
   }
 
-  const onSelectPick = i => () => {
-    setCurrPick((i+1) + (roundIdx * numTeams))
+  const onSelectPick = pickNum => {
+    setCurrPick(pickNum)
     setInputFocus()
   }
 
@@ -107,14 +138,53 @@ export default function Home() {
     setSuggestions([])
     setSearch("")
     const posRank = posRanks[player.position]
-    setPosRanks({ ...posRanks, [player.position]: posRank.filter( p => p.id !== player.id )})
+    setPosRanks({
+      ...posRanks,
+      [player.position]: posRank.filter( p => p.id !== player.id ),
+    })
     setCurrPick(currPick+1)
     if ( currRoundPick === 12 ) {
-      setRounds([...rounds, newRound()])
+      setRounds([...rounds, newRound(numTeams)])
     }
     if ( !draftStarted ) {
       setDraftStarted(true)
     }
+  }
+
+  const onPurgePlayer = player => {    
+    setAvailPlayers(availPlayers.filter( p => p.id !== player.id ))
+    setPosRanks({
+      ...posRanks,
+      purge: [...posRanks.purge, player],
+      [player.position]: posRanks[player.position].filter( p => p.id !== player.id ),
+    })
+    if ( !draftStarted ) {
+      setDraftStarted(true)
+    }
+  }
+
+  const onRemovePick = pickNum => {
+    const pickRdIdx = Math.floor( (pickNum-1) / numTeams )
+    const pickRd = rounds[pickRdIdx]
+    const currRoundIdx = (pickNum % numTeams)-1
+    if ( currRoundIdx === -1 ) currRoundIdx = 11
+    const player = pickRd[currRoundIdx]
+    pickRd[currRoundIdx] = undefined
+    setRounds(
+      [
+        ...rounds.slice(0, pickRdIdx),
+        pickRd,
+        ...rounds.slice(pickRdIdx+1, rounds.length)
+      ]
+    )
+    let posRank = [...posRanks[player.position], player]
+    console.log('posRank', posRank)
+    posRank = posRank.sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
+    setPosRanks({
+      ...posRanks,
+      [player.position]: posRank
+    })
+    setAvailPlayers([...availPlayers, player])
   }
 
   useEffect(async () => {
@@ -129,12 +199,12 @@ export default function Home() {
       const availPlayers = [ ...QB, ...RB, ...WR, ...TE ]
       console.log('harrisRanks', availPlayers)
       setAvailPlayers(availPlayers)
-      setPosRanks({ QB, RB, WR, TE })
+      setPosRanks({ QB, RB, WR, TE, purge: []})
     }
   }, [])
 
   useEffect(() => {
-    setRounds([newRound()])
+    setRounds([newRound(numTeams)])
   }, [numTeams])
 
   const onSetCsvData = () => {
@@ -161,10 +231,6 @@ export default function Home() {
     header: true,
     dynamicTyping: true,
     skipEmptyLines: true,
-    // transformHeader: header =>
-    //   header
-    //     .toLowerCase()
-    //     .replace(/\W/g, '_')
   }
 
   const onFileLoaded = (players, fileInfo) => {
@@ -174,7 +240,7 @@ export default function Home() {
     const WR = players.filter( p => !!p.harrisPPRRank && p.position === "WR" ).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
     const TE = players.filter( p => !!p.harrisPPRRank && p.position === "TE" ).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
     setAvailPlayers(players)
-    setPosRanks({ QB, RB, WR, TE })
+    setPosRanks({ QB, RB, WR, TE, purge: [] })
     setIsUpload(false)
   }
 
@@ -228,51 +294,40 @@ export default function Home() {
 
         <div className="flex flex-row border rounded">
           <div className="flex flex-col">
-          <table class="table-auto">
-            <thead>
-              <tr className={`flex justify-between ${isEvenRound ? 'flex-row-reverse' : ''}`}>
-                { currRoundPicks.map( (pickNum, i) => {
-                  let bgColor = ""
-                  if ( i+1 === currRoundPick ) {
-                    bgColor = "bg-yellow-200"
-                  }
-                  return(
-                    <th className={`p-1 m-1 rounded border font-bold ${bgColor}`}
-                      key={pickNum}
-                    >
-                      { pickNum }
-                    </th>
-                  )
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              <tr className={`flex justify-between ${isEvenRound ? 'flex-row-reverse' : ''}`}>
-                { currRound.map( (pick, i) => {
-                  let bgColor = ""
-                  if ( i+1 === currRoundPick ) {
-                    bgColor = "bg-yellow-200"
-                  } else if ( !!pick ) {
-                    bgColor = "bg-blue-200"
-                  } else {
-                    bgColor = "bg-gray-100"
-                  }
-                  return(
-                    <td className={`p-1 m-1 rounded border hover:bg-blue-200 cursor-pointer ${bgColor}`}
-                      onClick={ onSelectPick( i ) }
-                      key={i}
-                    >
-                      { pick ? pick.name : "" }
-                    </td>
-                  )
-                })}
-              </tr>
-            </tbody>
-          </table>
+            <table class="table-auto">
+              <tbody>
+                <tr className={`flex justify-between ${isEvenRound ? 'flex-row-reverse' : ''}`}>
+                  { currRound.map( (pick, i) => {
+                    let bgColor = ""
+                    let hover = ""
+                    if ( i+1 === currRoundPick ) {
+                      bgColor = "bg-yellow-200"
+                      hover = "hover:bg-yellow-300"
+                    } else if ( !!pick ) {
+                      bgColor = "bg-blue-200"
+                      hover = "hover:bg-red-300"
+                    } else {
+                      bgColor = "bg-gray-100"
+                      hover = "hover:bg-yellow-200"
+                    }
+                    const pickNum = roundIdx*numTeams+(i+1)
+                    return(
+                      <td className={`flex flex-col p-1 m-1 rounded border ${hover} cursor-pointer text-sm ${bgColor}`}
+                        onClick={ pick ? () => onRemovePick(pickNum) : () => onSelectPick( pickNum ) }
+                        key={i}
+                      >
+                        <p>{ `#${pickNum}` }</p>
+                        { pick && <p> { pick.name } </p> }
+                      </td>
+                    )
+                  })}
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          <div className="flex flex-col relative">
-            <div className="relative">
+          <div className="flex flex-row relative">
+            <div className="flex flex-col relative">
               <div>Round { roundIdx+1 } | Pick { currPick }</div>
               <input type="text"
                 className="border-2 rounded m-1"
@@ -283,12 +338,7 @@ export default function Home() {
                   // arrow up
                   if (e.code === 'ArrowUp' ) {
                     if ( suggestions.length === 0 ) {
-                      // nav round up
-                      if ( isEvenRound ) {
-                        setCurrPick(currPick - (2*(currRoundPick-1)+1))
-                      } else {
-                        if ( roundIdx > 0 ) setCurrPick(currPick - (2*currRoundPick)+1)
-                      }
+                      onNavRoundUp()
                     } else if ( suggestionIdx > 0 ) {
                       // suggestion up
                       if ( suggestionIdx > 0 ) setSuggestionIdx(suggestionIdx-1)
@@ -296,17 +346,8 @@ export default function Home() {
 
                   // arrow down
                   } else if (e.code === 'ArrowDown') {
-                    // round nav
                     if ( suggestions.length === 0 ) {
-                      if ( roundIdx === rounds.length-1 ) {
-                        // dont allow new round if curr round is empty
-                        if ( isRoundEmpty ) {
-                          return
-                        }
-                        setRounds([...rounds, newRound()])
-                      }
-
-                      setCurrPick(currPick + (2*(numTeams-currRoundPick)+1))
+                      onNavRoundDown()
                     } else if ( suggestionIdx < suggestions.length-1 ) {
                       // suggestion down
                       setSuggestionIdx(suggestionIdx+1)
@@ -321,7 +362,7 @@ export default function Home() {
                       if ( isRoundEmpty ) {
                         return
                       }
-                      setRounds([...rounds, newRound()])
+                      setRounds([...rounds, newRound(numTeams)])
                     }
                     const diff = isEvenRound ? 1 : -1
                     setCurrPick(currPick+diff)
@@ -332,7 +373,7 @@ export default function Home() {
                       if ( isRoundEmpty ) {
                         return
                       }
-                      setRounds([...rounds, newRound()])
+                      setRounds([...rounds, newRound(numTeams)])
                     }
                     const diff = isEvenRound ? -1 : 1
                     setCurrPick(currPick+diff)
@@ -359,31 +400,78 @@ export default function Home() {
                 </div>
               }
             </div>
+
+            <div className="h-full items-center justify-center items-center">
+              { roundIdx > 0 &&
+                <AiFillCaretUp
+                  className="cursor-pointer my-2"
+                  onClick={onNavRoundUp}
+                  size={22}
+                />
+              }
+
+              { !isRoundEmpty &&
+                <AiFillCaretDown
+                  className="cursor-pointer my-2"
+                  onClick={onNavRoundDown}
+                  size={22}
+                />
+              }
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-row border rounded">
-          { [[posRanks.QB, "QB"], [posRanks.RB, "RB"], [posRanks.WR, "WR"], [posRanks.TE, "TE"]].map( ([posGroup, posName], i) => {
+        <div className="flex flex-row border rounded h-96 overflow-y-auto">
+          { playerColumns.filter(([posGroup,])=> posGroup.length > 0).map( ([posGroup, posName], i) => {
             return(
               <div key={i}
                 className="flex flex-col"
               >
                 <div> { posName }</div>
-                { posGroup.slice(0,10).map( (player) => {
+                { posGroup.slice(0,30).map( (player) => {
                   const tierStyle = getTierStyle(player.tier)
-                  const { name, id, team, tier, harrisPPRRank } = player
+                  const { firstName, lastName, name, id, team, tier, harrisPPRRank, position } = player
+                  const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
                   return(
                     <div key={id}
-                      className={`px-2 py-1 mx-1 text-center border rounded cursor-pointer hover:bg-blue-200 ${tierStyle}`}
-                      onClick={ () => onSelectPlayer(player) }
+                      className={`px-2 py-1 m-1 text-center border rounded shadow-md hover:bg-blue-200 ${tierStyle}`}
+                      onMouseEnter={ () => setShownPlayerId(id) }
+                      onMouseLeave={ () => setShownPlayerId(null) }
                     >
                       <div className="flex flex-col text-center">
                         <p className="text-sm font-semibold">
                           { name }
                         </p>
                         <p className="text-xs">
-                          { team } - #{ harrisPPRRank} - Tier { tier ? tier : "?" }
+                          { team } - #{ harrisPPRRank} { tier ? ` - ${tier}` : "" }
                         </p>
+
+                        { shownPlayerId === id &&
+                          <div className="flex flex-col text-xs mt-1 items-center justify-center justify-items-center bg-gray-200 p-1 shadow-md">
+                            <div className="flex flex-row text-xs">
+                              <TiDelete
+                                className="mx-2 cursor-pointer"
+                                color="red"
+                                onClick={ () => onPurgePlayer( player) }
+                                size={20}
+                              />
+
+                              <AiFillCheckCircle
+                                className="mx-2 cursor-pointer"
+                                color="green"
+                                onClick={ () => onSelectPlayer( player ) }
+                                size={18}
+                              />
+
+                              <BsLink
+                                className="mx-2 cursor-pointer"
+                                color="blue"
+                                size={20}
+                                onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
+                              />
+                            </div>
+                          </div>
+                        }
                       </div>
                     </div>
                   )
