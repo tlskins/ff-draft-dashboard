@@ -1,6 +1,6 @@
 import Head from 'next/head'
 import React, { useEffect, useState, useRef } from "react"
-import { CSVLink, CSVDownload } from "react-csv"
+import { CSVLink } from "react-csv"
 import CSVReader from 'react-csv-reader'
 import { 
   AiFillCaretDown,
@@ -15,6 +15,17 @@ import {
 } from 'react-icons/bs'
 
 import { GetHarrisRanks } from "../behavior/harris"
+import {
+  createPlayerLibrary,
+  createRanks,
+  removePlayerFromRanks,
+  addPlayerToRanks,
+  purgePlayerFromRanks,
+
+  createRosters,
+  addToRoster,
+  removeFromRoster,
+} from "../behavior/draft"
 
 
 const useFocus = () => {
@@ -54,7 +65,6 @@ const getTierStyle = tier => {
 }
 
 export default function Home() {
-  const [availPlayers, setAvailPlayers] = useState([])
   const [numTeams, _] = useState(12)
   const [draftStarted, setDraftStarted] = useState(false)
   const [shownPlayerId, setShownPlayerId] = useState(null)
@@ -76,10 +86,16 @@ export default function Home() {
   const [suggestionIdx, setSuggestionIdx] = useState(0)
 
   // ranks
-  const [posRanks, setPosRanks] = useState({
-    QB: [], RB: [], WR: [], TE: [], purge: [],
-  })
-  const playerColumns = [[posRanks.QB, "QB"], [posRanks.RB, "RB"], [posRanks.WR, "WR"], [posRanks.TE, "TE"], [posRanks.purge, "Purge"]]
+  const [playerLib, setPlayerLib] = useState({})
+  const [ranks, setRanks] = useState(createRanks([], false))
+  const { availPlayers, isStd, harris, espn } = ranks
+  const playerRanks = [
+    [harris.QB, "QB"],
+    [harris.RB, "RB"],
+    [harris.WR, "WR"],
+    [harris.TE, "TE"],
+    [harris.Purge, "Purge"],
+  ]
 
   // csv
   const [csvData, setCsvData] = useState(null)
@@ -132,16 +148,6 @@ export default function Home() {
         ...rounds.slice(roundIdx+1, rounds.length)
       ]
     )
-    setAvailPlayers(availPlayers.filter( p => p.id !== player.id ))
-    setSuggestionIdx(0)
-    setSuggestions([])
-    setSearch("")
-    const posRank = posRanks[player.position]
-    setPosRanks({
-      ...posRanks,
-      purge: posRanks.purge.filter( p => p.id !== player.id ),
-      [player.position]: posRank.filter( p => p.id !== player.id ),
-    })
     setCurrPick(currPick+1)
     if ( currRoundPick === 12 ) {
       setRounds([...rounds, newRound(numTeams)])
@@ -149,27 +155,18 @@ export default function Home() {
     if ( !draftStarted ) {
       setDraftStarted(true)
     }
+
+    setSuggestionIdx(0)
+    setSuggestions([])
+    setSearch("")
+
+    const newRanks = removePlayerFromRanks( ranks, player )
+    setRanks(newRanks)
   }
 
-  const onPurgePlayer = player => {    
-    setAvailPlayers(availPlayers.filter( p => p.id !== player.id ))
-    const purgeIdx = posRanks.purge.findIndex( p => p.id === player.id )
-
-    if ( purgeIdx === -1 ) {
-      setPosRanks({
-        ...posRanks,
-        purge: [...posRanks.purge, player],
-        [player.position]: posRanks[player.position].filter( p => p.id !== player.id ),
-      })
-    } else {
-      let posRank = [...posRanks[player.position], player]
-      posRank = posRank.sort((a,b) => a.harrisPprRank - b.harrisPprRank )
-      setPosRanks({
-        ...posRanks,
-        purge: posRanks.purge.filter( p => p.id !== player.id ),
-        [player.position]: posRank,
-      })
-    }
+  const onPurgePlayer = player => {
+    const newRanks = purgePlayerFromRanks(ranks, player)
+    setRanks(newRanks)
   }
 
   const onRemovePick = pickNum => {
@@ -186,29 +183,20 @@ export default function Home() {
         ...rounds.slice(pickRdIdx+1, rounds.length)
       ]
     )
-    let posRank = [...posRanks[player.position], player]
-    console.log('posRank', posRank)
-    posRank = posRank.sort((a,b) => a.harrisPprRank - b.harrisPprRank )
-    setPosRanks({
-      ...posRanks,
-      [player.position]: posRank
-    })
-    setAvailPlayers([...availPlayers, player])
+    const newRanks = addPlayerToRanks( ranks, player )
+    setRanks(newRanks)
   }
 
-  const onLoadHarrisRanks = async () => {
-    const resp = await GetHarrisRanks()
-    if ( resp ) {
-      let { QB, RB, WR, TE } = resp
-      QB = QB.filter( p => !!p.harrisPprRank).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
-      RB = RB.filter( p => !!p.harrisPprRank).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
-      WR = WR.filter( p => !!p.harrisPprRank).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
-      TE = TE.filter( p => !!p.harrisPprRank).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
+  // data import export
 
-      const availPlayers = [ ...QB, ...RB, ...WR, ...TE ]
-      console.log('harrisRanks', availPlayers)
-      setAvailPlayers(availPlayers)
-      setPosRanks({ QB, RB, WR, TE, purge: []})
+  const onLoadHarrisRanks = async () => {
+    const { players } = await GetHarrisRanks()
+    if ( players ) {
+      const playerLib = createPlayerLibrary( players )
+      const ranks = createRanks( players, false )
+      console.log('loaded ranks', ranks)
+      setRanks(ranks)
+      setPlayerLib( playerLib )
     }
   }
 
@@ -244,16 +232,14 @@ export default function Home() {
 
   const onFileLoaded = (players, fileInfo) => {
     console.log('uploaded', players, fileInfo)
-    const QB = players.filter( p => !!p.harrisPprRank && p.position === "QB" ).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
-    const RB = players.filter( p => !!p.harrisPprRank && p.position === "RB" ).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
-    const WR = players.filter( p => !!p.harrisPprRank && p.position === "WR" ).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
-    const TE = players.filter( p => !!p.harrisPprRank && p.position === "TE" ).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
-    setAvailPlayers(players)
-    setPosRanks({ QB, RB, WR, TE, purge: [] })
+    const playerLib = createPlayerLibrary( players )
+    const ranks = createRanks( players, false )
+    setRanks(ranks)
+    setPlayerLib( playerLib )
     setIsUpload(false)
   }
 
-  console.log('render', isEvenRound, roundIdx, currPick, currRoundPick)
+  console.log('render', playerRanks)
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -441,15 +427,15 @@ export default function Home() {
         </div>
 
         <div className="flex flex-row border rounded h-96 mt-2 overflow-y-auto">
-          { playerColumns.filter(([posGroup,])=> posGroup.length > 0).map( ([posGroup, posName], i) => {
+          { playerRanks.filter(([posGroup,])=> posGroup.length > 0).map( ([posGroup, posName], i) => {
             return(
               <div key={i}
                 className="flex flex-col"
               >
                 <div> { posName }</div>
-                { posGroup.slice(0,30).map( (player) => {
+                { posGroup.slice(0,30).map( ([id,]) => playerLib[id] ).filter( p => !!p ).map( player => {
                   const tierStyle = getTierStyle(player.tier)
-                  const { firstName, lastName, name, id, team, tier, harrisPprRank, position } = player
+                  const { firstName, lastName, name, id, team, tier, harrisPprRank } = player
                   const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
                   return(
                     <div key={id}
