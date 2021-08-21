@@ -104,12 +104,14 @@ export const createRosters = numTeams => {
 
 export const addToRoster = ( rosters, player, rosterIdx ) => {
     const roster = rosters[rosterIdx]
-    roster.Picks.push(player.id)
-    roster[player.position].push(player.id)
 
     return [
         ...rosters.slice(0, rosterIdx),
-        roster,
+        {
+            ...roster,
+            Picks: [...roster.Picks, player.id],
+            [player.position]: [...roster[player.position], player.id],
+        },
         ...rosters.slice(rosterIdx+1, rosters.length),
     ]
 }

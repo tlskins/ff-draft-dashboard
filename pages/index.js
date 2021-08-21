@@ -70,6 +70,9 @@ export default function Home() {
   const [draftStarted, setDraftStarted] = useState(false)
   const [shownPlayerId, setShownPlayerId] = useState(null)
 
+  // rosters
+  const [rosters, setRosters] = useState([])
+
   // rounds
   const [currPick, setCurrPick] = useState(1)
   const [rounds, setRounds] = useState([])
@@ -77,14 +80,7 @@ export default function Home() {
   const isEvenRound = roundIdx % 2 == 1
   const currRound = rounds[roundIdx] || []
   const isRoundEmpty = currRound.every( p => !p )
-  let currRoundPick = currPick % numTeams
-  if ( currRoundPick === 0 ) currRoundPick = 12
-
-  // autocomplete
-  const [search, setSearch] = useState("")
-  const [inputRef, setInputFocus] = useFocus()
-  const [suggestions, setSuggestions] = useState([])
-  const [suggestionIdx, setSuggestionIdx] = useState(0)
+  let currRoundPick = currPick % numTeams === 0 ? 12 : currPick % numTeams
 
   // ranks
   const [playerLib, setPlayerLib] = useState({})
@@ -97,6 +93,12 @@ export default function Home() {
     [harris.TE, "TE"],
     [purge, "Purge"],
   ]
+
+  // autocomplete
+  const [search, setSearch] = useState("")
+  const [inputRef, setInputFocus] = useFocus()
+  const [suggestions, setSuggestions] = useState([])
+  const [suggestionIdx, setSuggestionIdx] = useState(0)
 
   // csv
   const [csvData, setCsvData] = useState(null)
@@ -134,6 +136,8 @@ export default function Home() {
       setSuggestions([])
     }
   }
+  
+  // drafting
 
   const onSelectPick = pickNum => {
     setCurrPick(pickNum)
@@ -141,7 +145,7 @@ export default function Home() {
   }
 
   const onSelectPlayer = player => {    
-    currRound[currRoundPick-1] = player
+    currRound[currRoundPick-1] = player.id
     setRounds(
       [
         ...rounds.slice(0, roundIdx),
@@ -163,11 +167,9 @@ export default function Home() {
 
     const newRanks = removePlayerFromRanks( ranks, player )
     setRanks(newRanks)
-  }
-
-  const onPurgePlayer = player => {
-    const newRanks = purgePlayerFromRanks( ranks, player )
-    setRanks(newRanks)
+    const rosterIdx = isEvenRound ? numTeams-currRoundPick : currRoundPick-1
+    const newRosters = addToRoster( rosters, player, rosterIdx)
+    setRosters( newRosters )
   }
 
   const onRemovePick = pickNum => {
@@ -175,7 +177,8 @@ export default function Home() {
     const pickRd = rounds[pickRdIdx]
     const currRoundIdx = (pickNum % numTeams)-1
     if ( currRoundIdx === -1 ) currRoundIdx = 11
-    const player = pickRd[currRoundIdx]
+    const playerId = pickRd[currRoundIdx]
+    const player = playerLib[playerId]
     pickRd[currRoundIdx] = undefined
     setRounds(
       [
@@ -186,6 +189,14 @@ export default function Home() {
     )
     addPlayerToRanks( ranks, player )
     const newRanks = sortRanks( ranks )
+    setRanks(newRanks)
+    const newRosters = removeFromRoster( rosters, player, currRoundPick-1)
+    setRosters( newRosters )
+    setCurrPick(pickNum)
+  }
+
+  const onPurgePlayer = player => {
+    const newRanks = purgePlayerFromRanks( ranks, player )
     setRanks(newRanks)
   }
 
@@ -204,6 +215,7 @@ export default function Home() {
 
   useEffect(() => {
     setRounds([newRound(numTeams)])
+    setRosters(createRosters(numTeams))
   }, [numTeams])
 
   const onSetCsvData = () => {
@@ -241,7 +253,7 @@ export default function Home() {
     setIsUpload(false)
   }
 
-  console.log('render', ranks)
+  console.log('render', rosters)
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -316,6 +328,7 @@ export default function Home() {
                       hover = "hover:bg-yellow-200"
                     }
                     const pickNum = roundIdx*numTeams+(i+1)
+                    const player = playerLib[pick]
                     return(
                       <td className={`flex flex-col p-1 m-1 rounded border ${hover} cursor-pointer text-sm ${bgColor}`}
                         onClick={ pick ? () => onRemovePick(pickNum) : () => onSelectPick( pickNum ) }
@@ -324,7 +337,7 @@ export default function Home() {
                         <p className="font-semibold">
                           { `#${pickNum}` } { pick ? ` | Rd ${roundIdx+1} Pick ${i+1}` : "" }
                         </p>
-                        { pick && <p> { pick.name } </p> }
+                        { player && <p> { player.name } </p> }
                       </td>
                     )
                   })}
