@@ -21,6 +21,7 @@ import {
   removePlayerFromRanks,
   addPlayerToRanks,
   purgePlayerFromRanks,
+  sortRanks,
 
   createRosters,
   addToRoster,
@@ -88,13 +89,13 @@ export default function Home() {
   // ranks
   const [playerLib, setPlayerLib] = useState({})
   const [ranks, setRanks] = useState(createRanks([], false))
-  const { availPlayers, isStd, harris, espn } = ranks
+  const { availPlayers, isStd, harris, espn, purge } = ranks
   const playerRanks = [
     [harris.QB, "QB"],
     [harris.RB, "RB"],
     [harris.WR, "WR"],
     [harris.TE, "TE"],
-    [harris.Purge, "Purge"],
+    [purge, "Purge"],
   ]
 
   // csv
@@ -165,7 +166,7 @@ export default function Home() {
   }
 
   const onPurgePlayer = player => {
-    const newRanks = purgePlayerFromRanks(ranks, player)
+    const newRanks = purgePlayerFromRanks( ranks, player )
     setRanks(newRanks)
   }
 
@@ -183,7 +184,8 @@ export default function Home() {
         ...rounds.slice(pickRdIdx+1, rounds.length)
       ]
     )
-    const newRanks = addPlayerToRanks( ranks, player )
+    addPlayerToRanks( ranks, player )
+    const newRanks = sortRanks( ranks )
     setRanks(newRanks)
   }
 
@@ -239,7 +241,7 @@ export default function Home() {
     setIsUpload(false)
   }
 
-  console.log('render', playerRanks)
+  console.log('render', ranks)
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
