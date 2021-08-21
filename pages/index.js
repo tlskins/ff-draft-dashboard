@@ -333,7 +333,9 @@ export default function Home() {
                         onClick={ pick ? () => onRemovePick(pickNum) : () => onSelectPick( pickNum ) }
                         key={i}
                       >
-                        <p>{ `#${pickNum}` }</p>
+                        <p className="font-semibold">
+                          { `#${pickNum}` } { pick ? ` | Rd ${roundIdx+1} Pick ${i+1}` : "" }
+                        </p>
                         { pick && <p> { pick.name } </p> }
                       </td>
                     )
@@ -438,7 +440,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex flex-row border rounded h-96 overflow-y-auto">
+        <div className="flex flex-row border rounded h-96 mt-2 overflow-y-auto">
           { playerColumns.filter(([posGroup,])=> posGroup.length > 0).map( ([posGroup, posName], i) => {
             return(
               <div key={i}
@@ -464,7 +466,7 @@ export default function Home() {
                         </p>
 
                         { shownPlayerId === id &&
-                          <div className="flex flex-col text-xs mt-1 items-center justify-center justify-items-center bg-gray-200 p-1 shadow-md">
+                          <div className="flex flex-col text-xs mt-1 items-center justify-center justify-items-center bg-yellow-200 p-1 shadow-md rounded-md">
                             <div className="flex flex-row text-xs">
                               <TiDelete
                                 className="mx-2 cursor-pointer"
