@@ -163,7 +163,7 @@ export default function Home() {
       })
     } else {
       let posRank = [...posRanks[player.position], player]
-      posRank = posRank.sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
+      posRank = posRank.sort((a,b) => a.harrisPprRank - b.harrisPprRank )
       setPosRanks({
         ...posRanks,
         purge: posRanks.purge.filter( p => p.id !== player.id ),
@@ -188,7 +188,7 @@ export default function Home() {
     )
     let posRank = [...posRanks[player.position], player]
     console.log('posRank', posRank)
-    posRank = posRank.sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
+    posRank = posRank.sort((a,b) => a.harrisPprRank - b.harrisPprRank )
     setPosRanks({
       ...posRanks,
       [player.position]: posRank
@@ -200,10 +200,10 @@ export default function Home() {
     const resp = await GetHarrisRanks()
     if ( resp ) {
       let { QB, RB, WR, TE } = resp
-      QB = QB.filter( p => !!p.harrisPPRRank).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
-      RB = RB.filter( p => !!p.harrisPPRRank).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
-      WR = WR.filter( p => !!p.harrisPPRRank).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
-      TE = TE.filter( p => !!p.harrisPPRRank).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
+      QB = QB.filter( p => !!p.harrisPprRank).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
+      RB = RB.filter( p => !!p.harrisPprRank).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
+      WR = WR.filter( p => !!p.harrisPprRank).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
+      TE = TE.filter( p => !!p.harrisPprRank).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
 
       const availPlayers = [ ...QB, ...RB, ...WR, ...TE ]
       console.log('harrisRanks', availPlayers)
@@ -244,10 +244,10 @@ export default function Home() {
 
   const onFileLoaded = (players, fileInfo) => {
     console.log('uploaded', players, fileInfo)
-    const QB = players.filter( p => !!p.harrisPPRRank && p.position === "QB" ).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
-    const RB = players.filter( p => !!p.harrisPPRRank && p.position === "RB" ).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
-    const WR = players.filter( p => !!p.harrisPPRRank && p.position === "WR" ).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
-    const TE = players.filter( p => !!p.harrisPPRRank && p.position === "TE" ).sort((a,b) => a.harrisPPRRank - b.harrisPPRRank )
+    const QB = players.filter( p => !!p.harrisPprRank && p.position === "QB" ).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
+    const RB = players.filter( p => !!p.harrisPprRank && p.position === "RB" ).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
+    const WR = players.filter( p => !!p.harrisPprRank && p.position === "WR" ).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
+    const TE = players.filter( p => !!p.harrisPprRank && p.position === "TE" ).sort((a,b) => a.harrisPprRank - b.harrisPprRank )
     setAvailPlayers(players)
     setPosRanks({ QB, RB, WR, TE, purge: [] })
     setIsUpload(false)
@@ -449,7 +449,7 @@ export default function Home() {
                 <div> { posName }</div>
                 { posGroup.slice(0,30).map( (player) => {
                   const tierStyle = getTierStyle(player.tier)
-                  const { firstName, lastName, name, id, team, tier, harrisPPRRank, position } = player
+                  const { firstName, lastName, name, id, team, tier, harrisPprRank, position } = player
                   const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
                   return(
                     <div key={id}
@@ -462,7 +462,7 @@ export default function Home() {
                           { name }
                         </p>
                         <p className="text-xs">
-                          { team } - #{ harrisPPRRank} { tier ? ` - ${tier}` : "" }
+                          { team } - #{ harrisPprRank} { tier ? ` - ${tier}` : "" }
                         </p>
 
                         { shownPlayerId === id &&
