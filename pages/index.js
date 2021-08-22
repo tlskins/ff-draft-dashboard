@@ -26,6 +26,9 @@ import {
   createRosters,
   addToRoster,
   removeFromRoster,
+
+  nextPositionPicked,
+  nextPickedPlayerId,
 } from "../behavior/draft"
 
 
@@ -69,6 +72,8 @@ export default function Home() {
   const [numTeams, _] = useState(12)
   const [draftStarted, setDraftStarted] = useState(false)
   const [shownPlayerId, setShownPlayerId] = useState(null)
+  const [myPickNum, setMyPickNum] = useState(6)
+  const [predictedPicks, setPredictedPicks] = useState({})
 
   // rosters
   const [rosters, setRosters] = useState([])
@@ -80,7 +85,9 @@ export default function Home() {
   const isEvenRound = roundIdx % 2 == 1
   const currRound = rounds[roundIdx] || []
   const isRoundEmpty = currRound.every( p => !p )
-  let currRoundPick = currPick % numTeams === 0 ? 12 : currPick % numTeams
+  const currRoundPick = currPick % numTeams === 0 ? 12 : currPick % numTeams
+  const currMyPickNum = isEvenRound ? numTeams - myPickNum + 1 : myPickNum
+  const nextMyPickNum = isEvenRound ? myPickNum : numTeams - myPickNum + 1
 
   // ranks
   const [playerLib, setPlayerLib] = useState({})
@@ -170,6 +177,8 @@ export default function Home() {
     const rosterIdx = isEvenRound ? numTeams-currRoundPick : currRoundPick-1
     const newRosters = addToRoster( rosters, player, rosterIdx)
     setRosters( newRosters )
+
+    predictPicks()
   }
 
   const onRemovePick = pickNum => {
@@ -253,7 +262,26 @@ export default function Home() {
     setIsUpload(false)
   }
 
-  console.log('render', rosters)
+  const predictPicks = () => {
+    let picksUntil
+    if ( currMyPickNum > currRoundPick + 1 ) {
+      picksUntil = currMyPickNum - currRoundPick - 1
+    } else {
+      picksUntil = (numTeams - currRoundPick + 1) + (nextMyPickNum - 1) - 1
+    }
+    console.log('picksUntil', currRoundPick, picksUntil)
+
+    let allPredicts = {}
+    Array.from(Array(picksUntil)).forEach((_, i) => {
+      const roster = rosters[currRoundPick-1]
+      const roundNum = Math.floor((currPick+i-1) / numTeams) + 1
+      const positions = nextPositionPicked( roster, roundNum )
+      allPredicts = nextPickedPlayerId( ranks, positions, allPredicts, i+1 )
+    })
+
+    console.log('Predictions: ', Object.keys( allPredicts ).sort((a,b) => allPredicts[a] - allPredicts[b]).map( id => playerLib[id].name ))
+    setPredictedPicks( allPredicts )
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -265,6 +293,19 @@ export default function Home() {
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
 
         <div className="flex flex-row">
+          <div className="flex flex-row text-sm text-center mr-2">
+            <p className="align-text-bottom align-bottom p-1 m-2">
+              Your Pick #
+            </p>
+            <input type="text"
+              className="w-10 border rounded p-1 m-2"
+              value={myPickNum}
+              onChange={ e => setMyPickNum(parseInt(e.target.value)) }
+              pattern="[0-9]*"
+              disabled={draftStarted}
+            />
+          </div>
+
           <div className="flex flex-col">
             <input type="button"
               className="border rounded p-1 m-2 cursor-pointer bg-blue-200"
@@ -327,10 +368,11 @@ export default function Home() {
                       bgColor = "bg-gray-100"
                       hover = "hover:bg-yellow-200"
                     }
+                    const myPickStyle = i+1 == currMyPickNum ? "border-4 border-green-400" : "border"
                     const pickNum = roundIdx*numTeams+(i+1)
                     const player = playerLib[pick]
                     return(
-                      <td className={`flex flex-col p-1 m-1 rounded border ${hover} cursor-pointer text-sm ${bgColor}`}
+                      <td className={`flex flex-col p-1 m-1 rounded ${myPickStyle} ${hover} cursor-pointer text-sm ${bgColor}`}
                         onClick={ pick ? () => onRemovePick(pickNum) : () => onSelectPick( pickNum ) }
                         key={i}
                       >
@@ -441,7 +483,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex flex-row border rounded h-96 mt-2 overflow-y-auto">
+        <div className="flex flex-row border rounded h-full mt-2 overflow-y-auto">
           { playerRanks.filter(([posGroup,])=> posGroup.length > 0).map( ([posGroup, posName], i) => {
             return(
               <div key={i}
@@ -450,11 +492,12 @@ export default function Home() {
                 <div> { posName }</div>
                 { posGroup.slice(0,30).map( ([id,]) => playerLib[id] ).filter( p => !!p ).map( player => {
                   const tierStyle = getTierStyle(player.tier)
+                  const predictStyle = predictedPicks[player.id] ? "border-4 border-red-300" : "border"
                   const { firstName, lastName, name, id, team, tier, harrisPprRank } = player
                   const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
                   return(
-                    <div key={id}
-                      className={`px-2 py-1 m-1 text-center border rounded shadow-md hover:bg-blue-200 ${tierStyle}`}
+                    <div key={id} id={id}
+                      className={`px-2 py-1 m-1 text-center ${predictStyle} rounded shadow-md hover:bg-blue-200 ${tierStyle}`}
                       onMouseEnter={ () => setShownPlayerId(id) }
                       onMouseLeave={ () => setShownPlayerId(null) }
                     >
@@ -473,20 +516,20 @@ export default function Home() {
                                 className="mx-2 cursor-pointer"
                                 color="red"
                                 onClick={ () => onPurgePlayer( player) }
-                                size={20}
+                                size={40}
                               />
 
                               <AiFillCheckCircle
                                 className="mx-2 cursor-pointer"
                                 color="green"
                                 onClick={ () => onSelectPlayer( player ) }
-                                size={18}
+                                size={40}
                               />
 
                               <BsLink
                                 className="mx-2 cursor-pointer"
                                 color="blue"
-                                size={20}
+                                size={40}
                                 onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
                               />
                             </div>

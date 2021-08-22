@@ -128,3 +128,44 @@ export const removeFromRoster = ( rosters, player, rosterIdx ) => {
     ]
 }
 
+// Roster 1x flex
+export const nextPositionPicked = ( roster, roundNum ) => {
+    let pos = { QB: 1, WR: 1, RB: 1, TE: 1 }
+    if ( roundNum <= 3 ) {
+        if ( roster.QB.length >= 1 ) delete pos.QB
+        if ( roster.TE.length >= 1 ) delete pos.TE
+    } else if ( roundNum <= 6 ) {
+        if ( roster.QB.length >= 1 ) delete pos.QB
+        if ( roster.TE.length >= 1 ) delete pos.TE
+        if ( roster.RB.length >= 3 ) delete pos.RB
+        if ( roster.WR.length >= 3 ) delete pos.WR
+    } else {
+        if ( roster.QB.length >= 2 ) delete pos.QB
+        if ( roster.TE.length >= 2 ) delete pos.TE
+        if ( roster.RB.length >= 5 ) delete pos.RB
+        if ( roster.WR.length >= 5 ) delete pos.WR
+    }
+
+    return Object.keys( pos )
+}
+
+export const nextPickedPlayerId = ( ranks, positions, predicted, predictNum ) => {
+    let hiRank
+    positions.forEach( pos => {
+        const posRanks = ranks.espn[pos]
+        for (let i=0; i<posRanks.length; i++) {
+            if ( predicted[posRanks[i][0]] ) continue
+            if  ( !hiRank || hiRank[1] > posRanks[i][1]) {
+                hiRank = posRanks[i]
+                break
+            }
+        }
+   })
+   const playerId = hiRank?.[0]
+
+   if ( !playerId ) {
+       return predicted
+   } else {
+       return { ...predicted, [playerId]: predictNum }
+   }
+}
