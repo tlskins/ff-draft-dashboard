@@ -45,6 +45,8 @@ const useFocus = () => {
 
 const newRound = numTeams => new Array(numTeams).fill(null)
 
+const predBgColor = "bg-gray-500"
+
 const getTierStyle = tier => {
   switch(tier) {
     case 1:
@@ -79,9 +81,7 @@ export default function Home() {
   const [myPickNum, setMyPickNum] = useState(6)
   const [predictedPicks, setPredictedPicks] = useState({})
 
-  // bulk parse
-  const [isBulkParse, setIsBulkParse] = useState(false)
-  const [bulkText, setBulkText] = useState("")
+  // counter to run post predictions after non-current pick events
   const [numPostPredicts, setNumPostPredicts] = useState(0)
 
   // rosters
@@ -144,12 +144,19 @@ export default function Home() {
   const onSearch = e => {
     const text = e.target.value
     setSearch(text)
-    if ( text.length > 1 ) {
-      const regex = new RegExp(text, 'gi');
-      const filtered = availPlayers.filter( player => regex.test(player.matchName) )
-      setSuggestions(filtered)
+    // bulk parse
+    if ( text.includes( "\n")) {
+      onParsePlayers( text )
+      setSearch("")
     } else {
-      setSuggestions([])
+      // normal search suggest
+      if ( text.length > 1 ) {
+        const regex = new RegExp(text, 'gi');
+        const filtered = availPlayers.filter( player => regex.test(player.matchName) )
+        setSuggestions(filtered)
+      } else {
+        setSuggestions([])
+      }
     }
   }
   
@@ -327,6 +334,9 @@ export default function Home() {
       }
       const roundNum = parseInt( pickMatch[2] )
       const pickNum = parseInt( pickMatch[3] )
+      if ( !roundNum || !pickNum ) {
+        return
+      }
       let player
       for (let i=0; i<allPlayers.length-1; i++) {
         if (allPlayers[i].name === pickMatch[1]) {
@@ -350,6 +360,7 @@ export default function Home() {
     setCurrPick(((lastRound - 1) * numTeams) + lastPick + 1)
     setRosters( newRosters )
     setNumPostPredicts(numPostPredicts+1)
+    setInputFocus()
   }
 
   return (
@@ -417,33 +428,6 @@ export default function Home() {
               />
             }
           </div>
-
-          <div className="flex flex-col">
-            { !isBulkParse &&
-              <input type="button"
-                className="border rounded p-1 m-2 cursor-pointer bg-yellow-200"
-                value="Bulk Parse Picks"
-                onClick={ () => setIsBulkParse(true) }
-              />
-            }
-            { isBulkParse &&
-              <>
-                <textarea
-                  className="p-1 m-1 border bg-gray-200 shadow"
-                  value={bulkText}
-                  onChange={e => setBulkText(e.target.value)}
-                />
-                <input type="button"
-                  className="border rounded p-1 m-2 cursor-pointer bg-green-300"
-                  value="Parse"
-                  onClick={ () => {
-                    onParsePlayers(bulkText)
-                    setBulkText("")
-                  }}
-                />
-              </>
-            }
-          </div>
         </div>
 
         <div className="flex flex-row border rounded">
@@ -486,12 +470,17 @@ export default function Home() {
               </tbody>
             </table>
           </div>
+        </div>
 
-          <div className="flex flex-row">
-            <div className="flex flex-col">
-              <div>Round { roundIdx+1 } | Pick { currPick }</div>
+        <div className="flex flex-col mt-2">
+          <div className="flex flex-row justify-items-center justify-center content-center">
+            <div className="flex flex-col w-3/4">
+              <p className="font-semibold underline">
+                Round { roundIdx+1 } Pick { currRoundPick } (#{ currPick } Overall)
+              </p>
               <input type="text"
-                className="border-2 rounded m-1"
+                className="border-2 rounded m-1 p-1 text-center text-sm"
+                placeholder="search by player name or copy ESPN live draft feed"
                 value={search}
                 onChange={onSearch}
                 onKeyDown={ e => {
@@ -549,7 +538,7 @@ export default function Home() {
               />
               { suggestions.length > 0 &&
                 <div className="flex flex-col relative">
-                  <div className="absolute w-100 z-10 border overflow-y-scroll h-48 bg-white border-gray-400 shadow-lg">
+                  <div className="absolute w-100 z-10 border overflow-y-scroll h-48 w-full text-center bg-white border-gray-400 shadow-lg">
                     { suggestions.map( (player,i) => {
                       return(
                         <p key={i}
@@ -583,67 +572,74 @@ export default function Home() {
               }
             </div>
           </div>
-        </div>
 
-        <div className="flex flex-row border rounded h-full mt-2 overflow-y-auto">
-          { playerRanks.filter(([posGroup,])=> posGroup.length > 0).map( ([posGroup, posName], i) => {
-            return(
-              <div key={i}
-                className="flex flex-col"
-              >
-                <div> { posName }</div>
-                { posGroup.slice(0,30).map( ([id,]) => playerLib[id] ).filter( p => !!p ).map( player => {
-                  let tierStyle = getTierStyle(player.tier)
-                  if ( predictedPicks[player.id] ) tierStyle = "bg-gray-500 text-white"
-                  const { firstName, lastName, name, id, team, tier, harrisPprRank } = player
-                  const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
-                  return(
-                    <div key={id} id={id}
-                      className={`px-2 py-1 m-1 text-center border rounded shadow-md hover:bg-blue-200 ${tierStyle}`}
-                      onMouseEnter={ () => setShownPlayerId(id) }
-                      onMouseLeave={ () => setShownPlayerId(null) }
-                    >
-                      <div className="flex flex-col text-center">
-                        <p className="text-sm font-semibold">
-                          { name }
-                        </p>
-                        <p className="text-xs">
-                          { team } - #{ harrisPprRank} { tier ? ` - ${tier}` : "" }
-                        </p>
+          <div className="flex flex-row mb-4 h-full items-center justify-center items-center">
+            <div className={`w-8 h-2 rounded ${predBgColor}`} />
+            <p className="ml-2 text-xs">
+              Players predicted taken before you next turn
+            </p>
+          </div>
 
-                        { shownPlayerId === id &&
-                          <div className="flex flex-col text-xs mt-1 items-center justify-center justify-items-center bg-yellow-200 p-1 shadow-md rounded-md">
-                            <div className="flex flex-row text-xs">
-                              <TiDelete
-                                className="mx-2 cursor-pointer"
-                                color="red"
-                                onClick={ () => onPurgePlayer( player) }
-                                size={40}
-                              />
+          <div className="flex flex-row border rounded h-full overflow-y-auto">
+            { playerRanks.filter(([posGroup,])=> posGroup.length > 0).map( ([posGroup, posName], i) => {
+              return(
+                <div key={i}
+                  className="flex flex-col"
+                >
+                  <div> { posName }</div>
+                  { posGroup.slice(0,30).map( ([id,]) => playerLib[id] ).filter( p => !!p ).map( player => {
+                    let tierStyle = getTierStyle(player.tier)
+                    if ( predictedPicks[player.id] ) tierStyle = `${predBgColor} text-white`
+                    const { firstName, lastName, name, id, team, tier, harrisPprRank } = player
+                    const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
+                    return(
+                      <div key={id} id={id}
+                        className={`px-2 py-1 m-1 text-center border rounded shadow-md hover:bg-blue-200 ${tierStyle}`}
+                        onMouseEnter={ () => setShownPlayerId(id) }
+                        onMouseLeave={ () => setShownPlayerId(null) }
+                      >
+                        <div className="flex flex-col text-center">
+                          <p className="text-sm font-semibold">
+                            { name }
+                          </p>
+                          <p className="text-xs">
+                            { team } - #{ harrisPprRank} { tier ? ` - ${tier}` : "" }
+                          </p>
 
-                              <AiFillCheckCircle
-                                className="mx-2 cursor-pointer"
-                                color="green"
-                                onClick={ () => onSelectPlayer( player ) }
-                                size={40}
-                              />
+                          { shownPlayerId === id &&
+                            <div className="flex flex-col text-xs mt-1 items-center justify-center justify-items-center bg-yellow-200 p-1 shadow-md rounded-md">
+                              <div className="flex flex-row text-xs">
+                                <TiDelete
+                                  className="mx-2 cursor-pointer"
+                                  color="red"
+                                  onClick={ () => onPurgePlayer( player) }
+                                  size={40}
+                                />
 
-                              <BsLink
-                                className="mx-2 cursor-pointer"
-                                color="blue"
-                                size={40}
-                                onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
-                              />
+                                <AiFillCheckCircle
+                                  className="mx-2 cursor-pointer"
+                                  color="green"
+                                  onClick={ () => onSelectPlayer( player ) }
+                                  size={40}
+                                />
+
+                                <BsLink
+                                  className="mx-2 cursor-pointer"
+                                  color="blue"
+                                  size={40}
+                                  onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
+                                />
+                              </div>
                             </div>
-                          </div>
-                        }
+                          }
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })}
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
         </div>
 
       </main>
