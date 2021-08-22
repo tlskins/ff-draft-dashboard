@@ -5,13 +5,6 @@ export const createPlayerLibrary = players => players.reduce((acc, player) => {
     return acc
 }, {})
 
-// const players = [
-//     {id: 1, position: 'QB', harrisPprRank: 2, espnAdp: 3},
-//     {id: 2, position: 'QB', harrisPprRank: 1, espnAdp: 2},
-//     {id: 3, position: 'QB', harrisPprRank: undefined, espnAdp: 1},
-//     {id: 4, position: 'QB', harrisPprRank: 5, espnAdp: undefined},
-// ]
-
 export const allPositions = ['QB', 'RB', 'WR', 'TE']
 export const rankTypes = ['harris', 'espn']
 
@@ -129,7 +122,7 @@ export const removeFromRoster = ( rosters, player, rosterIdx ) => {
     ]
 }
 
-// Roster 1x flex
+// Roster = 1x flex
 export const nextPositionPicked = ( roster, roundNum, posCounts ) => {
     console.log('nextPositionPicked st', roster)
     let pos = { QB: 1, WR: 1, RB: 1, TE: 1 }
@@ -178,6 +171,26 @@ export const nextPickedPlayerId = ( ranks, positions, predicted, predictNum, pos
            updatedCounts: { ...posCounts, [hiRankPos]: posCount+1 }
         }
    }
+}
+
+// Round management
+
+export const getPicksUntil = (myPickNum, currPick, numTeams) => {
+    const roundIdx = Math.floor( (currPick-1) / numTeams )
+    const isEvenRound = roundIdx % 2 == 1
+    const currRoundPick = currPick % numTeams === 0 ? 12 : currPick % numTeams
+    const currMyPickNum = isEvenRound ? numTeams - myPickNum + 1 : myPickNum
+    const nextMyPickNum = isEvenRound ? myPickNum : numTeams - myPickNum + 1
+  
+
+    let picksUntil
+    if ( currMyPickNum > currRoundPick + 1 ) {
+      picksUntil = currMyPickNum - currRoundPick - 1
+    } else {
+      picksUntil = (numTeams - currRoundPick + 1) + (nextMyPickNum - 1) - 1
+    }
+
+    return picksUntil
 }
 
 // helpers

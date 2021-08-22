@@ -32,7 +32,7 @@ import {
 
   allPositions,
 
-  delay,
+  getPicksUntil,
 } from "../behavior/draft"
 
 
@@ -96,7 +96,6 @@ export default function Home() {
   const isRoundEmpty = currRound.every( p => !p )
   const currRoundPick = currPick % numTeams === 0 ? 12 : currPick % numTeams
   const currMyPickNum = isEvenRound ? numTeams - myPickNum + 1 : myPickNum
-  const nextMyPickNum = isEvenRound ? myPickNum : numTeams - myPickNum + 1
 
   // ranks
   const [playerLib, setPlayerLib] = useState({})
@@ -289,12 +288,7 @@ export default function Home() {
   }
 
   const predictPicks = () => {
-    let picksUntil
-    if ( currMyPickNum > currRoundPick + 1 ) {
-      picksUntil = currMyPickNum - currRoundPick - 1
-    } else {
-      picksUntil = (numTeams - currRoundPick + 1) + (nextMyPickNum - 1) - 1
-    }
+    const picksUntil = getPicksUntil(myPickNum, currPick, numTeams)
     console.log('picksUntil', currRoundPick, picksUntil)
 
     let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0 }
