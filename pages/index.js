@@ -415,7 +415,7 @@ export default function Home() {
           <div className="flex flex-col">
             <input type="button"
               className="font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-blue-200"
-              value="Load Harris Ranks"
+              value="Load Current Harris Ranks"
               onClick={ onLoadHarrisRanks }
             />
           </div>
@@ -731,13 +731,12 @@ export default function Home() {
 
       <footer className="flex items-center justify-center w-full h-24 border-t">
         <a
-          className="flex items-center justify-center"
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          className="flex items-center justify-center font-semibold"
+          href="https://www.harrisfootball.com/"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className="h-4 ml-2" />
+          Powered by <span className="font-bold ml-2 text-blue-600 underline">Harris Football</span>
         </a>
       </footer>
     </div>
