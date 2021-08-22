@@ -129,11 +129,13 @@ export const removeFromRoster = ( rosters, player, rosterIdx ) => {
 }
 
 // Roster 1x flex
-export const nextPositionPicked = ( roster, roundNum ) => {
+export const nextPositionPicked = ( roster, roundNum, posCounts ) => {
     let pos = { QB: 1, WR: 1, RB: 1, TE: 1 }
     if ( roundNum <= 3 ) {
         if ( roster.QB.length >= 1 ) delete pos.QB
         if ( roster.TE.length >= 1 ) delete pos.TE
+        if ( roundNum <= 2 && posCounts.TE >= 1 ) delete pos.TE
+        if ( roundNum <= 2 && posCounts.QB >= 1 ) delete pos.QB
     } else if ( roundNum <= 6 ) {
         if ( roster.QB.length >= 1 ) delete pos.QB
         if ( roster.TE.length >= 1 ) delete pos.TE
@@ -145,27 +147,33 @@ export const nextPositionPicked = ( roster, roundNum ) => {
         if ( roster.RB.length >= 5 ) delete pos.RB
         if ( roster.WR.length >= 5 ) delete pos.WR
     }
+    console.log( 'nextPositionPicked', roundNum, posCounts, Object.keys( pos ) )
 
     return Object.keys( pos )
 }
 
-export const nextPickedPlayerId = ( ranks, positions, predicted, predictNum ) => {
-    let hiRank
+export const nextPickedPlayerId = ( ranks, positions, predicted, predictNum, posCounts ) => {
+    let hiRank, hiRankPos
     positions.forEach( pos => {
         const posRanks = ranks.espn[pos]
         for (let i=0; i<posRanks.length; i++) {
             if ( predicted[posRanks[i][0]] ) continue
             if  ( !hiRank || hiRank[1] > posRanks[i][1]) {
                 hiRank = posRanks[i]
+                hiRankPos = pos
                 break
             }
         }
    })
    const playerId = hiRank?.[0]
+   const posCount = posCounts[hiRankPos]
 
    if ( !playerId ) {
-       return predicted
+       return { predicted, updatedCounts }
    } else {
-       return { ...predicted, [playerId]: predictNum }
+       return {
+           predicted: { ...predicted, [playerId]: predictNum },
+           updatedCounts: { ...posCounts, [hiRankPos]: posCount+1 }
+        }
    }
 }

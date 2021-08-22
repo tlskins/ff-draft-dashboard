@@ -29,6 +29,8 @@ import {
 
   nextPositionPicked,
   nextPickedPlayerId,
+
+  allPositions,
 } from "../behavior/draft"
 
 
@@ -74,6 +76,10 @@ export default function Home() {
   const [shownPlayerId, setShownPlayerId] = useState(null)
   const [myPickNum, setMyPickNum] = useState(6)
   const [predictedPicks, setPredictedPicks] = useState({})
+
+  // bulk parse
+  const [isBulkParse, setIsBulkParse] = useState(false)
+  const [bulkText, setBulkText] = useState("")
 
   // rosters
   const [rosters, setRosters] = useState([])
@@ -271,17 +277,42 @@ export default function Home() {
     }
     console.log('picksUntil', currRoundPick, picksUntil)
 
+    let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0 }
+    rosters.forEach( roster => {
+      allPositions.forEach( pos => {
+        posCounts[pos] += roster[pos].length
+      })
+    })
     let allPredicts = {}
     Array.from(Array(picksUntil)).forEach((_, i) => {
       const roster = rosters[currRoundPick-1]
       const roundNum = Math.floor((currPick+i-1) / numTeams) + 1
-      const positions = nextPositionPicked( roster, roundNum )
-      allPredicts = nextPickedPlayerId( ranks, positions, allPredicts, i+1 )
+      const positions = nextPositionPicked( roster, roundNum, posCounts )
+      const { predicted, updatedCounts } = nextPickedPlayerId( ranks, positions, allPredicts, i+1, posCounts )
+      allPredicts = predicted
+      posCounts = updatedCounts
     })
 
     console.log('Predictions: ', Object.keys( allPredicts ).sort((a,b) => allPredicts[a] - allPredicts[b]).map( id => playerLib[id].name ))
     setPredictedPicks( allPredicts )
   }
+
+  // batch parsing
+
+  // const onParsePlayers = text => {
+  //   const lines = text.split("\n\n")
+  //   const rgxName = /^(.+) \/ .{2,5} .{2,5}\b/i
+  //   const playerNames = lines.map( line => line.match(rgxName)[1])
+  //   console.log('playerNames', playerNames)
+  //   const players = []
+  //   Object.values( playerLib ).forEach( player => {
+  //     if ( playerNames.includes( player.name )) {
+  //       players.push( player )
+  //     }
+  //   })
+  //   console.log('bulk players', players)
+  //   players.forEach( player => onSelectPlayer( player ))
+  // }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -348,6 +379,33 @@ export default function Home() {
               />
             }
           </div>
+
+          {/* <div className="flex flex-col">
+            { !isBulkParse &&
+              <input type="button"
+                className="border rounded p-1 m-2 cursor-pointer bg-yellow-200"
+                value="Bulk Parse Picks"
+                onClick={ () => setIsBulkParse(true) }
+              />
+            }
+            { isBulkParse &&
+              <>
+                <textarea
+                  className="p-1 m-1 border bg-gray-200 shadow"
+                  value={bulkText}
+                  onChange={e => setBulkText(e.target.value)}
+                />
+                <input type="button"
+                  className="border rounded p-1 m-2 cursor-pointer bg-green-300"
+                  value="Parse"
+                  onClick={ () => {
+                    onParsePlayers(bulkText)
+                    setBulkText("")
+                  }}
+                />
+              </>
+            }
+          </div> */}
         </div>
 
         <div className="flex flex-row border rounded">
