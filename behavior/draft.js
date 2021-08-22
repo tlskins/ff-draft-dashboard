@@ -33,7 +33,7 @@ export const createRanks = (players, isStd) => {
             TE: [],
         },
         purge: [],
-        availPlayers: players,
+        availPlayers: [],
     }
     players.forEach( player => addPlayerToRanks( ranks, player ))
     sortRanks( ranks )
@@ -60,6 +60,7 @@ export const addPlayerToRanks = (ranks, player) => {
         ranks.harris[player.position].push([player.id, player.harrisPprRank])
     }
     if ( player.espnAdp ) ranks.espn[player.position].push([player.id, player.espnAdp])
+    ranks.availPlayers.push( player )
 }
 
 export const sortRanks = ranks => {

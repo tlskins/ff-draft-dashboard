@@ -185,6 +185,7 @@ export default function Home() {
     setRosters( newRosters )
 
     predictPicks()
+    setInputFocus()
   }
 
   const onRemovePick = pickNum => {
@@ -208,11 +209,13 @@ export default function Home() {
     const newRosters = removeFromRoster( rosters, player, currRoundPick-1)
     setRosters( newRosters )
     setCurrPick(pickNum)
+    setInputFocus()
   }
 
   const onPurgePlayer = player => {
     const newRanks = purgePlayerFromRanks( ranks, player )
     setRanks(newRanks)
+    setInputFocus()
   }
 
   // data import export
@@ -446,8 +449,8 @@ export default function Home() {
             </table>
           </div>
 
-          <div className="flex flex-row relative">
-            <div className="flex flex-col relative">
+          <div className="flex flex-row">
+            <div className="flex flex-col">
               <div>Round { roundIdx+1 } | Pick { currPick }</div>
               <input type="text"
                 className="border-2 rounded m-1"
@@ -507,16 +510,19 @@ export default function Home() {
                 ref={inputRef}
               />
               { suggestions.length > 0 &&
-                <div className="absolute w-100 z-10 border overflow-y-scroll h-48 bg-white border-gray-400 shadow-lg">
-                  { suggestions.map( (player,i) => {
-                    return(
-                      <p className={`cursor-pointer p-0.5 hover:bg-gray-200 text-sm ${suggestionIdx === i ? 'bg-gray-200' : ''}`}
-                        key={i}
-                      >
-                        { player.name }
-                      </p>
-                    )
-                  })}
+                <div className="flex flex-col relative">
+                  <div className="absolute w-100 z-10 border overflow-y-scroll h-48 bg-white border-gray-400 shadow-lg">
+                    { suggestions.map( (player,i) => {
+                      return(
+                        <p key={i}
+                          className={`cursor-pointer p-0.5 hover:bg-gray-200 text-sm ${suggestionIdx === i ? 'bg-gray-200' : ''}`}
+                          onClick={() => onSelectPlayer(player)}
+                        >
+                          { player.name }
+                        </p>
+                      )
+                    })}
+                  </div>
                 </div>
               }
             </div>
@@ -549,13 +555,13 @@ export default function Home() {
               >
                 <div> { posName }</div>
                 { posGroup.slice(0,30).map( ([id,]) => playerLib[id] ).filter( p => !!p ).map( player => {
-                  const tierStyle = getTierStyle(player.tier)
-                  const predictStyle = predictedPicks[player.id] ? "border-4 border-red-300" : "border"
+                  let tierStyle = getTierStyle(player.tier)
+                  if ( predictedPicks[player.id] ) tierStyle = "bg-gray-200 text-black"
                   const { firstName, lastName, name, id, team, tier, harrisPprRank } = player
                   const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
                   return(
                     <div key={id} id={id}
-                      className={`px-2 py-1 m-1 text-center ${predictStyle} rounded shadow-md hover:bg-blue-200 ${tierStyle}`}
+                      className={`px-2 py-1 m-1 text-center border rounded shadow-md hover:bg-blue-200 ${tierStyle}`}
                       onMouseEnter={ () => setShownPlayerId(id) }
                       onMouseLeave={ () => setShownPlayerId(null) }
                     >
