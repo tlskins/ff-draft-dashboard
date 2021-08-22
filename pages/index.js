@@ -75,11 +75,28 @@ const getTierStyle = tier => {
   }
 }
 
+const getPosStyle = position => {
+  switch(position) {
+    case "QB":
+      return "bg-yellow-100 shadow-md"
+    case "RB":
+      return "bg-blue-100 shadow-md"
+    case "WR":
+      return "bg-green-100 shadow-md"
+    case "TE":
+      return "bg-pink-300 shadow-md"
+    default:
+      return ""
+  }
+}
+
+const defaultMyPickNum = 6
+
 export default function Home() {
   const [numTeams, _] = useState(12)
   const [draftStarted, setDraftStarted] = useState(false)
   const [shownPlayerId, setShownPlayerId] = useState(null)
-  const [myPickNum, setMyPickNum] = useState(6)
+  const [myPickNum, setMyPickNum] = useState(defaultMyPickNum)
   const [predictedPicks, setPredictedPicks] = useState({})
   const [nextPredictedPicks, setNextPredictedPicks] = useState({})
   const [showNextPreds, setShowNextPreds] = useState(false)
@@ -89,6 +106,7 @@ export default function Home() {
 
   // rosters
   const [rosters, setRosters] = useState([])
+  const [viewRosterIdx, setViewRosterIdx] = useState(defaultMyPickNum-1)
 
   // rounds
   const [currPick, setCurrPick] = useState(1)
@@ -250,6 +268,10 @@ export default function Home() {
   }, [numTeams])
 
   useEffect(() => {
+    setViewRosterIdx(myPickNum-1)
+  }, [myPickNum])
+
+  useEffect(() => {
     if ( numPostPredicts > 0 ) {
       predictPicks()
     }
@@ -392,7 +414,7 @@ export default function Home() {
 
           <div className="flex flex-col">
             <input type="button"
-              className="border rounded p-1 m-2 cursor-pointer bg-blue-200"
+              className="font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-blue-200"
               value="Load Harris Ranks"
               onClick={ onLoadHarrisRanks }
             />
@@ -401,14 +423,14 @@ export default function Home() {
           <div className="flex flex-col">
             { (!draftStarted && !csvData && availPlayers.length > 0) &&
               <input type="button"
-                className="border rounded p-1 m-2 cursor-pointer bg-green-200"
+                className="font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-green-200"
                 value="Export CSV"
                 onClick={ onSetCsvData }
               />
             }
             { csvData && 
               <CSVLink data={csvData}
-                className="border rounded p-1 m-2 cursor-pointer bg-green-300"
+                className="font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-green-300"
               >
                 Download
               </CSVLink>
@@ -418,14 +440,14 @@ export default function Home() {
           <div className="flex flex-col">
             { !isUpload &&
               <input type="button"
-                className="border rounded p-1 m-2 cursor-pointer bg-green-200"
+                className="font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-green-200"
                 value="Upload CSV"
                 onClick={ () => setIsUpload(true) }
               />
             }
             { isUpload &&
               <CSVReader
-                cssClass="flex flex-col text-left text-sm border rounded p-1 m-2"
+                cssClass="font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase text-sm flex flex-col"
                 label="Upload Ranks"
                 onFileLoaded={ onFileLoaded }
                 parserOptions={papaparseOptions}
@@ -447,10 +469,7 @@ export default function Home() {
                       bgColor = "bg-yellow-400"
                       hover = "hover:bg-yellow-300"
                     } else if ( !!player ) {
-                      if ( player.position === "QB" ) bgColor = "bg-yellow-100 shadow-md"
-                      if ( player.position === "RB" ) bgColor = "bg-blue-100 shadow-md"
-                      if ( player.position === "WR" ) bgColor = "bg-green-100 shadow-md"
-                      if ( player.position === "TE" ) bgColor = "bg-pink-300 shadow-md"
+                      bgColor = getPosStyle( player.position )
                       hover = "hover:bg-red-300"
                     } else {
                       bgColor = "bg-gray-100"
@@ -611,12 +630,44 @@ export default function Home() {
           </div>
 
           <div className="flex flex-row border rounded h-full overflow-y-auto">
+            { draftStarted &&
+              <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-1 bg-gray-100 shadow-md border">
+                <select
+                  className="rounded p-1 border font-semibold"
+                  value={viewRosterIdx}
+                  onChange={ e => setViewRosterIdx(parseInt( e.target.value ))}
+                >
+                  { rosters.map((_,i) => {
+                    return(
+                      <option value={i}> Team { i+1 } </option>
+                    )
+                  })}
+                </select>
+                { allPositions.map( pos => [rosters[viewRosterIdx][pos], pos] ).filter( ([posGroup,]) => posGroup.length > 0 ).map( ([posGroup, pos]) => {
+                  return(
+                    <div className="mt-1 text-left" key={pos}>
+                      <p className="font-semibold"> { pos } ({ posGroup.length }) </p>
+                      { posGroup.map( playerId => {
+                        const player = playerLib[playerId]
+                        return(
+                          <p className="text-xs"> { player.name } - { player.team } </p>
+                        )
+                      })}
+                    </div>
+                  )
+                })}
+              </div>
+            }
+
             { playerRanks.filter(([posGroup,])=> posGroup.length > 0).map( ([posGroup, posName], i) => {
+              const posStyle = getPosStyle(posName)
               return(
                 <div key={i}
                   className="flex flex-col"
                 >
-                  <div> { posName }</div>
+                  <div className={`p-1 rounded m-1 ${posStyle}`}>
+                    { posName }
+                  </div>
                   { posGroup.slice(0,30).map( ([id,]) => playerLib[id] ).filter( p => !!p ).map( player => {
                     let tierStyle = getTierStyle(player.tier)
                     if ( showNextPreds && nextPredictedPicks[player.id] ) {
