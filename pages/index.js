@@ -31,6 +31,8 @@ import {
   nextPickedPlayerId,
 
   allPositions,
+
+  delay,
 } from "../behavior/draft"
 
 
@@ -80,6 +82,7 @@ export default function Home() {
   // bulk parse
   const [isBulkParse, setIsBulkParse] = useState(false)
   const [bulkText, setBulkText] = useState("")
+  const [numPostPredicts, setNumPostPredicts] = useState(0)
 
   // rosters
   const [rosters, setRosters] = useState([])
@@ -98,7 +101,7 @@ export default function Home() {
   // ranks
   const [playerLib, setPlayerLib] = useState({})
   const [ranks, setRanks] = useState(createRanks([], false))
-  const { availPlayers, isStd, harris, espn, purge } = ranks
+  const { availPlayers, harris, purge } = ranks
   const playerRanks = [
     [harris.QB, "QB"],
     [harris.RB, "RB"],
@@ -210,6 +213,7 @@ export default function Home() {
     setRosters( newRosters )
     setCurrPick(pickNum)
     setInputFocus()
+    setNumPostPredicts(numPostPredicts+1)
   }
 
   const onPurgePlayer = player => {
@@ -235,6 +239,12 @@ export default function Home() {
     setRounds([newRound(numTeams)])
     setRosters(createRosters(numTeams))
   }, [numTeams])
+
+  useEffect(() => {
+    if ( numPostPredicts > 0 ) {
+      predictPicks()
+    }
+  }, [numPostPredicts])
 
   const onSetCsvData = () => {
     if ( draftStarted ) {
@@ -302,20 +312,45 @@ export default function Home() {
 
   // batch parsing
 
-  // const onParsePlayers = text => {
-  //   const lines = text.split("\n\n")
-  //   const rgxName = /^(.+) \/ .{2,5} .{2,5}\b/i
-  //   const playerNames = lines.map( line => line.match(rgxName)[1])
-  //   console.log('playerNames', playerNames)
-  //   const players = []
-  //   Object.values( playerLib ).forEach( player => {
-  //     if ( playerNames.includes( player.name )) {
-  //       players.push( player )
-  //     }
-  //   })
-  //   console.log('bulk players', players)
-  //   players.forEach( player => onSelectPlayer( player ))
-  // }
+  const onParsePlayers = text => {
+    const lines = text.split("\n\n")
+    const rgxName = /^(.+) \/ .{2,5} .{2,5}\nR(\d+), P(\d+) - Team/i
+    const allPlayers = Object.values( playerLib )
+    let newRanks = ranks
+    let newRosters = rosters
+    let lastRound, lastPick
+    lines.forEach( line => {
+      const pickMatch = line.match(rgxName)
+      console.log('pickMatch', pickMatch)
+      if ( !pickMatch || pickMatch.length < 4 ) {
+        return
+      }
+      const roundNum = parseInt( pickMatch[2] )
+      const pickNum = parseInt( pickMatch[3] )
+      let player
+      for (let i=0; i<allPlayers.length-1; i++) {
+        if (allPlayers[i].name === pickMatch[1]) {
+          player = allPlayers[i]
+          break
+        }
+      }
+      if ( !player ) {
+        return
+      }
+      rounds[roundNum-1][pickNum-1] = player.id
+      newRanks = removePlayerFromRanks( ranks, player )
+      const rosterIdx = roundNum % 2 === 0 ? numTeams - pickNum : pickNum - 1
+      newRosters = addToRoster( rosters, player, rosterIdx)
+      lastRound = roundNum
+      lastPick = pickNum
+    })
+
+    setRanks(newRanks)
+    setRounds([...rounds])
+    setCurrPick(((lastRound - 1) * numTeams) + lastPick + 1)
+    setRosters( newRosters )
+    setNumPostPredicts(numPostPredicts+1)
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -332,7 +367,7 @@ export default function Home() {
               Your Pick #
             </p>
             <input type="text"
-              className="w-10 border rounded p-1 m-2"
+              className="w-10 h-8 border rounded p-1 m-2"
               value={myPickNum}
               onChange={ e => setMyPickNum(parseInt(e.target.value)) }
               pattern="[0-9]*"
@@ -383,7 +418,7 @@ export default function Home() {
             }
           </div>
 
-          {/* <div className="flex flex-col">
+          <div className="flex flex-col">
             { !isBulkParse &&
               <input type="button"
                 className="border rounded p-1 m-2 cursor-pointer bg-yellow-200"
@@ -408,7 +443,7 @@ export default function Home() {
                 />
               </>
             }
-          </div> */}
+          </div>
         </div>
 
         <div className="flex flex-row border rounded">
@@ -419,11 +454,15 @@ export default function Home() {
                   { currRound.map( (pick, i) => {
                     let bgColor = ""
                     let hover = ""
+                    const player = playerLib[pick]
                     if ( i+1 === currRoundPick ) {
-                      bgColor = "bg-yellow-200"
+                      bgColor = "bg-yellow-400"
                       hover = "hover:bg-yellow-300"
-                    } else if ( !!pick ) {
-                      bgColor = "bg-blue-200"
+                    } else if ( !!player ) {
+                      if ( player.position === "QB" ) bgColor = "bg-yellow-100 shadow-md"
+                      if ( player.position === "RB" ) bgColor = "bg-blue-100 shadow-md"
+                      if ( player.position === "WR" ) bgColor = "bg-green-100 shadow-md"
+                      if ( player.position === "TE" ) bgColor = "bg-pink-300 shadow-md"
                       hover = "hover:bg-red-300"
                     } else {
                       bgColor = "bg-gray-100"
@@ -431,7 +470,6 @@ export default function Home() {
                     }
                     const myPickStyle = i+1 == currMyPickNum ? "border-4 border-green-400" : "border"
                     const pickNum = roundIdx*numTeams+(i+1)
-                    const player = playerLib[pick]
                     return(
                       <td className={`flex flex-col p-1 m-1 rounded ${myPickStyle} ${hover} cursor-pointer text-sm ${bgColor}`}
                         onClick={ pick ? () => onRemovePick(pickNum) : () => onSelectPick( pickNum ) }
@@ -556,7 +594,7 @@ export default function Home() {
                 <div> { posName }</div>
                 { posGroup.slice(0,30).map( ([id,]) => playerLib[id] ).filter( p => !!p ).map( player => {
                   let tierStyle = getTierStyle(player.tier)
-                  if ( predictedPicks[player.id] ) tierStyle = "bg-gray-200 text-black"
+                  if ( predictedPicks[player.id] ) tierStyle = "bg-gray-500 text-white"
                   const { firstName, lastName, name, id, team, tier, harrisPprRank } = player
                   const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
                   return(

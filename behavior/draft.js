@@ -131,6 +131,7 @@ export const removeFromRoster = ( rosters, player, rosterIdx ) => {
 
 // Roster 1x flex
 export const nextPositionPicked = ( roster, roundNum, posCounts ) => {
+    console.log('nextPositionPicked st', roster)
     let pos = { QB: 1, WR: 1, RB: 1, TE: 1 }
     if ( roundNum <= 3 ) {
         if ( roster.QB.length >= 1 ) delete pos.QB
@@ -177,4 +178,22 @@ export const nextPickedPlayerId = ( ranks, positions, predicted, predictNum, pos
            updatedCounts: { ...posCounts, [hiRankPos]: posCount+1 }
         }
    }
+}
+
+// helpers
+
+var timer = undefined
+
+export const delay = ( action, timeout=400 ) => {
+  if ( timer ) {
+    clearTimeout( timer )
+  }
+  timer = undefined
+  timer = setTimeout(() => {
+    if ( timer ) {
+      clearTimeout( timer )
+    }
+    timer = undefined
+    action()
+  }, timeout )
 }
