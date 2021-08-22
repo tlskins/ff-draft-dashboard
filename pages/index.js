@@ -45,7 +45,8 @@ const useFocus = () => {
 
 const newRound = numTeams => new Array(numTeams).fill(null)
 
-const predBgColor = "bg-gray-500"
+const predBgColor = "bg-gray-400"
+const nextPredBgColor = "bg-gray-600"
 
 const getTierStyle = tier => {
   switch(tier) {
@@ -80,6 +81,8 @@ export default function Home() {
   const [shownPlayerId, setShownPlayerId] = useState(null)
   const [myPickNum, setMyPickNum] = useState(6)
   const [predictedPicks, setPredictedPicks] = useState({})
+  const [nextPredictedPicks, setNextPredictedPicks] = useState({})
+  const [showNextPreds, setShowNextPreds] = useState(false)
 
   // counter to run post predictions after non-current pick events
   const [numPostPredicts, setNumPostPredicts] = useState(0)
@@ -288,8 +291,8 @@ export default function Home() {
   }
 
   const predictPicks = () => {
-    const picksUntil = getPicksUntil(myPickNum, currPick, numTeams)
-    console.log('picksUntil', currRoundPick, picksUntil)
+    const [picksUntil, nextPicksUntil] = getPicksUntil(myPickNum, currPick, numTeams)
+    console.log('picksUntil', picksUntil, nextPicksUntil)
 
     let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0 }
     rosters.forEach( roster => {
@@ -297,18 +300,25 @@ export default function Home() {
         posCounts[pos] += roster[pos].length
       })
     })
-    let allPredicts = {}
-    Array.from(Array(picksUntil)).forEach((_, i) => {
+    let currPredicts = {}
+    let nextPredicts = {}
+    Array.from(Array(nextPicksUntil)).forEach((_, i) => {
       const roster = rosters[currRoundPick-1]
       const roundNum = Math.floor((currPick+i-1) / numTeams) + 1
       const positions = nextPositionPicked( roster, roundNum, posCounts )
-      const { predicted, updatedCounts } = nextPickedPlayerId( ranks, positions, allPredicts, i+1, posCounts )
-      allPredicts = predicted
+      const { predicted, updatedCounts } = nextPickedPlayerId( ranks, positions, nextPredicts, i+1, posCounts )
+      if ( i+1 <= picksUntil ) {
+        currPredicts = predicted
+      }
+      nextPredicts = predicted
       posCounts = updatedCounts
     })
 
-    console.log('Predictions: ', Object.keys( allPredicts ).sort((a,b) => allPredicts[a] - allPredicts[b]).map( id => playerLib[id].name ))
-    setPredictedPicks( allPredicts )
+    console.log('Predictions: ', Object.keys( currPredicts ).sort((a,b) => currPredicts[a] - currPredicts[b]).map( id => playerLib[id].name ))
+    console.log('Next Predictions: ', Object.keys( nextPredicts ).sort((a,b) => nextPredicts[a] - nextPredicts[b]).map( id => playerLib[id].name ))
+
+    setPredictedPicks( currPredicts )
+    setNextPredictedPicks( nextPredicts )
   }
 
   // batch parsing
@@ -477,6 +487,11 @@ export default function Home() {
                 placeholder="search by player name or copy ESPN live draft feed"
                 value={search}
                 onChange={onSearch}
+                onKeyUp={ e => {
+                  if (e.code === 'MetaRight') {
+                    setShowNextPreds(false)
+                  }
+                }}
                 onKeyDown={ e => {
                   console.log('onKeyDown', e.code)
                   // arrow up
@@ -526,6 +541,10 @@ export default function Home() {
                   } else if (e.code === 'Enter' && suggestionIdx >= 0 && suggestionIdx <= suggestions.length-1 ) {
                     const suggestion = suggestions[suggestionIdx]
                     onSelectPlayer(suggestion)
+
+                  // alt left 
+                  } else if (e.code === 'MetaRight') {
+                    setShowNextPreds(true)
                   }
                 }}
                 ref={inputRef}
@@ -568,10 +587,27 @@ export default function Home() {
           </div>
 
           <div className="flex flex-row mb-4 h-full items-center justify-center items-center">
-            <div className={`w-8 h-2 rounded ${predBgColor}`} />
-            <p className="ml-2 text-xs">
-              Players predicted taken before you next turn
-            </p>
+            { !showNextPreds &&
+              <div className="flex flex-col">
+                <div className="flex flex-row items-center justify-center items-center">
+                  <div className={`w-8 h-2 rounded ${ predBgColor }`} />
+                  <p className="ml-2 text-xs text-center font-semibold">
+                    ({ Object.keys(predictedPicks).length }) players predicted taken before your turn
+                  </p>
+                </div>
+                <p className="text-xs mt-1 text-center"> 
+                  hold left ALT to see players predicted taken before your NEXT turn
+                </p>
+              </div>
+            }
+            { showNextPreds &&
+              <>
+                <div className={`w-8 h-2 rounded ${ nextPredBgColor }`} />
+                <p className="ml-2 text-xs">
+                  ({ Object.keys(nextPredictedPicks).length }) players predicted taken before your NEXT-NEXT turn
+                </p>
+              </>
+            }
           </div>
 
           <div className="flex flex-row border rounded h-full overflow-y-auto">
@@ -583,7 +619,11 @@ export default function Home() {
                   <div> { posName }</div>
                   { posGroup.slice(0,30).map( ([id,]) => playerLib[id] ).filter( p => !!p ).map( player => {
                     let tierStyle = getTierStyle(player.tier)
-                    if ( predictedPicks[player.id] ) tierStyle = `${predBgColor} text-white`
+                    if ( showNextPreds && nextPredictedPicks[player.id] ) {
+                      tierStyle = `${nextPredBgColor} text-white`
+                    } else if ( !showNextPreds && predictedPicks[player.id] ) {
+                      tierStyle = `${predBgColor} text-white`
+                    }
                     const { firstName, lastName, name, id, team, tier, harrisPprRank } = player
                     const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
                     return(

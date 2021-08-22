@@ -124,7 +124,6 @@ export const removeFromRoster = ( rosters, player, rosterIdx ) => {
 
 // Roster = 1x flex
 export const nextPositionPicked = ( roster, roundNum, posCounts ) => {
-    console.log('nextPositionPicked st', roster)
     let pos = { QB: 1, WR: 1, RB: 1, TE: 1 }
     if ( roundNum <= 3 ) {
         if ( roster.QB.length >= 1 ) delete pos.QB
@@ -142,7 +141,7 @@ export const nextPositionPicked = ( roster, roundNum, posCounts ) => {
         if ( roster.RB.length >= 5 ) delete pos.RB
         if ( roster.WR.length >= 5 ) delete pos.WR
     }
-    console.log( 'nextPositionPicked', roundNum, posCounts, Object.keys( pos ) )
+    // console.log( 'nextPositionPicked', roundNum, posCounts, Object.keys( pos ) )
 
     return Object.keys( pos )
 }
@@ -181,16 +180,17 @@ export const getPicksUntil = (myPickNum, currPick, numTeams) => {
     const currRoundPick = currPick % numTeams === 0 ? 12 : currPick % numTeams
     const currMyPickNum = isEvenRound ? numTeams - myPickNum + 1 : myPickNum
     const nextMyPickNum = isEvenRound ? myPickNum : numTeams - myPickNum + 1
-  
 
-    let picksUntil
+    let picksUntil, nextPicksUntil
     if ( currMyPickNum > currRoundPick + 1 ) {
       picksUntil = currMyPickNum - currRoundPick - 1
+      nextPicksUntil = picksUntil + (numTeams - currMyPickNum + 1) + (nextMyPickNum - 1)
     } else {
       picksUntil = (numTeams - currRoundPick + 1) + (nextMyPickNum - 1) - 1
+      nextPicksUntil = picksUntil + (numTeams - nextMyPickNum + 1) + (currMyPickNum - 1)
     }
 
-    return picksUntil
+    return [picksUntil, nextPicksUntil]
 }
 
 // helpers
