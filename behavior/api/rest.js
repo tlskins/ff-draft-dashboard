@@ -1,9 +1,7 @@
 import axios from "axios"
 
 
-export const API_HOST = (process.env.VERCEL_GIT_COMMIT_REF === "production" || process.env.VERCEL_GIT_COMMIT_REF === undefined)
-  ? process.env.NEXT_PUBLIC_PROD_API_HOST
-  : process.env.NEXT_PUBLIC_API_HOST
+export const API_HOST = process.env.NEXT_PUBLIC_API_HOST
 
 // Set config defaults when creating the instance
 export const axios_ = axios.create({
