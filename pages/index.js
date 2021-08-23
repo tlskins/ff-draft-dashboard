@@ -170,7 +170,7 @@ export default function Home() {
     let text = e.target.value
     setErrs(null)
     // bulk parse
-    if ( text.includes( "\n")) {
+    if ( text.includes( "\n\n")) {
       onParsePlayers( text )
       setSearch("")
     } else {
@@ -391,7 +391,8 @@ export default function Home() {
     setDraftStarted( isDraftStarted )
     setRanks(newRanks)
     setRounds([...rounds])
-    setCurrPick(((lastRound - 1) * numTeams) + lastPick + 1)
+    const newCurrPick = ((lastRound - 1) * numTeams) + lastPick + 1
+    setCurrPick(newCurrPick)
     setRosters( newRosters )
     setNumPostPredicts(numPostPredicts+1)
     setInputFocus()

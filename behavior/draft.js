@@ -100,6 +100,9 @@ export const createRosters = numTeams => {
 
 export const addToRoster = ( rosters, player, rosterIdx ) => {
     const roster = rosters[rosterIdx]
+    if ( roster.Picks.includes(player.id)) {
+        return rosters
+    }
 
     return [
         ...rosters.slice(0, rosterIdx),
