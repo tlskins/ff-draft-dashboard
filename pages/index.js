@@ -14,6 +14,7 @@ import {
   BsLink,
 } from 'react-icons/bs'
 
+import PageHead from "../components/pageHead"
 import { GetHarrisRanks } from "../behavior/harris"
 import {
   createPlayerLibrary,
@@ -93,13 +94,16 @@ const getPosStyle = position => {
 const defaultMyPickNum = 6
 
 export default function Home() {
-  const [numTeams, _] = useState(12)
+  const [numTeams, setNumTeams] = useState(12)
+  const [isStd, setIsStd] = useState(false)
   const [draftStarted, setDraftStarted] = useState(false)
-  const [shownPlayerId, setShownPlayerId] = useState(null)
   const [myPickNum, setMyPickNum] = useState(defaultMyPickNum)
+  
   const [predictedPicks, setPredictedPicks] = useState({})
   const [nextPredictedPicks, setNextPredictedPicks] = useState({})
   const [showNextPreds, setShowNextPreds] = useState(false)
+  const [showHowToExport, setShowHowToExport] = useState(false)
+  const [shownPlayerId, setShownPlayerId] = useState(null)
 
   // counter to run post predictions after non-current pick events
   const [numPostPredicts, setNumPostPredicts] = useState(0)
@@ -120,7 +124,7 @@ export default function Home() {
 
   // ranks
   const [playerLib, setPlayerLib] = useState({})
-  const [ranks, setRanks] = useState(createRanks([], false))
+  const [ranks, setRanks] = useState(createRanks([], isStd))
   const { availPlayers, harris, purge } = ranks
   const playerRanks = [
     [harris.QB, "QB"],
@@ -255,7 +259,7 @@ export default function Home() {
     const { players } = await GetHarrisRanks()
     if ( players ) {
       const playerLib = createPlayerLibrary( players )
-      const ranks = createRanks( players, false )
+      const ranks = createRanks( players, isStd )
       console.log('loaded ranks', ranks)
       setRanks(ranks)
       setPlayerLib( playerLib )
@@ -277,18 +281,13 @@ export default function Home() {
     }
   }, [numPostPredicts])
 
-  const onSetCsvData = () => {
-    if ( draftStarted ) {
-      return
-    }
-    
+  const onSetCsvData = () => {    
     // get all unique keys in data
     const allKeys = {}
     availPlayers.forEach( p => Object.keys(p).forEach(key => {
       allKeys[key] = 1
     }))
     const keys = Object.keys(allKeys)
-
     const ranksData = availPlayers.map( player => {
       return keys.map( key => player[key])
     })
@@ -306,7 +305,7 @@ export default function Home() {
   const onFileLoaded = (players, fileInfo) => {
     console.log('uploaded', players, fileInfo)
     const playerLib = createPlayerLibrary( players )
-    const ranks = createRanks( players, false )
+    const ranks = createRanks( players, isStd )
     setRanks(ranks)
     setPlayerLib( playerLib )
     setIsUpload(false)
@@ -391,46 +390,48 @@ export default function Home() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
-      <Head>
-        <title>Draft Dashboard</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead />
 
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
 
         <div className="flex flex-row">
-          <div className="flex flex-row text-sm text-center mr-2">
-            <p className="align-text-bottom align-bottom p-1 m-2">
-              Your Pick #
-            </p>
-            <input type="text"
-              className="w-10 h-8 border rounded p-1 m-2"
-              value={myPickNum}
-              onChange={ e => setMyPickNum(parseInt(e.target.value)) }
-              pattern="[0-9]*"
-              disabled={draftStarted}
-            />
-          </div>
-
           <div className="flex flex-col">
             <input type="button"
-              className="font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-blue-200"
+              className="tracking-wide font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-blue-200"
               value="Load Current Harris Ranks"
               onClick={ onLoadHarrisRanks }
             />
           </div>
 
           <div className="flex flex-col">
-            { (!draftStarted && !csvData && availPlayers.length > 0) &&
-              <input type="button"
-                className="font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-green-200"
-                value="Export CSV"
-                onClick={ onSetCsvData }
-              />
+            { (Object.keys( playerLib ).length !== 0 && !csvData) &&
+              <div>
+                <input type="button"
+                  className="tracking-wide font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-green-200"
+                  value="Export & Edit Ranks CSV"
+                  onMouseEnter={ () => setShowHowToExport(true) }
+                  onMouseLeave={ () => setShowHowToExport(false) }
+                  onClick={ onSetCsvData }
+                />
+                { showHowToExport &&
+                  <div className="relative">
+                    <div className="absolute mr-20 -my-20 w-96 bg-yellow-300 text-black text-left text-xs font-semibold tracking-wide rounded shadow py-1.5 px-4 bottom-full z-10">
+                      <ul className="list-disc pl-6">
+                        <li>Export ranks to CSV</li>
+                        <li>Edit the custom PPR / STD ranks for each position</li>
+                        <li>Optionally add a column "tier" with number 1-10</li>
+                        <li>Upload new CSV</li>
+                      </ul>
+                    </div>
+                  </div>
+                }
+                
+              </div>
             }
             { csvData && 
               <CSVLink data={csvData}
-                className="font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-green-300"
+                onClick={ () => setCsvData(null)}
+                className="tracking-wide font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-green-300"
               >
                 Download
               </CSVLink>
@@ -440,19 +441,67 @@ export default function Home() {
           <div className="flex flex-col">
             { !isUpload &&
               <input type="button"
-                className="font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-green-200"
+                className="tracking-wide font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-green-200"
                 value="Upload CSV"
                 onClick={ () => setIsUpload(true) }
               />
             }
             { isUpload &&
               <CSVReader
-                cssClass="font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase text-sm flex flex-col"
+                cssClass="tracking-wide font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase text-sm flex flex-col"
                 label="Upload Ranks"
                 onFileLoaded={ onFileLoaded }
                 parserOptions={papaparseOptions}
               />
             }
+          </div>
+        </div>
+
+        <div className="flex flex-row mb-4">
+          <div className="flex flex-row text-sm text-center mr-4 rounded bg-gray-100 shadow-md">
+            <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
+              Your Pick #
+            </p>
+            <input type="text"
+              className="w-10 h-8 border rounded p-1 m-1"
+              value={myPickNum}
+              onChange={ e => setMyPickNum(parseInt(e.target.value)) }
+              pattern="[0-9]*"
+              disabled={draftStarted}
+            />
+          </div>
+
+          <div className="flex flex-row text-sm text-center mr-2 rounded bg-gray-100 shadow-md">
+            <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
+              # Teams
+            </p>
+            <select
+              className="p-1 m-1 border rounded"
+              value={numTeams}
+              onChange={ e => setNumTeams(parseFloat(e.target.value))}
+              disabled={draftStarted}
+            >
+              { [10, 12, 14].map( num => <option value={ num }> { num } </option>) }
+            </select>
+          </div>
+
+          <div className="flex flex-row text-sm text-center mr-2 rounded bg-gray-100 shadow-md">
+            <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
+              STD / PPR
+            </p>
+            <select
+              className="p-1 m-1 border rounded"
+              value={isStd ? "Standard" : "PPR"}
+              onChange={ e => {
+                const newIsStd = e.target.value === "Standard"
+                setIsStd( newIsStd )
+                const newRanks = createRanks( Object.values( playerLib ), newIsStd)
+                setRanks(newRanks)
+              }}
+              disabled={draftStarted}
+            >
+              { ["Standard", "PPR"].map( opt => <option value={ opt }> { opt } </option>) }
+            </select>
           </div>
         </div>
 
@@ -675,7 +724,7 @@ export default function Home() {
                     } else if ( !showNextPreds && predictedPicks[player.id] ) {
                       tierStyle = `${predBgColor} text-white`
                     }
-                    const { firstName, lastName, name, id, team, tier, harrisPprRank } = player
+                    const { firstName, lastName, name, id, team, tier, customPprRank, customStdRank } = player
                     const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
                     return(
                       <div key={id} id={id}
@@ -688,7 +737,7 @@ export default function Home() {
                             { name }
                           </p>
                           <p className="text-xs">
-                            { team } - #{ harrisPprRank} { tier ? ` - ${tier}` : "" }
+                            { team } - #{ isStd ? customStdRank : customPprRank} { tier ? ` - ${tier}` : "" }
                           </p>
 
                           { shownPlayerId === id &&

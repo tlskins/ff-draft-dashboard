@@ -47,10 +47,10 @@ export const removePlayerFromRanks = ( ranks, player ) => {
 
 export const addPlayerToRanks = (ranks, player) => {
     const { isStd } = ranks
-    if ( isStd && player.harrisStdRank ) {
-        ranks.harris[player.position].push([player.id, player.harrisStdRank])
-    } else if ( !isStd && player.harrisPprRank ) {
-        ranks.harris[player.position].push([player.id, player.harrisPprRank])
+    if ( isStd && player.customStdRank ) {
+        ranks.harris[player.position].push([player.id, player.customStdRank])
+    } else if ( !isStd && player.customPprRank ) {
+        ranks.harris[player.position].push([player.id, player.customPprRank])
     }
     if ( player.espnAdp ) ranks.espn[player.position].push([player.id, player.espnAdp])
     ranks.availPlayers.push( player )
