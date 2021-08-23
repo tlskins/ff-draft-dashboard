@@ -104,6 +104,7 @@ export default function Home() {
   const [showNextPreds, setShowNextPreds] = useState(false)
   const [showHowToExport, setShowHowToExport] = useState(false)
   const [shownPlayerId, setShownPlayerId] = useState(null)
+  const [errs, setErrs] = useState(null)
 
   // counter to run post predictions after non-current pick events
   const [numPostPredicts, setNumPostPredicts] = useState(0)
@@ -166,14 +167,16 @@ export default function Home() {
   }
 
   const onSearch = e => {
-    const text = e.target.value
-    setSearch(text)
+    let text = e.target.value
+    setErrs(null)
     // bulk parse
     if ( text.includes( "\n")) {
       onParsePlayers( text )
       setSearch("")
     } else {
       // normal search suggest
+      text = text.replaceAll(/[^a-zA-Z ]/ig, "")
+      setSearch(text)
       if ( text.length > 1 ) {
         const regex = new RegExp(text, 'gi');
         const filtered = availPlayers.filter( player => regex.test(player.matchName) )
@@ -300,7 +303,7 @@ export default function Home() {
     skipEmptyLines: true,
   }
 
-  const onFileLoaded = (players, fileInfo) => {
+  const onFileLoaded = (players) => {
     const playerLib = createPlayerLibrary( players )
     const ranks = createRanks( players, isStd )
     setRanks(ranks)
@@ -348,15 +351,16 @@ export default function Home() {
     let newRosters = rosters
     let lastRound, lastPick
     let isDraftStarted = draftStarted
-    lines.forEach( line => {
+    for (let i=0; i<=lines.length-1; i++) {
+      const line = lines[i]
       const pickMatch = line.match(rgxName)
       if ( !pickMatch || pickMatch.length < 4 ) {
-        return
+        continue
       }
       const roundNum = parseInt( pickMatch[2] )
       const pickNum = parseInt( pickMatch[3] )
       if ( !roundNum || !pickNum ) {
-        return
+        continue
       }
       let player
       for (let i=0; i<allPlayers.length-1; i++) {
@@ -366,6 +370,10 @@ export default function Home() {
         }
       }
       if ( !player ) {
+        continue
+      }
+      if ( roundNum > rounds.length + 1 ) {
+        setErrs("Parsing too many rounds ahead of the current pick!")
         return
       }
       if ( rounds.length >= roundNum ) {
@@ -378,7 +386,7 @@ export default function Home() {
       lastRound = roundNum
       lastPick = pickNum
       isDraftStarted = true
-    })
+    }
 
     setDraftStarted( isDraftStarted )
     setRanks(newRanks)
@@ -558,8 +566,11 @@ export default function Home() {
                 value={search}
                 onChange={onSearch}
                 onKeyUp={ e => {
-                  if (e.code === 'MetaRight') {
+                  if (['MetaRight', 'MetaLeft'].includes(e.code)) {
                     setShowNextPreds(false)
+                  } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
+                    const newRanks = sortRanks( ranks )
+                    setRanks( newRanks )
                   }
                 }}
                 onKeyDown={ e => {
@@ -612,8 +623,13 @@ export default function Home() {
                     onSelectPlayer(suggestion)
 
                   // alt left 
-                  } else if (e.code === 'MetaRight') {
+                  } else if (['MetaRight', 'MetaLeft'].includes(e.code)) {
                     setShowNextPreds(true)
+
+                  // shift left 
+                  } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
+                    const newRanks = sortRanks( ranks, true )
+                    setRanks( newRanks )
                   }
                 }}
                 ref={inputRef}
@@ -655,9 +671,15 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex flex-row mb-4 h-full items-center justify-center items-center">
+          { errs &&
+              <div className="flex flex-row mb-4 h-full items-center justify-center items-center">
+                <p className="font-semibold text-sm text-red-500 my-1"> { errs } </p>
+              </div>
+            }
+
+          <div className="flex flex-col mb-4 h-full items-center justify-center items-center">
             { !showNextPreds &&
-              <div className="flex flex-col">
+              <>
                 <div className="flex flex-row items-center justify-center items-center">
                   <div className={`w-8 h-2 rounded ${ predBgColor }`} />
                   <p className="ml-2 text-xs text-center font-semibold">
@@ -665,18 +687,21 @@ export default function Home() {
                   </p>
                 </div>
                 <p className="text-xs mt-1 text-center"> 
-                  hold left ALT to see players predicted taken before your NEXT turn
+                  hold ALT to see players predicted taken before your NEXT turn
                 </p>
-              </div>
+              </>
             }
             { showNextPreds &&
-              <>
+              <div className="flex flex-row">
                 <div className={`w-8 h-2 rounded ${ nextPredBgColor }`} />
                 <p className="ml-2 text-xs">
                   ({ Object.keys(nextPredictedPicks).length }) players predicted taken before your NEXT-NEXT turn
                 </p>
-              </>
+              </div>
             }
+            <p className="text-xs mt-1 text-center"> 
+              hold SHIFT to see players sorted by ESPN ranking
+            </p>
           </div>
 
           <div className="flex flex-row border rounded h-full overflow-y-auto">

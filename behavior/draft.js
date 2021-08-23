@@ -40,7 +40,7 @@ export const removePlayerFromRanks = ( ranks, player ) => {
         ranks[rankType][player.position] = posRank.filter( p => p[0] !== player.id )
     })
     ranks.availPlayers = ranks.availPlayers.filter( p => p.id !== player.id )
-    ranks.purge = ranks.purge.filter( p => p.id !== player.id )
+    ranks.purge = ranks.purge.filter( p => p[0] !== player.id )
 
     return { ...ranks }
 }
@@ -48,18 +48,22 @@ export const removePlayerFromRanks = ( ranks, player ) => {
 export const addPlayerToRanks = (ranks, player) => {
     const { isStd } = ranks
     if ( isStd && player.customStdRank ) {
-        ranks.harris[player.position].push([player.id, player.customStdRank])
+        ranks.harris[player.position].push([player.id, player.customStdRank, player.espnAdp])
     } else if ( !isStd && player.customPprRank ) {
-        ranks.harris[player.position].push([player.id, player.customPprRank])
+        ranks.harris[player.position].push([player.id, player.customPprRank, player.espnAdp])
     }
-    if ( player.espnAdp ) ranks.espn[player.position].push([player.id, player.espnAdp])
+    if ( player.espnAdp ) ranks.espn[player.position].push([player.id, player.espnAdp, player.espnAdp])
     ranks.availPlayers.push( player )
 }
 
-export const sortRanks = ranks => {
+export const sortRanks = (ranks, byEspn = false) => {
     rankTypes.forEach( rankType => {
         allPositions.forEach( pos => {
-            ranks[rankType][pos] = ranks[rankType][pos].sort(([,rankA],[,rankB]) => rankA - rankB)
+            if ( byEspn ) {
+                ranks[rankType][pos] = ranks[rankType][pos].sort(([,,rankA],[,,rankB]) => (rankA || 9999) - (rankB || 9999))
+            } else {
+                ranks[rankType][pos] = ranks[rankType][pos].sort(([,rankA],[,rankB]) => (rankA || 9999) - (rankB || 9999))
+            }
         })
     })
 
@@ -69,8 +73,8 @@ export const sortRanks = ranks => {
 export const purgePlayerFromRanks = ( ranks, player ) => {
     const purgeIdx = ranks.purge.findIndex( ([id,]) => id === player.id )
     if ( purgeIdx === -1 ) {
-        ranks.purge.push( [player.id] )
         ranks = removePlayerFromRanks( ranks, player )
+        ranks.purge.push( [player.id] )
     } else {
         ranks.purge = ranks.purge.filter( ([id,]) => id !== player.id )
         addPlayerToRanks( ranks, player )
