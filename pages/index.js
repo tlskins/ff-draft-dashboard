@@ -481,7 +481,7 @@ export default function Home() {
               onChange={ e => setNumTeams(parseFloat(e.target.value))}
               disabled={draftStarted}
             >
-              { [10, 12, 14].map( num => <option value={ num }> { num } </option>) }
+              { [10, 12, 14].map( num => <option key={num} value={ num }> { num } </option>) }
             </select>
           </div>
 
@@ -500,14 +500,14 @@ export default function Home() {
               }}
               disabled={draftStarted}
             >
-              { ["Standard", "PPR"].map( opt => <option value={ opt }> { opt } </option>) }
+              { ["Standard", "PPR"].map( opt => <option key={opt} value={ opt }> { opt } </option>) }
             </select>
           </div>
         </div>
 
         <div className="flex flex-row border rounded">
           <div className="flex flex-col">
-            <table class="table-auto">
+            <table className="table-auto">
               <tbody>
                 <tr className={`flex justify-between ${isEvenRound ? 'flex-row-reverse' : ''}`}>
                   { currRound.map( (pick, i) => {
@@ -546,12 +546,13 @@ export default function Home() {
 
         <div className="flex flex-col mt-2">
           <div className="flex flex-row justify-items-center justify-center content-center">
-            <div className="flex flex-col w-3/4">
+            <div className="flex flex-col w-full">
               <p className="font-semibold underline">
                 Round { roundIdx+1 } Pick { currRoundPick } (#{ currPick } Overall)
               </p>
-              <input type="text"
-                className="border-2 rounded m-1 p-1 text-center text-sm"
+              <textarea
+                rows={1}
+                className="bg-gray-200 shadow rounded-md my-2 p-1 w-full text-center text-sm text-black"
                 placeholder="search by player name or copy ESPN live draft feed"
                 value={search}
                 onChange={onSearch}
@@ -688,7 +689,7 @@ export default function Home() {
                 >
                   { rosters.map((_,i) => {
                     return(
-                      <option value={i}> Team { i+1 } </option>
+                      <option key={i} value={i}> Team { i+1 } </option>
                     )
                   })}
                 </select>
@@ -699,7 +700,7 @@ export default function Home() {
                       { posGroup.map( playerId => {
                         const player = playerLib[playerId]
                         return(
-                          <p className="text-xs"> { player.name } - { player.team } </p>
+                          <p className="text-xs" key={playerId}> { player.name } - { player.team } </p>
                         )
                       })}
                     </div>
