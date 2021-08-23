@@ -67,7 +67,6 @@ export const sortRanks = ranks => {
 }
 
 export const purgePlayerFromRanks = ( ranks, player ) => {
-    console.log('purgePlayerFromRanks', ranks)
     const purgeIdx = ranks.purge.findIndex( ([id,]) => id === player.id )
     if ( purgeIdx === -1 ) {
         ranks.purge.push( [player.id] )
@@ -77,7 +76,6 @@ export const purgePlayerFromRanks = ( ranks, player ) => {
         addPlayerToRanks( ranks, player )
         ranks = sortRanks( ranks )
     }
-    console.log('purgePlayerFromRanks after', ranks)
 
     return { ...ranks }
 }
@@ -163,7 +161,7 @@ export const nextPickedPlayerId = ( ranks, positions, predicted, predictNum, pos
    const posCount = posCounts[hiRankPos]
 
    if ( !playerId ) {
-       return { predicted, updatedCounts }
+       return { predicted, updatedCounts: posCounts }
    } else {
        return {
            predicted: { ...predicted, [playerId]: predictNum },

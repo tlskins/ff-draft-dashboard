@@ -260,7 +260,6 @@ export default function Home() {
     if ( players ) {
       const playerLib = createPlayerLibrary( players )
       const ranks = createRanks( players, isStd )
-      console.log('loaded ranks', ranks)
       setRanks(ranks)
       setPlayerLib( playerLib )
     }
@@ -292,7 +291,6 @@ export default function Home() {
       return keys.map( key => player[key])
     })
     const csvData = [keys, ...ranksData]
-    console.log(csvData)
     setCsvData(csvData)
   }
 
@@ -303,7 +301,6 @@ export default function Home() {
   }
 
   const onFileLoaded = (players, fileInfo) => {
-    console.log('uploaded', players, fileInfo)
     const playerLib = createPlayerLibrary( players )
     const ranks = createRanks( players, isStd )
     setRanks(ranks)
@@ -313,7 +310,6 @@ export default function Home() {
 
   const predictPicks = () => {
     const [picksUntil, nextPicksUntil] = getPicksUntil(myPickNum, currPick, numTeams)
-    console.log('picksUntil', picksUntil, nextPicksUntil)
 
     let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0 }
     rosters.forEach( roster => {
@@ -351,9 +347,9 @@ export default function Home() {
     let newRanks = ranks
     let newRosters = rosters
     let lastRound, lastPick
+    let isDraftStarted = draftStarted
     lines.forEach( line => {
       const pickMatch = line.match(rgxName)
-      console.log('pickMatch', pickMatch)
       if ( !pickMatch || pickMatch.length < 4 ) {
         return
       }
@@ -372,14 +368,19 @@ export default function Home() {
       if ( !player ) {
         return
       }
+      if ( rounds.length >= roundNum ) {
+        rounds.push( newRound(numTeams) )
+      }
       rounds[roundNum-1][pickNum-1] = player.id
       newRanks = removePlayerFromRanks( ranks, player )
       const rosterIdx = roundNum % 2 === 0 ? numTeams - pickNum : pickNum - 1
-      newRosters = addToRoster( rosters, player, rosterIdx)
+      newRosters = addToRoster( newRosters, player, rosterIdx)
       lastRound = roundNum
       lastPick = pickNum
+      isDraftStarted = true
     })
 
+    setDraftStarted( isDraftStarted )
     setRanks(newRanks)
     setRounds([...rounds])
     setCurrPick(((lastRound - 1) * numTeams) + lastPick + 1)
@@ -562,7 +563,6 @@ export default function Home() {
                   }
                 }}
                 onKeyDown={ e => {
-                  console.log('onKeyDown', e.code)
                   // arrow up
                   if (e.code === 'ArrowUp' ) {
                     if ( suggestions.length === 0 ) {
