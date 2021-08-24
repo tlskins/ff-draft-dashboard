@@ -243,7 +243,16 @@ export default function Home() {
     addPlayerToRanks( ranks, player )
     const newRanks = sortRanks( ranks )
     setRanks(newRanks)
-    const newRosters = removeFromRoster( rosters, player, currRoundPick-1)
+
+    // get round pick for a pick number 
+    const remRoundIdx = Math.floor( pickNum /  numTeams )
+    let remRosterNum
+    if ( remRoundIdx % 2 == 1 ) {
+      remRosterNum = numTeams - (pickNum % numTeams) + 1
+    } else {
+      remRosterNum = pickNum % numTeams
+    }
+    const newRosters = removeFromRoster( rosters, player, remRosterNum-1)
     setRosters( newRosters )
     setCurrPick(pickNum)
     setInputFocus()
@@ -398,6 +407,8 @@ export default function Home() {
     setInputFocus()
   }
 
+  console.log('render', currRoundPick)
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <PageHead />
@@ -472,13 +483,21 @@ export default function Home() {
             <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
               Your Pick #
             </p>
-            <input type="text"
+            {/* <input type="text"
               className="w-10 h-8 border rounded p-1 m-1"
               value={myPickNum}
               onChange={ e => setMyPickNum(parseInt(e.target.value)) }
               pattern="[0-9]*"
               disabled={draftStarted}
-            />
+            /> */}
+            <select
+              className="p-1 m-1 border rounded"
+              value={myPickNum}
+              onChange={ e =>  setMyPickNum(parseInt(e.target.value))}
+              disabled={draftStarted}
+            >
+              { Array.from(Array(numTeams)).map( (_, i) => <option key={i+1} value={ i+1 }> { i+1 } </option>) }
+            </select>
           </div>
 
           <div className="flex flex-row text-sm text-center mr-2 rounded bg-gray-100 shadow-md">
@@ -488,7 +507,10 @@ export default function Home() {
             <select
               className="p-1 m-1 border rounded"
               value={numTeams}
-              onChange={ e => setNumTeams(parseFloat(e.target.value))}
+              onChange={ e => {
+                setNumTeams(parseFloat(e.target.value))
+                setMyPickNum(1)
+              }}
               disabled={draftStarted}
             >
               { [10, 12, 14].map( num => <option key={num} value={ num }> { num } </option>) }

@@ -117,14 +117,17 @@ export const addToRoster = ( rosters, player, rosterIdx ) => {
 
 export const removeFromRoster = ( rosters, player, rosterIdx ) => {
     const roster = rosters[rosterIdx]
-    roster.Picks = roster.Picks.filter( id => id !== player.id )
-    roster[player.position] = roster[player.position].filter( id => id !== player.id )
-
-    return [
+    const newRosters = [
         ...rosters.slice(0, rosterIdx),
-        roster,
+        {
+            ...roster,
+            Picks: roster.Picks.filter( id => id !== player.id ),
+            [player.position]: roster[player.position].filter( id => id !== player.id ),
+        },
         ...rosters.slice(rosterIdx+1, rosters.length),
     ]
+
+    return newRosters
 }
 
 // Roster = 1x flex
