@@ -126,6 +126,7 @@ export default function Home() {
   // ranks
   const [playerLib, setPlayerLib] = useState({})
   const [ranks, setRanks] = useState(createRanks([], isStd))
+  const [isEspnRank, setIsEspnRank] = useState(false)
   const { availPlayers, harris, purge } = ranks
   const playerRanks = [
     [harris.QB, "QB"],
@@ -277,6 +278,26 @@ export default function Home() {
     }
   }
 
+  const onUpdateEspnRanks = async () => {
+    const { players } = await GetHarrisRanks()
+    if ( players ) {
+      const newLib = { ...playerLib }
+      players.forEach( player => {
+        const existPlayer = newLib[player.id]
+        if ( existPlayer ) {
+          newLib[player.id] = { ...existPlayer, espnAdp: player.espnAdp }
+        } else {
+          newLib[player.id] = player
+        }
+      })
+
+      const newPlayers = Object.values( newLib )
+      const ranks = createRanks( newPlayers, isStd )
+      setRanks(ranks)
+      setPlayerLib( newLib )
+    }
+  }
+
   useEffect(() => {
     setRounds([newRound(numTeams)])
     setRosters(createRosters(numTeams))
@@ -407,8 +428,6 @@ export default function Home() {
     setInputFocus()
   }
 
-  console.log('render', currRoundPick)
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <PageHead />
@@ -476,6 +495,16 @@ export default function Home() {
               />
             }
           </div>
+
+          <div className="flex flex-col">
+            { (!draftStarted && Object.keys( playerLib ).length > 0) &&
+              <input type="button"
+                className="tracking-wide font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-indigo-300"
+                value="Sync Current ESPN ADP"
+                onClick={ () => onUpdateEspnRanks() }
+              />
+            }
+          </div>
         </div>
 
         <div className="flex flex-row mb-4">
@@ -483,13 +512,6 @@ export default function Home() {
             <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
               Your Pick #
             </p>
-            {/* <input type="text"
-              className="w-10 h-8 border rounded p-1 m-1"
-              value={myPickNum}
-              onChange={ e => setMyPickNum(parseInt(e.target.value)) }
-              pattern="[0-9]*"
-              disabled={draftStarted}
-            /> */}
             <select
               className="p-1 m-1 border rounded"
               value={myPickNum}
@@ -594,6 +616,7 @@ export default function Home() {
                   } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
                     const newRanks = sortRanks( ranks )
                     setRanks( newRanks )
+                    setIsEspnRank(false)
                   }
                 }}
                 onKeyDown={ e => {
@@ -645,14 +668,15 @@ export default function Home() {
                     const suggestion = suggestions[suggestionIdx]
                     onSelectPlayer(suggestion)
 
-                  // alt left 
+                  // alt 
                   } else if (['MetaRight', 'MetaLeft'].includes(e.code)) {
                     setShowNextPreds(true)
 
-                  // shift left 
+                  // shift 
                   } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
                     const newRanks = sortRanks( ranks, true )
                     setRanks( newRanks )
+                    setIsEspnRank(true)
                   }
                 }}
                 ref={inputRef}
@@ -773,8 +797,14 @@ export default function Home() {
                     } else if ( !showNextPreds && predictedPicks[player.id] ) {
                       tierStyle = `${predBgColor} text-white`
                     }
-                    const { firstName, lastName, name, id, team, tier, customPprRank, customStdRank } = player
+                    const { firstName, lastName, name, id, team, tier, customPprRank, customStdRank, espnAdp } = player
                     const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
+                    let rankText
+                    if ( isEspnRank ) {
+                      rankText = `ESPN ADP #${espnAdp}`
+                    } else {
+                      rankText = isStd ? `#${customStdRank}` : `#${customPprRank}`
+                    }
                     return(
                       <div key={id} id={id}
                         className={`px-2 py-1 m-1 text-center border rounded shadow-md hover:bg-blue-200 ${tierStyle}`}
@@ -786,7 +816,7 @@ export default function Home() {
                             { name }
                           </p>
                           <p className="text-xs">
-                            { team } - #{ isStd ? customStdRank : customPprRank} { tier ? ` - ${tier}` : "" }
+                            { team } - { rankText } { tier ? ` - Tier ${tier}` : "" }
                           </p>
 
                           { shownPlayerId === id &&
