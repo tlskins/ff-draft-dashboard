@@ -291,7 +291,12 @@ export default function Home() {
       players.forEach( player => {
         const existPlayer = newLib[player.id]
         if ( existPlayer ) {
-          newLib[player.id] = { ...existPlayer, espnAdp: player.espnAdp }
+          newLib[player.id] = {
+            ...existPlayer,
+            espnAdp: player.espnAdp,
+            position: player.position,
+            team: player.team,
+          }
         } else {
           newLib[player.id] = player
         }
@@ -434,8 +439,6 @@ export default function Home() {
     setNumPostPredicts(numPostPredicts+1)
     setInputFocus()
   }
-
-  console.log('render', shownPlayerId)
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -806,16 +809,18 @@ export default function Home() {
                   <div className={`p-1 rounded m-1 ${posStyle}`}>
                     { posName }
                   </div>
-                  { posGroup.slice(0,30).map( ([id,]) => playerLib[id] ).filter( p => !!p ).map( player => {
-                    let tierStyle = getTierStyle(player.tier)
+                  { posGroup.slice(0,30).map( ([pId,]) => playerLib[pId] ).filter( p => !!p ).map( player => {
+                    const { firstName, lastName, name, id, team, tier, customPprRank, customStdRank, espnAdp } = player
+                    let tierStyle
                     if ( shownPlayerId === id && !!shownPlayerBg ) {
-                      tierStyle = shownPlayerBg // not working
+                      tierStyle = shownPlayerBg
                     } else if ( showNextPreds && nextPredictedPicks[player.id] ) {
                       tierStyle = `${nextPredBgColor} text-white`
                     } else if ( !showNextPreds && predictedPicks[player.id] ) {
                       tierStyle = `${predBgColor} text-white`
+                    } else {
+                      tierStyle = getTierStyle(player.tier)
                     }
-                    const { firstName, lastName, name, id, team, tier, customPprRank, customStdRank, espnAdp } = player
                     const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
                     let rankText
                     if ( isEspnRank ) {
@@ -839,31 +844,27 @@ export default function Home() {
                           </p>
 
                           { shownPlayerId === id &&
-                            <div className={`grid grid-cols-3 mt-1 absolute w-full opacity-60`}>
+                            <div className={`grid grid-cols-3 mt-1 w-full absolute opacity-60`}>
                               <TiDelete
-                                className="cursor-pointer"
+                                className="cursor-pointer -mt-2"
                                 color="red"
                                 onClick={ () => onPurgePlayer( player) }
-                                onMouseEnter={() => setShownPlayerBg("bg-red-400")}
+                                onMouseEnter={() => setShownPlayerBg("bg-red-500")}
                                 onMouseLeave={() => setShownPlayerBg("")}
-                                size={40}
+                                size={46}
                               />
 
                               <AiFillCheckCircle
-                                className="cursor-pointer"
+                                className="cursor-pointer -mt-1"
                                 color="green"
                                 onClick={ () => onSelectPlayer( player ) }
-                                onMouseEnter={() => {
-                                  setShownPlayerBg("bg-green-400")
-                                }}
-                                onMouseLeave={() => {
-                                  setShownPlayerBg("")
-                                }}
-                                size={34}
+                                onMouseEnter={() => setShownPlayerBg("bg-green-400")}
+                                onMouseLeave={() => setShownPlayerBg("")}
+                                size={33}
                               />
 
                               <BsLink
-                                className="cursor-pointer"
+                                className="cursor-pointer -mt-2"
                                 color="blue"
                                 onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
                                 onMouseEnter={() => setShownPlayerBg("bg-blue-400")}
