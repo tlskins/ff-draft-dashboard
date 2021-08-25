@@ -79,13 +79,13 @@ const getTierStyle = tier => {
 const getPosStyle = position => {
   switch(position) {
     case "QB":
-      return "bg-yellow-100 shadow-md"
+      return "bg-yellow-300 shadow-md"
     case "RB":
-      return "bg-blue-100 shadow-md"
+      return "bg-blue-300 shadow-md"
     case "WR":
-      return "bg-green-100 shadow-md"
+      return "bg-green-300 shadow-md"
     case "TE":
-      return "bg-pink-300 shadow-md"
+      return "bg-red-300 shadow-md"
     default:
       return ""
   }
@@ -104,7 +104,10 @@ export default function Home() {
   const [showNextPreds, setShowNextPreds] = useState(false)
   const [showHowToExport, setShowHowToExport] = useState(false)
   const [shownPlayerId, setShownPlayerId] = useState(null)
+  const [shownPlayerBg, setShownPlayerBg] = useState("")
+
   const [errs, setErrs] = useState(null)
+  const [alertMsg, setAlertMsg] = useState(null)
 
   // counter to run post predictions after non-current pick events
   const [numPostPredicts, setNumPostPredicts] = useState(0)
@@ -269,6 +272,7 @@ export default function Home() {
   // data import export
 
   const onLoadHarrisRanks = async () => {
+    setAlertMsg("Loading...")
     const { players } = await GetHarrisRanks()
     if ( players ) {
       const playerLib = createPlayerLibrary( players )
@@ -276,9 +280,11 @@ export default function Home() {
       setRanks(ranks)
       setPlayerLib( playerLib )
     }
+    setAlertMsg(null)
   }
 
   const onUpdateEspnRanks = async () => {
+    setAlertMsg("Loading...")
     const { players } = await GetHarrisRanks()
     if ( players ) {
       const newLib = { ...playerLib }
@@ -296,6 +302,7 @@ export default function Home() {
       setRanks(ranks)
       setPlayerLib( newLib )
     }
+    setAlertMsg(null)
   }
 
   useEffect(() => {
@@ -428,16 +435,19 @@ export default function Home() {
     setInputFocus()
   }
 
+  console.log('render', shownPlayerId)
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <PageHead />
 
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
 
-        <div className="flex flex-row">
+
+        <div className="flex flex-row my-4">
           <div className="flex flex-col">
             <input type="button"
-              className="tracking-wide font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-blue-200"
+              className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-blue-200"
               value="Load Current Harris Ranks"
               onClick={ onLoadHarrisRanks }
             />
@@ -447,7 +457,7 @@ export default function Home() {
             { (Object.keys( playerLib ).length !== 0 && !csvData) &&
               <div>
                 <input type="button"
-                  className="tracking-wide font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-green-200"
+                  className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-200"
                   value="Export & Edit Ranks CSV"
                   onMouseEnter={ () => setShowHowToExport(true) }
                   onMouseLeave={ () => setShowHowToExport(false) }
@@ -471,7 +481,7 @@ export default function Home() {
             { csvData && 
               <CSVLink data={csvData}
                 onClick={ () => setCsvData(null)}
-                className="tracking-wide font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-green-300"
+                className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-300"
               >
                 Download
               </CSVLink>
@@ -481,14 +491,14 @@ export default function Home() {
           <div className="flex flex-col">
             { !isUpload &&
               <input type="button"
-                className="tracking-wide font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-green-200"
+                className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-200"
                 value="Upload CSV"
                 onClick={ () => setIsUpload(true) }
               />
             }
             { isUpload &&
               <CSVReader
-                cssClass="tracking-wide font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase text-sm flex flex-col"
+                cssClass="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase text-sm flex flex-col"
                 label="Upload Ranks"
                 onFileLoaded={ onFileLoaded }
                 parserOptions={papaparseOptions}
@@ -499,7 +509,7 @@ export default function Home() {
           <div className="flex flex-col">
             { (!draftStarted && Object.keys( playerLib ).length > 0) &&
               <input type="button"
-                className="tracking-wide font-semibold border rounded px-4 py-1 m-2 cursor-pointer shadow-md uppercase bg-indigo-300"
+                className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-indigo-300"
                 value="Sync Current ESPN ADP"
                 onClick={ () => onUpdateEspnRanks() }
               />
@@ -598,7 +608,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex flex-col mt-2">
+        <div className="flex flex-col my-8">
           <div className="flex flex-row justify-items-center justify-center content-center">
             <div className="flex flex-col w-full">
               <p className="font-semibold underline">
@@ -719,10 +729,16 @@ export default function Home() {
           </div>
 
           { errs &&
-              <div className="flex flex-row mb-4 h-full items-center justify-center items-center">
-                <p className="font-semibold text-sm text-red-500 my-1"> { errs } </p>
-              </div>
-            }
+            <div className="flex flex-row h-full items-center justify-center items-center px-2 py-1 my-4 shadow-lg rounded-lg border-2 bg-yellow-200">
+              <p className="font-semibold text-sm text-red-500 my-1"> { errs } </p>
+            </div>
+          }
+
+          { alertMsg &&
+            <div className="flex flex-row h-full items-center justify-center items-center px-2 py-1 my-4 shadow-lg rounded-lg border-2 bg-green-200">
+              <p className="font-semibold text-sm text-green-500 my-1"> { alertMsg } </p>
+            </div>
+          }
 
           <div className="flex flex-col mb-4 h-full items-center justify-center items-center">
             { !showNextPreds &&
@@ -792,7 +808,9 @@ export default function Home() {
                   </div>
                   { posGroup.slice(0,30).map( ([id,]) => playerLib[id] ).filter( p => !!p ).map( player => {
                     let tierStyle = getTierStyle(player.tier)
-                    if ( showNextPreds && nextPredictedPicks[player.id] ) {
+                    if ( shownPlayerId === id && !!shownPlayerBg ) {
+                      tierStyle = shownPlayerBg // not working
+                    } else if ( showNextPreds && nextPredictedPicks[player.id] ) {
                       tierStyle = `${nextPredBgColor} text-white`
                     } else if ( !showNextPreds && predictedPicks[player.id] ) {
                       tierStyle = `${predBgColor} text-white`
@@ -805,9 +823,10 @@ export default function Home() {
                     } else {
                       rankText = isStd ? `#${customStdRank}` : `#${customPprRank}`
                     }
+
                     return(
                       <div key={id} id={id}
-                        className={`px-2 py-1 m-1 text-center border rounded shadow-md hover:bg-blue-200 ${tierStyle}`}
+                        className={`px-2 py-1 m-1 text-center border rounded shadow-md relative ${tierStyle} `}
                         onMouseEnter={ () => setShownPlayerId(id) }
                         onMouseLeave={ () => setShownPlayerId(null) }
                       >
@@ -820,29 +839,37 @@ export default function Home() {
                           </p>
 
                           { shownPlayerId === id &&
-                            <div className="flex flex-col text-xs mt-1 items-center justify-center justify-items-center bg-yellow-200 p-1 shadow-md rounded-md">
-                              <div className="flex flex-row text-xs">
-                                <TiDelete
-                                  className="mx-2 cursor-pointer"
-                                  color="red"
-                                  onClick={ () => onPurgePlayer( player) }
-                                  size={40}
-                                />
+                            <div className={`grid grid-cols-3 mt-1 absolute w-full opacity-60`}>
+                              <TiDelete
+                                className="cursor-pointer"
+                                color="red"
+                                onClick={ () => onPurgePlayer( player) }
+                                onMouseEnter={() => setShownPlayerBg("bg-red-400")}
+                                onMouseLeave={() => setShownPlayerBg("")}
+                                size={40}
+                              />
 
-                                <AiFillCheckCircle
-                                  className="mx-2 cursor-pointer"
-                                  color="green"
-                                  onClick={ () => onSelectPlayer( player ) }
-                                  size={40}
-                                />
+                              <AiFillCheckCircle
+                                className="cursor-pointer"
+                                color="green"
+                                onClick={ () => onSelectPlayer( player ) }
+                                onMouseEnter={() => {
+                                  setShownPlayerBg("bg-green-400")
+                                }}
+                                onMouseLeave={() => {
+                                  setShownPlayerBg("")
+                                }}
+                                size={34}
+                              />
 
-                                <BsLink
-                                  className="mx-2 cursor-pointer"
-                                  color="blue"
-                                  size={40}
-                                  onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
-                                />
-                              </div>
+                              <BsLink
+                                className="cursor-pointer"
+                                color="blue"
+                                onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
+                                onMouseEnter={() => setShownPlayerBg("bg-blue-400")}
+                                onMouseLeave={() => setShownPlayerBg("")}
+                                size={40}
+                              />
                             </div>
                           }
                         </div>
