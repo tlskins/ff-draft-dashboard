@@ -15,7 +15,7 @@ import {
 } from 'react-icons/bs'
 
 import PageHead from "../components/pageHead"
-import { GetHarrisRanks } from "../behavior/harris"
+import { GetHarrisRanks, GetFprosRanks } from "../behavior/harris"
 import {
   createPlayerLibrary,
   createRanks,
@@ -50,7 +50,7 @@ const predBgColor = "bg-gray-400"
 const nextPredBgColor = "bg-gray-600"
 
 const getTierStyle = tier => {
-  switch(tier) {
+  switch(parseInt(tier)) {
     case 1:
       return "bg-yellow-50 text-black"
     case 2:
@@ -273,7 +273,19 @@ export default function Home() {
 
   const onLoadHarrisRanks = async () => {
     setAlertMsg("Loading...")
-    const { players } = await GetHarrisRanks()
+    const players = await GetHarrisRanks()
+    if ( players ) {
+      const playerLib = createPlayerLibrary( players )
+      const ranks = createRanks( players, isStd )
+      setRanks(ranks)
+      setPlayerLib( playerLib )
+    }
+    setAlertMsg(null)
+  }
+
+  const onLoadFprosRanks = async () => {
+    setAlertMsg("Loading...")
+    const players = await GetFprosRanks()
     if ( players ) {
       const playerLib = createPlayerLibrary( players )
       const ranks = createRanks( players, isStd )
@@ -454,6 +466,28 @@ export default function Home() {
               value="Load Current Harris Ranks"
               onClick={ onLoadHarrisRanks }
             />
+
+            <input type="button"
+              className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-yellow-200"
+              value="Load Current Fantasy Pros Ranks"
+              onClick={ onLoadFprosRanks }
+            />
+
+            { !isUpload &&
+              <input type="button"
+                className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-200"
+                value="Upload CSV"
+                onClick={ () => setIsUpload(true) }
+              />
+            }
+            { isUpload &&
+              <CSVReader
+                cssClass="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase text-sm flex flex-col"
+                label="Upload Ranks"
+                onFileLoaded={ onFileLoaded }
+                parserOptions={papaparseOptions}
+              />
+            }
           </div>
 
           <div className="flex flex-col">
@@ -488,24 +522,6 @@ export default function Home() {
               >
                 Download
               </CSVLink>
-            }
-          </div>
-
-          <div className="flex flex-col">
-            { !isUpload &&
-              <input type="button"
-                className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-200"
-                value="Upload CSV"
-                onClick={ () => setIsUpload(true) }
-              />
-            }
-            { isUpload &&
-              <CSVReader
-                cssClass="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase text-sm flex flex-col"
-                label="Upload Ranks"
-                onFileLoaded={ onFileLoaded }
-                parserOptions={papaparseOptions}
-              />
             }
           </div>
 
