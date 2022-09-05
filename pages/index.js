@@ -1,4 +1,3 @@
-import Head from 'next/head'
 import React, { useEffect, useState, useRef } from "react"
 import { CSVLink } from "react-csv"
 import CSVReader from 'react-csv-reader'
@@ -6,6 +5,7 @@ import {
   AiFillCaretDown,
   AiFillCaretUp,
   AiFillCheckCircle,
+  AiFillStar
 } from 'react-icons/ai'
 import {
   TiDelete,
@@ -358,6 +358,7 @@ export default function Home() {
   }
 
   const onFileLoaded = (players) => {
+    console.log('onFileLoaded', players)
     const playerLib = createPlayerLibrary( players )
     const ranks = createRanks( players, isStd )
     setRanks(ranks)
@@ -826,7 +827,7 @@ export default function Home() {
                     { posName }
                   </div>
                   { posGroup.slice(0,30).map( ([pId,]) => playerLib[pId] ).filter( p => !!p ).map( player => {
-                    const { firstName, lastName, name, id, team, tier, customPprRank, customStdRank, espnAdp } = player
+                    const { firstName, lastName, name, id, team, tier, customPprRank, customStdRank, espnAdp, target } = player
                     let tierStyle
                     if ( shownPlayerId === id && !!shownPlayerBg ) {
                       tierStyle = shownPlayerBg
@@ -852,8 +853,14 @@ export default function Home() {
                         onMouseLeave={ () => setShownPlayerId(null) }
                       >
                         <div className="flex flex-col text-center">
-                          <p className="text-sm font-semibold">
+                          <p className="text-sm font-semibold flex">
                             { name }
+                            { target &&
+                              <AiFillStar
+                                color="blue"
+                                size={24}
+                              />
+                            }
                           </p>
                           <p className="text-xs">
                             { team } - { rankText } { tier ? ` - Tier ${tier}` : "" }
