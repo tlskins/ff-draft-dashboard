@@ -1,3 +1,4 @@
+/*global chrome*/
 import React, { useEffect, useState, useRef } from "react"
 import { CSVLink } from "react-csv"
 import CSVReader from 'react-csv-reader'
@@ -94,6 +95,7 @@ const getPosStyle = position => {
 const defaultMyPickNum = 6
 
 export default function Home() {
+
   const [numTeams, setNumTeams] = useState(12)
   const [isStd, setIsStd] = useState(false)
   const [draftStarted, setDraftStarted] = useState(false)
@@ -105,6 +107,7 @@ export default function Home() {
   const [showHowToExport, setShowHowToExport] = useState(false)
   const [shownPlayerId, setShownPlayerId] = useState(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
+  const [pickHistory, setPickHistory] = useState([])
 
   const [errs, setErrs] = useState(null)
   const [alertMsg, setAlertMsg] = useState(null)
@@ -148,6 +151,20 @@ export default function Home() {
   // csv
   const [csvData, setCsvData] = useState(null)
   const [isUpload, setIsUpload] = useState(false)
+
+  // listener
+
+  useEffect(() => {
+    window.addEventListener("message", event => {
+      console.log('window event', event)
+      const {type, draftPicks} = event.data
+      if (type !== "FROM_EXT")
+        return
+      console.log(draftPicks)
+    })
+  }, [])
+
+  console.log('pickHistory', pickHistory)
 
   // nav
   const onNavRoundUp = () => {
@@ -456,9 +473,7 @@ export default function Home() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <PageHead />
-
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
-
 
         <div className="flex flex-row my-4">
           <div className="flex flex-col">

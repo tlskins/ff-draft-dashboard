@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+
+  "name": "FF Draft Extension App",
+  "description": "Chrome Extension for FF Draft Dashboard",
+  "version": "1.0",
+  "action": {
+    "default_icon": "icon.png",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+      {
+          "matches": ["<all_urls>"],
+          "js": [
+            // "js/vendor.js",
+            "contentScript.js"
+          ]
+      }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  // "background": {
+  //   "persistent": true,
+  //   "scripts": ["background.js"]
+  // },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "externally_connectable": {
+    "matches": ["https://*.ff-draft-dashboard.com/*", "http://localhost:*/"]
+  }
+}
