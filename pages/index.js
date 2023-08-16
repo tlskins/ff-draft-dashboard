@@ -1,5 +1,5 @@
 /*global chrome*/
-import React, { useEffect, useState, useRef } from "react"
+import React, { useEffect, useState, useRef, useCallback } from "react"
 import { CSVLink } from "react-csv"
 import CSVReader from 'react-csv-reader'
 import { 
@@ -94,6 +94,10 @@ const getPosStyle = position => {
 
 const defaultMyPickNum = 6
 
+let listenerDraftPicks = []
+
+let handlePickTimer
+
 export default function Home() {
 
   const [numTeams, setNumTeams] = useState(12)
@@ -107,7 +111,6 @@ export default function Home() {
   const [showHowToExport, setShowHowToExport] = useState(false)
   const [shownPlayerId, setShownPlayerId] = useState(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
-  const [pickHistory, setPickHistory] = useState([])
 
   const [errs, setErrs] = useState(null)
   const [alertMsg, setAlertMsg] = useState(null)
@@ -154,17 +157,88 @@ export default function Home() {
 
   // listener
 
+  // const [listenerDraftPicks, setListenerDraftPicks] = useState([])
+
   useEffect(() => {
     window.addEventListener("message", event => {
-      console.log('window event', event)
-      const {type, draftPicks} = event.data
+      const { type, draftPicks: draftPicksData } = event.data
       if (type !== "FROM_EXT")
         return
+      const draftPicks = draftPicksData.map( data => {
+        const imgMatch = data.imgUrl.match(/headshots\/nfl\/players\/full\/(\d+)\.png/)
+        return {
+          ...data,
+          id: imgMatch && parseInt(imgMatch[1]) || null,
+          pickStr: data.pick,
+          round: parseInt(data.pick.match(/^R(\d+), P(\d+) /)[1]),
+          pick: parseInt(data.pick.match(/^R(\d+), P(\d+) /)[2]),
+        }
+      })
       console.log(draftPicks)
+      listenerDraftPicks = draftPicks
     })
   }, [])
 
-  console.log('pickHistory', pickHistory)
+  const handleListenedDraftPicks = useCallback(() => {
+    console.log('handleListenedDraftPicks', rounds)
+    if ( listenerDraftPicks.length !== 0 ) {
+      listenerDraftPicks.forEach( processListenedDraftPick )
+      listenerDraftPicks = []
+    }
+    handlePickTimer = setTimeout(handleListenedDraftPicks, 900)
+  }, [rounds, numTeams, ranks, playerLib])
+
+  useEffect(() => {
+    handleListenedDraftPicks()
+
+    return () => {
+      clearTimeout(handlePickTimer)
+    }
+  }, [handleListenedDraftPicks])
+
+  const processListenedDraftPick = draftPick => {
+    const { round, pick, id } = draftPick
+    if ( !id ) {
+      return
+    }
+    const player = playerLib[id]
+    console.log('processing pick', player, rounds, playerLib)
+    const pickNum = ((round-1) * numTeams) + pick
+
+    // redefine state vars
+    const currRoundPick = pickNum % numTeams === 0 ? 12 : pickNum % numTeams
+    const currRound = rounds[round-1]
+    const isEvenRound = (round-1) % 2 == 1
+
+    console.log('pick', player, currRound, rounds, currRoundPick-1)
+    currRound[currRoundPick-1] = player.id
+    currRound[pick-1] = player.id
+    const newRounds = [
+      ...rounds.slice(0, round-1),
+      currRound,
+      ...rounds.slice(round+1, rounds.length)
+    ]
+    console.log('newRounds', newRounds)
+    setRounds(newRounds)
+    setCurrPick(pickNum+1)
+    // if ( currRoundPick === 12 ) {
+    //   setRounds([...rounds, newRound(numTeams)])
+    // }
+    if ( !draftStarted ) {
+      setDraftStarted(true)
+    }
+
+    const newRanks = removePlayerFromRanks( ranks, player )
+    setRanks(newRanks)
+    const rosterIdx = isEvenRound ? numTeams-currRoundPick : currRoundPick-1
+    const newRosters = addToRoster( rosters, player, rosterIdx)
+    setRosters( newRosters )
+
+    predictPicks()
+    setInputFocus()
+  }
+
+  console.log('render', rounds, rosters, currRound)
 
   // nav
   const onNavRoundUp = () => {
@@ -181,7 +255,7 @@ export default function Home() {
       if ( isRoundEmpty ) {
         return
       }
-      setRounds([...rounds, newRound(numTeams)])
+      // setRounds([...rounds, newRound(numTeams)])
     }
 
     setCurrPick(currPick + (2*(numTeams-currRoundPick)+1))
@@ -215,7 +289,8 @@ export default function Home() {
     setInputFocus()
   }
 
-  const onSelectPlayer = player => {    
+  const onSelectPlayer = player => {
+    console.log('onselectplayer', player, rounds)
     currRound[currRoundPick-1] = player.id
     setRounds(
       [
@@ -225,9 +300,9 @@ export default function Home() {
       ]
     )
     setCurrPick(currPick+1)
-    if ( currRoundPick === 12 ) {
-      setRounds([...rounds, newRound(numTeams)])
-    }
+    // if ( currRoundPick === 12 ) {
+    //   setRounds([...rounds, newRound(numTeams)])
+    // }
     if ( !draftStarted ) {
       setDraftStarted(true)
     }
@@ -340,7 +415,8 @@ export default function Home() {
   }
 
   useEffect(() => {
-    setRounds([newRound(numTeams)])
+    // seed 20 rounds
+    setRounds(new Array(20).fill(newRound(numTeams)))
     setRosters(createRosters(numTeams))
   }, [numTeams])
 
@@ -448,9 +524,9 @@ export default function Home() {
         setErrs("Parsing too many rounds ahead of the current pick!")
         return
       }
-      if ( rounds.length >= roundNum ) {
-        rounds.push( newRound(numTeams) )
-      }
+      // if ( rounds.length >= roundNum ) {
+      //   rounds.push( newRound(numTeams) )
+      // }
       rounds[roundNum-1][pickNum-1] = player.id
       newRanks = removePlayerFromRanks( ranks, player )
       const rosterIdx = roundNum % 2 === 0 ? numTeams - pickNum : pickNum - 1
@@ -692,7 +768,7 @@ export default function Home() {
                       if ( isRoundEmpty ) {
                         return
                       }
-                      setRounds([...rounds, newRound(numTeams)])
+                      // setRounds([...rounds, newRound(numTeams)])
                     }
                     const diff = isEvenRound ? 1 : -1
                     setCurrPick(currPick+diff)
@@ -703,7 +779,7 @@ export default function Home() {
                       if ( isRoundEmpty ) {
                         return
                       }
-                      setRounds([...rounds, newRound(numTeams)])
+                      // setRounds([...rounds, newRound(numTeams)])
                     }
                     const diff = isEvenRound ? -1 : 1
                     setCurrPick(currPick+diff)
