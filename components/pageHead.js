@@ -12,7 +12,7 @@ const PageHead = ({
     <Head>
         { process.env.NEXT_PUBLIC_ENV !== "dev" &&
             <>
-                <script async
+                {/* <script async
                     src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GTM_ID}`}
                 />
                 <script
@@ -24,7 +24,7 @@ const PageHead = ({
                     
                         gtag('config', ${process.env.NEXT_PUBLIC_GTM_ID});
                     `,}}>
-                </script>
+                </script> */}
 
                 <title>FF Draft Dashboard</title>
                 <meta name="description" content={desc}/>
