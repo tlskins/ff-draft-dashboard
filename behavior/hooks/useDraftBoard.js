@@ -1,6 +1,5 @@
-import next from 'next'
 import { useMemo, useState } from 'react'
-
+import { calcCurrRoundPick, getRoundIdxForPickNum } from '../draft'
 
 export const useDraftBoard = ({
   defaultNumTeams = 12,
@@ -16,16 +15,25 @@ export const useDraftBoard = ({
   const [draftHistory, setDraftHistory] = useState(new Array(350).fill(null))
 
   // functions
-  const getRoundIdxForPickNum = pickNum => Math.floor((pickNum-1) / numTeams)
+  const wrappedSetNumTeams = numTeams => {
+    if ( draftStarted ) {
+      return
+    }
+    setNumTeams(numTeams)
+  }
   const getRoundForPickNum = pickNum => {
-    const roundIdx = getRoundIdxForPickNum(pickNum)
+    const roundIdx = getRoundIdxForPickNum(pickNum, numTeams)
     return draftHistory.slice(numTeams*roundIdx, numTeams*roundIdx+numTeams)
   }
   const onDraftPlayer = (playerId, pickNum) => {
-    setDraftHistory([...draftHistory.slice(0, pickNum), playerId, ...draftHistory.slice(pickNum+1, draftHistory.length)])
+    draftHistory[pickNum-1] = playerId
+    setDraftHistory(draftHistory)
   }
   const onRemoveDraftedPlayer = (pickNum) => {
-    setDraftHistory([...draftHistory.slice(0, pickNum), null, ...draftHistory.slice(pickNum+1, draftHistory.length)])
+    const playerId = draftHistory[pickNum-1]
+    draftHistory[pickNum-1] = null
+    setDraftHistory(draftHistory)
+    return playerId
   }
   const onNavLeft = () => {
     if (currPick > 1) {
@@ -55,22 +63,20 @@ export const useDraftBoard = ({
   }
 
   // memos
-  const roundIdx = useMemo(() => getRoundIdxForPickNum(currPick), [currPick, numTeams])
+  const roundIdx = useMemo(() => getRoundIdxForPickNum(currPick, numTeams), [currPick, numTeams])
   const isEvenRound = useMemo(() => roundIdx % 2 == 1, [currPick, numTeams])
   const currRound = useMemo(() => {
     const round = getRoundForPickNum(currPick)
-    return isEvenRound ? round.reverse() : round
+    return round
   }, [currPick, draftHistory, numTeams, roundIdx])
-  const currRoundPick = useMemo(() => {
-    return currPick % numTeams === 0 ? 12 : currPick % numTeams
-  }, [currPick, numTeams])
+  const currRoundPick = useMemo(() => calcCurrRoundPick( currPick, numTeams ), [currPick, numTeams])
   const currMyPickNum = useMemo(() => {
     return isEvenRound ? numTeams - myPickNum + 1 : myPickNum
   }, [isEvenRound, currPick, numTeams, myPickNum])
 
   return {
     // state
-    numTeams, setNumTeams,
+    numTeams, setNumTeams: wrappedSetNumTeams,
     isStd, setIsStd,
     draftStarted, setDraftStarted,
     myPickNum, setMyPickNum,

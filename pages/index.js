@@ -8,14 +8,11 @@ import {
   AiFillCheckCircle,
   AiFillStar
 } from 'react-icons/ai'
-import {
-  TiDelete,
-} from 'react-icons/ti'
-import {
-  BsLink,
-} from 'react-icons/bs'
+import { TiDelete } from 'react-icons/ti'
+import { BsLink } from 'react-icons/bs'
 
 import PageHead from "../components/pageHead"
+import DraftLoaderOptions from "../components/draftLoaderOptions"
 import { GetHarrisRanks, GetFprosRanks } from "../behavior/harris"
 import {
   createPlayerLibrary,
@@ -25,10 +22,6 @@ import {
   purgePlayerFromRanks,
   sortRanks,
 
-  createRosters,
-  addToRoster,
-  removeFromRoster,
-
   nextPositionPicked,
   nextPickedPlayerId,
 
@@ -37,14 +30,9 @@ import {
   getPicksUntil,
 } from "../behavior/draft"
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
+import { useRosters } from '../behavior/hooks/useRosters'
+import { useFocus } from '../behavior/hooks/useFocus'
 
-
-const useFocus = () => {
-  const htmlElRef = useRef(null)
-  const setFocus = () => {htmlElRef.current &&  htmlElRef.current.focus()}
-
-  return [ htmlElRef, setFocus ] 
-}
 
 const predBgColor = "bg-gray-400"
 const nextPredBgColor = "bg-gray-600"
@@ -105,7 +93,6 @@ export default function Home() {
     draftStarted, setDraftStarted,
     myPickNum, setMyPickNum,
     currPick, setCurrPick,
-    draftHistory, setDraftHistory,
     // memo
     roundIdx,
     isEvenRound,
@@ -113,7 +100,6 @@ export default function Home() {
     currRoundPick,
     currMyPickNum,
     // funcs
-    getRoundForPickNum,
     onDraftPlayer,
     onRemoveDraftedPlayer,
     onNavLeft,
@@ -121,11 +107,24 @@ export default function Home() {
     onNavRoundUp,
     onNavRoundDown,
   } = useDraftBoard()
+
+  // rosters depend on draft board
+  const {
+    // state
+    rosters,
+    viewRosterIdx, setViewRosterIdx,
+    // funcs
+    addPlayerToRoster,
+    removePlayerFromRoster,
+  } = useRosters({
+    numTeams,
+    isEvenRound,
+    currRoundPick,
+  })
   
   const [predictedPicks, setPredictedPicks] = useState({})
   const [nextPredictedPicks, setNextPredictedPicks] = useState({})
   const [showNextPreds, setShowNextPreds] = useState(false)
-  const [showHowToExport, setShowHowToExport] = useState(false)
   const [shownPlayerId, setShownPlayerId] = useState(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
 
@@ -134,10 +133,6 @@ export default function Home() {
 
   // counter to run post predictions after non-current pick events
   const [numPostPredicts, setNumPostPredicts] = useState(0)
-
-  // rosters
-  const [rosters, setRosters] = useState([])
-  const [viewRosterIdx, setViewRosterIdx] = useState(defaultMyPickNum-1)
 
   // ranks
   const [playerLib, setPlayerLib] = useState({})
@@ -217,9 +212,8 @@ export default function Home() {
 
     const newRanks = removePlayerFromRanks( ranks, player )
     setRanks(newRanks)
-    const rosterIdx = isEvenRound ? numTeams-currRoundPick : currRoundPick-1
-    const newRosters = addToRoster( rosters, player, rosterIdx)
-    setRosters( newRosters )
+
+    addPlayerToRoster( player, pickNum )
 
     predictPicks()
     setInputFocus()
@@ -266,30 +260,22 @@ export default function Home() {
 
     const newRanks = removePlayerFromRanks( ranks, player )
     setRanks(newRanks)
-    const rosterIdx = isEvenRound ? numTeams-currRoundPick : currRoundPick-1
-    const newRosters = addToRoster( rosters, player, rosterIdx)
-    setRosters( newRosters )
+
+    addPlayerToRoster( player, currPick )
 
     predictPicks()
     setInputFocus()
   }
 
   const onRemovePick = pickNum => {
-    onRemoveDraftedPlayer(pickNum)
+    const playerId = onRemoveDraftedPlayer(pickNum)
+    const player = playerLib[playerId]
     addPlayerToRanks( ranks, player )
     const newRanks = sortRanks( ranks )
     setRanks(newRanks)
 
     // get round pick for a pick number 
-    const remRoundIdx = Math.floor( pickNum /  numTeams )
-    let remRosterNum
-    if ( remRoundIdx % 2 == 1 ) {
-      remRosterNum = numTeams - (pickNum % numTeams) + 1
-    } else {
-      remRosterNum = pickNum % numTeams
-    }
-    const newRosters = removeFromRoster( rosters, player, remRosterNum-1)
-    setRosters( newRosters )
+    removePlayerFromRoster( player, pickNum )
     setCurrPick(pickNum)
     setInputFocus()
     setNumPostPredicts(numPostPredicts+1)
@@ -355,14 +341,6 @@ export default function Home() {
   }
 
   useEffect(() => {
-    setRosters(createRosters(numTeams))
-  }, [numTeams])
-
-  useEffect(() => {
-    setViewRosterIdx(myPickNum-1)
-  }, [myPickNum])
-
-  useEffect(() => {
     if ( numPostPredicts > 0 ) {
       predictPicks()
     }
@@ -380,12 +358,6 @@ export default function Home() {
     })
     const csvData = [keys, ...ranksData]
     setCsvData(csvData)
-  }
-
-  const papaparseOptions = {
-    header: true,
-    dynamicTyping: true,
-    skipEmptyLines: true,
   }
 
   const onFileLoaded = (players) => {
@@ -470,7 +442,6 @@ export default function Home() {
   //     lastPick = pickNum
   //     isDraftStarted = true
   //   }
-
   //   setDraftStarted( isDraftStarted )
   //   setRanks(newRanks)
   //   setRounds([...rounds])
@@ -481,86 +452,22 @@ export default function Home() {
   //   setInputFocus()
   // }
 
+  console.log('render', rosters, viewRosterIdx, currRound )
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <PageHead />
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
 
-        <div className="flex flex-row my-4">
-          <div className="flex flex-col">
-            <input type="button"
-              className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-blue-200"
-              value="Load Current Harris Ranks"
-              onClick={ onLoadHarrisRanks }
-            />
-
-            <input type="button"
-              className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-yellow-200"
-              value="Load Current Fantasy Pros Ranks"
-              onClick={ onLoadFprosRanks }
-            />
-
-            { !isUpload &&
-              <input type="button"
-                className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-200"
-                value="Upload CSV"
-                onClick={ () => setIsUpload(true) }
-              />
-            }
-            { isUpload &&
-              <CSVReader
-                cssClass="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase text-sm flex flex-col"
-                label="Upload Ranks"
-                onFileLoaded={ onFileLoaded }
-                parserOptions={papaparseOptions}
-              />
-            }
-          </div>
-
-          <div className="flex flex-col">
-            { (Object.keys( playerLib ).length !== 0 && !csvData) &&
-              <div>
-                <input type="button"
-                  className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-200"
-                  value="Export & Edit Ranks CSV"
-                  onMouseEnter={ () => setShowHowToExport(true) }
-                  onMouseLeave={ () => setShowHowToExport(false) }
-                  onClick={ onSetCsvData }
-                />
-                { showHowToExport &&
-                  <div className="relative">
-                    <div className="absolute mr-20 -my-20 w-96 bg-yellow-300 text-black text-left text-xs font-semibold tracking-wide rounded shadow py-1.5 px-4 bottom-full z-10">
-                      <ul className="list-disc pl-6">
-                        <li>Export ranks to CSV</li>
-                        <li>Edit the custom PPR / STD ranks for each position</li>
-                        <li>Optionally add a column "tier" with number 1-10</li>
-                        <li>Upload new CSV</li>
-                      </ul>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-            { csvData && 
-              <CSVLink data={csvData}
-                onClick={ () => setCsvData(null)}
-                className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-300"
-              >
-                Download
-              </CSVLink>
-            }
-          </div>
-
-          <div className="flex flex-col">
-            { (!draftStarted && Object.keys( playerLib ).length > 0) &&
-              <input type="button"
-                className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-indigo-300"
-                value="Sync Current ESPN ADP"
-                onClick={ () => onUpdateEspnRanks() }
-              />
-            }
-          </div>
-        </div>
+        <DraftLoaderOptions
+          onLoadHarrisRanks={onLoadHarrisRanks}
+          onLoadFprosRanks={onLoadFprosRanks}
+          onFileLoaded={onFileLoaded}
+          onUpdateEspnRanks={onUpdateEspnRanks}
+          onSetCsvData={onSetCsvData}
+          draftStarted={draftStarted}
+          arePlayersLoaded={Object.keys( playerLib ).length !== 0}
+        />
 
         <div className="flex flex-row mb-4">
           <div className="flex flex-row text-sm text-center mr-4 rounded bg-gray-100 shadow-md">

@@ -1,4 +1,5 @@
 
+// players
 
 export const createPlayerLibrary = players => players.reduce((acc, player) => {
     acc[player.id] = player
@@ -7,6 +8,15 @@ export const createPlayerLibrary = players => players.reduce((acc, player) => {
 
 export const allPositions = ['QB', 'RB', 'WR', 'TE']
 export const rankTypes = ['harris', 'espn']
+
+// rosters
+
+export const calcCurrRoundPick = ( pickNum, numTeams ) => {
+    const roundRem = pickNum % numTeams
+    return roundRem === 0 ? numTeams : roundRem
+}
+
+export const getRoundIdxForPickNum = (pickNum, numTeams) => Math.floor((pickNum-1) / numTeams)
 
 // ranks
 
