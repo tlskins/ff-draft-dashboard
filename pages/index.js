@@ -11,9 +11,7 @@ import { BsLink } from 'react-icons/bs'
 
 import PageHead from "../components/pageHead"
 import DraftLoaderOptions from "../components/draftLoaderOptions"
-import { GetHarrisRanks, GetFprosRanks } from "../behavior/harris"
 import {
-  createPlayerLibrary,
   createRanks,
   removePlayerFromRanks,
   addPlayerToRanks,
@@ -278,85 +276,11 @@ export default function Home() {
 
   // data import export
 
-  const onLoadHarrisRanks = async () => {
-    setAlertMsg("Loading...")
-    const players = await GetHarrisRanks()
-    if ( players ) {
-      const playerLib = createPlayerLibrary( players )
-      const ranks = createRanks( players, isStd )
-      setRanks(ranks)
-      setPlayerLib( playerLib )
-    }
-    setAlertMsg(null)
-  }
-
-  const onLoadFprosRanks = async () => {
-    setAlertMsg("Loading...")
-    const players = await GetFprosRanks()
-    if ( players ) {
-      const playerLib = createPlayerLibrary( players )
-      const ranks = createRanks( players, isStd )
-      setRanks(ranks)
-      setPlayerLib( playerLib )
-    }
-    setAlertMsg(null)
-  }
-
-  const onUpdateEspnRanks = async () => {
-    setAlertMsg("Loading...")
-    const { players } = await GetHarrisRanks()
-    if ( players ) {
-      const newLib = { ...playerLib }
-      players.forEach( player => {
-        const existPlayer = newLib[player.id]
-        if ( existPlayer ) {
-          newLib[player.id] = {
-            ...existPlayer,
-            espnAdp: player.espnAdp,
-            position: player.position,
-            team: player.team,
-          }
-        } else {
-          newLib[player.id] = player
-        }
-      })
-
-      const newPlayers = Object.values( newLib )
-      const ranks = createRanks( newPlayers, isStd )
-      setRanks(ranks)
-      setPlayerLib( newLib )
-    }
-    setAlertMsg(null)
-  }
-
   useEffect(() => {
     if ( numPostPredicts > 0 ) {
       predictPicks()
     }
   }, [numPostPredicts])
-
-  const onSetCsvData = () => {    
-    // get all unique keys in data
-    const allKeys = {}
-    availPlayers.forEach( p => Object.keys(p).forEach(key => {
-      allKeys[key] = 1
-    }))
-    const keys = Object.keys(allKeys)
-    const ranksData = availPlayers.map( player => {
-      return keys.map( key => player[key])
-    })
-    const csvData = [keys, ...ranksData]
-    setCsvData(csvData)
-  }
-
-  const onFileLoaded = (players) => {
-    console.log('onFileLoaded', players)
-    const playerLib = createPlayerLibrary( players )
-    const ranks = createRanks( players, isStd )
-    setRanks(ranks)
-    setPlayerLib( playerLib )
-    setIsUpload(false)
-  }
 
   const predictPicks = () => {
     const [picksUntil, nextPicksUntil] = getPicksUntil(myPickNum, currPick, numTeams)
@@ -449,13 +373,12 @@ export default function Home() {
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
 
         <DraftLoaderOptions
-          onLoadHarrisRanks={onLoadHarrisRanks}
-          onLoadFprosRanks={onLoadFprosRanks}
-          onFileLoaded={onFileLoaded}
-          onUpdateEspnRanks={onUpdateEspnRanks}
-          onSetCsvData={onSetCsvData}
+          setRanks={setRanks}
+          setPlayerLib={setPlayerLib}
+          setAlertMsg={setAlertMsg}
           draftStarted={draftStarted}
           arePlayersLoaded={Object.keys( playerLib ).length !== 0}
+          isStd={isStd}
         />
 
         <div className="flex flex-row mb-4">

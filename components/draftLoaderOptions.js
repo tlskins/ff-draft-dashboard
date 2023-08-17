@@ -4,6 +4,11 @@ import React, { useState } from "react"
 import { CSVLink } from "react-csv"
 import CSVReader from 'react-csv-reader'
 
+import { GetHarrisRanks, GetFprosRanks } from "../behavior/harris"
+import {
+  createRanks,
+  createPlayerLibrary,
+} from "../behavior/draft"
 
 const papaparseOptions = {
   header: true,
@@ -12,19 +17,90 @@ const papaparseOptions = {
 }
 
 const DraftLoaderOptions = ({
-  onLoadHarrisRanks,
-  onLoadFprosRanks,
-  onFileLoaded,
-  onUpdateEspnRanks,
-  onSetCsvData,
+  setRanks,
+  setPlayerLib,
+  setAlertMsg,
 
   draftStarted,
   arePlayersLoaded,
+  isStd,
 }) => {
   // csv
   const [csvData, setCsvData] = useState(null)
   const [isUpload, setIsUpload] = useState(false)
   const [showHowToExport, setShowHowToExport] = useState(false)
+
+  const onLoadHarrisRanks = async () => {
+    setAlertMsg("Loading...")
+    const players = await GetHarrisRanks()
+    if ( players ) {
+      const playerLib = createPlayerLibrary( players )
+      const ranks = createRanks( players, isStd )
+      setRanks(ranks)
+      setPlayerLib( playerLib )
+    }
+    setAlertMsg(null)
+  }
+
+  const onLoadFprosRanks = async () => {
+    setAlertMsg("Loading...")
+    const players = await GetFprosRanks()
+    if ( players ) {
+      const playerLib = createPlayerLibrary( players )
+      const ranks = createRanks( players, isStd )
+      setRanks(ranks)
+      setPlayerLib( playerLib )
+    }
+    setAlertMsg(null)
+  }
+
+  const onUpdateEspnRanks = async () => {
+    setAlertMsg("Loading...")
+    const { players } = await GetHarrisRanks()
+    if ( players ) {
+      const newLib = { ...playerLib }
+      players.forEach( player => {
+        const existPlayer = newLib[player.id]
+        if ( existPlayer ) {
+          newLib[player.id] = {
+            ...existPlayer,
+            espnAdp: player.espnAdp,
+            position: player.position,
+            team: player.team,
+          }
+        } else {
+          newLib[player.id] = player
+        }
+      })
+
+      const newPlayers = Object.values( newLib )
+      const ranks = createRanks( newPlayers, isStd )
+      setRanks(ranks)
+      setPlayerLib( newLib )
+    }
+    setAlertMsg(null)
+  }
+
+  const onSetCsvData = () => {    
+    // get all unique keys in data
+    const allKeys = {}
+    availPlayers.forEach( p => Object.keys(p).forEach(key => {
+      allKeys[key] = 1
+    }))
+    const keys = Object.keys(allKeys)
+    const ranksData = availPlayers.map( player => keys.map( key => player[key]))
+    const csvData = [keys, ...ranksData]
+    setCsvData(csvData)
+  }
+
+  const onFileLoaded = (players) => {
+    console.log('onFileLoaded', players)
+    const playerLib = createPlayerLibrary( players )
+    const ranks = createRanks( players, isStd )
+    setRanks(ranks)
+    setPlayerLib( playerLib )
+    setIsUpload(false)
+  }
 
   return(
     <div className="flex flex-row my-4">
