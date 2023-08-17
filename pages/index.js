@@ -1,7 +1,5 @@
 /*global chrome*/
-import React, { useEffect, useState, useRef, useCallback } from "react"
-import { CSVLink } from "react-csv"
-import CSVReader from 'react-csv-reader'
+import React, { useEffect, useState, useCallback } from "react"
 import { 
   AiFillCaretDown,
   AiFillCaretUp,
@@ -21,12 +19,9 @@ import {
   addPlayerToRanks,
   purgePlayerFromRanks,
   sortRanks,
-
   nextPositionPicked,
   nextPickedPlayerId,
-
   allPositions,
-
   getPicksUntil,
 } from "../behavior/draft"
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
@@ -78,8 +73,6 @@ const getPosStyle = position => {
       return ""
   }
 }
-
-const defaultMyPickNum = 6
 
 let listenerDraftPicks = []
 
@@ -152,10 +145,6 @@ export default function Home() {
   const [inputRef, setInputFocus] = useFocus()
   const [suggestions, setSuggestions] = useState([])
   const [suggestionIdx, setSuggestionIdx] = useState(0)
-
-  // csv
-  const [csvData, setCsvData] = useState(null)
-  const [isUpload, setIsUpload] = useState(false)
 
   // listener
 
