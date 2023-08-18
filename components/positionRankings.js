@@ -6,7 +6,7 @@ import {
   AiFillStar
 } from 'react-icons/ai'
 
-import { getPosStyle, getTierStyle } from '../styles'
+import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor } from '../behavior/styles'
 
 const PositionRankings = ({
   playerRanks,
@@ -60,7 +60,7 @@ const PositionRankings = ({
               const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
               let rankText
               if ( isEspnRank ) {
-                rankText = `ESPN ADP #${espnAdp}`
+                rankText = `ESPN ADP #${espnAdp.toFixed(2)}`
               } else {
                 rankText = isStd ? `#${customStdRank}` : `#${customPprRank}`
               }

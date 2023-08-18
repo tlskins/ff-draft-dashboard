@@ -1,17 +1,15 @@
 /*global chrome*/
 /*global chrome.extension*/
 import 'tailwindcss/tailwind.css'
-import { useEffect } from 'react'
+import 'react-toastify/dist/ReactToastify.css'
+import { ToastContainer } from 'react-toastify'
+
 
 function MyApp({ Component, pageProps }) {
-  // useEffect(() => {
-  //   const script = document.createElement('script');
-  //   script.src = chrome.extension.getURL('contentScript.js');
-  //   script.async = true;
-  //   document.head.appendChild(script);
-  // }, []);
-
-  return <Component {...pageProps} />
+  return <>
+    <Component {...pageProps} />
+    <ToastContainer />
+  </>
 }
 
 export default MyApp

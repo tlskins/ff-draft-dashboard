@@ -21,6 +21,7 @@ const DraftLoaderOptions = ({
   setPlayerLib,
   setAlertMsg,
 
+  availPlayers,
   draftStarted,
   arePlayersLoaded,
   isStd,

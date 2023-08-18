@@ -4,11 +4,13 @@ import {
   AiFillCaretDown,
   AiFillCaretUp,
 } from 'react-icons/ai'
+import { toast } from "react-toastify"
 
 import PageHead from "../components/pageHead"
 import DraftLoaderOptions from "../components/draftLoaderOptions"
 import PositionRankings from "../components/positionRankings"
 import {
+  addDefaultTiers,
   nextPositionPicked,
   nextPickedPlayerId,
   allPositions,
@@ -18,12 +20,10 @@ import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
 import { useRosters } from '../behavior/hooks/useRosters'
 import { useFocus } from '../behavior/hooks/useFocus'
-import { getPosStyle, predBgColor, nextPredBgColor } from "../styles"
+import { getPosStyle, predBgColor, nextPredBgColor } from "../behavior/styles"
 
+var listeningDraftTitle = {}
 
-let listenerDraftPicks = []
-
-let handlePickTimer
 
 export default function Home() {
   const {
@@ -93,62 +93,111 @@ export default function Home() {
   const [suggestions, setSuggestions] = useState([])
   const [suggestionIdx, setSuggestionIdx] = useState(0)
 
+  const [hasCustomTiers, setHasCustomTiers] = useState(null)
+
+  const [activeDraftListenerTitle, setActiveDraftListenerTitle] = useState(null)
+
   // listener
 
   useEffect(() => {
-    window.addEventListener("message", event => {
-      const { type, draftPicks: draftPicksData } = event.data
-      if (type !== "FROM_EXT")
-        return
-      const draftPicks = draftPicksData.map( data => {
-        const imgMatch = data.imgUrl.match(/headshots\/nfl\/players\/full\/(\d+)\.png/)
-        return {
-          ...data,
-          id: imgMatch && parseInt(imgMatch[1]) || null,
-          pickStr: data.pick,
-          round: parseInt(data.pick.match(/^R(\d+), P(\d+) /)[1]),
-          pick: parseInt(data.pick.match(/^R(\d+), P(\d+) /)[2]),
-        }
-      })
-      console.log(draftPicks)
-      listenerDraftPicks = draftPicks
-    })
-  }, [])
-
-  const handleListenedDraftPicks = useCallback(() => {
-    if ( listenerDraftPicks.length !== 0 ) {
-      listenerDraftPicks.forEach( processListenedDraftPick )
-      listenerDraftPicks = []
-    }
-    handlePickTimer = setTimeout(handleListenedDraftPicks, 900)
-  }, [numTeams, ranks, playerLib])
-
-  useEffect(() => {
-    handleListenedDraftPicks()
-
+    window.addEventListener("message", processListenedDraftPick )
+    
     return () => {
-      clearTimeout(handlePickTimer)
+      window.removeEventListener("message", processListenedDraftPick )
     }
-  }, [handleListenedDraftPicks])
+  }, [numTeams, ranks, playerLib, rosters, listeningDraftTitle])
 
-  const processListenedDraftPick = draftPick => {
-    const { round, pick, id } = draftPick
-    const player = playerLib[id]
-    if ( !id || !player ) {
+  const processListenedDraftPick = useCallback( event => {
+    if ( event.data.type !== "FROM_EXT" || Object.values( playerLib ).length === 0 ) {
       return
     }
-    console.log('processing pick', player, draftPick)
-    const pickNum = ((round-1) * numTeams) + pick
-    onDraftPlayer(id, pickNum)
-    setCurrPick(pickNum+1)
+    const { draftData: { draftPicks: draftPicksData, draftTitle } } = event.data
+
+    if ( listeningDraftTitle[draftTitle] === undefined ) {
+      console.log('heard draft initated event', event)
+      const acceptToastId = toast(
+        `Listen to draft: ${ draftTitle }`,
+        {
+          autoClose: false,
+          hideProgressBar: true,
+          type: 'success',
+          position:'top-right',
+          containerId: 'AcceptListenDraft',
+          onClick: () => {
+            listeningDraftTitle[draftTitle].listening = true
+            setActiveDraftListenerTitle( draftTitle )
+            toast.dismiss(listeningDraftTitle[draftTitle].rejectToastId)
+          }
+        })
+      const rejectToastId = toast(
+        `Ignore draft: ${ draftTitle }`,
+        {
+          autoClose: false,
+          hideProgressBar: true,
+          type: 'error',
+          position:'top-right',
+          containerId: 'RejectListenDraft',
+          onClick: () => {
+            listeningDraftTitle[draftTitle].listening = false
+            toast.dismiss(listeningDraftTitle[draftTitle].acceptToastId)
+          }
+        })
+      listeningDraftTitle = {
+        ...listeningDraftTitle,
+        [draftTitle]: {
+          listening: null,
+          acceptToastId,
+          rejectToastId,
+        }
+      }
+      return
+    } else if ( !listeningDraftTitle[draftTitle].listening || draftPicksData.length === 0 ) {
+      return
+    }
+
+    console.log('heard draft event', event)
+    // parse draft event data into structured draft pick
+    const draftPicks = draftPicksData.map( data => {
+      const imgMatch = data.imgUrl.match(/headshots\/nfl\/players\/full\/(\d+)\.png/)
+      return {
+        ...data,
+        id: imgMatch && parseInt(imgMatch[1]) || null,
+        pickStr: data.pick,
+        round: parseInt(data.pick.match(/^R(\d+), P(\d+) /)[1]),
+        pick: parseInt(data.pick.match(/^R(\d+), P(\d+) /)[2]),
+      }
+    })
+
+    // draft players from events
+    let lastPickNum = 1
+    draftPicks.forEach( draftPick => {
+      const { round, pick, id, name, position, team } = draftPick
+      const player = playerLib[id]
+      if ( id && player ) {
+        console.log('processing pick', player, draftPick)
+        const pickNum = ((round-1) * numTeams) + pick
+        onDraftPlayer(id, pickNum)
+        onRemovePlayerFromRanks( player )
+        addPlayerToRoster( player, pickNum )
+        lastPickNum = pickNum
+        toast(
+          `R${ round } P${ pick }: ${ name } - ${ position } - ${ team }`,
+          {
+            hideProgressBar: true,
+            type: 'success',
+            position:'top-right',
+          })
+      }
+    })
+
+    // set updated draft board and predictions
+    setCurrPick(lastPickNum+1)
     if ( !draftStarted ) {
       setDraftStarted(true)
     }
-    onRemovePlayerFromRanks( player )
-    addPlayerToRoster( player, pickNum )
-    predictPicks()
+    // predictPicks(currRoundPick)
     setInputFocus()
-  }
+  }, [numTeams, ranks, playerLib, rosters, listeningDraftTitle])
 
   const onSearch = e => {
     let text = e.target.value
@@ -189,7 +238,7 @@ export default function Home() {
     setSearch("")
     onRemovePlayerFromRanks( player )
     addPlayerToRoster( player, currPick )
-    predictPicks()
+    // predictPicks(currRoundPick)
     setInputFocus()
   }
 
@@ -200,7 +249,7 @@ export default function Home() {
     removePlayerFromRoster( player, pickNum )
     setCurrPick(pickNum)
     setInputFocus()
-    setNumPostPredicts(numPostPredicts+1)
+    onChangeNumPostPredicts(numPostPredicts+1)
   }
 
   const onPurgePlayer = player => {
@@ -211,13 +260,31 @@ export default function Home() {
   // data import export
 
   useEffect(() => {
-    if ( numPostPredicts > 0 ) {
-      predictPicks()
+    if ( hasCustomTiers == null || hasCustomTiers === false ) {
+      if ( hasCustomTiers == null ) {
+        const players = Object.values(playerLib)
+        const hasNoTiers = players.every( player => player.tier === "" )
+        setHasCustomTiers(!hasNoTiers)
+      }
+      const nextPlayerLib = addDefaultTiers(playerLib, isStd, numTeams)
+      setPlayerLib( nextPlayerLib )
     }
-  }, [numPostPredicts])
+  }, [playerLib, isStd, numTeams])
 
-  const predictPicks = () => {
-    const [picksUntil, nextPicksUntil] = getPicksUntil(myPickNum, currPick, numTeams)
+  const onChangeNumPostPredicts = numPostPredicts => {
+    setNumPostPredicts(numPostPredicts)
+    // predictPicks(currRoundPick)
+  }
+
+  useEffect(() => {
+    predictPicks()
+  }, [currPick, myPickNum, numTeams])
+
+  const predictPicks = useCallback(() => {
+    if ( rosters.length === 0 ) {
+      return
+    }
+    const [picksUntil, nextPicksUntil] = getPicksUntil(myPickNum, currPick-1, numTeams)
 
     let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0 }
     rosters.forEach( roster => {
@@ -244,7 +311,7 @@ export default function Home() {
 
     setPredictedPicks( currPredicts )
     setNextPredictedPicks( nextPredicts )
-  }
+  }, [numTeams, ranks, playerLib, rosters, myPickNum, currPick, currRoundPick])
 
   // batch parsing
 
@@ -295,11 +362,9 @@ export default function Home() {
   //   const newCurrPick = ((lastRound - 1) * numTeams) + lastPick + 1
   //   setCurrPick(newCurrPick)
   //   setRosters( newRosters )
-  //   setNumPostPredicts(numPostPredicts+1)
+  //   onChangeNumPostPredicts(numPostPredicts+1)
   //   setInputFocus()
   // }
-
-  console.log('render', rosters, viewRosterIdx, currRound )
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -310,6 +375,7 @@ export default function Home() {
           setRanks={setRanks}
           setPlayerLib={setPlayerLib}
           setAlertMsg={setAlertMsg}
+          availPlayers={availPlayers}
           draftStarted={draftStarted}
           arePlayersLoaded={Object.keys( playerLib ).length !== 0}
           isStd={isStd}
@@ -407,6 +473,11 @@ export default function Home() {
         <div className="flex flex-col my-8">
           <div className="flex flex-row justify-items-center justify-center content-center">
             <div className="flex flex-col w-full">
+              { activeDraftListenerTitle &&
+                <p className="bg-yellow-300 font-semibold shadow rounded-md text-sm my-1">
+                  Listening to: { activeDraftListenerTitle }
+                </p>
+              }
               <p className="font-semibold underline">
                 Round { roundIdx+1 } Pick { currRoundPick } (#{ currPick } Overall)
               </p>

@@ -25,10 +25,10 @@ const handleListenDraftPicks = async () => {
     return
   }
 
-  port.onMessage.addListener((draftPicks) => {
-    console.log('heard draft picks: ', draftPicks)
-    pickHistory.push(...draftPicks)
-    window.postMessage({ type: "FROM_EXT", draftPicks }, "*")
+  port.onMessage.addListener((draftData) => {
+    console.log('heard draft picks: ', draftData)
+    pickHistory.push(...draftData.draftPicks)
+    window.postMessage({ type: "FROM_EXT", draftData }, "*")
   })
 }
 
@@ -40,6 +40,7 @@ const handleReadEspnDraft = async () => {
   }
 
   await pauseForEl('div[class="draft-columns"]')
+  const draftTitle = document.querySelector('h1.title').textContent
   const draftHistoryList = document.querySelector('.draft-columns .draft-column:nth-child(3) ul')
   console.log('draftHistoryList', draftHistoryList)
   const draftPicks = []
@@ -56,10 +57,12 @@ const handleReadEspnDraft = async () => {
     }
   })
 
-  if ( draftPicks.length ) {
-    console.log('sending draft picks', draftPicks)
-    port?.postMessage(draftPicks)
-  }
+  // if ( draftPicks.length ) {
+  console.log('sending draft picks', draftPicks)
+  if ( port && port )
+  port?.postMessage({ draftPicks, draftTitle })
+  // }
+
   // Schedule the next check after a certain interval
   setTimeout(handleReadEspnDraft, 1000) // Check every 1 seconds
 }

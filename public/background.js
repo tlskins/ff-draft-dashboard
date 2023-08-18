@@ -41,12 +41,12 @@ chrome.windows.onRemoved.addListener((windowId) => {
 
 // App logic
 
-function handleIncomingDraftPicks(draftPicks) {
+function handleIncomingDraftPicks(draftEventData) {
   // Handle the message
-  console.log("Incoming draft picks:", draftPicks)
+  console.log("Incoming draft picks:", draftEventData)
   if ( draftDashPort ) {
     console.log("Outgoing draft picks to port")
-    draftDashPort.postMessage(draftPicks)
+    draftDashPort.postMessage(draftEventData)
   }
 }
 

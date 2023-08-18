@@ -9,6 +9,24 @@ export const createPlayerLibrary = players => players.reduce((acc, player) => {
 export const allPositions = ['QB', 'RB', 'WR', 'TE']
 export const rankTypes = ['harris', 'espn']
 
+export const addDefaultTiers = (playerLib, isStd, numTeams) => {
+    const players = Object.values(playerLib)
+    // const hasNoTiers = players.every( player => player.tier === "" )
+    // console.log('hasNoTiers', hasNoTiers)
+    // if ( !hasNoTiers ) {
+    //     return players
+    // }
+    players.forEach( player => {
+        const rank = isStd ? player.customStdRank : player.customPprRank
+        if ( rank ) {
+            player.tier = parseInt(rank / numTeams) + 1
+            playerLib[player.id] = player
+        }
+    })
+
+    return playerLib
+}
+
 // rosters
 
 export const calcCurrRoundPick = ( pickNum, numTeams ) => {
