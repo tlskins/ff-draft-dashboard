@@ -3,74 +3,23 @@ import React, { useEffect, useState, useCallback } from "react"
 import { 
   AiFillCaretDown,
   AiFillCaretUp,
-  AiFillCheckCircle,
-  AiFillStar
 } from 'react-icons/ai'
-import { TiDelete } from 'react-icons/ti'
-import { BsLink } from 'react-icons/bs'
 
 import PageHead from "../components/pageHead"
 import DraftLoaderOptions from "../components/draftLoaderOptions"
+import PositionRankings from "../components/positionRankings"
 import {
-  createRanks,
-  removePlayerFromRanks,
-  addPlayerToRanks,
-  purgePlayerFromRanks,
-  sortRanks,
   nextPositionPicked,
   nextPickedPlayerId,
   allPositions,
   getPicksUntil,
 } from "../behavior/draft"
+import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
 import { useRosters } from '../behavior/hooks/useRosters'
 import { useFocus } from '../behavior/hooks/useFocus'
+import { getPosStyle, predBgColor, nextPredBgColor } from "../styles"
 
-
-const predBgColor = "bg-gray-400"
-const nextPredBgColor = "bg-gray-600"
-
-const getTierStyle = tier => {
-  switch(parseInt(tier)) {
-    case 1:
-      return "bg-yellow-50 text-black"
-    case 2:
-      return "bg-yellow-100 text-black"
-    case 3:
-      return "bg-yellow-200 text-black"
-    case 4:
-      return "bg-yellow-300 text-black"
-    case 5:
-      return "bg-yellow-400 text-black"
-    case 6:
-      return "bg-yellow-500 text-black"
-    case 7:
-      return "bg-yellow-600 text-black"
-    case 8:
-      return "bg-yellow-700 text-white"
-    case 9:
-      return "bg-yellow-800 text-white"
-    case 10:
-      return "bg-yellow-900 text-white"
-    default:
-      return ""
-  }
-}
-
-const getPosStyle = position => {
-  switch(position) {
-    case "QB":
-      return "bg-yellow-300 shadow-md"
-    case "RB":
-      return "bg-blue-300 shadow-md"
-    case "WR":
-      return "bg-green-300 shadow-md"
-    case "TE":
-      return "bg-red-300 shadow-md"
-    default:
-      return ""
-  }
-}
 
 let listenerDraftPicks = []
 
@@ -112,31 +61,31 @@ export default function Home() {
     isEvenRound,
     currRoundPick,
   })
+
+  // ranks depend on draft board
+  const {
+    // state
+    playerLib, setPlayerLib,
+    ranks, setRanks,
+    isEspnRank, setIsEspnRank,
+    availPlayers, harris, purge,
+    playerRanks,
+    // funcs
+    onRemovePlayerFromRanks,
+    onAddPlayerToRanks,
+    onPurgePlayerFromRanks,
+    onSortRanksByEspn,
+  } = useRanks({ isStd })
   
   const [predictedPicks, setPredictedPicks] = useState({})
   const [nextPredictedPicks, setNextPredictedPicks] = useState({})
   const [showNextPreds, setShowNextPreds] = useState(false)
-  const [shownPlayerId, setShownPlayerId] = useState(null)
-  const [shownPlayerBg, setShownPlayerBg] = useState("")
 
   const [errs, setErrs] = useState(null)
   const [alertMsg, setAlertMsg] = useState(null)
 
   // counter to run post predictions after non-current pick events
   const [numPostPredicts, setNumPostPredicts] = useState(0)
-
-  // ranks
-  const [playerLib, setPlayerLib] = useState({})
-  const [ranks, setRanks] = useState(createRanks([], isStd))
-  const [isEspnRank, setIsEspnRank] = useState(false)
-  const { availPlayers, harris, purge } = ranks
-  const playerRanks = [
-    [harris.QB, "QB"],
-    [harris.RB, "RB"],
-    [harris.WR, "WR"],
-    [harris.TE, "TE"],
-    [purge, "Purge"],
-  ]
 
   // autocomplete
   const [search, setSearch] = useState("")
@@ -190,18 +139,13 @@ export default function Home() {
     }
     console.log('processing pick', player, draftPick)
     const pickNum = ((round-1) * numTeams) + pick
-
     onDraftPlayer(id, pickNum)
     setCurrPick(pickNum+1)
     if ( !draftStarted ) {
       setDraftStarted(true)
     }
-
-    const newRanks = removePlayerFromRanks( ranks, player )
-    setRanks(newRanks)
-
+    onRemovePlayerFromRanks( player )
     addPlayerToRoster( player, pickNum )
-
     predictPicks()
     setInputFocus()
   }
@@ -240,16 +184,11 @@ export default function Home() {
     if ( !draftStarted ) {
       setDraftStarted(true)
     }
-
     setSuggestionIdx(0)
     setSuggestions([])
     setSearch("")
-
-    const newRanks = removePlayerFromRanks( ranks, player )
-    setRanks(newRanks)
-
+    onRemovePlayerFromRanks( player )
     addPlayerToRoster( player, currPick )
-
     predictPicks()
     setInputFocus()
   }
@@ -257,11 +196,7 @@ export default function Home() {
   const onRemovePick = pickNum => {
     const playerId = onRemoveDraftedPlayer(pickNum)
     const player = playerLib[playerId]
-    addPlayerToRanks( ranks, player )
-    const newRanks = sortRanks( ranks )
-    setRanks(newRanks)
-
-    // get round pick for a pick number 
+    onAddPlayerToRanks( player )
     removePlayerFromRoster( player, pickNum )
     setCurrPick(pickNum)
     setInputFocus()
@@ -269,8 +204,7 @@ export default function Home() {
   }
 
   const onPurgePlayer = player => {
-    const newRanks = purgePlayerFromRanks( ranks, player )
-    setRanks(newRanks)
+    onPurgePlayerFromRanks( player )
     setInputFocus()
   }
 
@@ -423,8 +357,6 @@ export default function Home() {
               onChange={ e => {
                 const newIsStd = e.target.value === "Standard"
                 setIsStd( newIsStd )
-                const newRanks = createRanks( Object.values( playerLib ), newIsStd)
-                setRanks(newRanks)
               }}
               disabled={draftStarted}
             >
@@ -488,9 +420,8 @@ export default function Home() {
                   if (['MetaRight', 'MetaLeft'].includes(e.code)) {
                     setShowNextPreds(false)
                   } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
-                    const newRanks = sortRanks( ranks )
-                    setRanks( newRanks )
-                    setIsEspnRank(false)
+                    // sort by harris
+                    onSortRanksByEspn( false )
                   }
                 }}
                 onKeyDown={ e => {
@@ -523,9 +454,7 @@ export default function Home() {
                     setShowNextPreds(true)
                   // shift 
                   } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
-                    const newRanks = sortRanks( ranks, true )
-                    setRanks( newRanks )
-                    setIsEspnRank(true)
+                    onSortRanksByEspn( true )
                   }
                 }}
                 ref={inputRef}
@@ -633,92 +562,17 @@ export default function Home() {
               </div>
             }
 
-            { playerRanks.filter(([posGroup,])=> posGroup.length > 0).map( ([posGroup, posName], i) => {
-              const posStyle = getPosStyle(posName)
-              return(
-                <div key={i}
-                  className="flex flex-col"
-                >
-                  <div className={`p-1 rounded m-1 ${posStyle}`}>
-                    { posName }
-                  </div>
-                  { posGroup.slice(0,30).map( ([pId,]) => playerLib[pId] ).filter( p => !!p ).map( player => {
-                    const { firstName, lastName, name, id, team, tier, customPprRank, customStdRank, espnAdp, target } = player
-                    let tierStyle
-                    if ( shownPlayerId === id && !!shownPlayerBg ) {
-                      tierStyle = shownPlayerBg
-                    } else if ( showNextPreds && nextPredictedPicks[player.id] ) {
-                      tierStyle = `${nextPredBgColor} text-white`
-                    } else if ( !showNextPreds && predictedPicks[player.id] ) {
-                      tierStyle = `${predBgColor} text-white`
-                    } else {
-                      tierStyle = getTierStyle(player.tier)
-                    }
-                    const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
-                    let rankText
-                    if ( isEspnRank ) {
-                      rankText = `ESPN ADP #${espnAdp}`
-                    } else {
-                      rankText = isStd ? `#${customStdRank}` : `#${customPprRank}`
-                    }
-
-                    return(
-                      <div key={id} id={id}
-                        className={`px-2 py-1 m-1 text-center border rounded shadow-md relative ${tierStyle} `}
-                        onMouseEnter={ () => setShownPlayerId(id) }
-                        onMouseLeave={ () => setShownPlayerId(null) }
-                      >
-                        <div className="flex flex-col text-center">
-                          <p className="text-sm font-semibold flex">
-                            { name }
-                            { target &&
-                              <AiFillStar
-                                color="blue"
-                                size={24}
-                              />
-                            }
-                          </p>
-                          <p className="text-xs">
-                            { team } - { rankText } { tier ? ` - Tier ${tier}` : "" }
-                          </p>
-
-                          { shownPlayerId === id &&
-                            <div className={`grid grid-cols-3 mt-1 w-full absolute opacity-60`}>
-                              <TiDelete
-                                className="cursor-pointer -mt-2"
-                                color="red"
-                                onClick={ () => onPurgePlayer( player) }
-                                onMouseEnter={() => setShownPlayerBg("bg-red-500")}
-                                onMouseLeave={() => setShownPlayerBg("")}
-                                size={46}
-                              />
-
-                              <AiFillCheckCircle
-                                className="cursor-pointer -mt-1"
-                                color="green"
-                                onClick={ () => onSelectPlayer( player ) }
-                                onMouseEnter={() => setShownPlayerBg("bg-green-400")}
-                                onMouseLeave={() => setShownPlayerBg("")}
-                                size={33}
-                              />
-
-                              <BsLink
-                                className="cursor-pointer -mt-2"
-                                color="blue"
-                                onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
-                                onMouseEnter={() => setShownPlayerBg("bg-blue-400")}
-                                onMouseLeave={() => setShownPlayerBg("")}
-                                size={40}
-                              />
-                            </div>
-                          }
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })}
+            <PositionRankings
+              playerRanks={playerRanks}
+              playerLib={playerLib}
+              nextPredictedPicks={nextPredictedPicks}
+              predictedPicks={predictedPicks}
+              showNextPreds={showNextPreds}
+              isEspnRank={isEspnRank}
+              isStd={isStd}
+              onSelectPlayer={onSelectPlayer}
+              onPurgePlayer={onPurgePlayer}
+            />
           </div>
         </div>
 
