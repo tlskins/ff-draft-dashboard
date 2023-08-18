@@ -20,6 +20,7 @@ const DraftLoaderOptions = ({
   setRanks,
   setPlayerLib,
   setAlertMsg,
+  setInputFocus,
 
   availPlayers,
   draftStarted,
@@ -39,6 +40,7 @@ const DraftLoaderOptions = ({
       const ranks = createRanks( players, isStd )
       setRanks(ranks)
       setPlayerLib( playerLib )
+      setInputFocus()
     }
     setAlertMsg(null)
   }
@@ -51,6 +53,7 @@ const DraftLoaderOptions = ({
       const ranks = createRanks( players, isStd )
       setRanks(ranks)
       setPlayerLib( playerLib )
+      setInputFocus()
     }
     setAlertMsg(null)
   }
@@ -78,6 +81,7 @@ const DraftLoaderOptions = ({
       const ranks = createRanks( newPlayers, isStd )
       setRanks(ranks)
       setPlayerLib( newLib )
+      setInputFocus()
     }
     setAlertMsg(null)
   }
@@ -101,6 +105,7 @@ const DraftLoaderOptions = ({
     setRanks(ranks)
     setPlayerLib( playerLib )
     setIsUpload(false)
+    setInputFocus()
   }
 
   return(

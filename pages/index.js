@@ -375,6 +375,7 @@ export default function Home() {
           setRanks={setRanks}
           setPlayerLib={setPlayerLib}
           setAlertMsg={setAlertMsg}
+          setInputFocus={setInputFocus}
           availPlayers={availPlayers}
           draftStarted={draftStarted}
           arePlayersLoaded={Object.keys( playerLib ).length !== 0}

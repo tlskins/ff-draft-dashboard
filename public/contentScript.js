@@ -59,7 +59,6 @@ const handleReadEspnDraft = async () => {
 
   // if ( draftPicks.length ) {
   console.log('sending draft picks', draftPicks)
-  if ( port && port )
   port?.postMessage({ draftPicks, draftTitle })
   // }
 
@@ -79,6 +78,7 @@ const onMount = () => {
 
   // Connect to the extension's background script
   port = chrome.runtime.connect({ name: "ffDraftDashboard" })
+  port.onDisconnect.addListener(() => port = null)
 
   if (isEspn) {
     handleReadEspnDraft()

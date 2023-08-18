@@ -19,7 +19,7 @@ function stopEventListener() {
     
     // Remove the event listener here
     chrome.runtime.onMessage.removeListener(handleConnection)
-    espnPort && espnPort.onMessage.removeListener(handleIncomingDraftPicks)
+    espnPort?.onMessage.removeListener(handleIncomingDraftPicks)
   }
 }
 
@@ -43,7 +43,6 @@ chrome.windows.onRemoved.addListener((windowId) => {
 
 function handleIncomingDraftPicks(draftEventData) {
   // Handle the message
-  console.log("Incoming draft picks:", draftEventData)
   if ( draftDashPort ) {
     console.log("Outgoing draft picks to port")
     draftDashPort.postMessage(draftEventData)
