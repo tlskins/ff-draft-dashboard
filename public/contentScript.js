@@ -1,3 +1,5 @@
+console.log('content script start')
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 const pauseForEl = async (selector, timeout = 30000) => {
@@ -44,7 +46,7 @@ const handleReadEspnDraft = async () => {
   const draftHistoryList = document.querySelector('.draft-columns .draft-column:nth-child(3) ul')
   console.log('draftHistoryList', draftHistoryList)
   const draftPicks = []
-  draftHistoryList?.querySelectorAll('li').forEach( draftPick => {
+  draftHistoryList?.querySelectorAll('li')?.forEach( draftPick => {
     const imgUrl = draftPick.querySelector('.player-headshot img:not(fallback)')?.getAttribute('src') || ''
     const name = draftPick.querySelector('.playerinfo__playername')?.textContent || ''
     const team = draftPick.querySelector('.playerinfo__playerteam')?.textContent || ''
@@ -67,6 +69,7 @@ const handleReadEspnDraft = async () => {
 }
 
 const onMount = () => {
+  console.log('onmount content script')
   const tabUrl = (document.location.href || "").toLowerCase()
   const isEspn = tabUrl.includes("fantasy.espn.com/football/draft")
   const isDashboard = tabUrl.includes("localhost") || tabUrl.includes("ff-draft-dashboard")
@@ -78,7 +81,7 @@ const onMount = () => {
 
   // Connect to the extension's background script
   port = chrome.runtime.connect({ name: "ffDraftDashboard" })
-  port.onDisconnect.addListener(() => port = null)
+  // port.onDisconnect.addListener(() => port = null)
 
   if (isEspn) {
     handleReadEspnDraft()

@@ -1,42 +1,44 @@
-let eventListenerActive = false
+console.log('starting event listener')
+
+let eventListenerActive = true
+
+chrome.runtime.onConnect.addListener(handleConnection)
 
 // Function to start event listener
-function startEventListener() {
-  if (!eventListenerActive) {
-    console.log('starting event listener')
-    eventListenerActive = true
+// function startEventListener() {
+//   if (!eventListenerActive) {
+//     eventListenerActive = true
     
-    // Add your event listener logic here
-    chrome.runtime.onConnect.addListener(handleConnection)
-  }
-}
+//     // Add your event listener logic here
+//   }
+// }
 
 // Function to stop event listener
-function stopEventListener() {
-  if (eventListenerActive) {
-    console.log('stopping event listener')
-    eventListenerActive = false
+// function stopEventListener() {
+//   if (eventListenerActive) {
+//     console.log('stopping event listener')
+//     eventListenerActive = false
     
-    // Remove the event listener here
-    chrome.runtime.onMessage.removeListener(handleConnection)
-    espnPort?.onMessage.removeListener(handleIncomingDraftPicks)
-  }
-}
+//     // Remove the event listener here
+//     chrome.runtime.onMessage.removeListener(handleConnection)
+//     espnPort?.onMessage.removeListener(handleIncomingDraftPicks)
+//   }
+// }
 
 // Start the event listener when extension starts
-startEventListener()
+// startEventListener()
 
 // Listen for Chrome window closed event
-chrome.windows.onRemoved.addListener((windowId) => {
-  // Check if there are no more open windows
-  chrome.windows.getAll((windows) => {
-    if (windows.length === 0) {
-      // If all Chrome windows are closed, stop the event listener and perform cleanup
-      stopEventListener()
-      console.log("All Chrome windows closed. Cleaned up listeners.")
-    }
-  })
-})
+// chrome.windows.onRemoved.addListener((windowId) => {
+//   // Check if there are no more open windows
+//   chrome.windows.getAll((windows) => {
+//     if (windows.length === 0) {
+//       // If all Chrome windows are closed, stop the event listener and perform cleanup
+//       stopEventListener()
+//       console.log("All Chrome windows closed. Cleaned up listeners.")
+//     }
+//   })
+// })
 
 
 // App logic
@@ -86,12 +88,12 @@ function handleConnection(port) {
   }
 
   // Handle disconnection
-  port.onDisconnect.addListener(() => {
-    if ( espnPort ) {
-      espnPort = undefined
-    }
-    if ( draftDashPort ) {
-      draftDashPort = undefined
-    }
-  })
+  // port.onDisconnect.addListener(() => {
+  //   if ( espnPort ) {
+  //     espnPort = undefined
+  //   }
+  //   if ( draftDashPort ) {
+  //     draftDashPort = undefined
+  //   }
+  // })
 }

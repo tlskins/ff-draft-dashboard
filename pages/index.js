@@ -651,14 +651,17 @@ export default function Home() {
       </main>
 
       <footer className="flex items-center justify-center w-full h-24 border-t">
-        <a
-          className="flex items-center justify-center font-semibold"
-          href="https://www.harrisfootball.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by <span className="font-bold ml-2 text-blue-600 underline">Harris Football</span>
-        </a>
+        <div className="flex flex-col">
+          <a
+            className="flex items-center justify-center font-semibold"
+            href="https://www.harrisfootball.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Powered by <span className="font-bold ml-2 text-blue-600 underline">Harris Football</span>
+          </a>
+          <a href="https://www.flaticon.com/free-icons/pulse" title="pulse icons">Pulse icons created by Kalashnyk - <span className="font-bold ml-2 text-blue-600 underline">Flaticon</span></a>
+        </div>
       </footer>
     </div>
   )

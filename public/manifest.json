@@ -1,16 +1,24 @@
 {
   "manifest_version": 3,
 
-  "name": "FF Draft Extension App",
-  "description": "Chrome Extension for FF Draft Dashboard",
-  "version": "1.0",
+  "name": "FF Draft Pulse",
+  "description": "Streamline your drafting experience with real-time player forecasts, intuitive dashboard, and effortless management tools",
+  "version": "0.0.0.1",
+  "icons": {
+    "16": "pulse-icon-16.png",
+    "32": "pulse-icon-32.png",
+    "128": "pulse-icon-128.png"
+  },
   "action": {
     "default_icon": "icon.png",
     "default_popup": "popup.html"
   },
   "content_scripts": [
       {
-          "matches": ["<all_urls>"],
+          "matches": [
+            "https://ff-draft-dashboard.vercel.app/*",
+            "https://fantasy.espn.com/football/draft/*"
+          ],
           "js": [
             "contentScript.js"
           ]
@@ -21,16 +29,5 @@
   },
   "background": {
     "service_worker": "background.js"
-  },
-  "permissions": [
-    "storage",
-    "activeTab",
-    "tabs"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
-  "externally_connectable": {
-    "matches": ["https://*.ff-draft-dashboard.com/*", "http://localhost:*/"]
   }
 }
