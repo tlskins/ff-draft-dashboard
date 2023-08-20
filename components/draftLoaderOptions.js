@@ -175,6 +175,12 @@ const DraftLoaderOptions = ({
       </div>
 
       <div className="flex flex-col">
+        <input type="button"
+          className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-300"
+          value="Find ESPN Mock Draft"
+          onClick={ () => window.open(`https://fantasy.espn.com/football/mockdraftlobby?addata=right_rail_mock_ffl2023`) }
+        />
+
         { (!draftStarted && arePlayersLoaded) &&
           <input type="button"
             className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-indigo-300"

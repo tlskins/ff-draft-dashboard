@@ -17,7 +17,8 @@
       {
           "matches": [
             "https://ff-draft-dashboard.vercel.app/*",
-            "https://fantasy.espn.com/football/draft/*"
+            "https://fantasy.espn.com/football/draft*",
+            "http://localhost:3000/*"
           ],
           "js": [
             "contentScript.js"

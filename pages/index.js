@@ -23,7 +23,7 @@ import { useFocus } from '../behavior/hooks/useFocus'
 import { getPosStyle, predBgColor, nextPredBgColor } from "../behavior/styles"
 
 var listeningDraftTitle = {}
-
+var maxCurrPick = 0
 
 export default function Home() {
   const {
@@ -195,7 +195,6 @@ export default function Home() {
     if ( !draftStarted ) {
       setDraftStarted(true)
     }
-    // predictPicks(currRoundPick)
     setInputFocus()
   }, [numTeams, ranks, playerLib, rosters, listeningDraftTitle])
 
@@ -238,7 +237,6 @@ export default function Home() {
     setSearch("")
     onRemovePlayerFromRanks( player )
     addPlayerToRoster( player, currPick )
-    // predictPicks(currRoundPick)
     setInputFocus()
   }
 
@@ -273,7 +271,6 @@ export default function Home() {
 
   const onChangeNumPostPredicts = numPostPredicts => {
     setNumPostPredicts(numPostPredicts)
-    // predictPicks(currRoundPick)
   }
 
   useEffect(() => {
@@ -284,6 +281,10 @@ export default function Home() {
     if ( rosters.length === 0 ) {
       return
     }
+    if (currPick <= maxCurrPick) {
+      return
+    }
+    maxCurrPick = currPick
     const [picksUntil, nextPicksUntil] = getPicksUntil(myPickNum, currPick-1, numTeams)
 
     let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0 }

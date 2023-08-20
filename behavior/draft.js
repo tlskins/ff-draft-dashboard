@@ -19,8 +19,13 @@ export const addDefaultTiers = (playerLib, isStd, numTeams) => {
     players.forEach( player => {
         const rank = isStd ? player.customStdRank : player.customPprRank
         if ( rank ) {
-            player.tier = parseInt(rank / numTeams) + 1
-            playerLib[player.id] = player
+            if ( ['RB', 'WR'].includes( player.position )) {
+                player.tier = parseInt(rank / numTeams) + 1
+                playerLib[player.id] = player
+            } else {
+                player.tier = Math.min( numTeams, rank )
+                playerLib[player.id] = player
+            }
         }
     })
 
