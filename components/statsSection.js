@@ -67,7 +67,7 @@ const StatsSection = ({
       {/* Player Profile */}
       <div className="flex flex-col mt-4 items-center">
         <p className="font-semibold underline">
-          { viewPlayer?.name || 'Player' } { highlightTier && `(${currYearSub1} ${ position }${ highlightTier })` } Recent Stats
+          { viewPlayer?.name || 'Player' } { highlightTier && `(${currYearSub1} ${ position }${ highlightTier })` || '' } Recent Stats
         </p>
 
         {/* Player Stats */}
@@ -117,6 +117,9 @@ const QbStats = ({
   showTier,
   showYear,
 }) => {
+  if ( allStats.length === 0 ) {
+    return <p className="font-semibold">None</p>
+  }
   return (
     <table class="table-auto text-sm border-separate border-spacing-2 border border-slate-500 ">
       <thead>
@@ -182,6 +185,9 @@ const RbStats = ({
   showTier,
   showYear,
 }) => {
+  if ( allStats.length === 0 ) {
+    return <p className="font-semibold">None</p>
+  }
   return (
     <table class="table-auto text-sm border-separate border-spacing-2 border border-slate-500 ">
       <thead>
@@ -252,6 +258,9 @@ const WrStats = ({
   showYear,
   position,
 }) => {
+  if ( allStats.length === 0 ) {
+    return <p className="font-semibold">None</p>
+  }
   return (
     <table class="table-auto text-sm border-separate border-spacing-2 border border-slate-500 ">
       <thead>
