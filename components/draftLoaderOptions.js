@@ -21,6 +21,7 @@ const DraftLoaderOptions = ({
   setPlayerLib,
   setAlertMsg,
   setInputFocus,
+  setPosStatsByNumTeamByYear,
 
   availPlayers,
   draftStarted,
@@ -34,14 +35,13 @@ const DraftLoaderOptions = ({
 
   const onLoadHarrisRanks = async () => {
     setAlertMsg("Loading...")
-    const players = await GetHarrisRanks()
-    if ( players ) {
-      const playerLib = createPlayerLibrary( players )
-      const ranks = createRanks( players, isStd )
-      setRanks(ranks)
-      setPlayerLib( playerLib )
-      setInputFocus()
-    }
+    const { players, posStatsByNumTeamByYear } = await GetHarrisRanks()
+    const playerLib = createPlayerLibrary( players )
+    const ranks = createRanks( players, isStd )
+    setRanks(ranks)
+    setPlayerLib( playerLib )
+    setInputFocus()
+    setPosStatsByNumTeamByYear( posStatsByNumTeamByYear )
     setAlertMsg(null)
   }
 

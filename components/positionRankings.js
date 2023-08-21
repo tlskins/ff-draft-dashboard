@@ -19,6 +19,7 @@ const PositionRankings = ({
 
   onSelectPlayer,
   onPurgePlayer,
+  setViewPlayerId,
 }) => {
   const [shownPlayerId, setShownPlayerId] = useState(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
@@ -68,7 +69,10 @@ const PositionRankings = ({
               return(
                 <div key={id} id={id}
                   className={`px-2 py-1 m-1 text-center border rounded shadow-md relative ${tierStyle} `}
-                  onMouseEnter={ () => setShownPlayerId(id) }
+                  onMouseEnter={ () => {
+                    setShownPlayerId(id) 
+                    setViewPlayerId(id)
+                  }}
                   onMouseLeave={ () => setShownPlayerId(null) }
                 >
                   <div className="flex flex-col text-center">

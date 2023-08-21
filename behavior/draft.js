@@ -1,3 +1,4 @@
+import Moment from 'moment'
 
 // players
 
@@ -11,11 +12,6 @@ export const rankTypes = ['harris', 'espn']
 
 export const addDefaultTiers = (playerLib, isStd, numTeams) => {
     const players = Object.values(playerLib)
-    // const hasNoTiers = players.every( player => player.tier === "" )
-    // console.log('hasNoTiers', hasNoTiers)
-    // if ( !hasNoTiers ) {
-    //     return players
-    // }
     players.forEach( player => {
         const rank = isStd ? player.customStdRank : player.customPprRank
         if ( rank ) {
@@ -30,6 +26,50 @@ export const addDefaultTiers = (playerLib, isStd, numTeams) => {
     })
 
     return playerLib
+}
+
+// rank tiers are statistical wr1, wr2, etc based on num teams
+// differs from tiers as there can be multiple tiers within wr1, wr2 etc
+export const addRankTiers = (playerLib, numTeams, posStatsByNumTeamByYear) => {
+    const arePosStatsEmpty = Object.keys( posStatsByNumTeamByYear ).length === 0
+    const lastYear = parseInt(Moment().format('YYYY')) - 1
+    console.log('addRankTiers', posStatsByNumTeamByYear)
+
+    Object.keys(playerLib).forEach( playerId => {
+        // add rank tiers
+        let player = playerLib[playerId]
+        if (['WR','RB'].includes(player.position)) {
+            player.stdRankTier = (player.customStdRank / numTeams) + 1
+            player.pprRankTier = (player.customPprRank / numTeams) + 1
+        } else {
+            player.stdRankTier = Math.min(player.customStdRank, numTeams)
+            player.pprRankTier = Math.min(player.customPprRank, numTeams)
+        }
+
+        // add last year tier
+        if ( !arePosStatsEmpty ) {
+            const posStats = posStatsByNumTeamByYear[numTeams][lastYear][player.position]
+            const seasonStats = player.seasonStats.find( ssnStats => ssnStats.year === lastYear )
+            if ( seasonStats ) {
+                if ( seasonStats.totalPoints >= posStats.tier1Stats.minTotalPts ) {
+                    player.lastYrTier = 1
+                } else if ( seasonStats.totalPoints >= posStats.tier2Stats.minTotalPts ) {
+                    player.lastYrTier = 2
+                } else if ( seasonStats.totalPoints >= posStats.tier3Stats.minTotalPts ) {
+                    player.lastYrTier = 3
+                } else if ( seasonStats.totalPoints >= posStats.tier4Stats.minTotalPts ) {
+                    player.lastYrTier = 4
+                } else if ( seasonStats.totalPoints >= posStats.tier5Stats.minTotalPts ) {
+                    player.lastYrTier = 5
+                } else {
+                    player.lastYrTier = 6
+                }
+            }
+        }
+
+        // add back to lib
+        playerLib[playerId] = player
+    })
 }
 
 // rosters

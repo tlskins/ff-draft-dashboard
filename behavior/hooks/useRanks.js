@@ -18,6 +18,7 @@ export const useRanks = ({
   const [playerLib, setPlayerLib] = useState({})
   const [ranks, setRanks] = useState(createRanks([], isStd))
   const [isEspnRank, setIsEspnRank] = useState(false)
+  const [posStatsByNumTeamByYear, setPosStatsByNumTeamByYear] = useState({})
   const { availPlayers, harris, purge } = ranks
   const playerRanks = [
     [harris.QB, "QB"],
@@ -57,6 +58,7 @@ export const useRanks = ({
     // state
     playerLib, setPlayerLib,
     ranks, setRanks,
+    posStatsByNumTeamByYear, setPosStatsByNumTeamByYear,
     isEspnRank, setIsEspnRank,
     availPlayers, harris, purge,
     playerRanks,

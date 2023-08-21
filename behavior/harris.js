@@ -4,9 +4,10 @@ import { HandleError } from "./errors"
 
 export const GetHarrisRanks = async () => {
   try {
-    const { data: { players } } = await get("/harris-ranks")
+    let { data: { players, posStatsByNumTeamByYear } } = await get("/harris-ranks")
+    players = players.filter( p => [ 'QB', 'WR', 'RB', 'TE' ].includes(p.position))
 
-    return players.filter( p => [ 'QB', 'WR', 'RB', 'TE' ].includes(p.position))
+    return { players, posStatsByNumTeamByYear }
   }
   catch( err ) {
     HandleError(err)
