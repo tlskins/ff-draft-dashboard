@@ -1,5 +1,5 @@
 /*global chrome*/
-import React, { useEffect, useState, useCallback } from "react"
+import React, { useEffect, useState, useCallback, useRef } from "react"
 import { 
   AiFillCaretDown,
   AiFillCaretUp,
@@ -73,6 +73,7 @@ export default function Home() {
     isEspnRank, setIsEspnRank,
     availPlayers, harris, purge,
     playerRanks,
+    noPlayers,
     // funcs
     onRemovePlayerFromRanks,
     onAddPlayerToRanks,
@@ -102,7 +103,25 @@ export default function Home() {
 
   const [viewPlayerId, setViewPlayerId] = useState(null)
 
+  const backgroundRef = useRef(null)
+
   // listener
+
+  // useEffect(() => {
+  //   const handleBackgroundClick = (event) => {
+  //     if (backgroundRef.current && !backgroundRef.current.contains(event.target)) {
+  //       setInputFocus()
+  //     }
+  //   }
+
+  //   // Attach the event listener when the component mounts
+  //   document.addEventListener('click', handleBackgroundClick)
+
+  //   // Clean up the event listener when the component unmounts
+  //   return () => {
+  //     document.removeEventListener('click', handleBackgroundClick)
+  //   };
+  // }, [])
 
   useEffect(() => {
     window.addEventListener("message", processListenedDraftPick )
@@ -378,6 +397,60 @@ export default function Home() {
       <PageHead />
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
 
+        {/* Draft Settings */}
+        <p className="font-semibold underline mb-2">
+          Draft Settings
+        </p>
+        <div className="flex flex-row mb-4">
+          <div className="flex flex-row text-sm text-center mr-4 rounded bg-gray-100 shadow-md">
+            <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
+              Your Pick #
+            </p>
+            <select
+              className="p-1 m-1 border rounded"
+              value={myPickNum}
+              onChange={ e =>  setMyPickNum(parseInt(e.target.value))}
+              disabled={draftStarted}
+            >
+              { Array.from(Array(numTeams)).map( (_, i) => <option key={i+1} value={ i+1 }> { i+1 } </option>) }
+            </select>
+          </div>
+
+          <div className="flex flex-row text-sm text-center mr-2 rounded bg-gray-100 shadow-md">
+            <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
+              # Teams
+            </p>
+            <select
+              className="p-1 m-1 border rounded"
+              value={numTeams}
+              onChange={ e => {
+                setNumTeams(parseFloat(e.target.value))
+                setMyPickNum(1)
+              }}
+              disabled={draftStarted}
+            >
+              { [10, 12, 14].map( num => <option key={num} value={ num }> { num } </option>) }
+            </select>
+          </div>
+
+          <div className="flex flex-row text-sm text-center mr-2 rounded bg-gray-100 shadow-md">
+            <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
+              STD / PPR
+            </p>
+            <select
+              className="p-1 m-1 border rounded"
+              value={isStd ? "Standard" : "PPR"}
+              onChange={ e => {
+                const newIsStd = e.target.value === "Standard"
+                setIsStd( newIsStd )
+              }}
+              disabled={draftStarted}
+            >
+              { ["Standard", "PPR"].map( opt => <option key={opt} value={ opt }> { opt } </option>) }
+            </select>
+          </div>
+        </div>
+
         <DraftLoaderOptions
           setRanks={setRanks}
           setPlayerLib={setPlayerLib}
@@ -390,57 +463,9 @@ export default function Home() {
           isStd={isStd}
         />
 
-        <div className="flex flex-col items-center">
-          {/* Draft Settings */}
-          <div className="flex flex-row mb-4">
-            <div className="flex flex-row text-sm text-center mr-4 rounded bg-gray-100 shadow-md">
-              <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
-                Your Pick #
-              </p>
-              <select
-                className="p-1 m-1 border rounded"
-                value={myPickNum}
-                onChange={ e =>  setMyPickNum(parseInt(e.target.value))}
-                disabled={draftStarted}
-              >
-                { Array.from(Array(numTeams)).map( (_, i) => <option key={i+1} value={ i+1 }> { i+1 } </option>) }
-              </select>
-            </div>
-
-            <div className="flex flex-row text-sm text-center mr-2 rounded bg-gray-100 shadow-md">
-              <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
-                # Teams
-              </p>
-              <select
-                className="p-1 m-1 border rounded"
-                value={numTeams}
-                onChange={ e => {
-                  setNumTeams(parseFloat(e.target.value))
-                  setMyPickNum(1)
-                }}
-                disabled={draftStarted}
-              >
-                { [10, 12, 14].map( num => <option key={num} value={ num }> { num } </option>) }
-              </select>
-            </div>
-
-            <div className="flex flex-row text-sm text-center mr-2 rounded bg-gray-100 shadow-md">
-              <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
-                STD / PPR
-              </p>
-              <select
-                className="p-1 m-1 border rounded"
-                value={isStd ? "Standard" : "PPR"}
-                onChange={ e => {
-                  const newIsStd = e.target.value === "Standard"
-                  setIsStd( newIsStd )
-                }}
-                disabled={draftStarted}
-              >
-                { ["Standard", "PPR"].map( opt => <option key={opt} value={ opt }> { opt } </option>) }
-              </select>
-            </div>
-          </div>
+        <div className="flex flex-col items-center"
+          ref={backgroundRef}
+        >
 
           {/* Current Round Board + Position Groupings */}
           <div className="flex flex-row border rounded">
@@ -495,9 +520,10 @@ export default function Home() {
                   Round { roundIdx+1 } Pick { currRoundPick } (#{ currPick } Overall)
                 </p>
                 <textarea
+                  ref={inputRef}
                   rows={1}
-                  className="bg-gray-200 shadow rounded-md my-2 p-1 w-full text-center text-sm text-black"
-                  placeholder="search by player name or copy ESPN live draft feed"
+                  className="bg-gray-200 shadow rounded-md my-2 p-1 w-full text-center text-sm text-black focus:outline-none focus:ring-8 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="press keys / commands here"
                   value={search}
                   onChange={onSearch}
                   onKeyUp={ e => {
@@ -541,7 +567,6 @@ export default function Home() {
                       onSortRanksByEspn( true )
                     }
                   }}
-                  ref={inputRef}
                 />
                 { suggestions.length > 0 &&
                   <div className="flex flex-col relative">
@@ -615,37 +640,6 @@ export default function Home() {
                 hold SHIFT to see players sorted by ESPN ranking
               </p>
             </div>
-
-            <div className="flex flex-row border rounded h-full overflow-y-auto">
-              { draftStarted &&
-                <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-1 bg-gray-100 shadow-md border">
-                  <select
-                    className="rounded p-1 border font-semibold"
-                    value={viewRosterIdx}
-                    onChange={ e => setViewRosterIdx(parseInt( e.target.value ))}
-                  >
-                    { rosters.map((_,i) => {
-                      return(
-                        <option key={i} value={i}> Team { i+1 } </option>
-                      )
-                    })}
-                  </select>
-                  { allPositions.map( pos => [rosters[viewRosterIdx][pos], pos] ).filter( ([posGroup,]) => posGroup.length > 0 ).map( ([posGroup, pos]) => {
-                    return(
-                      <div className="mt-1 text-left" key={pos}>
-                        <p className="font-semibold"> { pos } ({ posGroup.length }) </p>
-                        { posGroup.map( playerId => {
-                          const player = playerLib[playerId]
-                          return(
-                            <p className="text-xs" key={playerId}> { player.name } - { player.team } </p>
-                          )
-                        })}
-                      </div>
-                    )
-                  })}
-                </div>
-              }
-            </div>
           </div>
 
           {/* Stats and Positional Breakdowns */}
@@ -670,10 +664,55 @@ export default function Home() {
               showNextPreds={showNextPreds}
               isEspnRank={isEspnRank}
               isStd={isStd}
+              noPlayers={noPlayers}
               onSelectPlayer={onSelectPlayer}
               onPurgePlayer={onPurgePlayer}
               setViewPlayerId={setViewPlayerId}
             />
+
+            {/* Roster View */}
+            { !noPlayers &&
+              <div className="flex flex-col rounded h-full overflow-y-auto ml-8 p-1">
+                <p className="font-semibold underline py-2">
+                  Rosters
+                </p>
+
+                { !draftStarted &&
+                  <p className="font-semibold">
+                    Waiting for draft...
+                  </p>
+                }
+
+                { draftStarted &&
+                  <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-1 bg-gray-100 shadow-md border">
+                    <select
+                      className="rounded p-1 border font-semibold"
+                      value={viewRosterIdx}
+                      onChange={ e => setViewRosterIdx(parseInt( e.target.value ))}
+                    >
+                      { rosters.map((_,i) => {
+                        return(
+                          <option key={i} value={i}> Team { i+1 } </option>
+                        )
+                      })}
+                    </select>
+                    { allPositions.map( pos => [rosters[viewRosterIdx][pos], pos] ).filter( ([posGroup,]) => posGroup.length > 0 ).map( ([posGroup, pos]) => {
+                      return(
+                        <div className="mt-1 text-left" key={pos}>
+                          <p className="font-semibold"> { pos } ({ posGroup.length }) </p>
+                          { posGroup.map( playerId => {
+                            const player = playerLib[playerId]
+                            return(
+                              <p className="text-xs" key={playerId}> { player.name } - { player.team } </p>
+                            )
+                          })}
+                        </div>
+                      )
+                    })}
+                  </div>
+                }
+              </div>
+            }
           </div>
         </div>
       </main>

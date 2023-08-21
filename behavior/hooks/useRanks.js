@@ -27,6 +27,7 @@ export const useRanks = ({
     [harris.TE, "TE"],
     [purge, "Purge"],
   ]
+  const noPlayers = Object.keys(playerLib).length === 0
 
   // funcs
   const onRemovePlayerFromRanks = player => {
@@ -62,6 +63,7 @@ export const useRanks = ({
     isEspnRank, setIsEspnRank,
     availPlayers, harris, purge,
     playerRanks,
+    noPlayers,
     // funcs
     onRemovePlayerFromRanks,
     onAddPlayerToRanks,
