@@ -67,7 +67,7 @@ const StatsSection = ({
       {/* Player Profile */}
       <div className="flex flex-col mt-4 items-center">
         <p className="font-semibold underline">
-          { viewPlayer?.name || 'Player' } { highlightTier && `(${currYearSub1} ${ position }${ highlightTier })` || '' } Recent Stats
+          { viewPlayer?.name || 'Player' } { highlightTier && `(${currYearSub1} ${ position }${ highlightTier } | ${ position }${ viewPlayer.lastYrOvrRank || 'NA' } OVR)` || '' } Recent Stats
         </p>
 
         {/* Player Stats */}

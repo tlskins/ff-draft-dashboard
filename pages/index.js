@@ -339,64 +339,23 @@ export default function Home() {
     setNextPredictedPicks( nextPredicts )
   }, [numTeams, ranks, playerLib, rosters, myPickNum, currPick, currRoundPick])
 
-  // batch parsing
-
-  // const onParsePlayers = text => {
-  //   const lines = text.split("\n\n")
-  //   const rgxName = /^(.+) \/ .{2,5} .{2,5}\nR(\d+), P(\d+) - Team/i
-  //   const allPlayers = Object.values( playerLib )
-  //   let newRanks = ranks
-  //   let newRosters = rosters
-  //   let lastRound, lastPick
-  //   let isDraftStarted = draftStarted
-  //   for (let i=0; i<=lines.length-1; i++) {
-  //     const line = lines[i]
-  //     const pickMatch = line.match(rgxName)
-  //     if ( !pickMatch || pickMatch.length < 4 ) {
-  //       continue
-  //     }
-  //     const roundNum = parseInt( pickMatch[2] )
-  //     const pickNum = parseInt( pickMatch[3] )
-  //     if ( !roundNum || !pickNum ) {
-  //       continue
-  //     }
-  //     let player
-  //     for (let i=0; i<allPlayers.length-1; i++) {
-  //       if (allPlayers[i].name === pickMatch[1]) {
-  //         player = allPlayers[i]
-  //         break
-  //       }
-  //     }
-  //     if ( !player ) {
-  //       continue
-  //     }
-  //     if ( roundNum > rounds.length + 1 ) {
-  //       setErrs("Parsing too many rounds ahead of the current pick!")
-  //       return
-  //     }
-  //     rounds[roundNum-1][pickNum-1] = player.id
-  //     newRanks = removePlayerFromRanks( ranks, player )
-  //     const rosterIdx = roundNum % 2 === 0 ? numTeams - pickNum : pickNum - 1
-  //     newRosters = addToRoster( newRosters, player, rosterIdx)
-  //     lastRound = roundNum
-  //     lastPick = pickNum
-  //     isDraftStarted = true
-  //   }
-  //   setDraftStarted( isDraftStarted )
-  //   setRanks(newRanks)
-  //   setRounds([...rounds])
-  //   const newCurrPick = ((lastRound - 1) * numTeams) + lastPick + 1
-  //   setCurrPick(newCurrPick)
-  //   setRosters( newRosters )
-  //   onChangeNumPostPredicts(numPostPredicts+1)
-  //   setInputFocus()
-  // }
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <PageHead />
-      <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
 
+      <DraftLoaderOptions
+        setRanks={setRanks}
+        setPlayerLib={setPlayerLib}
+        setAlertMsg={setAlertMsg}
+        setInputFocus={setInputFocus}
+        setPosStatsByNumTeamByYear={setPosStatsByNumTeamByYear}
+        availPlayers={availPlayers}
+        draftStarted={draftStarted}
+        arePlayersLoaded={Object.keys( playerLib ).length !== 0}
+        isStd={isStd}
+      />
+
+      <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
         {/* Draft Settings */}
         <p className="font-semibold underline mb-2">
           Draft Settings
@@ -450,18 +409,6 @@ export default function Home() {
             </select>
           </div>
         </div>
-
-        <DraftLoaderOptions
-          setRanks={setRanks}
-          setPlayerLib={setPlayerLib}
-          setAlertMsg={setAlertMsg}
-          setInputFocus={setInputFocus}
-          setPosStatsByNumTeamByYear={setPosStatsByNumTeamByYear}
-          availPlayers={availPlayers}
-          draftStarted={draftStarted}
-          arePlayersLoaded={Object.keys( playerLib ).length !== 0}
-          isStd={isStd}
-        />
 
         <div className="flex flex-col items-center"
           ref={backgroundRef}

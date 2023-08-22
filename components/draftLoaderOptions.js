@@ -9,6 +9,7 @@ import {
   createRanks,
   createPlayerLibrary,
 } from "../behavior/draft"
+import Dropdown from "./dropdown"
 
 const papaparseOptions = {
   header: true,
@@ -108,39 +109,53 @@ const DraftLoaderOptions = ({
     setInputFocus()
   }
 
+  const ranksOptions = [
+    { title: "Load Current Harris Ranks", callback: onLoadHarrisRanks },
+    { title: "Load Current FPros Ranks", callback: onLoadFprosRanks },
+    { title: "Load From CSV", callback: () => setIsUpload(!isUpload) },
+  ]
+  if ( arePlayersLoaded && !csvData ) {
+    ranksOptions.push({ title: "Export Ranks", callback: onSetCsvData })
+  }
+  if (!draftStarted && arePlayersLoaded) {
+    ranksOptions.push({ title: "Sync Current ESPN ADP", callback: onUpdateEspnRanks })
+  }
+
   return(
-    <div className="flex flex-row my-4">
-      <div className="flex flex-col">
-        <input type="button"
-          className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-blue-200"
-          value="Load Current Harris Ranks"
-          onClick={ onLoadHarrisRanks }
+    <div className="flex flex-col items-center justify-center w-full h-42 border-t">
+      <div className="flex flex-row w-96">
+        <Dropdown
+          title="Load / Export Ranks"
+          options={ranksOptions}
         />
 
-        <input type="button"
-          className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-yellow-200"
-          value="Load Current Fantasy Pros Ranks"
-          onClick={ onLoadFprosRanks }
+        <Dropdown
+          title="Find Mock Draft"
+          options={[
+            { title: "ESPN Mock Draft", callback: () => window.open(`https://fantasy.espn.com/football/mockdraftlobby?addata=right_rail_mock_ffl2023`) }
+          ]}
         />
-
-        { !isUpload &&
-          <input type="button"
-            className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-200"
-            value="Upload CSV"
-            onClick={ () => setIsUpload(true) }
-          />
-        }
-        { isUpload &&
-          <CSVReader
-            cssClass="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase text-sm flex flex-col"
-            label="Upload Ranks"
-            onFileLoaded={ onFileLoaded }
-            parserOptions={papaparseOptions}
-          />
-        }
       </div>
 
-      <div className="flex flex-col">
+      { isUpload &&
+        <CSVReader
+          cssClass="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase text-sm flex flex-col"
+          label="Upload Ranks"
+          onFileLoaded={ onFileLoaded }
+          parserOptions={papaparseOptions}
+        />
+      }
+
+      { csvData && 
+        <CSVLink data={csvData}
+          onClick={ () => setCsvData(null)}
+          className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-300"
+        >
+          Download
+        </CSVLink>
+      }
+
+      {/* <div className="flex flex-col">
         { (arePlayersLoaded && !csvData) &&
           <div>
             <input type="button"
@@ -188,7 +203,7 @@ const DraftLoaderOptions = ({
             onClick={ onUpdateEspnRanks }
           />
         }
-      </div>
+      </div> */}
     </div>
   )
 }
