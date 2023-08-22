@@ -1,5 +1,6 @@
 console.log('content script start')
 
+// helpers
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 const pauseForEl = async (selector, timeout = 30000) => {
@@ -15,10 +16,14 @@ const pauseForEl = async (selector, timeout = 30000) => {
   return null
 }
 
+// vars
+
 var port = null
 
 const pickHistoryMap = {}
 const pickHistory = []
+
+// funcs
 
 const handleListenDraftPicks = async () => {
   console.log('handleListenDraftPicks...', document.location.href)
@@ -28,10 +33,29 @@ const handleListenDraftPicks = async () => {
   }
 
   port.onMessage.addListener((draftData) => {
-    console.log('heard draft picks: ', draftData)
-    pickHistory.push(...draftData.draftPicks)
-    window.postMessage({ type: "FROM_EXT", draftData }, "*")
+    if ( draftData === true ) {
+      // ack for keep alive
+      console.log('ack from background for keep alive')
+    } else {
+      console.log('heard draft picks: ', draftData)
+      pickHistory.push(...draftData.draftPicks)
+      window.postMessage({ type: "FROM_EXT", draftData }, "*")
+    }
   })
+
+  handleListenKeepAlive()
+}
+
+const handleListenKeepAlive = () => {
+  console.log('handleListenKeepAlive...', document.location.href)
+  if ( port === null ) {
+    console.log('port not initiated')
+    return
+  }
+
+  port?.postMessage(true)
+
+  setTimeout(handleListenKeepAlive, 5000) // check every 5 seconds
 }
 
 const handleReadEspnDraft = async () => {
@@ -59,10 +83,8 @@ const handleReadEspnDraft = async () => {
     }
   })
 
-  // if ( draftPicks.length ) {
   console.log('sending draft picks', draftPicks)
   port?.postMessage({ draftPicks, draftTitle })
-  // }
 
   // Schedule the next check after a certain interval
   setTimeout(handleReadEspnDraft, 1000) // Check every 1 seconds
@@ -81,7 +103,6 @@ const onMount = () => {
 
   // Connect to the extension's background script
   port = chrome.runtime.connect({ name: "ffDraftDashboard" })
-  // port.onDisconnect.addListener(() => port = null)
 
   if (isEspn) {
     handleReadEspnDraft()

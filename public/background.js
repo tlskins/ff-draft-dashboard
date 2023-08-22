@@ -4,43 +4,6 @@ let eventListenerActive = true
 
 chrome.runtime.onConnect.addListener(handleConnection)
 
-// Function to start event listener
-// function startEventListener() {
-//   if (!eventListenerActive) {
-//     eventListenerActive = true
-    
-//     // Add your event listener logic here
-//   }
-// }
-
-// Function to stop event listener
-// function stopEventListener() {
-//   if (eventListenerActive) {
-//     console.log('stopping event listener')
-//     eventListenerActive = false
-    
-//     // Remove the event listener here
-//     chrome.runtime.onMessage.removeListener(handleConnection)
-//     espnPort?.onMessage.removeListener(handleIncomingDraftPicks)
-//   }
-// }
-
-// Start the event listener when extension starts
-// startEventListener()
-
-// Listen for Chrome window closed event
-// chrome.windows.onRemoved.addListener((windowId) => {
-//   // Check if there are no more open windows
-//   chrome.windows.getAll((windows) => {
-//     if (windows.length === 0) {
-//       // If all Chrome windows are closed, stop the event listener and perform cleanup
-//       stopEventListener()
-//       console.log("All Chrome windows closed. Cleaned up listeners.")
-//     }
-//   })
-// })
-
-
 // App logic
 
 function handleIncomingDraftPicks(draftEventData) {
@@ -84,16 +47,10 @@ function handleConnection(port) {
   } else {
     draftDashPort = port
     draftDashTabId = tabId
+    draftDashPort.onMessage.addListener(() => {
+      console.log('draft dash keep alive')
+      draftDashPort.postMessage(true)
+    })
     console.log('draft dashboard connected!')
   }
-
-  // Handle disconnection
-  // port.onDisconnect.addListener(() => {
-  //   if ( espnPort ) {
-  //     espnPort = undefined
-  //   }
-  //   if ( draftDashPort ) {
-  //     draftDashPort = undefined
-  //   }
-  // })
 }
