@@ -32,7 +32,8 @@ const DraftLoaderOptions = ({
   // csv
   const [csvData, setCsvData] = useState(null)
   const [isUpload, setIsUpload] = useState(false)
-  const [showHowToExport, setShowHowToExport] = useState(false)
+  const [showDlExtTooltip, setShowDlExtTooltip] = useState(false)
+  const [showRanksTooltip, setShowRanksTooltip] = useState(false)
 
   const onLoadHarrisRanks = async () => {
     setAlertMsg("Loading...")
@@ -123,16 +124,55 @@ const DraftLoaderOptions = ({
 
   return(
     <div className="flex flex-col items-center justify-center w-full h-42 border-t">
-      <div className="flex flex-row w-96">
-        <Dropdown
-          title="Load / Export Ranks"
-          options={ranksOptions}
-        />
+      <div className="flex flex-row w-1/3">
+        <div className="w-full">
+          <Dropdown
+            title="Download Extension"
+            options={[
+              { title: "Download", callback: () => window.open('https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US') },
+            ]}
+            onMouseEnter={() => setShowDlExtTooltip(true)}
+            onMouseLeave={() => setShowDlExtTooltip(false)}
+          />
+          { showDlExtTooltip &&
+            <div className="relative">
+              <div className="absolute mr-20 -my-20 w-96 bg-yellow-300 text-black text-left text-xs font-semibold tracking-wide rounded shadow py-1.5 px-4 bottom-full z-10">
+                <ul className="list-disc pl-6">
+                  <li>Extension to listen to your draft platform</li>
+                  <li>Adds picks to this dashboard in realtime</li>
+                  <li>Just start draft (NFL.com / ESPN) and wait for alert to accept draft events</li>
+                  <li>Keep draft platform at least partially visible so tab does not go to sleep</li>
+                </ul>
+              </div>
+            </div>
+          }
+        </div>
+        
+        <div className="w-full">
+          <Dropdown
+            title="Load / Export Ranks"
+            options={ranksOptions}
+            onMouseEnter={() => setShowRanksTooltip(true)}
+            onMouseLeave={() => setShowRanksTooltip(false)}
+          />
+          { showRanksTooltip &&
+            <div className="relative">
+              <div className="absolute mr-20 -my-20 w-96 bg-yellow-300 text-black text-left text-xs font-semibold tracking-wide rounded shadow py-1.5 px-4 bottom-full z-10">
+                <ul className="list-disc pl-6">
+                  <li>Import player rankings from FFPros / Harris Football</li>
+                  <li>Export ranks to csv to edit</li>
+                  <li>Edit tiers (1, 2, 3, etc) to easily distinguish tiers of players in a position group</li>
+                </ul>
+              </div>
+            </div>
+          }
+        </div>
 
         <Dropdown
           title="Find Mock Draft"
           options={[
-            { title: "ESPN Mock Draft", callback: () => window.open(`https://fantasy.espn.com/football/mockdraftlobby?addata=right_rail_mock_ffl2023`) }
+            { title: "ESPN Mock Draft", callback: () => window.open(`https://fantasy.espn.com/football/mockdraftlobby?addata=right_rail_mock_ffl2023`) },
+            { title: "NFL.com Mock Draft", callback: () => window.open('https://fantasy.nfl.com/draftcenter/mockdrafts') },
           ]}
         />
       </div>

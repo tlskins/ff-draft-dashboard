@@ -20,6 +20,7 @@ const pauseForEl = async (selector, timeout = 30000) => {
 
 var port = null
 
+const mountTime = Date().toString()
 const pickHistoryMap = {}
 const pickHistory = []
 
@@ -37,7 +38,7 @@ const handleListenDraftPicks = async () => {
       // ack for keep alive
       console.log('ack from background for keep alive')
     } else {
-      console.log('heard draft picks: ', draftData)
+      // console.log('heard draft picks: ', draftData)
       pickHistory.push(...draftData.draftPicks)
       window.postMessage({ type: "FROM_EXT", draftData }, "*")
     }
@@ -84,19 +85,66 @@ const handleReadEspnDraft = async () => {
   })
 
   console.log('sending draft picks', draftPicks)
-  port?.postMessage({ draftPicks, draftTitle })
+  port?.postMessage({
+    draftPicks,
+    draftTitle,
+    platform: 'ESPN',
+  })
 
   // Schedule the next check after a certain interval
   setTimeout(handleReadEspnDraft, 1000) // Check every 1 seconds
 }
 
+const handleReadNflDraft = async () => {
+  console.log('handleReadNflDraft...', document.location.href)
+  if ( port === null ) {
+    console.log('port not initiated')
+    return
+  }
+
+  await pauseForEl('div[data-testid="table"]')
+  const draftHistoryList = document.querySelector('div[data-testid="table"]')
+  console.log('draftHistoryList', draftHistoryList)
+  const draftPicks = []
+  draftHistoryList?.querySelectorAll('div[data-testid="tableRow"]')?.forEach( draftPick => {
+    const avatarEl = draftPick.querySelector('div[data-testid="playerAvatar"]')
+    // check if is a real draft pick instead of a header row
+    if ( avatarEl ) {
+      const cells = draftPick.querySelectorAll('div[data-testid="tableCell"]')
+      const pick = parseInt(cells[1]?.textContent || '') || 0
+      const divComponents = cells[2].querySelectorAll('button > div > div')
+      const name = divComponents[1].textContent
+      const teamAndPos = divComponents[2].textContent.split(' - ')
+      const team = teamAndPos[0]
+      const position = teamAndPos[1]
+  
+      if ( !pickHistoryMap[pick] ) {
+        draftPicks.push({ name, team, position, pick })
+        pickHistoryMap[pick] = true
+      }
+    }
+  })
+
+  console.log('sending draft picks', draftPicks)
+  port?.postMessage({
+    draftPicks,
+    draftTitle: `NFL.com ${ mountTime }`,
+    platform: 'NFL',
+  })
+
+  // Schedule the next check after a certain interval
+  setTimeout(handleReadNflDraft, 1000) // Check every 1 seconds
+}
+
+
 const onMount = () => {
   console.log('onmount content script')
   const tabUrl = (document.location.href || "").toLowerCase()
   const isEspn = tabUrl.includes("fantasy.espn.com/football/draft")
+  const isNfl = tabUrl.includes("fantasy.nfl.com/draftclient")
   const isDashboard = tabUrl.includes("localhost") || tabUrl.includes("ff-draft-dashboard")
 
-  if ( !isEspn && !isDashboard ) {
+  if ( !isEspn && !isDashboard && !isNfl ) {
     console.log('not ff applicable site')
     return
   }
@@ -106,6 +154,8 @@ const onMount = () => {
 
   if (isEspn) {
     handleReadEspnDraft()
+  } else if (isNfl) {
+    handleReadNflDraft()
   } else {
     handleListenDraftPicks()
   }

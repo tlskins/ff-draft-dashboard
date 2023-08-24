@@ -17,6 +17,8 @@ import {
   nextPickedPlayerId,
   allPositions,
   getPicksUntil,
+  parseEspnDraftEvents,
+  parseNflDraftEvents,
 } from "../behavior/draft"
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
@@ -68,6 +70,7 @@ export default function Home() {
   const {
     // state
     playerLib, setPlayerLib,
+    playersByPosByTeam, setPlayersByPosByTeam,
     ranks, setRanks,
     posStatsByNumTeamByYear, setPosStatsByNumTeamByYear,
     isEspnRank, setIsEspnRank,
@@ -107,22 +110,6 @@ export default function Home() {
 
   // listener
 
-  // useEffect(() => {
-  //   const handleBackgroundClick = (event) => {
-  //     if (backgroundRef.current && !backgroundRef.current.contains(event.target)) {
-  //       setInputFocus()
-  //     }
-  //   }
-
-  //   // Attach the event listener when the component mounts
-  //   document.addEventListener('click', handleBackgroundClick)
-
-  //   // Clean up the event listener when the component unmounts
-  //   return () => {
-  //     document.removeEventListener('click', handleBackgroundClick)
-  //   };
-  // }, [])
-
   useEffect(() => {
     window.addEventListener("message", processListenedDraftPick )
     
@@ -135,7 +122,7 @@ export default function Home() {
     if ( event.data.type !== "FROM_EXT" || Object.values( playerLib ).length === 0 ) {
       return
     }
-    const { draftData: { draftPicks: draftPicksData, draftTitle } } = event.data
+    const { draftData: { draftPicks: draftPicksData, draftTitle, platform } } = event.data
 
     if ( listeningDraftTitle[draftTitle] === undefined ) {
       console.log('heard draft initated event', event)
@@ -181,31 +168,32 @@ export default function Home() {
 
     console.log('heard draft event', event)
     // parse draft event data into structured draft pick
-    const draftPicks = draftPicksData.map( data => {
-      const imgMatch = data.imgUrl.match(/headshots\/nfl\/players\/full\/(\d+)\.png/)
-      return {
-        ...data,
-        id: imgMatch && parseInt(imgMatch[1]) || null,
-        pickStr: data.pick,
-        round: parseInt(data.pick.match(/^R(\d+), P(\d+) /)[1]),
-        pick: parseInt(data.pick.match(/^R(\d+), P(\d+) /)[2]),
-      }
-    })
+    let draftPicks
+    if ( platform === 'ESPN ') {
+      draftPicks = parseEspnDraftEvents( draftPicksData )
+    } else if ( platform == 'NFL' ) {
+      draftPicks = parseNflDraftEvents( draftPicksData, playersByPosByTeam )
+    }
+
+    if ( !draftPicks || draftPicks.length === 0 ) {
+      return
+    }
 
     // draft players from events
     let lastPickNum = 1
     draftPicks.forEach( draftPick => {
-      const { round, pick, id, name, position, team } = draftPick
+      const { round, pick, id, ovrPick } = draftPick
       const player = playerLib[id]
       if ( id && player ) {
+        const { name, position, team } = player
         console.log('processing pick', player, draftPick)
-        const pickNum = ((round-1) * numTeams) + pick
+        const pickNum = ovrPick ||  ((round-1) * numTeams) + pick
         onDraftPlayer(id, pickNum)
         onRemovePlayerFromRanks( player )
         addPlayerToRoster( player, pickNum )
         lastPickNum = pickNum
         toast(
-          `R${ round } P${ pick }: ${ name } - ${ position } - ${ team }`,
+          `Pick #${pickNum}: ${ name } - ${ position } - ${ team }`,
           {
             hideProgressBar: true,
             type: 'success',
@@ -220,7 +208,7 @@ export default function Home() {
       setDraftStarted(true)
     }
     setInputFocus()
-  }, [numTeams, ranks, playerLib, rosters, listeningDraftTitle])
+  }, [numTeams, ranks, playerLib, rosters, listeningDraftTitle, playersByPosByTeam])
 
   const onSearch = e => {
     let text = e.target.value
@@ -290,6 +278,18 @@ export default function Home() {
       }
       const nextPlayerLib = addDefaultTiers(playerLib, isStd, numTeams)
       addRankTiers(playerLib, numTeams, posStatsByNumTeamByYear)
+      const playersByPosByTeam = Object.values( playerLib ).reduce(( dict, player ) => {
+        if ( !dict[player.position] ) {
+          dict[player.position] = {}
+        }
+        if ( !dict[player.position][player.team] ) {
+          dict[player.position][player.team] = []
+        }
+        dict[player.position][player.team].push(player)
+
+        return dict
+      }, {})
+      setPlayersByPosByTeam( playersByPosByTeam )
       setPlayerLib( nextPlayerLib )
     }
   }, [playerLib, isStd, numTeams, posStatsByNumTeamByYear])
@@ -332,8 +332,8 @@ export default function Home() {
       posCounts = updatedCounts
     })
 
-    console.log('Predictions: ', Object.keys( currPredicts ).sort((a,b) => currPredicts[a] - currPredicts[b]).map( id => playerLib[id].name ))
-    console.log('Next Predictions: ', Object.keys( nextPredicts ).sort((a,b) => nextPredicts[a] - nextPredicts[b]).map( id => playerLib[id].name ))
+    // console.log('Predictions: ', Object.keys( currPredicts ).sort((a,b) => currPredicts[a] - currPredicts[b]).map( id => playerLib[id].name ))
+    // console.log('Next Predictions: ', Object.keys( nextPredicts ).sort((a,b) => nextPredicts[a] - nextPredicts[b]).map( id => playerLib[id].name ))
 
     setPredictedPicks( currPredicts )
     setNextPredictedPicks( nextPredicts )
@@ -459,7 +459,7 @@ export default function Home() {
             <div className="flex flex-row items-center justify-center content-center">
               <div className="flex flex-col items-center w-full">
                 { activeDraftListenerTitle &&
-                  <p className="bg-yellow-300 font-semibold shadow rounded-md text-sm my-1">
+                  <p className="bg-yellow-300 font-semibold shadow rounded-md text-sm my-1 px-4">
                     Listening to: { activeDraftListenerTitle }
                   </p>
                 }
@@ -612,6 +612,7 @@ export default function Home() {
               isEspnRank={isEspnRank}
               isStd={isStd}
               noPlayers={noPlayers}
+              currPick={currPick}
               onSelectPlayer={onSelectPlayer}
               onPurgePlayer={onPurgePlayer}
               setViewPlayerId={setViewPlayerId}

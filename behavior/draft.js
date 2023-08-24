@@ -1,5 +1,110 @@
 import Moment from 'moment'
 
+// helpers
+
+const min = (a, b, c) => {
+return Math.min(a, Math.min(b, c))
+}
+  
+const levenshteinDistance = (str1, str2) => {
+    const m = str1.length
+    const n = str2.length
+
+    const matrix = new Array(m + 1).fill(null).map(() => new Array(n + 1).fill(0))
+
+    for (let i = 0; i <= m; i++) {
+        matrix[i][0] = i
+    }
+
+    for (let j = 0; j <= n; j++) {
+        matrix[0][j] = j
+    }
+
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+        const cost = str1[i - 1] !== str2[j - 1] ? 1 : 0
+        matrix[i][j] = min(
+            matrix[i - 1][j] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j - 1] + cost
+        );
+        }
+    }
+
+    return matrix[m][n]
+}
+
+// draft listener
+
+const validPositions = ['QB','RB','WR','TE']
+
+export const parseEspnDraftEvents = draftPicksData => {
+    return draftPicksData.map( data => {
+        const imgMatch = data.imgUrl.match(/headshots\/nfl\/players\/full\/(\d+)\.png/)
+        return {
+            ...data,
+            id: imgMatch && parseInt(imgMatch[1]) || null,
+            pickStr: data.pick,
+            round: parseInt(data.pick.match(/^R(\d+), P(\d+) /)[1]),
+            pick: parseInt(data.pick.match(/^R(\d+), P(\d+) /)[2]),
+        }
+    })
+}
+
+const normalizeNflName = name => name.toLowerCase().replace(/[^a-zA-Z\s]/g, '')
+    .replace('iii', '')
+    .replace('ii', '')
+    .replace(' jr', '')
+    .trim()
+const playerToNflName = player => `${ player.firstName[0].toLowerCase() } ${ normalizeNflName( player.lastName )}`
+const parseNflTeamToPlayerTeam = nflTeam => {
+switch(nflTeam) {
+    case 'JAX':
+        return 'JAC'
+    case 'PHI':
+        return 'PHL'
+    case 'LA':
+        return 'LAR'
+    default:
+        return nflTeam
+    }
+}
+
+export const parseNflDraftEvents = ( draftPicksData, playersByPosByTeam ) => {
+    return draftPicksData.map(draftEvent => {
+        console.log('matching nfl event', draftEvent, playersByPosByTeam)
+        const { name, team: nflTeam, position, pick: ovrPick } = draftEvent
+        const team = parseNflTeamToPlayerTeam( nflTeam )
+        if ( !validPositions.includes( position )) {
+            return
+        }
+
+        const posPlayers = playersByPosByTeam[position][team] || []
+        const playerByExactName = posPlayers.find( p => playerToNflName( p ) === normalizeNflName( name ) )
+        if ( playerByExactName ) {
+            return { id: playerByExactName.id, ovrPick}
+        }
+
+        let minScore = 100
+        let minIdx = -1
+        posPlayers.forEach( (p, idx) => {
+            const simScore = levenshteinDistance( playerToNflName(p), name )
+            if ( simScore <= 5 && simScore < minScore ) {
+                minScore = simScore
+                minIdx = idx
+            }
+        })
+        if ( minIdx > -1 ) {
+            const simPlayer = posPlayers[minIdx]
+            return { id: simPlayer.id, ovrPick }
+        }
+
+        console.log('parseNflDraftEvents failed for ', draftEvent)
+
+        return null
+    }).filter( p => !!p )
+}
+
 // players
 
 export const createPlayerLibrary = players => players.reduce((acc, player) => {
@@ -39,11 +144,11 @@ export const addRankTiers = (playerLib, numTeams, posStatsByNumTeamByYear) => {
         // add rank tiers
         let player = playerLib[playerId]
         if (['WR','RB'].includes(player.position)) {
-            player.stdRankTier = (player.customStdRank / numTeams) + 1
-            player.pprRankTier = (player.customPprRank / numTeams) + 1
+            player.stdRankTier = player.customStdRank ? parseInt(player.customStdRank / numTeams) + 1 : null
+            player.pprRankTier = player.customPprRank ? parseInt(player.customPprRank / numTeams) + 1 : null
         } else {
-            player.stdRankTier = Math.min(player.customStdRank, numTeams)
-            player.pprRankTier = Math.min(player.customPprRank, numTeams)
+            player.stdRankTier = player.customStdRank ? Math.min(player.customStdRank, numTeams) : null
+            player.pprRankTier = player.customPprRank ? Math.min(player.customPprRank, numTeams) : null
         }
 
         // add last year tier

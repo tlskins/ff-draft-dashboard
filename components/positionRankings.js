@@ -8,6 +8,25 @@ import {
 
 import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor } from '../behavior/styles'
 
+
+const getPickDiffColor = pickDiff => {
+  const absDiff = Math.abs( pickDiff )
+  let colorShade = ''
+  if ( absDiff <= 2 ) {
+    colorShade = '300'
+  } else if ( absDiff <= 5 ) {
+    colorShade = '400'
+  } else if ( absDiff <= 9 ) {
+    colorShade = '500'
+  } else if ( absDiff <= 14 ) {
+    colorShade = '600'
+  } else {
+    colorShade = '700'
+  }
+
+  return `bg-${pickDiff > 0 ? 'red' : 'green'}-${colorShade}`
+}
+
 const PositionRankings = ({
   playerRanks,
   playerLib,
@@ -17,6 +36,7 @@ const PositionRankings = ({
   isEspnRank,
   isStd,
   noPlayers,
+  currPick,
 
   onSelectPlayer,
   onPurgePlayer,
@@ -72,12 +92,17 @@ const PositionRankings = ({
                   tierStyle = getTierStyle(player.tier)
                 }
                 const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
+                const rank = isStd ? customStdRank : customPprRank
                 let rankText
                 if ( isEspnRank ) {
                   rankText = `ESPN ADP #${espnAdp.toFixed(2)}`
                 } else {
-                  rankText = isStd ? `#${customStdRank}` : `#${customPprRank}`
+                  rankText = `#${rank}`
                 }
+                const isBelowAdp = currPick - espnAdp >= 0
+                const isBelowRank = currPick - rank >= 0
+                const currAdpDiff = Math.abs(currPick - espnAdp)
+                const currRankDiff = Math.abs(currPick - rank)
 
                 return(
                   <div key={id} id={id}
@@ -88,8 +113,8 @@ const PositionRankings = ({
                     }}
                     onMouseLeave={ () => setShownPlayerId(null) }
                   >
-                    <div className="flex flex-col text-center">
-                      <p className="text-sm font-semibold flex">
+                    <div className="flex flex-col text-center items-center">
+                      <p className="text-sm font-semibold flex text-center">
                         { name }
                         { target &&
                           <AiFillStar
@@ -101,6 +126,16 @@ const PositionRankings = ({
                       <p className="text-xs">
                         { team } - { rankText } { tier ? ` - Tier ${tier}` : "" }
                       </p>
+                      { !isEspnRank &&
+                        <p className={`text-xs ${getPickDiffColor(currAdpDiff)} rounded px-1`}>
+                          { currAdpDiff.toFixed(1) } { isBelowAdp ? 'BELOW' : 'ABOVE' } ADP
+                        </p>
+                      }
+                      { isEspnRank &&
+                        <p className={`text-xs ${getPickDiffColor(currRankDiff)} rounded px-1`}>
+                          { currRankDiff.toFixed(1) } { isBelowRank ? 'BELOW' : 'ABOVE' } Rank
+                        </p>
+                      }
 
                       { shownPlayerId === id &&
                         <div className={`grid grid-cols-3 mt-1 w-full absolute opacity-60`}>

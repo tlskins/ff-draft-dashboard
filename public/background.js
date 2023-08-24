@@ -14,13 +14,12 @@ function handleIncomingDraftPicks(draftEventData) {
   }
 }
 
-var espnPort
-var espnTabId
+var draftPlatformPort
 var draftDashPort
-var draftDashTabId
 
 function handleConnection(port) {
   console.log('incoming connection!', port.name, port.sender )
+  const senderUrl = port.sender.url
 
   if ( !port.sender ) {
     console.log('Port missing sender')
@@ -33,20 +32,18 @@ function handleConnection(port) {
   }
 
   const tabId = port.sender?.tab?.id
-  if ( !tabId || !port.sender.url ) {
-    console.log('tab id or url not found ', port.sender.url)
+  if ( !tabId || !senderUrl ) {
+    console.log('tab id or url not found ', senderUrl)
     return
   }
 
   // Store the connection along with tab ID
-  if ( port.sender.url.toLowerCase().includes( 'espn' )) {
-    espnTabId = tabId
-    espnPort = port
-    espnPort.onMessage.addListener(handleIncomingDraftPicks)
+  if ( ['espn', 'nfl'].some( draftPlatformSubstr => senderUrl.toLowerCase().includes( draftPlatformSubstr ))) {
+    draftPlatformPort = port
+    draftPlatformPort.onMessage.addListener(handleIncomingDraftPicks)
     console.log('draft platform connected!')
   } else {
     draftDashPort = port
-    draftDashTabId = tabId
     draftDashPort.onMessage.addListener(() => {
       console.log('draft dash keep alive')
       draftDashPort.postMessage(true)

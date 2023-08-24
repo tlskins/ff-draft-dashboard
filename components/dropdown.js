@@ -3,11 +3,16 @@ import React, { useState } from "react"
 const Dropdown = ({
   title,
   options, // { title, callback }
+  onMouseEnter,
+  onMouseLeave,
 }) => {
   const [showOptions, setShowOptions] = useState(false)
 
   return (
-    <div className="flex items-center justify-center w-full h-24 border-t">
+    <div className="flex items-center justify-center w-full h-24 border-t"
+      onMouseEnter={ onMouseEnter }
+      onMouseLeave={ onMouseLeave }
+    >
       <div class="relative inline-block text-left">
         <div>
           <button type="button"
@@ -15,7 +20,10 @@ const Dropdown = ({
             id="menu-button"
             aria-expanded="true"
             aria-haspopup="true"
-            onClick={() => setShowOptions(!showOptions)}
+            onClick={() => {
+              setShowOptions(!showOptions)
+              onMouseLeave && onMouseLeave()
+            }}
           >
             { title }
             <svg class="-mr-1 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

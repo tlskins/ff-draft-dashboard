@@ -6,14 +6,31 @@ const currYearSub1 = currYear - 1
 const currYearSub2 = currYear - 2
 const currYearSub3 = currYear - 3
 
+const significantStatDiffBg = (playerStats, tierStatsComp, statType, defaultBg, diffPctGt = 0.25) => {
+  if ( !playerStats || !tierStatsComp ) {
+    return defaultBg
+  }
+  const playerStat = playerStats[statType]
+  const compStat = tierStatsComp[statType]
+  const statDiff = compStat ? ( playerStat - compStat ) / compStat :  playerStat - compStat
+  if ( statDiff >= diffPctGt ) {
+    return 'bg-green-500'
+  }
+  if ( statDiff <= diffPctGt * -1 ) {
+    return 'bg-red-500'
+  }
+  return defaultBg
+} 
+
 const StatsSection = ({
   viewPlayerId,
   playerLib,
   posStatsByNumTeamByYear,
   numTeams,
+  isStd,
 }) => {
   const viewPlayer = playerLib[viewPlayerId]
-  console.log('viewPlayer', viewPlayerId, viewPlayer)
+  const statsByPosYear = viewPlayer && posStatsByNumTeamByYear[numTeams][currYearSub1][viewPlayer.position] || {}
   const {
     tier1Stats,
     tier2Stats,
@@ -21,7 +38,7 @@ const StatsSection = ({
     tier4Stats,
     tier5Stats,
     tier6Stats,
-  } = viewPlayer && posStatsByNumTeamByYear[numTeams][currYearSub1][viewPlayer.position] || {}
+  } = statsByPosYear
   const leagueStats = [
     tier1Stats,
     tier2Stats,
@@ -33,6 +50,9 @@ const StatsSection = ({
   const highlightTier = viewPlayer?.lastYrTier
   const playerStats = viewPlayer?.seasonStats.filter( s => s.year !== currYear && s.year >= currYearSub3 ) || []
   const position = viewPlayer?.position
+  const playerProjTier = isStd ? viewPlayer?.stdRankTier : viewPlayer?.pprRankTier
+  const tierStatsComp = playerProjTier && playerProjTier <= 6 && statsByPosYear[`tier${playerProjTier}Stats`]
+  console.log('statsection', viewPlayer, playerProjTier, tierStatsComp)
   return (
     <div className="flex flex-col py-2">
       {/* League POS Stats */}
@@ -73,18 +93,21 @@ const StatsSection = ({
         {/* Player Stats */}
         { position === 'QB' &&
           <QbStats
+            tierStatsComp={ tierStatsComp }
             allStats={ playerStats }
             showYear={true}
           />
         }
         { position === 'RB' &&
           <RbStats
+            tierStatsComp={ tierStatsComp }
             allStats={ playerStats }
             showYear={true}
           />
         }
-        { position === 'WR' &&
+        { ['WR', 'TE'].includes( position ) &&
           <WrStats
+            tierStatsComp={ tierStatsComp }
             allStats={ playerStats }
             showYear={true}
           />
@@ -114,6 +137,7 @@ const StatsSection = ({
 const QbStats = ({
   allStats,
   highlightTier,
+  tierStatsComp,
   showTier,
   showYear,
 }) => {
@@ -153,22 +177,22 @@ const QbStats = ({
               <td className={`border-2 border-slate-700 ${bgColor}`}>
                 { stats.ppg?.toFixed( 1 ) } / { stats.totalPoints?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'gamesPlayed', bgColor)}`}>
                 { stats.gamesPlayed?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
-                { stats.passAttempts?.toFixed( 1 ) } / { stats.passCompletions?.toFixed( 1 ) }
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'passAttempts', bgColor)}`}>
+                { stats.passAttempts?.toFixed( 0 ) } / { stats.passCompletions?.toFixed( 0 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'passTds', bgColor)}`}>
                 { stats.passTds?.toFixed( 1 ) } / { stats.passInts?.toFixed( 1 ) }
                 </td>
-                <td className={`border-2 border-slate-700 ${bgColor}`}>
+                <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'rushAttempts', bgColor)}`}>
                 { stats.rushAttempts?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
-                { stats.rushYards?.toFixed( 1 ) }
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'rushYards', bgColor)}`}>
+                { stats.rushYards?.toFixed( 0 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'rushTds', bgColor)}`}>
                 { stats.rushTds?.toFixed( 1 ) }
               </td>
             </tr>
@@ -182,6 +206,7 @@ const QbStats = ({
 const RbStats = ({
   allStats,
   highlightTier,
+  tierStatsComp,
   showTier,
   showYear,
 }) => {
@@ -206,7 +231,7 @@ const RbStats = ({
       </thead>
       <tbody>
         { allStats.map( (stats, idx) => {
-          const bgColor = idx + 1 === highlightTier ? 'bg-yellow-300' : ''
+          let bgColor = idx + 1 === highlightTier ? 'bg-yellow-300' : ''
           return(
             <tr>
               { showTier &&
@@ -222,25 +247,25 @@ const RbStats = ({
               <td className={`border-2 border-slate-700 ${bgColor}`}>
                 { stats.ppg?.toFixed( 1 ) } / { stats.totalPoints?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'gamesPlayed', bgColor)}`}>
                 { stats.gamesPlayed?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'rushAttempts', bgColor)}`}>
                 { stats.rushAttempts?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
-                { stats.rushYards?.toFixed( 1 ) }
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'rushYards', bgColor)}`}>
+                { stats.rushYards?.toFixed( 0 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'rushTds', bgColor)}`}>
                 { stats.rushTds?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'recs', bgColor)}`}>
                 { stats.recs?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
-                { stats.recYards?.toFixed( 1 ) }
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'recYards', bgColor)}`}>
+                { stats.recYards?.toFixed( 0 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'recTds', bgColor)}`}>
                 { stats.recTds?.toFixed( 1 ) }
               </td>
             </tr>
@@ -254,6 +279,7 @@ const RbStats = ({
 const WrStats = ({
   allStats,
   highlightTier,
+  tierStatsComp,
   showTier,
   showYear,
   position,
@@ -295,25 +321,25 @@ const WrStats = ({
               <td className={`border-2 border-slate-700 ${bgColor}`}>
                 { stats.ppg?.toFixed( 1 ) } / { stats.totalPoints?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'gamesPlayed', bgColor)}`}>
                 { stats.gamesPlayed?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'recs', bgColor)}`}>
                 { stats.recs?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
-                { stats.recYards?.toFixed( 1 ) }
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'recYards', bgColor)}`}>
+                { stats.recYards?.toFixed( 0 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'recTds', bgColor)}`}>
                 { stats.recTds?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'rushAttempts', bgColor)}`}>
                 { stats.rushAttempts?.toFixed( 1 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
-                { stats.rushYards?.toFixed( 1 ) }
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'rushYards', bgColor)}`}>
+                { stats.rushYards?.toFixed( 0 ) }
               </td>
-              <td className={`border-2 border-slate-700 ${bgColor}`}>
+              <td className={`border-2 border-slate-700 ${significantStatDiffBg(stats, tierStatsComp, 'rushTds', bgColor)}`}>
                 { stats.rushTds?.toFixed( 1 ) }
               </td>
             </tr>
