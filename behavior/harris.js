@@ -17,9 +17,10 @@ export const GetHarrisRanks = async () => {
 
 export const GetFprosRanks = async () => {
   try {
-    const { data: { players } } = await get("/fpros-ranks")
+    let { data: { players, posStatsByNumTeamByYear } } = await get("/fpros-ranks")
+    players = players.filter( p => [ 'QB', 'WR', 'RB', 'TE' ].includes(p.position))
 
-    return players.filter( p => [ 'QB', 'WR', 'RB', 'TE' ].includes(p.position))
+    return { players, posStatsByNumTeamByYear }
   }
   catch( err ) {
     HandleError(err)

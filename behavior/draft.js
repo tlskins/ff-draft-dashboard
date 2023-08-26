@@ -117,6 +117,9 @@ export const rankTypes = ['harris', 'espn']
 
 export const addDefaultTiers = (playerLib, isStd, numTeams) => {
     const players = Object.values(playerLib)
+    if ( players.some( p => p.tier )) {
+        return playerLib
+    }
     players.forEach( player => {
         const rank = isStd ? player.customStdRank : player.customPprRank
         if ( rank ) {

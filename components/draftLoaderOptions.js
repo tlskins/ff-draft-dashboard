@@ -49,15 +49,15 @@ const DraftLoaderOptions = ({
 
   const onLoadFprosRanks = async () => {
     setAlertMsg("Loading...")
-    const players = await GetFprosRanks()
-    if ( players ) {
-      const playerLib = createPlayerLibrary( players )
-      const ranks = createRanks( players, isStd )
-      setRanks(ranks)
-      setPlayerLib( playerLib )
-      setInputFocus()
-    }
+    const { players, posStatsByNumTeamByYear } = await GetFprosRanks()
+    const playerLib = createPlayerLibrary( players )
+    const ranks = createRanks( players, isStd )
+    setRanks(ranks)
+    setPlayerLib( playerLib )
+    setInputFocus()
+    setPosStatsByNumTeamByYear( posStatsByNumTeamByYear )
     setAlertMsg(null)
+
   }
 
   const onUpdateEspnRanks = async () => {
@@ -112,7 +112,7 @@ const DraftLoaderOptions = ({
 
   const ranksOptions = [
     { title: "Load Current Harris Ranks", callback: onLoadHarrisRanks },
-    // { title: "Load Current FPros Ranks", callback: onLoadFprosRanks },
+    { title: "Load Current FPros Ranks", callback: onLoadFprosRanks },
     { title: "Load From CSV", callback: () => setIsUpload(!isUpload) },
   ]
   if ( arePlayersLoaded && !csvData ) {
