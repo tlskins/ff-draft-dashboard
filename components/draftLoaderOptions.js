@@ -112,7 +112,7 @@ const DraftLoaderOptions = ({
 
   const ranksOptions = [
     { title: "Load Current Harris Ranks", callback: onLoadHarrisRanks },
-    { title: "Load Current FPros Ranks", callback: onLoadFprosRanks },
+    { title: "Load Current Avg FantasyPros Ranks", callback: onLoadFprosRanks },
     { title: "Load From CSV", callback: () => setIsUpload(!isUpload) },
   ]
   if ( arePlayersLoaded && !csvData ) {

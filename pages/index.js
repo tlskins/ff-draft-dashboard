@@ -440,6 +440,7 @@ export default function Home() {
                         <td className={`flex flex-col p-1 m-1 rounded ${myPickStyle} ${hover} cursor-pointer text-sm ${bgColor}`}
                           onClick={ pickedPlayerId ? () => onRemovePick(pickNum) : () => onSelectPick( pickNum ) }
                           key={i}
+                          onMouseEnter={() => setViewPlayerId(pickedPlayerId)}
                         >
                           <p className="font-semibold">
                             { `#${pickNum}` } { pickedPlayerId ? ` | Rd ${roundIdx+1} Pick ${i+1}` : "" }
@@ -590,9 +591,9 @@ export default function Home() {
           </div>
 
           {/* Stats and Positional Breakdowns */}
-          <div className="flex flex-row">
+          <div className="flex flex-row justify-center w-screen relative">
             { viewPlayerId &&
-              <div className="mr-8">
+              <div className="fixed top-52 left-12">
                 <StatsSection
                   viewPlayerId={viewPlayerId}
                   playerLib={playerLib}
@@ -603,24 +604,27 @@ export default function Home() {
               </div>
             }
 
-            <PositionRankings
-              playerRanks={playerRanks}
-              playerLib={playerLib}
-              nextPredictedPicks={nextPredictedPicks}
-              predictedPicks={predictedPicks}
-              showNextPreds={showNextPreds}
-              isEspnRank={isEspnRank}
-              isStd={isStd}
-              noPlayers={noPlayers}
-              currPick={currPick}
-              onSelectPlayer={onSelectPlayer}
-              onPurgePlayer={onPurgePlayer}
-              setViewPlayerId={setViewPlayerId}
-            />
+            <div className="ml-24">
+              <PositionRankings
+                playerRanks={playerRanks}
+                playerLib={playerLib}
+                nextPredictedPicks={nextPredictedPicks}
+                predictedPicks={predictedPicks}
+                showNextPreds={showNextPreds}
+                isEspnRank={isEspnRank}
+                isStd={isStd}
+                noPlayers={noPlayers}
+                currPick={currPick}
+                onSelectPlayer={onSelectPlayer}
+                onPurgePlayer={onPurgePlayer}
+                setViewPlayerId={setViewPlayerId}
+              />
+            </div>
+            
 
             {/* Roster View */}
             { !noPlayers &&
-              <div className="flex flex-col rounded h-full overflow-y-auto ml-8 p-1">
+              <div className="flex flex-col rounded h-full overflow-y-auto ml-8 p-1 fixed top-52 right-44">
                 <p className="font-semibold underline py-2">
                   Rosters
                 </p>
@@ -667,14 +671,6 @@ export default function Home() {
 
       <footer className="flex items-center justify-center w-full h-24 border-t">
         <div className="flex flex-col">
-          <a
-            className="flex items-center justify-center font-semibold"
-            href="https://www.harrisfootball.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Powered by <span className="font-bold ml-2 text-blue-600 underline">Harris Football</span>
-          </a>
           <a href="https://www.flaticon.com/free-icons/pulse" title="pulse icons">Pulse icons created by Kalashnyk - <span className="font-bold ml-2 text-blue-600 underline">Flaticon</span></a>
         </div>
       </footer>
