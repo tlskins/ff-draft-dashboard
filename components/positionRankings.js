@@ -37,6 +37,7 @@ const PositionRankings = ({
   isStd,
   noPlayers,
   currPick,
+  predRunTiers,
 
   onSelectPlayer,
   onPurgePlayer,
@@ -66,7 +67,13 @@ const PositionRankings = ({
               className="flex flex-col"
             >
               <div className={`p-1 rounded m-1 ${posStyle}`}>
-                { posName }
+                <p className="px-1">
+                  <span className="font-bold underline">{ posName }</span>
+                  { Boolean(predRunTiers[posName]) &&
+                    <p className="text-xs font-semibold">next-next pick @ tier { predRunTiers[posName] }</p>
+                  }
+                </p>
+                
               </div>
               { posGroup.slice(0,30).map( ([pId,]) => playerLib[pId] ).filter( p => !!p ).map( player => {
                 const {

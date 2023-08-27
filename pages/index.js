@@ -87,6 +87,7 @@ export default function Home() {
   const [predictedPicks, setPredictedPicks] = useState({})
   const [nextPredictedPicks, setNextPredictedPicks] = useState({})
   const [showNextPreds, setShowNextPreds] = useState(false)
+  const [predRunTiers, setPredRunTiers] = useState({ QB: 0, RB: 0, WR: 0, TE: 0 })
 
   const [errs, setErrs] = useState(null)
   const [alertMsg, setAlertMsg] = useState(null)
@@ -132,6 +133,7 @@ export default function Home() {
           autoClose: false,
           hideProgressBar: true,
           type: 'success',
+          theme: 'colored',
           position:'top-right',
           containerId: 'AcceptListenDraft',
           onClick: () => {
@@ -146,6 +148,7 @@ export default function Home() {
           autoClose: false,
           hideProgressBar: true,
           type: 'error',
+          theme: 'colored',
           position:'top-right',
           containerId: 'RejectListenDraft',
           onClick: () => {
@@ -195,8 +198,8 @@ export default function Home() {
         toast(
           `Pick #${pickNum}: ${ name } - ${ position } - ${ team }`,
           {
-            hideProgressBar: true,
             type: 'success',
+            theme: 'colored',
             position:'top-right',
           })
       }
@@ -309,6 +312,7 @@ export default function Home() {
     if (currPick <= maxCurrPick) {
       return
     }
+    console.log('predictPicks', currPick, maxCurrPick)
     maxCurrPick = currPick
     const [picksUntil, nextPicksUntil] = getPicksUntil(myPickNum, currPick-1, numTeams)
 
@@ -332,12 +336,43 @@ export default function Home() {
       posCounts = updatedCounts
     })
 
+    // detect positional runs
+    let runDetected = false
+    playerRanks.forEach(([posRanks, pos]) => {
+      const posTopPlayerId = posRanks[0] && posRanks[0][0] // player id
+      const posTopPlayer = playerLib[posTopPlayerId]
+      if ( posRanks.length > 0 && posTopPlayer?.tier && parseInt(posTopPlayer?.tier) !== 0 ) {
+        const currTopTier = parseInt(posTopPlayer?.tier)
+        const nextPosRanks = posRanks.filter( r => !Object.keys( nextPredicts ).includes( r[0] ))
+        const posNextTopPlayerId = nextPosRanks[0] && nextPosRanks[0][0] // player id
+        const posNextTopPlayer = playerLib[posNextTopPlayerId]
+        const nextTier = parseInt( posNextTopPlayer?.tier )
+        console.log(`run detection ${pos} ${currTopTier}, ${nextTier}`)
+        if ( currTopTier && currTopTier > predRunTiers[pos] && ( !nextTier || nextTier - currTopTier >= 2 )) {
+          const playersTaken = posRanks.length - nextPosRanks.length
+          toast(
+            `Run on ${ pos } down to tier ${ nextTier } after your next pick with ${ playersTaken } ${ pos }s taken `,
+            {
+              type: 'warning',
+              position:'top-right',
+              theme: 'colored',
+              autoClose: 10000,
+            })
+          predRunTiers[pos] = nextTier
+          runDetected = true
+        }
+      }
+    })
+    if ( runDetected ) {
+      setPredRunTiers(predRunTiers)
+    }
+
     // console.log('Predictions: ', Object.keys( currPredicts ).sort((a,b) => currPredicts[a] - currPredicts[b]).map( id => playerLib[id].name ))
     // console.log('Next Predictions: ', Object.keys( nextPredicts ).sort((a,b) => nextPredicts[a] - nextPredicts[b]).map( id => playerLib[id].name ))
 
     setPredictedPicks( currPredicts )
     setNextPredictedPicks( nextPredicts )
-  }, [numTeams, ranks, playerLib, rosters, myPickNum, currPick, currRoundPick])
+  }, [numTeams, ranks, playerLib, playerRanks, rosters, myPickNum, currPick, currRoundPick, predRunTiers])
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -615,6 +650,7 @@ export default function Home() {
                 isStd={isStd}
                 noPlayers={noPlayers}
                 currPick={currPick}
+                predRunTiers={predRunTiers}
                 onSelectPlayer={onSelectPlayer}
                 onPurgePlayer={onPurgePlayer}
                 setViewPlayerId={setViewPlayerId}

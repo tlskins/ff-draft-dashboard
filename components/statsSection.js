@@ -52,7 +52,6 @@ const StatsSection = ({
   const position = viewPlayer?.position
   const playerProjTier = isStd ? viewPlayer?.stdRankTier : viewPlayer?.pprRankTier
   const tierStatsComp = playerProjTier && playerProjTier <= 6 && statsByPosYear[`tier${playerProjTier}Stats`]
-  console.log('statsection', viewPlayer, playerProjTier, tierStatsComp)
   return (
     <div className="flex flex-col py-2">
       {/* League POS Stats */}
