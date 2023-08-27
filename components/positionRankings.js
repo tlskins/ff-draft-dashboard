@@ -37,7 +37,7 @@ const PositionRankings = ({
   isStd,
   noPlayers,
   currPick,
-  predRunTiers,
+  predNextTiers,
 
   onSelectPlayer,
   onPurgePlayer,
@@ -69,8 +69,8 @@ const PositionRankings = ({
               <div className={`p-1 rounded m-1 ${posStyle}`}>
                 <p className="px-1">
                   <span className="font-bold underline">{ posName }</span>
-                  { Boolean(predRunTiers[posName]) &&
-                    <p className="text-xs font-semibold">next-next pick @ tier { predRunTiers[posName] }</p>
+                  { Boolean(predNextTiers[posName]) &&
+                    <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[posName] }</p>
                   }
                 </p>
                 

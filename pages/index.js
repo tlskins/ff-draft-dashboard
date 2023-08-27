@@ -88,6 +88,7 @@ export default function Home() {
   const [nextPredictedPicks, setNextPredictedPicks] = useState({})
   const [showNextPreds, setShowNextPreds] = useState(false)
   const [predRunTiers, setPredRunTiers] = useState({ QB: 0, RB: 0, WR: 0, TE: 0 })
+  const [predNextTiers, setPredNextTiers] = useState({ QB: 0, RB: 0, WR: 0, TE: 0 })
 
   const [errs, setErrs] = useState(null)
   const [alertMsg, setAlertMsg] = useState(null)
@@ -347,7 +348,7 @@ export default function Home() {
         const posNextTopPlayerId = nextPosRanks[0] && nextPosRanks[0][0] // player id
         const posNextTopPlayer = playerLib[posNextTopPlayerId]
         const nextTier = parseInt( posNextTopPlayer?.tier )
-        console.log(`run detection ${pos} ${currTopTier}, ${nextTier}`)
+        predNextTiers[pos] = nextTier
         if ( currTopTier && currTopTier > predRunTiers[pos] && ( !nextTier || nextTier - currTopTier >= 2 )) {
           const playersTaken = posRanks.length - nextPosRanks.length
           toast(
@@ -363,6 +364,7 @@ export default function Home() {
         }
       }
     })
+    setPredNextTiers(predNextTiers)
     if ( runDetected ) {
       setPredRunTiers(predRunTiers)
     }
@@ -372,7 +374,7 @@ export default function Home() {
 
     setPredictedPicks( currPredicts )
     setNextPredictedPicks( nextPredicts )
-  }, [numTeams, ranks, playerLib, playerRanks, rosters, myPickNum, currPick, currRoundPick, predRunTiers])
+  }, [numTeams, ranks, playerLib, playerRanks, rosters, myPickNum, currPick, currRoundPick, predRunTiers, predNextTiers])
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -650,7 +652,7 @@ export default function Home() {
                 isStd={isStd}
                 noPlayers={noPlayers}
                 currPick={currPick}
-                predRunTiers={predRunTiers}
+                predNextTiers={predNextTiers}
                 onSelectPlayer={onSelectPlayer}
                 onPurgePlayer={onPurgePlayer}
                 setViewPlayerId={setViewPlayerId}
