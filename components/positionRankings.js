@@ -47,17 +47,43 @@ const PositionRankings = ({
   const [shownPlayerBg, setShownPlayerBg] = useState("")
 
   return(
-    <div className="flex flex-col">
-      { !noPlayers &&
-        <>
-          <p className="font-semibold text-lg">
-            {`Sorted By ${ isEspnRank ? 'ESPN ADP' : 'Custom Ranks' }`}
-          </p>
-          <p className="font-semibold text-lg">
-            {`Darklighting players taken before your ${ showNextPreds? 'next-next' : 'next' } pick`}
-          </p>
-        </>
-      }
+    noPlayers ?
+    <></>
+    :
+    <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded">
+      <div className="flex flex-col mb-4 h-full items-center justify-center items-center">
+        { !showNextPreds &&
+          <>
+            <div className="flex flex-row items-center justify-center items-center">
+              <div className={`w-8 h-2 rounded ${ predBgColor }`} />
+              <p className="ml-2 text-xs text-center font-semibold">
+                ({ Object.keys(predictedPicks).length }) players predicted taken before your turn
+              </p>
+            </div>
+            <p className="text-xs mt-1 text-center"> 
+              hold ALT to see players predicted taken before your NEXT turn
+            </p>
+          </>
+        }
+        { showNextPreds &&
+          <div className="flex flex-row">
+            <div className={`w-8 h-2 rounded ${ nextPredBgColor }`} />
+            <p className="ml-2 text-xs">
+              ({ Object.keys(nextPredictedPicks).length }) players predicted taken before your NEXT-NEXT turn
+            </p>
+          </div>
+        }
+        <p className="text-xs mt-1 text-center"> 
+          hold SHIFT to see players sorted by ESPN ranking
+        </p>
+      </div>
+
+      <p className="font-semibold">
+        {`Sorted By ${ isEspnRank ? 'ESPN ADP' : 'Custom Ranks' }`}
+      </p>
+      <p className="font-semibold">
+        {`Darklighting players taken before your ${ showNextPreds? 'next-next' : 'next' } pick`}
+      </p>
 
       <div className="flex flex-row">
         { playerRanks.filter(([posGroup,])=> posGroup.length > 0).map( ([posGroup, posName], i) => {
@@ -66,14 +92,11 @@ const PositionRankings = ({
             <div key={i}
               className="flex flex-col"
             >
-              <div className={`p-1 rounded m-1 ${posStyle}`}>
-                <p className="px-1">
-                  <span className="font-bold underline">{ posName }</span>
-                  { Boolean(predNextTiers[posName]) &&
-                    <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[posName] }</p>
-                  }
-                </p>
-                
+              <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500`}>
+                <span className="font-bold underline">{ posName }</span>
+                { Boolean(predNextTiers[posName]) &&
+                  <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[posName] }</p>
+                }
               </div>
               { posGroup.slice(0,30).map( ([pId,]) => playerLib[pId] ).filter( p => !!p ).map( player => {
                 const {

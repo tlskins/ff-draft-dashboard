@@ -53,7 +53,7 @@ const StatsSection = ({
   const playerProjTier = isStd ? viewPlayer?.stdRankTier : viewPlayer?.pprRankTier
   const tierStatsComp = playerProjTier && playerProjTier <= 6 && statsByPosYear[`tier${playerProjTier}Stats`]
   return (
-    <div className="flex flex-col py-2">
+    <div className="flex flex-col py-2 px-4">
       {/* League POS Stats */}
       <div className="flex flex-col">
         <p className="font-semibold underline">
@@ -115,7 +115,9 @@ const StatsSection = ({
         {/* Player Pro / Cons */}
         <div className="mt-4 w-96 border-2 border-slate-700 rounded-md p-1">
           { viewPlayer?.pros.split('\n').map( (lineTxt, idx) => (
-            <p className={`w-full text-sm text-${ idx === 0 ? "center" : "left" } ${ idx === 0 ? "underline font-semibold" : "" }`}>
+            <p className={`w-full text-sm text-${ idx === 0 ? "center" : "left" } ${ idx === 0 ? "underline font-semibold" : "" }`}
+              key={idx}
+            >
               { lineTxt }
             </p>
           ))}
@@ -123,7 +125,9 @@ const StatsSection = ({
 
         <div className="mt-4 w-96 border-2 border-slate-700 rounded-md p-1">
           { viewPlayer?.cons.split('\n').map( (lineTxt, idx) => (
-            <p className={`w-full text-sm text-${ idx === 0 ? "center" : "left" } ${ idx === 0 ? "underline font-semibold" : "" }`}>
+            <p className={`w-full text-sm text-${ idx === 0 ? "center" : "left" } ${ idx === 0 ? "underline font-semibold" : "" }`}
+              key={idx}
+            >
               { lineTxt }
             </p>
           ))}
@@ -162,7 +166,7 @@ const QbStats = ({
         { allStats.map( (stats, idx) => {
           const bgColor = idx + 1 === highlightTier ? 'bg-yellow-300' : ''
           return(
-            <tr>
+            <tr key={idx}>
               { showTier &&
                 <td className={`border-2 border-slate-700 ${bgColor}`}>
                   QB{ idx+1 }
@@ -232,7 +236,7 @@ const RbStats = ({
         { allStats.map( (stats, idx) => {
           let bgColor = idx + 1 === highlightTier ? 'bg-yellow-300' : ''
           return(
-            <tr>
+            <tr key={idx}>
               { showTier &&
                 <td className={`border-2 border-slate-700 ${bgColor}`}>
                   RB{ idx+1 }
@@ -306,7 +310,7 @@ const WrStats = ({
         { allStats.map( (stats, idx) => {
           const bgColor = idx + 1 === highlightTier ? 'bg-yellow-300' : ''
           return(
-            <tr>
+            <tr key={idx}>
               { showTier &&
                 <td className={`border-2 border-slate-700 ${bgColor}`}>
                   {position}{ idx+1 }
