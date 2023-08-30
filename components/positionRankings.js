@@ -27,6 +27,8 @@ const getPickDiffColor = pickDiff => {
   return `bg-${pickDiff > 0 ? 'red' : 'green'}-${colorShade}`
 }
 
+let viewPlayerIdTimer
+
 const PositionRankings = ({
   playerRanks,
   playerLib,
@@ -136,12 +138,21 @@ const PositionRankings = ({
 
                 return(
                   <div key={id} id={id}
-                    className={`px-2 py-1 m-1 text-center border rounded shadow-md relative ${tierStyle} `}
+                    className={`px-2 py-1 m-1 text-center border rounded shadow-md relative ${tierStyle} cursor-pointer`}
                     onMouseEnter={ () => {
-                      setShownPlayerId(id) 
-                      setViewPlayerId(id)
+                      if ( viewPlayerIdTimer ) {
+                        clearTimeout( viewPlayerIdTimer )
+                      }
+                      viewPlayerIdTimer = setTimeout(() => {
+                        setShownPlayerId(id) 
+                        setViewPlayerId(id)
+                      }, 250)
                     }}
-                    onMouseLeave={ () => setShownPlayerId(null) }
+                    onMouseLeave={ () => {
+                      if ( viewPlayerIdTimer ) {
+                        clearTimeout( viewPlayerIdTimer )
+                      }
+                    }}
                   >
                     <div className="flex flex-col text-center items-center">
                       <p className="text-sm font-semibold flex text-center">

@@ -1,9 +1,5 @@
 /*global chrome*/
-import React, { useEffect, useState, useCallback, useRef } from "react"
-import { 
-  AiFillCaretDown,
-  AiFillCaretUp,
-} from 'react-icons/ai'
+import React, { useEffect, useState, useCallback } from "react"
 import { toast } from "react-toastify"
 
 import PageHead from "../components/pageHead"
@@ -464,7 +460,10 @@ export default function Home() {
                 Optionally export ranks to csv and edit custom ranks and or tiers.
               </li>
               <li className="my-4">
-                Find a mock draft or open your draft platform app in a separate window. Remember to keep your draft platform at least partially visible so that the tab doesn't go to sleep.
+                Find a mock draft or open your draft platform app in a separate window. Remember to keep your draft platform at least partially visible so that the tab doesn't go to sleep. Press the green alert to start listening to the draft's picks.
+              </li>
+              <li className="my-4">
+                Hover on players to view player profiles and positional stats. Click players to manually select players at current picks. Press left, right arrows to navigate to different picks within a round. Press up and down to navigate to different rounds.
               </li>
             </ol>
           </div>
