@@ -23,8 +23,7 @@ import {
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
 import { useRosters } from '../behavior/hooks/useRosters'
-import { useFocus } from '../behavior/hooks/useFocus'
-import { getPosStyle, predBgColor, nextPredBgColor } from "../behavior/styles"
+import { getPosStyle } from "../behavior/styles"
 
 var listeningDraftTitle = {}
 var maxCurrPick = 0
@@ -202,14 +201,15 @@ export default function Home() {
       return
     }
 
-    console.log('heard draft event', event)
     // parse draft event data into structured draft pick
     let draftPicks
-    if ( platform === 'ESPN ') {
+    if ( platform === 'ESPN') {
       draftPicks = parseEspnDraftEvents( draftPicksData )
     } else if ( platform == 'NFL' ) {
       draftPicks = parseNflDraftEvents( draftPicksData, playersByPosByTeam )
     }
+
+    console.log('heard draft event', event)
 
     if ( !draftPicks || draftPicks.length === 0 ) {
       return
@@ -446,6 +446,29 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        { (!draftStarted && noPlayers) &&
+          <div className="w-full font-semibold shadow rounded-md py-8 pl-32 pr-8 my-8">
+            <ol className="list-decimal text-left">
+              <li className="my-4">
+                Download <span className="text-blue-600 underline mx-1 cursor-pointer" onClick={() => window.open('https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US')}>chrome extension</span>
+                to listen to live drafts. Currently support ESPN or NFL.com draft platforms. Just need to install extension, opening extension is not necessary after installation.
+              </li>
+              <li className="my-4">
+                Choose your draft settings including your pick number, # of teams, and format (STD / PPR).
+              </li>
+              <li className="my-4">
+                Load ranks from your favorite analysts to get started.
+              </li>
+              <li className="my-4">
+                Optionally export ranks to csv and edit custom ranks and or tiers.
+              </li>
+              <li className="my-4">
+                Find a mock draft or open your draft platform app in a separate window. Remember to keep your draft platform at least partially visible so that the tab doesn't go to sleep.
+              </li>
+            </ol>
+          </div>
+        }
 
         <div className="flex flex-col items-center">
           {/* Round info / errors */}
