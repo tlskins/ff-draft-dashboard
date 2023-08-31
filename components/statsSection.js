@@ -148,7 +148,7 @@ const QbStats = ({
     return <p className="font-semibold">None</p>
   }
   return (
-    <table class="table-auto text-sm border-separate border-spacing-2 border border-slate-500 ">
+    <table className="table-auto text-sm border-separate border-spacing-2 border border-slate-500 ">
       <thead>
         <tr>
           { showTier && <th>Tier</th> }
@@ -217,7 +217,7 @@ const RbStats = ({
     return <p className="font-semibold">None</p>
   }
   return (
-    <table class="table-auto text-sm border-separate border-spacing-2 border border-slate-500 ">
+    <table className="table-auto text-sm border-separate border-spacing-2 border border-slate-500 ">
       <thead>
         <tr>
           { showTier && <th>Tier</th> }
@@ -291,7 +291,7 @@ const WrStats = ({
     return <p className="font-semibold">None</p>
   }
   return (
-    <table class="table-auto text-sm border-separate border-spacing-2 border border-slate-500 ">
+    <table className="table-auto text-sm border-separate border-spacing-2 border border-slate-500 ">
       <thead>
         <tr>
           { showTier && <th>Tier</th> }
