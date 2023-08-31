@@ -384,7 +384,7 @@ export default function Home() {
       <PageHead />
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
         {/* Draft Settings */}
-        <div className="w-screen justify-center z-10 bg-white border border-4">
+        <div className="w-screen justify-center z-10 bg-gray-100 border border-4">
           <DraftLoaderOptions
             setRanks={setRanks}
             setPlayerLib={setPlayerLib}
@@ -492,9 +492,9 @@ export default function Home() {
           </div>
 
           {/* Stats and Positional Breakdowns */}
-          <div className="flex flex-row justify-between w-screen relative my-4">
-            <div className="flex flex-row px-4 overflow-y-scroll rounded border border-4 h-screen">
-              { viewPlayerId &&
+          <div className="flex flex-row justify-center w-screen relative my-4">
+            { !noPlayers &&
+              <div className="flex flex-row px-4 mr-2 overflow-y-scroll rounded border border-4 h-screen shadow-md">
                 <StatsSection
                   viewPlayerId={viewPlayerId}
                   playerLib={playerLib}
@@ -502,11 +502,8 @@ export default function Home() {
                   numTeams={numTeams}
                   isStd={isStd}
                 />
-              }
 
-              {/* Roster View */}
-              { !noPlayers &&
-                <div className="flex flex-col rounded h-full overflow-y-auto ml-8 p-1">
+                <div className="flex flex-col rounded h-full overflow-y-auto ml-2 p-1">
                   <p className="font-semibold underline py-2">
                     Rosters
                   </p>
@@ -546,8 +543,8 @@ export default function Home() {
                     </div>
                   }
                 </div>
-              }
-            </div>
+              </div>
+            }
 
             <PositionRankings
               playerRanks={playerRanks}
@@ -569,13 +566,13 @@ export default function Home() {
       </main>
 
       { draftStarted &&
-        <div className="flex items-center justify-center w-full h-24 border-t fixed bottom-0 z-10 bg-white">
+        <div className="flex items-center justify-center w-full h-24 border-t fixed bottom-0 z-10 bg-gray-100">
           {/* <div className="flex flex-col">
             <a href="https://www.flaticon.com/free-icons/pulse" title="pulse icons">Pulse icons created by Kalashnyk - <span className="font-bold ml-2 text-blue-600 underline">Flaticon</span></a>
           </div> */}
 
-          <div className="flex flex-col">
-            <p className="font-semibold underline text-center">
+          <div className="flex flex-col items-center">
+            <p className="font-semibold underline text-center rounded py-1">
               Round { roundIdx+1 } Pick { currRoundPick } (#{ currPick } Overall)
             </p>
             <table className="table-auto">

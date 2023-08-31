@@ -29,6 +29,19 @@ const StatsSection = ({
   numTeams,
   isStd,
 }) => {
+  if ( !viewPlayerId ) {
+    return (
+      <div className="flex flex-col py-2 px-4">
+        <p className="font-semibold underline py-2">
+          Stats
+        </p>
+
+        <p className="font-semibold">
+          Hover on player to view stats...
+        </p>
+      </div>
+    )
+  }
   const viewPlayer = playerLib[viewPlayerId]
   const statsByPosYear = viewPlayer && posStatsByNumTeamByYear[numTeams][currYearSub1][viewPlayer.position] || {}
   const {
@@ -86,7 +99,7 @@ const StatsSection = ({
       {/* Player Profile */}
       <div className="flex flex-col mt-4 items-center">
         <p className="font-semibold underline">
-          { viewPlayer?.name || 'Player' } { highlightTier && `(${currYearSub1} ${ position }${ highlightTier } | ${ position }${ viewPlayer.lastYrOvrRank || 'NA' } OVR)` || '' } Recent Stats
+          { viewPlayer?.name || 'Player' } { highlightTier && `(${currYearSub1} ${ position }${ viewPlayer.lastYrOvrRank || 'NA' } OVR | ${ position }${ highlightTier })` || '' } Recent Stats
         </p>
 
         {/* Player Stats */}

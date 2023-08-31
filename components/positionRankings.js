@@ -52,7 +52,7 @@ const PositionRankings = ({
     noPlayers ?
     <></>
     :
-    <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded">
+    <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded shadow-md">
       <div className="flex flex-col mb-4 h-full items-center justify-center items-center">
         { !showNextPreds &&
           <>

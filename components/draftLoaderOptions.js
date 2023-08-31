@@ -156,7 +156,7 @@ const DraftLoaderOptions = ({
           />
           { showRanksTooltip &&
             <div className="relative">
-              <div className="absolute mr-20 -my-20 w-96 bg-yellow-300 text-black text-left text-xs font-semibold tracking-wide rounded shadow py-1.5 px-4 bottom-full z-10">
+              <div className="absolute mr-20 -my-12 w-96 bg-yellow-300 text-black text-left text-xs font-semibold tracking-wide rounded shadow py-1.5 px-4 bottom-full z-10">
                 <ul className="list-disc pl-6">
                   <li>Import player rankings from FFPros / Harris Football</li>
                   <li>Export ranks to csv to edit</li>
