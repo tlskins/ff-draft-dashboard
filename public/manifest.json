@@ -3,7 +3,7 @@
 
   "name": "FF Draft Pulse",
   "description": "Streamline your drafting experience with real-time player forecasts, intuitive dashboard, and effortless management tools",
-  "version": "0.0.0.3",
+  "version": "0.0.0.4",
   "icons": {
     "16": "pulse-icon-16.png",
     "32": "pulse-icon-32.png",

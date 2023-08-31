@@ -37,6 +37,7 @@ const handleListenDraftPicks = async () => {
     if ( draftData === true ) {
       // ack for keep alive
       console.log('ack from background for keep alive')
+      window.postMessage({ type: "FROM_EXT", draftData }, "*")
     } else {
       // console.log('heard draft picks: ', draftData)
       pickHistory.push(...draftData.draftPicks)

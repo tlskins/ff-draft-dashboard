@@ -151,6 +151,10 @@ export default function Home() {
     if ( event.data.type !== "FROM_EXT" || Object.values( playerLib ).length === 0 ) {
       return
     }
+    if ( event.data.draftData === true ) {
+      console.log('listener ack received in app')
+      return
+    }
     const { draftData: { draftPicks: draftPicksData, draftTitle, platform } } = event.data
 
     if ( listeningDraftTitle[draftTitle] === undefined ) {
