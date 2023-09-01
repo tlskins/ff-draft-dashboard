@@ -69,7 +69,7 @@ const StatsSection = ({
     <div className="flex flex-col py-2 px-4">
       {/* League POS Stats */}
       <div className="flex flex-col">
-        <p className="font-semibold underline">
+        <p className="font-semibold underline mb-2">
           { currYearSub1 } { position || '' } Stats By Tiers
         </p>
         { position === 'QB' &&
@@ -98,7 +98,7 @@ const StatsSection = ({
 
       {/* Player Profile */}
       <div className="flex flex-col mt-4 items-center">
-        <p className="font-semibold underline">
+        <p className="font-semibold underline mb-2">
           { viewPlayer?.name || 'Player' } { highlightTier && `(${currYearSub1} ${ position }${ viewPlayer.lastYrOvrRank || 'NA' } OVR | ${ position }${ highlightTier })` || '' } Recent Stats
         </p>
 
@@ -126,24 +126,26 @@ const StatsSection = ({
         }
 
         {/* Player Pro / Cons */}
-        <div className="mt-4 w-96 border-2 border-slate-700 rounded-md p-1">
-          { viewPlayer?.pros.split('\n').map( (lineTxt, idx) => (
-            <p className={`w-full text-sm text-${ idx === 0 ? "center" : "left" } ${ idx === 0 ? "underline font-semibold" : "" }`}
-              key={idx}
-            >
-              { lineTxt }
-            </p>
-          ))}
+        <div className="mt-4 w-96 border-2 border-slate-700 rounded-md p-1 shadow-md bg-green-100">
+          <p className="w-full text-sm uppercase text-center underline font-semibold">
+            { viewPlayer?.pros.split('\n')[0] }
+          </p>
+          <ul className="list-disc pl-4">
+            { viewPlayer?.pros.split('\n').slice(1).map( (lineTxt, idx) => (
+              <li key={idx} className="text-left text-sm">{ lineTxt.replace('- ', '') }</li>
+            ))}
+          </ul>
         </div>
 
-        <div className="mt-4 w-96 border-2 border-slate-700 rounded-md p-1">
-          { viewPlayer?.cons.split('\n').map( (lineTxt, idx) => (
-            <p className={`w-full text-sm text-${ idx === 0 ? "center" : "left" } ${ idx === 0 ? "underline font-semibold" : "" }`}
-              key={idx}
-            >
-              { lineTxt }
-            </p>
-          ))}
+        <div className="mt-4 w-96 border-2 border-slate-700 rounded-md p-1 shadow-md bg-yellow-100">
+          <p className="w-full text-sm uppercase text-center underline font-semibold">
+            { viewPlayer?.cons.split('\n')[0] }
+          </p>
+          <ul className="list-disc pl-4">
+            { viewPlayer?.cons.split('\n').slice(1).map( (lineTxt, idx) => (
+              <li key={idx} className="text-left text-sm">{ lineTxt.replace('- ', '') }</li>
+            ))}
+          </ul>
         </div>
       </div>
     </div>
@@ -161,7 +163,7 @@ const QbStats = ({
     return <p className="font-semibold">None</p>
   }
   return (
-    <table class="table-auto text-sm border-separate border-spacing-2 border border-slate-500 ">
+    <table class="table-auto text-sm border-separate border-spacing-2 border border-slate-500 shadow-md">
       <thead>
         <tr>
           { showTier && <th>Tier</th> }
@@ -230,7 +232,7 @@ const RbStats = ({
     return <p className="font-semibold">None</p>
   }
   return (
-    <table class="table-auto text-sm border-separate border-spacing-2 border border-slate-500 ">
+    <table class="table-auto text-sm border-separate border-spacing-2 border border-slate-500 shadow-md">
       <thead>
         <tr>
           { showTier && <th>Tier</th> }
@@ -304,7 +306,7 @@ const WrStats = ({
     return <p className="font-semibold">None</p>
   }
   return (
-    <table class="table-auto text-sm border-separate border-spacing-2 border border-slate-500 ">
+    <table class="table-auto text-sm border-separate border-spacing-2 border border-slate-500 shadow-md">
       <thead>
         <tr>
           { showTier && <th>Tier</th> }

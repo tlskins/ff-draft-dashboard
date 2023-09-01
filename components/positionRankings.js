@@ -52,7 +52,7 @@ const PositionRankings = ({
     noPlayers ?
     <></>
     :
-    <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded shadow-md">
+    <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded shadow-md bg-white">
       <div className="flex flex-col mb-4 h-full items-center justify-center items-center">
         { !showNextPreds &&
           <>
@@ -68,7 +68,7 @@ const PositionRankings = ({
           </>
         }
         { showNextPreds &&
-          <div className="flex flex-row">
+          <div className="flex flex-row items-center justify-center items-center">
             <div className={`w-8 h-2 rounded ${ nextPredBgColor }`} />
             <p className="ml-2 text-xs">
               ({ Object.keys(nextPredictedPicks).length }) players predicted taken before your NEXT-NEXT turn
@@ -80,11 +80,11 @@ const PositionRankings = ({
         </p>
       </div>
 
-      <p className="font-semibold">
-        {`Sorted By ${ isEspnRank ? 'ESPN ADP' : 'Custom Ranks' }`}
+      <p className="font-semibold uppercase text-sm text-gray-600">
+        Sorted By <span className="text-blue-600 font-bold underline">{ isEspnRank ? 'ESPN ADP' : 'Custom Ranks' }</span>
       </p>
-      <p className="font-semibold">
-        {`Darklighting players taken before your ${ showNextPreds? 'next-next' : 'next' } pick`}
+      <p className="font-semibold uppercase text-sm text-gray-600">
+        Darklighting players taken before your <span className="text-blue-600 font-bold underline">{ showNextPreds? 'next-next' : 'next' }</span> pick
       </p>
 
       <div className="flex flex-row">

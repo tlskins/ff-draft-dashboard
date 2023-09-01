@@ -382,9 +382,9 @@ export default function Home() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2 relative">
       <PageHead />
-      <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
+      <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center bg-gray-50">
         {/* Draft Settings */}
-        <div className="w-screen justify-center z-10 bg-gray-100 border border-4">
+        <div className="w-screen justify-center z-10 bg-gray-200 shadow-md">
           <DraftLoaderOptions
             setRanks={setRanks}
             setPlayerLib={setPlayerLib}
@@ -448,7 +448,7 @@ export default function Home() {
         </div>
 
         { (!draftStarted && noPlayers) &&
-          <div className="w-full font-semibold shadow rounded-md py-8 pl-32 pr-8 my-8">
+          <div className="w-full font-semibold shadow rounded-md py-8 pl-32 pr-8 my-8 bg-white">
             <ol className="list-decimal text-left">
               <li className="my-4">
                 Download <span className="text-blue-600 underline mx-1 cursor-pointer" onClick={() => window.open('https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US')}>chrome extension</span>
@@ -494,7 +494,7 @@ export default function Home() {
           {/* Stats and Positional Breakdowns */}
           <div className="flex flex-row justify-center w-screen relative my-4">
             { !noPlayers &&
-              <div className="flex flex-row px-4 mr-2 overflow-y-scroll rounded border border-4 h-screen shadow-md">
+              <div className="flex flex-row px-4 mr-2 overflow-y-scroll rounded border border-4 h-screen shadow-md bg-white">
                 <StatsSection
                   viewPlayerId={viewPlayerId}
                   playerLib={playerLib}
@@ -566,7 +566,7 @@ export default function Home() {
       </main>
 
       { draftStarted &&
-        <div className="flex items-center justify-center w-full h-24 border-t fixed bottom-0 z-10 bg-gray-100">
+        <div className="flex items-center justify-center w-full h-24 border-t border-gray-300 fixed bottom-0 z-10 bg-gray-200">
           {/* <div className="flex flex-col">
             <a href="https://www.flaticon.com/free-icons/pulse" title="pulse icons">Pulse icons created by Kalashnyk - <span className="font-bold ml-2 text-blue-600 underline">Flaticon</span></a>
           </div> */}
