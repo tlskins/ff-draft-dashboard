@@ -6,26 +6,8 @@ import {
   AiFillStar
 } from 'react-icons/ai'
 
-import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor } from '../behavior/styles'
+import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor, getPickDiffColor } from '../behavior/styles'
 
-
-const getPickDiffColor = pickDiff => {
-  const absDiff = Math.abs( pickDiff )
-  let colorShade = ''
-  if ( absDiff <= 2 ) {
-    colorShade = '300'
-  } else if ( absDiff <= 5 ) {
-    colorShade = '400'
-  } else if ( absDiff <= 9 ) {
-    colorShade = '500'
-  } else if ( absDiff <= 14 ) {
-    colorShade = '600'
-  } else {
-    colorShade = '700'
-  }
-
-  return `bg-${pickDiff > 0 ? 'red' : 'green'}-${colorShade}`
-}
 
 let viewPlayerIdTimer
 

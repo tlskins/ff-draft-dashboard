@@ -43,3 +43,21 @@ export const getPosStyle = position => {
       return ""
   }
 }
+
+export const getPickDiffColor = pickDiff => {
+  const absDiff = Math.abs( pickDiff )
+  let colorShade = ''
+  if ( absDiff <= 2 ) {
+    colorShade = '300'
+  } else if ( absDiff <= 5 ) {
+    colorShade = '400'
+  } else if ( absDiff <= 9 ) {
+    colorShade = '500'
+  } else if ( absDiff <= 14 ) {
+    colorShade = '600'
+  } else {
+    colorShade = '700'
+  }
+
+  return `bg-${pickDiff > 0 ? 'red' : 'green'}-${colorShade}`
+}
