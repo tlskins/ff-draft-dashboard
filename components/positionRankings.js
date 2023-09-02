@@ -22,6 +22,7 @@ const PositionRankings = ({
   noPlayers,
   currPick,
   predNextTiers,
+  showPredAvailByRound,
 
   onSelectPlayer,
   onPurgePlayer,
@@ -30,12 +31,23 @@ const PositionRankings = ({
   const [shownPlayerId, setShownPlayerId] = useState(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
 
+  console.log('showPredAvailByRound', showPredAvailByRound, playerRanks)
+  let filteredRanks = playerRanks.filter(([posGroup,])=> posGroup.length > 0)
+  if (showPredAvailByRound) {
+    filteredRanks = filteredRanks.map(([posGroup, posName])=> {
+      const nextGroup = posGroup.filter(([playerId,]) => !predictedPicks[playerId]).slice(0, 2).map( grp => [...grp, 'bg-gray-400'])
+      const nextNextGroup = posGroup.filter(([playerId,]) => !predictedPicks[playerId] && !nextPredictedPicks[playerId]).slice(0, 2).map( grp => [...grp, 'bg-gray-600'])
+
+      return [[...nextGroup, ...nextNextGroup], posName]
+    })
+  }
+
   return(
     noPlayers ?
     <></>
     :
     <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded shadow-md bg-white">
-      <div className="flex flex-col mb-4 h-full items-center justify-center items-center">
+      <div className="flex flex-col mb-4 items-center">
         { !showNextPreds &&
           <>
             <div className="flex flex-row items-center justify-center items-center">
@@ -69,8 +81,8 @@ const PositionRankings = ({
         Darklighting players taken before your <span className="text-blue-600 font-bold underline">{ showNextPreds? 'next-next' : 'next' }</span> pick
       </p>
 
-      <div className="flex flex-row">
-        { playerRanks.filter(([posGroup,])=> posGroup.length > 0).map( ([posGroup, posName], i) => {
+      <div className="flex flex-row h-full">
+        { filteredRanks.map( ([posGroup, posName], i) => {
           const posStyle = getPosStyle(posName)
           return(
             <div key={i}
@@ -82,7 +94,7 @@ const PositionRankings = ({
                   <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[posName] }</p>
                 }
               </div>
-              { posGroup.slice(0,30).map( ([pId,]) => playerLib[pId] ).filter( p => !!p ).map( player => {
+              { posGroup.slice(0,30).map( ([pId,,,bgColor]) => ({ ...playerLib[pId], bgColor })).filter( p => !!p ).map( player => {
                 const {
                   firstName,
                   lastName,
@@ -94,9 +106,12 @@ const PositionRankings = ({
                   customStdRank,
                   espnAdp,
                   target,
+                  bgColor,
                 } = player
                 let tierStyle
-                if ( shownPlayerId === id && !!shownPlayerBg ) {
+                if ( bgColor ) {
+                  tierStyle = bgColor
+                } else if ( shownPlayerId === id && !!shownPlayerBg ) {
                   tierStyle = shownPlayerBg
                 } else if ( showNextPreds && nextPredictedPicks[player.id] ) {
                   tierStyle = `${nextPredBgColor} text-white`

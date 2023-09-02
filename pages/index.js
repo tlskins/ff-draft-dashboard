@@ -82,6 +82,7 @@ export default function Home() {
   const [predictedPicks, setPredictedPicks] = useState({})
   const [nextPredictedPicks, setNextPredictedPicks] = useState({})
   const [showNextPreds, setShowNextPreds] = useState(false)
+  const [showPredAvailByRound, setShowPredAvailByRound] = useState(false)
   const [predRunTiers, setPredRunTiers] = useState({ QB: 0, RB: 0, WR: 0, TE: 0 })
   const [predNextTiers, setPredNextTiers] = useState({ QB: 0, RB: 0, WR: 0, TE: 0 })
 
@@ -122,10 +123,14 @@ export default function Home() {
     } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
       // sort by harris
       onSortRanksByEspn( false )
+    } else if (['KeyZ'].includes(e.code)) {
+      // show predicted avail by round
+      setShowPredAvailByRound( false )
     }
   }, [showNextPreds, predictedPicks, nextPredictedPicks, playerRanks, isEspnRank, isStd, noPlayers, currPick, predNextTiers])
 
   const onKeyDown = useCallback( e => {
+    console.log('onKeyDown', e.code)
     // arrow up
     if (e.code === 'ArrowUp' ) {
       onNavRoundUp()
@@ -144,6 +149,9 @@ export default function Home() {
     // shift 
     } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
       onSortRanksByEspn( true )
+    } else if (['KeyZ'].includes(e.code)) {
+      // show predicted avail by round
+      setShowPredAvailByRound( true )
     }
   }, [ showNextPreds, predictedPicks, nextPredictedPicks, playerRanks, playerLib, isEspnRank, isStd, noPlayers, currPick, predNextTiers])
 
@@ -557,6 +565,7 @@ export default function Home() {
               noPlayers={noPlayers}
               currPick={currPick}
               predNextTiers={predNextTiers}
+              showPredAvailByRound={showPredAvailByRound}
               onSelectPlayer={onSelectPlayer}
               onPurgePlayer={onPurgePlayer}
               setViewPlayerId={setViewPlayerId}
