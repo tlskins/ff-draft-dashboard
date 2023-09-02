@@ -452,7 +452,7 @@ export default function Home() {
             <ol className="list-decimal text-left">
               <li className="my-4">
                 Download <span className="text-blue-600 underline mx-1 cursor-pointer" onClick={() => window.open('https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US')}>chrome extension</span>
-                to listen to live drafts. Currently support ESPN or NFL.com draft platforms. Just need to install extension, opening extension is not necessary after installation.
+                to listen to live drafts. Refresh this website after installing extension. Currently support ESPN or NFL.com draft platforms. Just need to install extension, opening extension is not necessary after installation.
               </li>
               <li className="my-4">
                 Choose your draft settings including your pick number, # of teams, and format (STD / PPR).
