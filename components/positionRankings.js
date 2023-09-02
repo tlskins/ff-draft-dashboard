@@ -127,7 +127,7 @@ const PositionRankings = ({
                 const rank = isStd ? customStdRank : customPprRank
                 let rankText
                 if ( isEspnRank ) {
-                  rankText = `ESPN ADP #${espnAdp.toFixed(2)}`
+                  rankText = `ESPN ADP #${espnAdp.toFixed(1)}`
                 } else {
                   rankText = `#${rank}`
                 }

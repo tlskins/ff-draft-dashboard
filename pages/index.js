@@ -595,7 +595,7 @@ export default function Home() {
                     const myPickStyle = i+1 == currMyPickNum ? "border-4 border-green-400" : "border"
                     const pickNum = roundIdx*numTeams+(i+1)
                     return(
-                      <td className={`flex flex-col p-1 m-1 rounded ${myPickStyle} ${hover} cursor-pointer text-sm ${bgColor}`}
+                      <td className={`flex flex-col p-1 m-1 rounded ${myPickStyle} ${hover} cursor-pointer text-sm ${bgColor} items-center`}
                         onClick={ pickedPlayerId ? () => onRemovePick(pickNum) : () => onSelectPick( pickNum ) }
                         key={i}
                         onMouseEnter={() => {
