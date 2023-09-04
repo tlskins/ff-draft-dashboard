@@ -80,7 +80,7 @@ export default function Home() {
   } = useRanks({ isStd })
   
   const [predictedPicks, setPredictedPicks] = useState({})
-  const [nextPredictedPicks, setNextPredictedPicks] = useState({})
+  // const [nextPredictedPicks, setNextPredictedPicks] = useState({})
   const [showNextPreds, setShowNextPreds] = useState(false)
   const [showPredAvailByRound, setShowPredAvailByRound] = useState(false)
   const [predRunTiers, setPredRunTiers] = useState({ QB: 0, RB: 0, WR: 0, TE: 0 })
@@ -114,7 +114,7 @@ export default function Home() {
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [showNextPreds, predictedPicks, nextPredictedPicks, playerRanks, playerLib, isEspnRank, isStd, noPlayers, currPick, predNextTiers])
+  }, [showNextPreds, predictedPicks, playerRanks, playerLib, isEspnRank, isStd, noPlayers, currPick, predNextTiers])
 
   // key press / up commands
   const onKeyUp = useCallback( e => {
@@ -127,10 +127,9 @@ export default function Home() {
       // show predicted avail by round
       setShowPredAvailByRound( false )
     }
-  }, [showNextPreds, predictedPicks, nextPredictedPicks, playerRanks, isEspnRank, isStd, noPlayers, currPick, predNextTiers])
+  }, [showNextPreds, predictedPicks, playerRanks, isEspnRank, isStd, noPlayers, currPick, predNextTiers])
 
   const onKeyDown = useCallback( e => {
-    console.log('onKeyDown', e.code)
     // arrow up
     if (e.code === 'ArrowUp' ) {
       onNavRoundUp()
@@ -153,7 +152,7 @@ export default function Home() {
       // show predicted avail by round
       setShowPredAvailByRound( true )
     }
-  }, [ showNextPreds, predictedPicks, nextPredictedPicks, playerRanks, playerLib, isEspnRank, isStd, noPlayers, currPick, predNextTiers])
+  }, [ showNextPreds, predictedPicks, playerRanks, playerLib, isEspnRank, isStd, noPlayers, currPick, predNextTiers])
 
   const processListenedDraftPick = useCallback( event => {
     if ( event.data.type !== "FROM_EXT" || Object.values( playerLib ).length === 0 ) {
@@ -317,6 +316,76 @@ export default function Home() {
     predictPicks()
   }, [currPick, myPickNum, numTeams])
 
+  // const predictPicks = useCallback(() => {
+  //   if ( rosters.length === 0 ) {
+  //     return
+  //   }
+  //   if (currPick <= maxCurrPick) {
+  //     return
+  //   }
+  //   console.log('predictPicks', currPick, maxCurrPick)
+  //   maxCurrPick = currPick
+  //   const [picksUntil, nextPicksUntil] = getPicksUntil(myPickNum, currPick-1, numTeams)
+
+  //   let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0 }
+  //   rosters.forEach( roster => {
+  //     allPositions.forEach( pos => {
+  //       posCounts[pos] += roster[pos].length
+  //     })
+  //   })
+  //   let currPredicts = {}
+  //   let nextPredicts = {}
+  //   Array.from(Array(nextPicksUntil)).forEach((_, i) => {
+  //     const roster = rosters[currRoundPick-1]
+  //     const roundNum = Math.floor((currPick+i-1) / numTeams) + 1
+  //     const positions = nextPositionPicked( roster, roundNum, posCounts )
+  //     const { predicted, updatedCounts } = nextPickedPlayerId( ranks, positions, nextPredicts, i+1, posCounts )
+  //     if ( i+1 <= picksUntil ) {
+  //       currPredicts = predicted
+  //     }
+  //     nextPredicts = predicted
+  //     posCounts = updatedCounts
+  //   })
+
+  //   // detect positional runs
+  //   let runDetected = false
+  //   playerRanks.forEach(([posRanks, pos]) => {
+  //     const posTopPlayerId = posRanks[0] && posRanks[0][0] // player id
+  //     const posTopPlayer = playerLib[posTopPlayerId]
+  //     if ( posRanks.length > 0 && posTopPlayer?.tier && parseInt(posTopPlayer?.tier) !== 0 ) {
+  //       const currTopTier = parseInt(posTopPlayer?.tier)
+  //       const nextPosRanks = posRanks.filter( r => !Object.keys( nextPredicts ).includes( r[0] ))
+  //       const posNextTopPlayerId = nextPosRanks[0] && nextPosRanks[0][0] // player id
+  //       const posNextTopPlayer = playerLib[posNextTopPlayerId]
+  //       const nextTier = parseInt( posNextTopPlayer?.tier )
+  //       predNextTiers[pos] = nextTier
+  //       if ( currTopTier && currTopTier > predRunTiers[pos] && ( !nextTier || nextTier - currTopTier >= 2 )) {
+  //         const playersTaken = posRanks.length - nextPosRanks.length
+  //         toast(
+  //           `Run on ${ pos } down to tier ${ nextTier } after your next pick with ${ playersTaken } ${ pos }s taken `,
+  //           {
+  //             type: 'warning',
+  //             position:'top-right',
+  //             theme: 'colored',
+  //             autoClose: 10000,
+  //           })
+  //         predRunTiers[pos] = nextTier
+  //         runDetected = true
+  //       }
+  //     }
+  //   })
+  //   setPredNextTiers(predNextTiers)
+  //   if ( runDetected ) {
+  //     setPredRunTiers(predRunTiers)
+  //   }
+
+  //   // console.log('Predictions: ', Object.keys( currPredicts ).sort((a,b) => currPredicts[a] - currPredicts[b]).map( id => playerLib[id].name ))
+  //   // console.log('Next Predictions: ', Object.keys( nextPredicts ).sort((a,b) => nextPredicts[a] - nextPredicts[b]).map( id => playerLib[id].name ))
+
+  //   setPredictedPicks( currPredicts )
+  //   setNextPredictedPicks( nextPredicts )
+  // }, [numTeams, ranks, playerLib, playerRanks, rosters, myPickNum, currPick, currRoundPick, predRunTiers, predNextTiers])
+
   const predictPicks = useCallback(() => {
     if ( rosters.length === 0 ) {
       return
@@ -324,27 +393,23 @@ export default function Home() {
     if (currPick <= maxCurrPick) {
       return
     }
-    console.log('predictPicks', currPick, maxCurrPick)
-    maxCurrPick = currPick
-    const [picksUntil, nextPicksUntil] = getPicksUntil(myPickNum, currPick-1, numTeams)
 
+    maxCurrPick = currPick
     let posCounts = { QB: 0, RB: 0, WR: 0, TE: 0 }
     rosters.forEach( roster => {
       allPositions.forEach( pos => {
         posCounts[pos] += roster[pos].length
       })
     })
-    let currPredicts = {}
-    let nextPredicts = {}
-    Array.from(Array(nextPicksUntil)).forEach((_, i) => {
+    let pickPredicts = {}
+
+    // predict next 5 round
+    Array.from(Array(5 * numTeams)).forEach((_, i) => {
       const roster = rosters[currRoundPick-1]
       const roundNum = Math.floor((currPick+i-1) / numTeams) + 1
       const positions = nextPositionPicked( roster, roundNum, posCounts )
-      const { predicted, updatedCounts } = nextPickedPlayerId( ranks, positions, nextPredicts, i+1, posCounts )
-      if ( i+1 <= picksUntil ) {
-        currPredicts = predicted
-      }
-      nextPredicts = predicted
+      const { predicted, updatedCounts } = nextPickedPlayerId( ranks, positions, pickPredicts, posCounts, myPickNum, currPick, currPick + i, numTeams )
+      pickPredicts = predicted
       posCounts = updatedCounts
     })
 
@@ -355,7 +420,7 @@ export default function Home() {
       const posTopPlayer = playerLib[posTopPlayerId]
       if ( posRanks.length > 0 && posTopPlayer?.tier && parseInt(posTopPlayer?.tier) !== 0 ) {
         const currTopTier = parseInt(posTopPlayer?.tier)
-        const nextPosRanks = posRanks.filter( r => !Object.keys( nextPredicts ).includes( r[0] ))
+        const nextPosRanks = posRanks.filter( r => !Object.keys( pickPredicts ).includes( r[0] ))
         const posNextTopPlayerId = nextPosRanks[0] && nextPosRanks[0][0] // player id
         const posNextTopPlayer = playerLib[posNextTopPlayerId]
         const nextTier = parseInt( posNextTopPlayer?.tier )
@@ -383,9 +448,10 @@ export default function Home() {
     // console.log('Predictions: ', Object.keys( currPredicts ).sort((a,b) => currPredicts[a] - currPredicts[b]).map( id => playerLib[id].name ))
     // console.log('Next Predictions: ', Object.keys( nextPredicts ).sort((a,b) => nextPredicts[a] - nextPredicts[b]).map( id => playerLib[id].name ))
 
-    setPredictedPicks( currPredicts )
-    setNextPredictedPicks( nextPredicts )
+    console.log('next predictions', pickPredicts)
+    setPredictedPicks( pickPredicts )
   }, [numTeams, ranks, playerLib, playerRanks, rosters, myPickNum, currPick, currRoundPick, predRunTiers, predNextTiers])
+
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2 relative">
@@ -557,7 +623,6 @@ export default function Home() {
             <PositionRankings
               playerRanks={playerRanks}
               playerLib={playerLib}
-              nextPredictedPicks={nextPredictedPicks}
               predictedPicks={predictedPicks}
               showNextPreds={showNextPreds}
               isEspnRank={isEspnRank}

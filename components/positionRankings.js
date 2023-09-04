@@ -1,10 +1,7 @@
 import React, { useState } from "react"
 import { TiDelete } from 'react-icons/ti'
 import { BsLink } from 'react-icons/bs'
-import { 
-  AiFillCheckCircle,
-  AiFillStar
-} from 'react-icons/ai'
+import { AiFillCheckCircle, AiFillStar } from 'react-icons/ai'
 
 import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor, getPickDiffColor } from '../behavior/styles'
 
@@ -14,7 +11,6 @@ let viewPlayerIdTimer
 const PositionRankings = ({
   playerRanks,
   playerLib,
-  nextPredictedPicks,
   predictedPicks,
   showNextPreds,
   isEspnRank,
@@ -31,16 +27,25 @@ const PositionRankings = ({
   const [shownPlayerId, setShownPlayerId] = useState(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
 
-  console.log('showPredAvailByRound', showPredAvailByRound, playerRanks)
-  let filteredRanks = playerRanks.filter(([posGroup,])=> posGroup.length > 0)
+  let filteredRanks
   if (showPredAvailByRound) {
-    filteredRanks = filteredRanks.map(([posGroup, posName])=> {
-      const nextGroup = posGroup.filter(([playerId,]) => !predictedPicks[playerId]).slice(0, 2).map( grp => [...grp, 'bg-gray-400'])
-      const nextNextGroup = posGroup.filter(([playerId,]) => !predictedPicks[playerId] && !nextPredictedPicks[playerId]).slice(0, 2).map( grp => [...grp, 'bg-gray-600'])
+    filteredRanks = playerRanks.filter(([posGroup,])=> posGroup.length > 0).map(([posGroup, posName])=> {
+      const round1Grp = posGroup.filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 2).slice(0, 3)
+      const round2Grp = posGroup.filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 3).slice(0, 3)
+      const round3Grp = posGroup.filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 4).slice(0, 3)
+      const round4Grp = posGroup.filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 5).slice(0, 3)
 
-      return [[...nextGroup, ...nextNextGroup], posName]
+      return [[
+        [,,,'bg-gray-700', 'Round 1'], ...round1Grp,
+        [,,,'bg-gray-700', 'Round 2'], ...round2Grp,
+        [,,,'bg-gray-700', 'Round 3'], ...round3Grp,
+        [,,,'bg-gray-700', 'Round 4'], ...round4Grp,
+      ], posName]
     })
+  } else {
+    filteredRanks = playerRanks.filter(([posGroup,])=> posGroup.length > 0)
   }
+
 
   return(
     noPlayers ?
@@ -53,7 +58,7 @@ const PositionRankings = ({
             <div className="flex flex-row items-center justify-center items-center">
               <div className={`w-8 h-2 rounded ${ predBgColor }`} />
               <p className="ml-2 text-xs text-center font-semibold">
-                ({ Object.keys(predictedPicks).length }) players predicted taken before your turn
+                ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 2 ).length }) players predicted taken before your turn
               </p>
             </div>
             <p className="text-xs mt-1 text-center"> 
@@ -65,12 +70,15 @@ const PositionRankings = ({
           <div className="flex flex-row items-center justify-center items-center">
             <div className={`w-8 h-2 rounded ${ nextPredBgColor }`} />
             <p className="ml-2 text-xs">
-              ({ Object.keys(nextPredictedPicks).length }) players predicted taken before your NEXT-NEXT turn
+              ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 3 ).length }) players predicted taken before your NEXT-NEXT turn
             </p>
           </div>
         }
         <p className="text-xs mt-1 text-center"> 
           hold SHIFT to see players sorted by ESPN ranking
+        </p>
+        <p className="text-xs mt-1 text-center"> 
+          hold Z to see predicted players available to you by round
         </p>
       </div>
 
@@ -81,7 +89,7 @@ const PositionRankings = ({
         Darklighting players taken before your <span className="text-blue-600 font-bold underline">{ showNextPreds? 'next-next' : 'next' }</span> pick
       </p>
 
-      <div className="flex flex-row h-full">
+      <div className="flex flex-row h-full mb-32">
         { filteredRanks.map( ([posGroup, posName], i) => {
           const posStyle = getPosStyle(posName)
           return(
@@ -94,7 +102,7 @@ const PositionRankings = ({
                   <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[posName] }</p>
                 }
               </div>
-              { posGroup.slice(0,30).map( ([pId,,,bgColor]) => ({ ...playerLib[pId], bgColor })).filter( p => !!p ).map( player => {
+              { posGroup.slice(0,30).map( ([pId,,,bgColor,text]) => ({ ...playerLib[pId], bgColor, text })).map( (player, playerPosIdx) => {
                 const {
                   firstName,
                   lastName,
@@ -107,19 +115,36 @@ const PositionRankings = ({
                   espnAdp,
                   target,
                   bgColor,
+                  text,
                 } = player
                 let tierStyle
                 if ( bgColor ) {
                   tierStyle = bgColor
                 } else if ( shownPlayerId === id && !!shownPlayerBg ) {
                   tierStyle = shownPlayerBg
-                } else if ( showNextPreds && nextPredictedPicks[player.id] ) {
+                } else if ( showNextPreds && predictedPicks[player.id] && predictedPicks[player.id] < 3 ) {
                   tierStyle = `${nextPredBgColor} text-white`
-                } else if ( !showNextPreds && predictedPicks[player.id] ) {
+                } else if ( !showNextPreds && predictedPicks[player.id] && predictedPicks[player.id] < 2 ) {
                   tierStyle = `${predBgColor} text-white`
                 } else {
                   tierStyle = getTierStyle(player.tier)
                 }
+
+                if ( text ) {
+                  return (
+                    <div key={`${text}-${playerPosIdx}`} id={`${text}-${playerPosIdx}`}
+                      className={`px-2 m-1 text-center border rounded shadow-md relative ${tierStyle}`}
+                    >
+                      <div className="flex flex-col text-center items-center">
+                        <p className="text-xs font-semibold flex text-center text-white">
+                          { text }
+                        </p>
+                      </div>
+                    </div>
+                  )
+                }
+
+
                 const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
                 const rank = isStd ? customStdRank : customPprRank
                 let rankText
@@ -134,7 +159,7 @@ const PositionRankings = ({
                 const currRankDiff = Math.abs(currPick - rank)
 
                 return(
-                  <div key={id} id={id}
+                  <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
                     className={`px-2 py-1 m-1 text-center border rounded shadow-md relative ${tierStyle} cursor-pointer`}
                     onMouseEnter={ () => {
                       if ( viewPlayerIdTimer ) {

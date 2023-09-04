@@ -127,7 +127,7 @@ const StatsSection = ({
 
         {/* Player Pro / Cons */}
         <div className="mt-4 w-96 border-2 border-slate-700 rounded-md p-1 shadow-md bg-green-100">
-          <p className="w-full text-sm uppercase text-center underline font-semibold">
+          <p className="w-full text-sm uppercase text-center underline font-bold">
             { viewPlayer?.pros.split('\n')[0] }
           </p>
           <ul className="list-disc pl-4">
@@ -138,7 +138,7 @@ const StatsSection = ({
         </div>
 
         <div className="mt-4 w-96 border-2 border-slate-700 rounded-md p-1 shadow-md bg-yellow-100">
-          <p className="w-full text-sm uppercase text-center underline font-semibold">
+          <p className="w-full text-sm uppercase text-center underline font-bold">
             { viewPlayer?.cons.split('\n')[0] }
           </p>
           <ul className="list-disc pl-4">
