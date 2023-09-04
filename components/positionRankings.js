@@ -4,6 +4,7 @@ import { BsLink } from 'react-icons/bs'
 import { AiFillCheckCircle, AiFillStar } from 'react-icons/ai'
 
 import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor, getPickDiffColor } from '../behavior/styles'
+import { roundForPick } from '../behavior/draft'
 
 
 let viewPlayerIdTimer
@@ -16,6 +17,7 @@ const PositionRankings = ({
   isEspnRank,
   isStd,
   noPlayers,
+  numTeams,
   currPick,
   predNextTiers,
   showPredAvailByRound,
@@ -29,6 +31,7 @@ const PositionRankings = ({
 
   let filteredRanks
   if (showPredAvailByRound) {
+    const currentRound = roundForPick( currPick, numTeams )
     filteredRanks = playerRanks.filter(([posGroup,])=> posGroup.length > 0).map(([posGroup, posName])=> {
       const round1Grp = posGroup.filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 2).slice(0, 3)
       const round2Grp = posGroup.filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 3).slice(0, 3)
@@ -36,10 +39,10 @@ const PositionRankings = ({
       const round4Grp = posGroup.filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 5).slice(0, 3)
 
       return [[
-        [,,,'bg-gray-700', 'Round 1'], ...round1Grp,
-        [,,,'bg-gray-700', 'Round 2'], ...round2Grp,
-        [,,,'bg-gray-700', 'Round 3'], ...round3Grp,
-        [,,,'bg-gray-700', 'Round 4'], ...round4Grp,
+        [,,,'bg-gray-700', `Round ${currentRound + 0}`], ...round1Grp,
+        [,,,'bg-gray-700', `Round ${currentRound + 1}`], ...round2Grp,
+        [,,,'bg-gray-700', `Round ${currentRound + 2}`], ...round3Grp,
+        [,,,'bg-gray-700', `Round ${currentRound + 3}`], ...round4Grp,
       ], posName]
     })
   } else {
@@ -52,42 +55,50 @@ const PositionRankings = ({
     <></>
     :
     <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded shadow-md bg-white">
-      <div className="flex flex-col mb-4 items-center">
-        { !showNextPreds &&
-          <>
-            <div className="flex flex-row items-center justify-center items-center">
-              <div className={`w-8 h-2 rounded ${ predBgColor }`} />
-              <p className="ml-2 text-xs text-center font-semibold">
-                ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 2 ).length }) players predicted taken before your turn
+      <div className="flex flex-row mb-4 align-center">
+        <div className="flex flex-col text-left">
+          { !showNextPreds &&
+            <>
+              <div className="flex flex-row">
+                <div className={`w-8 h-2 rounded ${ predBgColor }`} />
+                <p className="ml-2 text-xs font-semibold">
+                  ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 2 ).length }) players predicted taken before your turn
+                </p>
+              </div>
+              <p className="text-xs mt-1"> 
+                hold ALT to see players predicted taken before your NEXT turn
+              </p>
+            </>
+          }
+          { showNextPreds &&
+            <div className="flex flex-row">
+              <div className={`w-8 h-2 rounded ${ nextPredBgColor }`} />
+              <p className="ml-2 text-xs">
+                ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 3 ).length }) players predicted taken before your NEXT-NEXT turn
               </p>
             </div>
-            <p className="text-xs mt-1 text-center"> 
-              hold ALT to see players predicted taken before your NEXT turn
+          }
+          { !isEspnRank &&
+            <p className="text-xs mt-1"> 
+              hold SHIFT to see players sorted by ESPN ranking
             </p>
-          </>
-        }
-        { showNextPreds &&
-          <div className="flex flex-row items-center justify-center items-center">
-            <div className={`w-8 h-2 rounded ${ nextPredBgColor }`} />
-            <p className="ml-2 text-xs">
-              ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 3 ).length }) players predicted taken before your NEXT-NEXT turn
+          }
+          { !showPredAvailByRound &&
+            <p className="text-xs mt-1"> 
+              hold Z to see predicted players available to you by round
             </p>
-          </div>
-        }
-        <p className="text-xs mt-1 text-center"> 
-          hold SHIFT to see players sorted by ESPN ranking
-        </p>
-        <p className="text-xs mt-1 text-center"> 
-          hold Z to see predicted players available to you by round
-        </p>
-      </div>
+          }
+        </div>
 
-      <p className="font-semibold uppercase text-sm text-gray-600">
-        Sorted By <span className="text-blue-600 font-bold underline">{ isEspnRank ? 'ESPN ADP' : 'Custom Ranks' }</span>
-      </p>
-      <p className="font-semibold uppercase text-sm text-gray-600">
-        Darklighting players taken before your <span className="text-blue-600 font-bold underline">{ showNextPreds? 'next-next' : 'next' }</span> pick
-      </p>
+        <ul className="list-disc pl-8">
+          <li className="font-semibold text-xs text-gray-600 text-left">
+            Sorted By <span className="text-blue-600 font-bold underline uppercase">{ isEspnRank ? 'ESPN ADP' : 'custom ranks' }</span>
+          </li>
+          <li className="font-semibold text-xs text-gray-600 text-justify whitespace-pre">
+            Darklighted taken before your <span className="text-blue-600 font-bold underline uppercase">{ showNextPreds? 'next-next' : 'next' }</span> pick
+          </li>
+        </ul>
+      </div>
 
       <div className="flex flex-row h-full mb-32">
         { filteredRanks.map( ([posGroup, posName], i) => {

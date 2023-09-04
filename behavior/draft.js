@@ -361,91 +361,33 @@ export const nextPickedPlayerId = ( ranks, positions, predicted, posCounts, myPi
    }
 }
 
-// picksSinceCurrPick( 6, 6, 6, 12 ) === 0
-// picksSinceCurrPick( 6, 7, 6, 12 ) === 1
-// picksSinceCurrPick( 6, 8, 6, 12 ) === 1
-
-// picksSinceCurrPick( 9, 9, 10, 10 ) === 1
-// picksSinceCurrPick( 9, 10, 10, 10 ) === 1
-// picksSinceCurrPick( 10, 10, 10, 10 ) === 0
-// picksSinceCurrPick( 10, 11, 10, 10 ) === 1
-// picksSinceCurrPick( 10, 12, 10, 10 ) === 2
-
-// picksSinceCurrPick( 15, 29, 10, 10 ) === 1
-
-// const picksSinceCurrPick = (currPick, nextPick, myPickNum, numTeams) => {
-//     const currRound = roundForPick( currPick, numTeams )
-//     const nextRound = roundForPick( nextPick, numTeams )
-//     const myAbsPickNumInCurrRound = getAbsolutePickInRound( myPickNum, currRound, numTeams )
-//     const myAbsPickNumInNextRound = getAbsolutePickInRound( myPickNum, nextRound, numTeams )
-//     if ( currPick === nextPick && nextPick === myAbsPickNumInNextRound ) { 
-//         return 0
-//     }
-
-//     let picks = parseInt((nextPick - currPick) / numTeams) + 1
-//     if ( currRound === nextRound ) {
-//         if ( currPick < myAbsPickNumInCurrRound && nextPick > myAbsPickNumInNextRound ) {
-//             picks += 1
-//         }
-//     } else {
-//         if ( currPick < myAbsPickNumInCurrRound ) {
-//             picks += 1
-//         }
-//         if ( nextPick > myAbsPickNumInNextRound ) {
-//             picks += 1
-//         }
-//     }
-
-
-//     return picks
-// }
-    
-
-const getAbsolutePickInRound = ( myPickNum, round, numTeams ) => {
-    const lastRoundPickNum = isEvenRound( round ) ? numTeams - myPickNum + 1 : myPickNum
-    return ( (round - 1) * numTeams ) + lastRoundPickNum
-}
-
-// v2
-
-// picksSinceCurrPick( 6, 6, 6, 12 ) === 0
-// picksSinceCurrPick( 6, 7, 6, 12 ) === 1
-// picksSinceCurrPick( 6, 8, 6, 12 ) === 1
-
-// picksSinceCurrPick( 9, 9, 10, 10 ) === 1
-// picksSinceCurrPick( 9, 10, 10, 10 ) === 1
-// picksSinceCurrPick( 10, 10, 10, 10 ) === 0
-// picksSinceCurrPick( 10, 11, 10, 10 ) === 1
-// picksSinceCurrPick( 10, 12, 10, 10 ) === 2
-
-// picksSinceCurrPick( 15, 29, 10, 10 ) === 1
-
 export const picksSinceCurrPick = (currPick, nextPick, myPickNum, numTeams) => {
     if ( currPick === nextPick && isMyPick(nextPick, myPickNum, numTeams) ) { 
         return 0
     }
 
     const myPicks = getMyPicksBetween( currPick, nextPick, myPickNum, numTeams )
+    console.log('myPicks', myPicks)
     return myPicks.length + 1
 }
 
+// exclusive of startPick and inclusive endPick
 export const getMyPicksBetween = ( startPick, endPick, myPickNum, numTeams ) => {
     let myNextPick = startPick
     const myPicks = []
     while ( myNextPick < endPick ) {
         myNextPick = getMyNextPick( myNextPick, myPickNum, numTeams )
-        console.log('myNextPick', myNextPick)
         if ( myNextPick <= endPick ) {
             myPicks.push( myNextPick )
         }
     }
 
+    console.log('getMyPicksBetween', myPicks)
     return myPicks
 }
 
-// (11, 10, 10) === 30
 export const getMyNextPick = ( pickNum, myPickNum, numTeams) => {
-    const round = parseInt((pickNum - 1) / numTeams) + 1
+    const round = roundForPick( pickNum, numTeams )
     const pickInRound = getPickInRound( pickNum, numTeams )
     const myPickInRound = getMyPickInRound( myPickNum, pickNum, numTeams )
     if ( pickInRound < myPickInRound ) {
@@ -461,30 +403,33 @@ const getPickInRound = ( pickNum, numTeams ) => {
 }
 
 const getMyPickInRound = ( myPickNum, pickNum, numTeams ) => {
-    const round = parseInt(pickNum / numTeams) + 1
+    const round = roundForPick( pickNum, numTeams )
     return isEvenRound( round ) ? numTeams - myPickNum + 1 : myPickNum
 }
 
-// ( 10, 3, 10 ) === 30
 const getMyAbsPickInRound = ( myPickNum, round, numTeams ) => {
     let pickNum = ( round - 1 ) * numTeams
     pickNum += round % 2 === 0 ? numTeams - myPickNum + 1 : myPickNum
     return pickNum
 }
 
-const roundForPick = ( pickNum, numTeams ) => {
+export const roundForPick = ( pickNum, numTeams ) => {
     return parseInt((pickNum - 1) / numTeams) + 1
 }
 
-const isEvenRound = (pickNum, numTeams) => {
-    const round = roundForPick( pickNum, numTeams )
-    return round % 2 === 0
-}
+const isEvenRound = round => round % 2 === 0
 
 export const isMyPick = ( pickNum, myPickNum, numTeams ) => {
+    const round = roundForPick( pickNum, numTeams )
+    const isEven = isEvenRound( round )
     const rem = pickNum % numTeams
-    const pickInRound = rem === 0 ? numTeams : rem
-    return pickInRound === myPickNum
+    if ( isEven ) {
+        const myEvenPick = numTeams - myPickNum + 1
+        return myEvenPick === rem
+    } else {
+        const pickInRound = rem === 0 ? numTeams : rem
+        return pickInRound === myPickNum
+    }
 }
 
 // Round management
