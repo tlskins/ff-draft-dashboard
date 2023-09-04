@@ -473,6 +473,32 @@ export default function Home() {
           </div>
         </div>
 
+        <div className="flex flex-col items-center justify-center content-center mt-2">
+          <div className="flex flex-col items-center w-full">
+            { (!activeDraftListenerTitle && !listenerActive) &&
+              <p className="bg-gray-300 font-semibold shadow rounded-md text-sm my-1 px-4">
+                Listener inactive
+              </p>
+            }
+            { (!activeDraftListenerTitle && listenerActive) &&
+              <p className="bg-yellow-300 font-semibold shadow rounded-md text-sm my-1 px-4">
+                Listener active...
+              </p>
+            }
+            { activeDraftListenerTitle &&
+              <p className="bg-green-300 font-semibold shadow rounded-md text-sm my-1 px-4">
+                Listening to: { activeDraftListenerTitle }
+              </p>
+            }
+          </div>
+
+          { alertMsg &&
+            <div className="flex flex-row h-full items-center justify-center items-center px-2 py-1 my-4 shadow-lg rounded-lg border-2 bg-green-200">
+              <p className="font-semibold text-sm text-green-500 my-1"> { alertMsg } </p>
+            </div>
+          }
+        </div>
+
         { (!draftStarted && noPlayers) &&
           <div className="w-full font-semibold shadow rounded-md py-8 pl-32 pr-8 my-8 bg-white">
             <ol className="list-decimal text-left">
@@ -500,33 +526,6 @@ export default function Home() {
         }
 
         <div className="flex flex-col items-center mt-4">
-          {/* Round info / errors */}
-          <div className="flex flex-row items-center justify-center content-center">
-            <div className="flex flex-col items-center w-full">
-              { (!activeDraftListenerTitle && !listenerActive) &&
-                <p className="bg-gray-300 font-semibold shadow rounded-md text-sm my-1 px-4">
-                  Listener inactive
-                </p>
-              }
-              { (!activeDraftListenerTitle && listenerActive) &&
-                <p className="bg-yellow-300 font-semibold shadow rounded-md text-sm my-1 px-4">
-                  Listener active...
-                </p>
-              }
-              { activeDraftListenerTitle &&
-                <p className="bg-green-300 font-semibold shadow rounded-md text-sm my-1 px-4">
-                  Listening to: { activeDraftListenerTitle }
-                </p>
-              }
-            </div>
-
-            { alertMsg &&
-              <div className="flex flex-row h-full items-center justify-center items-center px-2 py-1 my-4 shadow-lg rounded-lg border-2 bg-green-200">
-                <p className="font-semibold text-sm text-green-500 my-1"> { alertMsg } </p>
-              </div>
-            }
-          </div>
-
           {/* Stats and Positional Breakdowns */}
           <div className="flex flex-row justify-center w-screen relative my-4">
             { !noPlayers &&
