@@ -20,9 +20,11 @@ import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
 import { useRosters } from '../behavior/hooks/useRosters'
 import { getPosStyle } from "../behavior/styles"
+import moment from "moment"
 
 var listeningDraftTitle = {}
 var maxCurrPick = 0
+var listenerCheckTimer
 
 export default function Home() {
   const {
@@ -93,6 +95,8 @@ export default function Home() {
   const [hasCustomTiers, setHasCustomTiers] = useState(null)
 
   const [activeDraftListenerTitle, setActiveDraftListenerTitle] = useState(null)
+  const [lastListenerAck, setLastListenerAck] = useState(null)
+  const [listenerActive, setListenerActive] = useState(false)
 
   const [viewPlayerId, setViewPlayerId] = useState(null)
 
@@ -114,6 +118,27 @@ export default function Home() {
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [showNextPreds, predictedPicks, nextPredictedPicks, playerRanks, playerLib, isEspnRank, isStd, noPlayers, currPick, predNextTiers])
+
+  const checkListenerActive = useCallback(() => {
+    console.log('checkListenerActive', lastListenerAck, moment().diff(lastListenerAck, 'seconds'))
+    if (lastListenerAck === null || moment().diff(lastListenerAck, 'seconds') > 5) {
+      setListenerActive( false )
+    } else {
+      setListenerActive( true )
+    }
+
+    listenerCheckTimer = setTimeout(checkListenerActive, 6000)
+  }, [listenerActive, lastListenerAck])
+
+  useEffect(() => {
+    checkListenerActive()
+
+    return () => {
+      if ( listenerCheckTimer ) {
+        clearTimeout( listenerCheckTimer )
+      }
+    }
+  }, [checkListenerActive])
 
   // key press / up commands
   const onKeyUp = useCallback( e => {
@@ -153,6 +178,7 @@ export default function Home() {
     }
     if ( event.data.draftData === true ) {
       console.log('listener ack received in app')
+      setLastListenerAck(moment())
       return
     }
     const { draftData: { draftPicks: draftPicksData, draftTitle, platform } } = event.data
@@ -473,12 +499,22 @@ export default function Home() {
           </div>
         }
 
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center mt-4">
           {/* Round info / errors */}
           <div className="flex flex-row items-center justify-center content-center">
             <div className="flex flex-col items-center w-full">
-              { activeDraftListenerTitle &&
+              { (!activeDraftListenerTitle && !listenerActive) &&
+                <p className="bg-gray-300 font-semibold shadow rounded-md text-sm my-1 px-4">
+                  Listener inactive
+                </p>
+              }
+              { (!activeDraftListenerTitle && listenerActive) &&
                 <p className="bg-yellow-300 font-semibold shadow rounded-md text-sm my-1 px-4">
+                  Listener active...
+                </p>
+              }
+              { activeDraftListenerTitle &&
+                <p className="bg-green-300 font-semibold shadow rounded-md text-sm my-1 px-4">
                   Listening to: { activeDraftListenerTitle }
                 </p>
               }
