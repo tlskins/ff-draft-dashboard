@@ -367,7 +367,6 @@ export const picksSinceCurrPick = (currPick, nextPick, myPickNum, numTeams) => {
     }
 
     const myPicks = getMyPicksBetween( currPick, nextPick, myPickNum, numTeams )
-    console.log('myPicks', myPicks)
     return myPicks.length + 1
 }
 
@@ -382,7 +381,6 @@ export const getMyPicksBetween = ( startPick, endPick, myPickNum, numTeams ) => 
         }
     }
 
-    console.log('getMyPicksBetween', myPicks)
     return myPicks
 }
 
@@ -430,6 +428,18 @@ export const isMyPick = ( pickNum, myPickNum, numTeams ) => {
         const pickInRound = rem === 0 ? numTeams : rem
         return pickInRound === myPickNum
     }
+}
+
+// ignores current pick - pick 10 / my pick 10 / 10 teams = round 2
+export const myCurrentRound = ( pickNum, myPickNum, numTeams ) => {
+    let round = roundForPick( pickNum, numTeams )
+    const pickInRound = getPickInRound(pickNum, numTeams)
+    const myPickInRound = getMyPickInRound(myPickNum, pickNum, numTeams )
+    if ( pickInRound >= myPickInRound ) {
+        round += 1
+    }
+
+    return round
 }
 
 // Round management

@@ -4,7 +4,7 @@ import { BsLink } from 'react-icons/bs'
 import { AiFillCheckCircle, AiFillStar } from 'react-icons/ai'
 
 import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor, getPickDiffColor } from '../behavior/styles'
-import { roundForPick } from '../behavior/draft'
+import { myCurrentRound } from '../behavior/draft'
 
 
 let viewPlayerIdTimer
@@ -16,6 +16,7 @@ const PositionRankings = ({
   showNextPreds,
   isEspnRank,
   isStd,
+  myPickNum,
   noPlayers,
   numTeams,
   currPick,
@@ -31,7 +32,7 @@ const PositionRankings = ({
 
   let filteredRanks
   if (showPredAvailByRound) {
-    const currentRound = roundForPick( currPick, numTeams )
+    const myCurrRound = myCurrentRound(currPick, myPickNum, numTeams)
     filteredRanks = playerRanks.filter(([posGroup,])=> posGroup.length > 0).map(([posGroup, posName])=> {
       const round1Grp = posGroup.filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 2).slice(0, 3)
       const round2Grp = posGroup.filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 3).slice(0, 3)
@@ -39,10 +40,10 @@ const PositionRankings = ({
       const round4Grp = posGroup.filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 5).slice(0, 3)
 
       return [[
-        [,,,'bg-gray-700', `Round ${currentRound + 0}`], ...round1Grp,
-        [,,,'bg-gray-700', `Round ${currentRound + 1}`], ...round2Grp,
-        [,,,'bg-gray-700', `Round ${currentRound + 2}`], ...round3Grp,
-        [,,,'bg-gray-700', `Round ${currentRound + 3}`], ...round4Grp,
+        [,,,'bg-gray-700', `Round ${myCurrRound + 0}`], ...round1Grp,
+        [,,,'bg-gray-700', `Round ${myCurrRound + 1}`], ...round2Grp,
+        [,,,'bg-gray-700', `Round ${myCurrRound + 2}`], ...round3Grp,
+        [,,,'bg-gray-700', `Round ${myCurrRound + 3}`], ...round4Grp,
       ], posName]
     })
   } else {

@@ -96,8 +96,8 @@ const DraftLoaderOptions = ({
     }))
     const keys = Object.keys(allKeys)
     const ranksData = availPlayers.map( player => keys.map( key => player[key]))
-    const csvData = [keys, ...ranksData]
-    setCsvData(csvData)
+    const nextCsvData = [keys, ...ranksData]
+    setCsvData(nextCsvData)
   }
 
   const onFileLoaded = (players) => {

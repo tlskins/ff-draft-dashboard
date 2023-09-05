@@ -1,7 +1,12 @@
-import { getMyPicksBetween, getMyNextPick, isMyPick, picksSinceCurrPick } from '../behavior/draft'
+import {
+  getMyPicksBetween,
+  getMyNextPick,
+  isMyPick,
+  picksSinceCurrPick,
+  myCurrentRound,
+} from '../behavior/draft'
 
 describe('isMyPick', () => {
-  console.log('testing isMyPick...')
   it('has correct behavior', () => {
     expect(isMyPick(9, 10, 10)).toBe(false)
     expect(isMyPick(10, 10, 10)).toBe(true)
@@ -24,7 +29,6 @@ describe('getMyPicksBetween', () => {
 })
 
 describe('picksSinceCurrPick', () => {
-  console.log('testing picksSinceCurrPick...')
   it('has correct behavior for pick 6 in 12 teams', () => {
     expect(picksSinceCurrPick(6, 6, 6, 12)).toBe(0)
     expect(picksSinceCurrPick(6, 7, 6, 12)).toBe(1)
@@ -39,5 +43,15 @@ describe('picksSinceCurrPick', () => {
     expect(picksSinceCurrPick(10, 11, 10, 10)).toBe(2)
     expect(picksSinceCurrPick(10, 12, 10, 10)).toBe(2)
     expect(picksSinceCurrPick(15, 29, 10, 10)).toBe(1)
+  })
+})
+
+describe('myCurrentRound', () => {
+  it('has correct behavior', () => {
+    expect(myCurrentRound(10, 9, 10)).toBe(2)
+    expect(myCurrentRound(11, 9, 10)).toBe(2)
+    expect(myCurrentRound(12, 9, 10)).toBe(3)
+    expect(myCurrentRound(13, 9, 10)).toBe(3)
+    expect(myCurrentRound(14, 9, 10)).toBe(3)
   })
 })

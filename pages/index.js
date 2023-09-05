@@ -12,7 +12,6 @@ import {
   nextPositionPicked,
   nextPickedPlayerId,
   allPositions,
-  getPicksUntil,
   parseEspnDraftEvents,
   parseNflDraftEvents,
 } from "../behavior/draft"
@@ -370,7 +369,7 @@ export default function Home() {
       const posTopPlayer = playerLib[posTopPlayerId]
       if ( posRanks.length > 0 && posTopPlayer?.tier && parseInt(posTopPlayer?.tier) !== 0 ) {
         const currTopTier = parseInt(posTopPlayer?.tier)
-        const nextPosRanks = posRanks.filter( r => !Object.keys( pickPredicts ).includes( r[0] ))
+        const nextPosRanks = posRanks.filter( r => ![1, 2].includes(pickPredicts[r[0]]))
         const posNextTopPlayerId = nextPosRanks[0] && nextPosRanks[0][0] // player id
         const posNextTopPlayer = playerLib[posNextTopPlayerId]
         const nextTier = parseInt( posNextTopPlayer?.tier )
@@ -421,26 +420,12 @@ export default function Home() {
           />
 
           <div className="flex flex-row mb-8 mt-2 w-screen justify-center">
-            <div className="flex flex-row text-sm text-center mr-4 rounded bg-gray-100 shadow-md">
-              <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
-                Your Pick #
-              </p>
-              <select
-                className="p-1 m-1 border rounded"
-                value={myPickNum}
-                onChange={ e =>  setMyPickNum(parseInt(e.target.value))}
-                disabled={draftStarted}
-              >
-                { Array.from(Array(numTeams)).map( (_, i) => <option key={i+1} value={ i+1 }> { i+1 } </option>) }
-              </select>
-            </div>
-
-            <div className="flex flex-row text-sm text-center mr-2 rounded bg-gray-100 shadow-md">
+            <div className={`flex flex-row text-sm text-center mr-4 rounded shadow-md ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>
               <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
                 # Teams
               </p>
               <select
-                className="p-1 m-1 border rounded"
+                className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
                 value={numTeams}
                 onChange={ e => {
                   setNumTeams(parseFloat(e.target.value))
@@ -452,12 +437,26 @@ export default function Home() {
               </select>
             </div>
 
-            <div className="flex flex-row text-sm text-center mr-2 rounded bg-gray-100 shadow-md">
+            <div className={`flex flex-row text-sm text-center mr-4 rounded shadow-md ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>
+              <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
+                Your Pick #
+              </p>
+              <select
+                className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
+                value={myPickNum}
+                onChange={ e =>  setMyPickNum(parseInt(e.target.value))}
+                disabled={draftStarted}
+              >
+                { Array.from(Array(numTeams)).map( (_, i) => <option key={i+1} value={ i+1 }> { i+1 } </option>) }
+              </select>
+            </div>
+
+            <div className={`flex flex-row text-sm text-center mr-4 rounded shadow-md ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>
               <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
                 STD / PPR
               </p>
               <select
-                className="p-1 m-1 border rounded"
+                className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
                 value={isStd ? "Standard" : "PPR"}
                 onChange={ e => {
                   const newIsStd = e.target.value === "Standard"
@@ -586,6 +585,7 @@ export default function Home() {
               showNextPreds={showNextPreds}
               isEspnRank={isEspnRank}
               isStd={isStd}
+              myPickNum={myPickNum}
               noPlayers={noPlayers}
               numTeams={numTeams}
               currPick={currPick}
