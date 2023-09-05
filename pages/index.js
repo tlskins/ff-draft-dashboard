@@ -401,8 +401,6 @@ export default function Home() {
     setPredictedPicks( pickPredicts )
   }, [numTeams, ranks, playerLib, playerRanks, rosters, myPickNum, currPick, currRoundPick, predRunTiers, predNextTiers])
 
-  console.log('playerLib', playerLib)
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2 relative">
       <PageHead />
@@ -414,8 +412,6 @@ export default function Home() {
             setPlayerLib={setPlayerLib}
             setAlertMsg={setAlertMsg}
             setPosStatsByNumTeamByYear={setPosStatsByNumTeamByYear}
-            availPlayers={availPlayers}
-            draftStarted={draftStarted}
             arePlayersLoaded={Object.keys( playerLib ).length !== 0}
             isStd={isStd}
             playerLib={playerLib}

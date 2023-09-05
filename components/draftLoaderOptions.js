@@ -10,6 +10,7 @@ import {
   createPlayerLibrary,
 } from "../behavior/draft"
 import Dropdown from "./dropdown"
+import moment from "moment"
 
 const papaparseOptions = {
   header: true,
@@ -23,8 +24,6 @@ const DraftLoaderOptions = ({
   setAlertMsg,
   setPosStatsByNumTeamByYear,
 
-  availPlayers,
-  draftStarted,
   arePlayersLoaded,
   isStd,
   playerLib,
@@ -57,33 +56,6 @@ const DraftLoaderOptions = ({
     setRanks(ranks)
     setPlayerLib( playerLib )
     setPosStatsByNumTeamByYear( posStatsByNumTeamByYear )
-    setAlertMsg(null)
-  }
-
-  const onUpdateEspnRanks = async () => {
-    setAlertMsg("Updating ESPN Ranks...")
-    const { players } = await GetHarrisRanks()
-    if ( players ) {
-      const newLib = { ...playerLib }
-      players.forEach( player => {
-        const existPlayer = newLib[player.id]
-        if ( existPlayer ) {
-          newLib[player.id] = {
-            ...existPlayer,
-            espnAdp: player.espnAdp,
-            position: player.position,
-            team: player.team,
-          }
-        } else {
-          newLib[player.id] = player
-        }
-      })
-
-      const newPlayers = Object.values( newLib )
-      const ranks = createRanks( newPlayers, isStd )
-      setRanks(ranks)
-      setPlayerLib( newLib )
-    }
     setAlertMsg(null)
   }
 
@@ -125,13 +97,48 @@ const DraftLoaderOptions = ({
     setCsvData(nextCsvData)
   }
 
-  const onFileLoaded = (players) => {
-    console.log('onFileLoaded', players)
-    // const playerLib = createPlayerLibrary( players )
-    // const ranks = createRanks( players, isStd )
-    // setRanks(ranks)
-    // setPlayerLib( playerLib )
-    // setIsUpload(false)
+  const onFileLoaded = async (csvPlayers) => {
+    const csvPlayersMap = csvPlayers.reduce((dict, player) => {
+      dict[player['Id']] = player
+      return dict
+    }, {})
+    console.log('onFileLoaded', csvPlayers)
+    let players, playerLib, posStatsByNumTeamByYear
+    if ( csvPlayers[0]['Source'] === 'Harris' ) {
+      setAlertMsg("Loading Harris Football Ranks...")
+      const harrisRanks = await GetHarrisRanks()
+      posStatsByNumTeamByYear = harrisRanks.posStatsByNumTeamByYear
+      players = harrisRanks.players
+      setRanksSource('Harris')
+    } else if ( csvPlayers[0]['Source'] === 'Harris' ) {
+      setAlertMsg("Loading FPros Ranks...")
+      const fprosRanks = await GetFprosRanks()
+      posStatsByNumTeamByYear = fprosRanks.posStatsByNumTeamByYear
+      players = fprosRanks.players
+      setRanksSource('FPros')
+    }
+
+    // apply csv ranks
+    players.forEach( player => {
+      const csvPlayer = csvPlayersMap[player.id]
+      if ( csvPlayer ) {
+        player.tier = csvPlayer['Tier']
+        player.customStdRank = csvPlayer['Custom STD Rank']
+        player.customPprRank = csvPlayer['Custom PPR Rank']
+      } else {
+        player.tier = null
+        player.customStdRank = null
+        player.customPprRank = null
+      }
+    })
+
+    playerLib = createPlayerLibrary( players )
+    const ranks = createRanks( players, isStd )
+    setRanks(ranks)
+    setPlayerLib( playerLib )
+    setIsUpload(false)
+    setPosStatsByNumTeamByYear( posStatsByNumTeamByYear )
+    setAlertMsg(null)
   }
 
   let ranksOptions = [
@@ -141,9 +148,6 @@ const DraftLoaderOptions = ({
   ]
   if ( arePlayersLoaded ) {
     ranksOptions = [...ranksOptions, { title: "Export Ranks", callback: onSetCsvData }]
-  }
-  if (!draftStarted && arePlayersLoaded) {
-    ranksOptions = [...ranksOptions, { title: "Sync Current ESPN ADP", callback: onUpdateEspnRanks }]
   }
 
   return(
@@ -185,7 +189,7 @@ const DraftLoaderOptions = ({
                 <ul className="list-disc pl-6">
                   <li>Import player rankings from FFPros / Harris Football</li>
                   <li>Export ranks to csv to edit</li>
-                  <li>Edit tiers (1, 2, 3, etc) to easily distinguish tiers of players in a position group</li>
+                  <li>Edit custom ranks & tiers (1, 2, 3, etc) to easily distinguish tiers of players in a position group</li>
                 </ul>
               </div>
             </div>
@@ -215,6 +219,7 @@ const DraftLoaderOptions = ({
           <CSVLink data={csvData}
             onClick={ () => setCsvData(null)}
             className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-300"
+            filename={`FF${moment().format('YYYY')}_RANKS.csv`}
           >
             Download
           </CSVLink>
