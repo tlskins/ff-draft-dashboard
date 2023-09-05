@@ -401,6 +401,7 @@ export default function Home() {
     setPredictedPicks( pickPredicts )
   }, [numTeams, ranks, playerLib, playerRanks, rosters, myPickNum, currPick, currRoundPick, predRunTiers, predNextTiers])
 
+  console.log('playerLib', playerLib)
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2 relative">
@@ -417,6 +418,7 @@ export default function Home() {
             draftStarted={draftStarted}
             arePlayersLoaded={Object.keys( playerLib ).length !== 0}
             isStd={isStd}
+            playerLib={playerLib}
           />
 
           <div className="flex flex-row mb-8 mt-2 w-screen justify-center">

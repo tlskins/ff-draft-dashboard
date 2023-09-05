@@ -27,18 +27,21 @@ const DraftLoaderOptions = ({
   draftStarted,
   arePlayersLoaded,
   isStd,
+  playerLib,
 }) => {
   // csv
+  const [ranksSource, setRanksSource] = useState(null)
   const [csvData, setCsvData] = useState(null)
   const [isUpload, setIsUpload] = useState(false)
   const [showDlExtTooltip, setShowDlExtTooltip] = useState(false)
   const [showRanksTooltip, setShowRanksTooltip] = useState(false)
 
   const onLoadHarrisRanks = async () => {
-    setAlertMsg("Loading...")
+    setAlertMsg("Loading Harris Football Ranks...")
     const { players, posStatsByNumTeamByYear } = await GetHarrisRanks()
     const playerLib = createPlayerLibrary( players )
     const ranks = createRanks( players, isStd )
+    setRanksSource('Harris')
     setRanks(ranks)
     setPlayerLib( playerLib )
     setPosStatsByNumTeamByYear( posStatsByNumTeamByYear )
@@ -46,19 +49,19 @@ const DraftLoaderOptions = ({
   }
 
   const onLoadFprosRanks = async () => {
-    setAlertMsg("Loading...")
+    setAlertMsg("Loading Fantasy Pros Ranks...")
     const { players, posStatsByNumTeamByYear } = await GetFprosRanks()
     const playerLib = createPlayerLibrary( players )
     const ranks = createRanks( players, isStd )
+    setRanksSource('FPros')
     setRanks(ranks)
     setPlayerLib( playerLib )
     setPosStatsByNumTeamByYear( posStatsByNumTeamByYear )
     setAlertMsg(null)
-
   }
 
   const onUpdateEspnRanks = async () => {
-    setAlertMsg("Loading...")
+    setAlertMsg("Updating ESPN Ranks...")
     const { players } = await GetHarrisRanks()
     if ( players ) {
       const newLib = { ...playerLib }
@@ -90,23 +93,45 @@ const DraftLoaderOptions = ({
       return
     }
     // get all unique keys in data
-    const allKeys = {}
-    availPlayers.forEach( p => Object.keys(p).forEach(key => {
-      allKeys[key] = 1
-    }))
-    const keys = Object.keys(allKeys)
-    const ranksData = availPlayers.map( player => keys.map( key => player[key]))
-    const nextCsvData = [keys, ...ranksData]
+    const header = [
+      'Source',
+      'Id',
+      'Name',
+      'Position',
+      'Team',
+      'ESPN Overall STD Rank',
+      'ESPN Overall PPR Rank',
+      'ESPN ADP',
+      'Custom STD Rank',
+      'Custom PPR Rank',
+      'Tier',
+    ]
+    const ranksData = Object.values( playerLib ).map( player => {
+      return([
+        ranksSource,
+        player.id,
+        player.name,
+        player.position,
+        player.team,
+        player.espnOvrStdRank,
+        player.espnOvrPprRank,
+        player.espnAdp.toFixed(1),
+        player.customStdRank,
+        player.customPprRank,
+        player.tier,
+      ])
+    })
+    const nextCsvData = [header, ...ranksData]
     setCsvData(nextCsvData)
   }
 
   const onFileLoaded = (players) => {
     console.log('onFileLoaded', players)
-    const playerLib = createPlayerLibrary( players )
-    const ranks = createRanks( players, isStd )
-    setRanks(ranks)
-    setPlayerLib( playerLib )
-    setIsUpload(false)
+    // const playerLib = createPlayerLibrary( players )
+    // const ranks = createRanks( players, isStd )
+    // setRanks(ranks)
+    // setPlayerLib( playerLib )
+    // setIsUpload(false)
   }
 
   let ranksOptions = [
