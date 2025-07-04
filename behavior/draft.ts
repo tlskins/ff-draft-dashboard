@@ -1,12 +1,82 @@
 import Moment from 'moment'
+import { Player, Position, PosStatsByNumTeamByYear } from 'types'
+
+// Type Definitions
+interface EspnDraftEventRaw {
+    imgUrl: string
+    pick: string
+    [key: string]: any
+}
+
+interface EspnDraftEventParsed {
+    imgUrl: string
+    [key: string]: any
+    id: number | null
+    pickStr: string
+    round: number
+    pick: number
+}
+
+interface NflDraftEvent {
+    name: string
+    team: string
+    position: Position | string
+    pick: number
+}
+
+interface ParsedNflDraftEvent {
+    id: string
+    ovrPick: number
+}
+
+type PlayerLibrary = {
+    [id: string]: Player
+}
+
+type PlayersByPositionAndTeam = {
+    [pos in Position]?: {
+        [team: string]: Player[]
+    }
+}
+
+type RankTuple = [string, number, number]
+type PurgeTuple = [string]
+
+type PositionRanks = {
+    [pos in Position]?: RankTuple[]
+}
+
+interface Ranks {
+    isStd: boolean
+    harris: PositionRanks
+    espn: PositionRanks
+    purge: PurgeTuple[]
+    availPlayers: Player[]
+}
+
+interface Roster {
+    Picks: string[]
+    QB: string[]
+    RB: string[]
+    WR: string[]
+    TE: string[]
+}
+
+type PositionCounts = {
+    [key in Position]?: number
+}
+
+type PredictedPicks = {
+    [playerId: string]: number
+}
 
 // helpers
 
-const min = (a, b, c) => {
-return Math.min(a, Math.min(b, c))
+const min = (a: number, b: number, c: number): number => {
+    return Math.min(a, Math.min(b, c))
 }
   
-const levenshteinDistance = (str1, str2) => {
+const levenshteinDistance = (str1: string, str2: string): number => {
     const m = str1.length
     const n = str2.length
 
@@ -36,28 +106,29 @@ const levenshteinDistance = (str1, str2) => {
 
 // draft listener
 
-const validPositions = ['QB','RB','WR','TE']
+const validPositions: Position[] = ['QB', 'RB', 'WR', 'TE']
 
-export const parseEspnDraftEvents = draftPicksData => {
+export const parseEspnDraftEvents = (draftPicksData: EspnDraftEventRaw[]): EspnDraftEventParsed[] => {
     return draftPicksData.map( data => {
         const imgMatch = data.imgUrl.match(/headshots\/nfl\/players\/full\/(\d+)\.png/)
+        const pickMatch = data.pick.match(/^R(\d+), P(\d+) /)
         return {
             ...data,
-            id: imgMatch && parseInt(imgMatch[1]) || null,
+            id: imgMatch && parseInt(imgMatch[1]),
             pickStr: data.pick,
-            round: parseInt(data.pick.match(/^R(\d+), P(\d+) /)[1]),
-            pick: parseInt(data.pick.match(/^R(\d+), P(\d+) /)[2]),
+            round: pickMatch ? parseInt(pickMatch[1]) : 0,
+            pick: pickMatch ? parseInt(pickMatch[2]) : 0,
         }
     })
 }
 
-const normalizeNflName = name => name.toLowerCase().replace(/[^a-zA-Z\s]/g, '')
+const normalizeNflName = (name: string): string => name.toLowerCase().replace(/[^a-zA-Z\s]/g, '')
     .replace('iii', '')
     .replace('ii', '')
     .replace(' jr', '')
     .trim()
-const playerToNflName = player => `${ player.firstName[0].toLowerCase() } ${ normalizeNflName( player.lastName )}`
-const parseNflTeamToPlayerTeam = nflTeam => {
+const playerToNflName = (player: Player): string => `${ player.firstName[0].toLowerCase() } ${ normalizeNflName( player.lastName )}`
+const parseNflTeamToPlayerTeam = (nflTeam: string): string => {
 switch(nflTeam) {
     case 'JAX':
         return 'JAC'
@@ -70,16 +141,16 @@ switch(nflTeam) {
     }
 }
 
-export const parseNflDraftEvents = ( draftPicksData, playersByPosByTeam ) => {
+export const parseNflDraftEvents = ( draftPicksData: NflDraftEvent[], playersByPosByTeam: PlayersByPositionAndTeam ): ParsedNflDraftEvent[] => {
     return draftPicksData.map(draftEvent => {
         console.log('matching nfl event', draftEvent, playersByPosByTeam)
         const { name, team: nflTeam, position, pick: ovrPick } = draftEvent
         const team = parseNflTeamToPlayerTeam( nflTeam )
-        if ( !validPositions.includes( position )) {
-            return
+        if ( !validPositions.includes( position as Position )) {
+            return null
         }
 
-        const posPlayers = playersByPosByTeam[position][team] || []
+        const posPlayers = playersByPosByTeam[position as Position]?.[team] || []
         const playerByExactName = posPlayers.find( p => playerToNflName( p ) === normalizeNflName( name ) )
         if ( playerByExactName ) {
             return { id: playerByExactName.id, ovrPick}
@@ -107,15 +178,15 @@ export const parseNflDraftEvents = ( draftPicksData, playersByPosByTeam ) => {
 
 // players
 
-export const createPlayerLibrary = players => players.reduce((acc, player) => {
+export const createPlayerLibrary = (players: Player[]): PlayerLibrary => players.reduce((acc: PlayerLibrary, player) => {
     acc[player.id] = player
     return acc
 }, {})
 
-export const allPositions = ['QB', 'RB', 'WR', 'TE']
+export const allPositions: Position[] = ['QB', 'RB', 'WR', 'TE']
 export const rankTypes = ['harris', 'espn']
 
-export const addDefaultTiers = (playerLib, isStd, numTeams) => {
+export const addDefaultTiers = (playerLib: PlayerLibrary, isStd: boolean, numTeams: number): PlayerLibrary => {
     const players = Object.values(playerLib)
     if ( players.some( p => p.tier )) {
         return playerLib
@@ -124,10 +195,10 @@ export const addDefaultTiers = (playerLib, isStd, numTeams) => {
         const rank = isStd ? player.customStdRank : player.customPprRank
         if ( rank ) {
             if ( ['RB', 'WR'].includes( player.position )) {
-                player.tier = parseInt(rank / numTeams) + 1
+                player.tier = (parseInt(String(rank / numTeams)) + 1).toString()
                 playerLib[player.id] = player
             } else {
-                player.tier = Math.min( numTeams, rank )
+                player.tier = Math.min( numTeams, rank ).toString()
                 playerLib[player.id] = player
             }
         }
@@ -138,36 +209,51 @@ export const addDefaultTiers = (playerLib, isStd, numTeams) => {
 
 // rank tiers are statistical wr1, wr2, etc based on num teams
 // differs from tiers as there can be multiple tiers within wr1, wr2 etc
-export const addRankTiers = (playerLib, numTeams, posStatsByNumTeamByYear) => {
+export const addRankTiers = (playerLib: PlayerLibrary, numTeams: number, posStatsByNumTeamByYear: PosStatsByNumTeamByYear): void => {
     const arePosStatsEmpty = Object.keys( posStatsByNumTeamByYear ).length === 0
-    const lastYear = parseInt(Moment().format('YYYY')) - 1
+    const lastYear = parseInt(Moment().format('YYYY'), 10) - 1
     console.log('addRankTiers', posStatsByNumTeamByYear)
 
     Object.keys(playerLib).forEach( playerId => {
         // add rank tiers
         let player = playerLib[playerId]
         if (['WR','RB'].includes(player.position)) {
-            player.stdRankTier = player.customStdRank ? parseInt(player.customStdRank / numTeams) + 1 : null
-            player.pprRankTier = player.customPprRank ? parseInt(player.customPprRank / numTeams) + 1 : null
+            player.stdRankTier = player.customStdRank ? parseInt(String(player.customStdRank / numTeams)) + 1 : 0
+            player.pprRankTier = player.customPprRank ? parseInt(String(player.customPprRank / numTeams)) + 1 : 0
         } else {
-            player.stdRankTier = player.customStdRank ? Math.min(player.customStdRank, numTeams) : null
-            player.pprRankTier = player.customPprRank ? Math.min(player.customPprRank, numTeams) : null
+            player.stdRankTier = player.customStdRank ? Math.min(player.customStdRank, numTeams) : 0
+            player.pprRankTier = player.customPprRank ? Math.min(player.customPprRank, numTeams) : 0
         }
 
         // add last year tier
         if ( !arePosStatsEmpty ) {
             const posStats = posStatsByNumTeamByYear[numTeams][lastYear][player.position]
             const seasonStats = player.seasonStats.find( ssnStats => ssnStats.year === lastYear )
-            if ( seasonStats ) {
-                if ( seasonStats.totalPoints >= posStats.tier1Stats.minTotalPts ) {
+            if ( seasonStats && posStats ) {
+                if (
+                    posStats.tier1Stats &&
+                    seasonStats.totalPoints >= posStats.tier1Stats.minTotalPts
+                ) {
                     player.lastYrTier = 1
-                } else if ( seasonStats.totalPoints >= posStats.tier2Stats.minTotalPts ) {
+                } else if (
+                    posStats.tier2Stats &&
+                    seasonStats.totalPoints >= posStats.tier2Stats.minTotalPts
+                ) {
                     player.lastYrTier = 2
-                } else if ( seasonStats.totalPoints >= posStats.tier3Stats.minTotalPts ) {
+                } else if (
+                    posStats.tier3Stats &&
+                    seasonStats.totalPoints >= posStats.tier3Stats.minTotalPts
+                ) {
                     player.lastYrTier = 3
-                } else if ( seasonStats.totalPoints >= posStats.tier4Stats.minTotalPts ) {
+                } else if (
+                    posStats.tier4Stats &&
+                    seasonStats.totalPoints >= posStats.tier4Stats.minTotalPts
+                ) {
                     player.lastYrTier = 4
-                } else if ( seasonStats.totalPoints >= posStats.tier5Stats.minTotalPts ) {
+                } else if (
+                    posStats.tier5Stats &&
+                    seasonStats.totalPoints >= posStats.tier5Stats.minTotalPts
+                ) {
                     player.lastYrTier = 5
                 } else {
                     player.lastYrTier = 6
@@ -182,17 +268,17 @@ export const addRankTiers = (playerLib, numTeams, posStatsByNumTeamByYear) => {
 
 // rosters
 
-export const calcCurrRoundPick = ( pickNum, numTeams ) => {
+export const calcCurrRoundPick = ( pickNum: number, numTeams: number ): number => {
     const roundRem = pickNum % numTeams
     return roundRem === 0 ? numTeams : roundRem
 }
 
-export const getRoundIdxForPickNum = (pickNum, numTeams) => Math.floor((pickNum-1) / numTeams)
+export const getRoundIdxForPickNum = (pickNum: number, numTeams: number): number => Math.floor((pickNum-1) / numTeams)
 
 // ranks
 
-export const createRanks = (players, isStd) => {
-    const ranks = {
+export const createRanks = (players: Player[], isStd: boolean): Ranks => {
+    const ranks: Ranks = {
         isStd,
         harris: {
             QB: [],
@@ -215,10 +301,12 @@ export const createRanks = (players, isStd) => {
     return ranks
 }
 
-export const removePlayerFromRanks = ( ranks, player ) => {
+export const removePlayerFromRanks = ( ranks: Ranks, player: Player ): Ranks => {
     rankTypes.forEach( rankType => {
-        const posRank = ranks[rankType][player.position]
-        ranks[rankType][player.position] = posRank.filter( p => p[0] !== player.id )
+        const posRank = ranks[rankType as 'harris' | 'espn'][player.position]
+        if (posRank) {
+            ranks[rankType as 'harris' | 'espn'][player.position] = posRank.filter( p => p[0] !== player.id )
+        }
     })
     ranks.availPlayers = ranks.availPlayers.filter( p => p.id !== player.id )
     ranks.purge = ranks.purge.filter( p => p[0] !== player.id )
@@ -226,24 +314,32 @@ export const removePlayerFromRanks = ( ranks, player ) => {
     return { ...ranks }
 }
 
-export const addPlayerToRanks = (ranks, player) => {
+export const addPlayerToRanks = (ranks: Ranks, player: Player): void => {
     const { isStd } = ranks
-    if ( isStd && player.customStdRank ) {
-        ranks.harris[player.position].push([player.id, player.customStdRank, player.espnAdp])
-    } else if ( !isStd && player.customPprRank ) {
-        ranks.harris[player.position].push([player.id, player.customPprRank, player.espnAdp])
+    const harrisRanks = ranks.harris[player.position]
+    const espnRanks = ranks.espn[player.position]
+
+    if ( isStd && player.customStdRank && harrisRanks ) {
+        harrisRanks.push([player.id, player.customStdRank, player.espnAdp || 0])
+    } else if ( !isStd && player.customPprRank && harrisRanks ) {
+        harrisRanks.push([player.id, player.customPprRank, player.espnAdp || 0])
     }
-    if ( player.espnAdp ) ranks.espn[player.position].push([player.id, player.espnAdp, player.espnAdp])
+    if ( player.espnAdp && espnRanks ) {
+        espnRanks.push([player.id, player.espnAdp, player.espnAdp])
+    }
     ranks.availPlayers.push( player )
 }
 
-export const sortRanks = (ranks, byEspn = false) => {
+export const sortRanks = (ranks: Ranks, byEspn = false): Ranks => {
     rankTypes.forEach( rankType => {
         allPositions.forEach( pos => {
-            if ( byEspn ) {
-                ranks[rankType][pos] = ranks[rankType][pos].sort(([,,rankA],[,,rankB]) => (rankA || 9999) - (rankB || 9999))
-            } else {
-                ranks[rankType][pos] = ranks[rankType][pos].sort(([,rankA],[,rankB]) => (rankA || 9999) - (rankB || 9999))
+            const posRanks = ranks[rankType as 'harris' | 'espn'][pos]
+            if ( posRanks ) {
+                if ( byEspn ) {
+                    ranks[rankType as 'harris' | 'espn'][pos] = posRanks.sort(([,,rankA],[,,rankB]) => (rankA || 9999) - (rankB || 9999))
+                } else {
+                    ranks[rankType as 'harris' | 'espn'][pos] = posRanks.sort(([,rankA],[,rankB]) => (rankA || 9999) - (rankB || 9999))
+                }
             }
         })
     })
@@ -251,7 +347,7 @@ export const sortRanks = (ranks, byEspn = false) => {
     return { ...ranks }
 }
 
-export const purgePlayerFromRanks = ( ranks, player ) => {
+export const purgePlayerFromRanks = ( ranks: Ranks, player: Player ): Ranks => {
     const purgeIdx = ranks.purge.findIndex( ([id,]) => id === player.id )
     if ( purgeIdx === -1 ) {
         ranks = removePlayerFromRanks( ranks, player )
@@ -267,19 +363,19 @@ export const purgePlayerFromRanks = ( ranks, player ) => {
 
 // Rosters
 
-export const createRosters = numTeams => {
-    const rosters = new Array(numTeams).fill({
+export const createRosters = (numTeams: number): Roster[] => {
+    const rosters = new Array(numTeams).fill(null).map(() => ({
         Picks: [],
         QB: [],
         RB: [],
         WR: [],
         TE: []
-    })
+    }))
 
     return rosters
 }
 
-export const addToRoster = ( rosters, player, rosterIdx ) => {
+export const addToRoster = ( rosters: Roster[], player: Player, rosterIdx: number ): Roster[] => {
     const roster = rosters[rosterIdx]
     if ( roster.Picks.includes(player.id)) {
         return rosters
@@ -290,20 +386,20 @@ export const addToRoster = ( rosters, player, rosterIdx ) => {
         {
             ...roster,
             Picks: [...roster.Picks, player.id],
-            [player.position]: [...roster[player.position], player.id],
+            [player.position]: [...roster[player.position as 'QB' | 'RB' | 'WR' | 'TE'], player.id],
         },
         ...rosters.slice(rosterIdx+1, rosters.length),
     ]
 }
 
-export const removeFromRoster = ( rosters, player, rosterIdx ) => {
+export const removeFromRoster = ( rosters: Roster[], player: Player, rosterIdx: number ): Roster[] => {
     const roster = rosters[rosterIdx]
     const newRosters = [
         ...rosters.slice(0, rosterIdx),
         {
             ...roster,
             Picks: roster.Picks.filter( id => id !== player.id ),
-            [player.position]: roster[player.position].filter( id => id !== player.id ),
+            [player.position]: roster[player.position as 'QB' | 'RB' | 'WR' | 'TE'].filter( id => id !== player.id ),
         },
         ...rosters.slice(rosterIdx+1, rosters.length),
     ]
@@ -312,13 +408,13 @@ export const removeFromRoster = ( rosters, player, rosterIdx ) => {
 }
 
 // Roster = 1x flex
-export const nextPositionPicked = ( roster, roundNum, posCounts ) => {
-    let pos = { QB: 1, WR: 1, RB: 1, TE: 1 }
+export const nextPositionPicked = ( roster: Roster, roundNum: number, posCounts: PositionCounts ): Position[] => {
+    let pos: PositionCounts = { QB: 1, WR: 1, RB: 1, TE: 1 }
     if ( roundNum <= 3 ) {
         if ( roster.QB.length >= 1 ) delete pos.QB
         if ( roster.TE.length >= 1 ) delete pos.TE
-        if ( roundNum <= 2 && posCounts.TE >= 1 ) delete pos.TE
-        if ( roundNum <= 2 && posCounts.QB >= 1 ) delete pos.QB
+        if ( roundNum <= 2 && posCounts.TE && posCounts.TE >= 1 ) delete pos.TE
+        if ( roundNum <= 2 && posCounts.QB && posCounts.QB >= 1 ) delete pos.QB
     } else if ( roundNum <= 6 ) {
         if ( roster.QB.length >= 1 ) delete pos.QB
         if ( roster.TE.length >= 1 ) delete pos.TE
@@ -332,36 +428,42 @@ export const nextPositionPicked = ( roster, roundNum, posCounts ) => {
     }
     // console.log( 'nextPositionPicked', roundNum, posCounts, Object.keys( pos ) )
 
-    return Object.keys( pos )
+    return Object.keys( pos ) as Position[]
 }
 
-export const nextPickedPlayerId = ( ranks, positions, predicted, posCounts, myPickNum, currPick, nextPick, numTeams ) => {
-    let hiRank, hiRankPos
-    positions.forEach( pos => {
-        const posRanks = ranks.espn[pos]
-        for (let i=0; i<posRanks.length; i++) {
-            if ( predicted[posRanks[i][0]] ) continue
-            if  ( !hiRank || hiRank[1] > posRanks[i][1]) {
-                hiRank = posRanks[i]
-                hiRankPos = pos
-                break
+export const nextPickedPlayerId = ( ranks: Ranks, positions: Position[], predicted: PredictedPicks, posCounts: PositionCounts, myPickNum: number, currPick: number, nextPick: number, numTeams: number ): { predicted: PredictedPicks; updatedCounts: PositionCounts } => {
+    let hiRank: RankTuple | undefined;
+    let hiRankPos: Position | undefined;
+    positions.forEach((pos) => {
+        const posRanks = ranks.espn[pos];
+        if (posRanks) {
+            for (let i = 0; i < posRanks.length; i++) {
+                if (predicted[posRanks[i][0]]) continue;
+                if (!hiRank || hiRank[1] > posRanks[i][1]) {
+                    hiRank = posRanks[i];
+                    hiRankPos = pos;
+                    break;
+                }
             }
         }
-   })
-   const playerId = hiRank?.[0]
-   const posCount = posCounts[hiRankPos]
+    });
+    const playerId = hiRank?.[0];
 
-   if ( !playerId ) {
-       return { predicted, updatedCounts: posCounts }
-   } else {
-       return {
-           predicted: { ...predicted, [playerId]: picksSinceCurrPick(currPick, nextPick, myPickNum, numTeams) },
-           updatedCounts: { ...posCounts, [hiRankPos]: posCount+1 }
-        }
-   }
+    if (!playerId || !hiRankPos) {
+        return { predicted, updatedCounts: posCounts };
+    } else {
+        const posCount = posCounts[hiRankPos] || 0;
+        return {
+            predicted: {
+                ...predicted,
+                [playerId]: picksSinceCurrPick(currPick, nextPick, myPickNum, numTeams),
+            },
+            updatedCounts: { ...posCounts, [hiRankPos]: posCount + 1 },
+        };
+    }
 }
 
-export const picksSinceCurrPick = (currPick, nextPick, myPickNum, numTeams) => {
+export const picksSinceCurrPick = (currPick: number, nextPick: number, myPickNum: number, numTeams: number): number => {
     if ( currPick === nextPick && isMyPick(nextPick, myPickNum, numTeams) ) { 
         return 0
     }
@@ -371,7 +473,7 @@ export const picksSinceCurrPick = (currPick, nextPick, myPickNum, numTeams) => {
 }
 
 // exclusive of startPick and inclusive endPick
-export const getMyPicksBetween = ( startPick, endPick, myPickNum, numTeams ) => {
+export const getMyPicksBetween = ( startPick: number, endPick: number, myPickNum: number, numTeams: number ): number[] => {
     let myNextPick = startPick
     const myPicks = []
     while ( myNextPick < endPick ) {
@@ -384,7 +486,7 @@ export const getMyPicksBetween = ( startPick, endPick, myPickNum, numTeams ) => 
     return myPicks
 }
 
-export const getMyNextPick = ( pickNum, myPickNum, numTeams) => {
+export const getMyNextPick = ( pickNum: number, myPickNum: number, numTeams: number ): number => {
     const round = roundForPick( pickNum, numTeams )
     const pickInRound = getPickInRound( pickNum, numTeams )
     const myPickInRound = getMyPickInRound( myPickNum, pickNum, numTeams )
@@ -395,29 +497,29 @@ export const getMyNextPick = ( pickNum, myPickNum, numTeams) => {
     }
 }
 
-const getPickInRound = ( pickNum, numTeams ) => {
+const getPickInRound = ( pickNum: number, numTeams: number ): number => {
     const rem = pickNum % numTeams
     return rem === 0 ? numTeams : rem
 }
 
-const getMyPickInRound = ( myPickNum, pickNum, numTeams ) => {
+const getMyPickInRound = ( myPickNum: number, pickNum: number, numTeams: number ): number => {
     const round = roundForPick( pickNum, numTeams )
     return isEvenRound( round ) ? numTeams - myPickNum + 1 : myPickNum
 }
 
-const getMyAbsPickInRound = ( myPickNum, round, numTeams ) => {
+const getMyAbsPickInRound = ( myPickNum: number, round: number, numTeams: number ): number => {
     let pickNum = ( round - 1 ) * numTeams
     pickNum += round % 2 === 0 ? numTeams - myPickNum + 1 : myPickNum
     return pickNum
 }
 
-export const roundForPick = ( pickNum, numTeams ) => {
-    return parseInt((pickNum - 1) / numTeams) + 1
+export const roundForPick = ( pickNum: number, numTeams: number ): number => {
+    return parseInt(String((pickNum - 1) / numTeams), 10) + 1
 }
 
-const isEvenRound = round => round % 2 === 0
+const isEvenRound = (round: number): boolean => round % 2 === 0
 
-export const isMyPick = ( pickNum, myPickNum, numTeams ) => {
+export const isMyPick = ( pickNum: number, myPickNum: number, numTeams: number ): boolean => {
     const round = roundForPick( pickNum, numTeams )
     const isEven = isEvenRound( round )
     const rem = pickNum % numTeams
@@ -431,7 +533,7 @@ export const isMyPick = ( pickNum, myPickNum, numTeams ) => {
 }
 
 // ignores current pick - pick 10 / my pick 10 / 10 teams = round 2
-export const myCurrentRound = ( pickNum, myPickNum, numTeams ) => {
+export const myCurrentRound = ( pickNum: number, myPickNum: number, numTeams: number ): number => {
     let round = roundForPick( pickNum, numTeams )
     const pickInRound = getPickInRound(pickNum, numTeams)
     const myPickInRound = getMyPickInRound(myPickNum, pickNum, numTeams )
@@ -444,7 +546,7 @@ export const myCurrentRound = ( pickNum, myPickNum, numTeams ) => {
 
 // Round management
 
-export const getPicksUntil = (myPickNum, currPick, numTeams) => {
+export const getPicksUntil = (myPickNum: number, currPick: number, numTeams: number): [number, number] => {
     const roundIdx = Math.floor( (currPick-1) / numTeams )
     const isEvenRound = roundIdx % 2 == 1
     const currRoundPick = currPick % numTeams === 0 ? 12 : currPick % numTeams
@@ -465,9 +567,9 @@ export const getPicksUntil = (myPickNum, currPick, numTeams) => {
 
 // helpers
 
-var timer = undefined
+var timer: NodeJS.Timeout | undefined = undefined
 
-export const delay = ( action, timeout=400 ) => {
+export const delay = ( action: () => void, timeout=400 ): void => {
   if ( timer ) {
     clearTimeout( timer )
   }
