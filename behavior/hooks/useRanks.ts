@@ -5,17 +5,21 @@ import {
   addPlayerToRanks,
   purgePlayerFromRanks,
   sortRanks,
+  Ranks,
+  PlayerLibrary,
+  PlayersByPositionAndTeam,
 } from "../draft"
+import { Player, PosStatsByNumTeamByYear } from '../../types'
 
 
 export const useRanks = ({
-  isStd,
-} = {}) => {
-  const [playerLib, setPlayerLib] = useState({})
-  const [playersByPosByTeam, setPlayersByPosByTeam] = useState({})
-  const [ranks, setRanks] = useState(createRanks([], isStd))
+  isStd = false,
+}: { isStd?: boolean } = {}) => {
+  const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
+  const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})
+  const [ranks, setRanks] = useState<Ranks>(createRanks([], isStd))
   const [isEspnRank, setIsEspnRank] = useState(false)
-  const [posStatsByNumTeamByYear, setPosStatsByNumTeamByYear] = useState({})
+  const [posStatsByNumTeamByYear, setPosStatsByNumTeamByYear] = useState<PosStatsByNumTeamByYear>({})
   const { availPlayers, harris, purge } = ranks
   const playerRanks = [
     [harris.QB, "QB"],
@@ -27,20 +31,20 @@ export const useRanks = ({
   const noPlayers = Object.keys(playerLib).length === 0
 
   // funcs
-  const onRemovePlayerFromRanks = player => {
+  const onRemovePlayerFromRanks = (player: Player) => {
     const nextRanks = removePlayerFromRanks( ranks, player )
     setRanks(nextRanks)
   }
-  const onAddPlayerToRanks = player => {
+  const onAddPlayerToRanks = (player: Player) => {
     addPlayerToRanks( ranks, player )
     const nextRanks = sortRanks( ranks )
     setRanks(nextRanks)
   }
-  const onPurgePlayerFromRanks = player => {
+  const onPurgePlayerFromRanks = (player: Player) => {
     const nextRanks = purgePlayerFromRanks( ranks, player )
     setRanks(nextRanks)
   }
-  const onSortRanksByEspn = byEspn => {
+  const onSortRanksByEspn = (byEspn: boolean) => {
     const nextRanks = sortRanks( ranks, byEspn )
     setRanks( nextRanks )
     setIsEspnRank(byEspn)
@@ -50,7 +54,7 @@ export const useRanks = ({
   useEffect(() => {
     const nextRanks = createRanks( Object.values( playerLib ), isStd)
     setRanks(nextRanks)
-}, [isStd])
+}, [isStd, playerLib])
 
   return {
     // state

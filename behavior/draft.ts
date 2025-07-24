@@ -29,11 +29,11 @@ interface ParsedNflDraftEvent {
     ovrPick: number
 }
 
-type PlayerLibrary = {
+export type PlayerLibrary = {
     [id: string]: Player
 }
 
-type PlayersByPositionAndTeam = {
+export type PlayersByPositionAndTeam = {
     [pos in Position]?: {
         [team: string]: Player[]
     }
@@ -46,7 +46,7 @@ type PositionRanks = {
     [pos in Position]?: RankTuple[]
 }
 
-interface Ranks {
+export interface Ranks {
     isStd: boolean
     harris: PositionRanks
     espn: PositionRanks
