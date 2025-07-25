@@ -1,5 +1,3 @@
-
-
 import React, { useState } from "react"
 import { CSVLink } from "react-csv"
 import CSVReader from 'react-csv-reader'
@@ -8,9 +6,12 @@ import { GetHarrisRanks, GetFprosRanks } from "../behavior/harris"
 import {
   createRanks,
   createPlayerLibrary,
+  Ranks,
+  PlayerLibrary,
 } from "../behavior/draft"
 import Dropdown from "./dropdown"
 import moment from "moment"
+import { Player, PosStatsByNumTeamByYear } from "types"
 
 const papaparseOptions = {
   header: true,
@@ -18,7 +19,17 @@ const papaparseOptions = {
   skipEmptyLines: true,
 }
 
-const DraftLoaderOptions = ({
+interface DraftLoaderOptionsProps {
+  setRanks: (ranks: Ranks) => void;
+  setPlayerLib: (playerLib: PlayerLibrary) => void;
+  setAlertMsg: (msg: string | null) => void;
+  setPosStatsByNumTeamByYear: (posStats: PosStatsByNumTeamByYear) => void;
+  arePlayersLoaded: boolean;
+  isStd: boolean;
+  playerLib: PlayerLibrary;
+}
+
+const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
   setRanks,
   setPlayerLib,
   setAlertMsg,
@@ -29,34 +40,40 @@ const DraftLoaderOptions = ({
   playerLib,
 }) => {
   // csv
-  const [ranksSource, setRanksSource] = useState(null)
-  const [csvData, setCsvData] = useState(null)
+  const [ranksSource, setRanksSource] = useState<string | null>(null)
+  const [csvData, setCsvData] = useState<any[][] | null>(null)
   const [isUpload, setIsUpload] = useState(false)
   const [showDlExtTooltip, setShowDlExtTooltip] = useState(false)
   const [showRanksTooltip, setShowRanksTooltip] = useState(false)
 
   const onLoadHarrisRanks = async () => {
     setAlertMsg("Loading Harris Football Ranks...")
-    const { players, posStatsByNumTeamByYear } = await GetHarrisRanks()
-    const playerLib = createPlayerLibrary( players )
-    const ranks = createRanks( players, isStd )
-    setRanksSource('Harris')
-    setRanks(ranks)
-    setPlayerLib( playerLib )
-    setPosStatsByNumTeamByYear( posStatsByNumTeamByYear )
-    setAlertMsg(null)
+    const harrisData = await GetHarrisRanks()
+    if (harrisData) {
+      const { players, posStatsByNumTeamByYear } = harrisData
+      const playerLib = createPlayerLibrary(players)
+      const ranks = createRanks(players, isStd)
+      setRanksSource('Harris')
+      setRanks(ranks)
+      setPlayerLib(playerLib)
+      setPosStatsByNumTeamByYear(posStatsByNumTeamByYear)
+      setAlertMsg(null)
+    }
   }
 
   const onLoadFprosRanks = async () => {
     setAlertMsg("Loading Fantasy Pros Ranks...")
-    const { players, posStatsByNumTeamByYear } = await GetFprosRanks()
-    const playerLib = createPlayerLibrary( players )
-    const ranks = createRanks( players, isStd )
-    setRanksSource('FPros')
-    setRanks(ranks)
-    setPlayerLib( playerLib )
-    setPosStatsByNumTeamByYear( posStatsByNumTeamByYear )
-    setAlertMsg(null)
+    const fprosData = await GetFprosRanks()
+    if (fprosData) {
+      const { players, posStatsByNumTeamByYear } = fprosData
+      const playerLib = createPlayerLibrary(players)
+      const ranks = createRanks(players, isStd)
+      setRanksSource('FPros')
+      setRanks(ranks)
+      setPlayerLib(playerLib)
+      setPosStatsByNumTeamByYear(posStatsByNumTeamByYear)
+      setAlertMsg(null)
+    }
   }
 
   const onSetCsvData = () => {   
@@ -78,8 +95,8 @@ const DraftLoaderOptions = ({
       'Custom PPR Rank',
       'Tier',
     ]
-    const ranksData = Object.values( playerLib ).map( player => {
-      return([
+    const ranksData = Object.values(playerLib).map((player: Player) => {
+      return [
         ranksSource,
         player.id,
         player.name,
@@ -87,57 +104,65 @@ const DraftLoaderOptions = ({
         player.team,
         player.espnOvrStdRank,
         player.espnOvrPprRank,
-        player.espnAdp.toFixed(1),
+        (player.espnAdp || 0).toFixed(1),
         player.customStdRank,
         player.customPprRank,
         player.tier,
-      ])
+      ]
     })
     const nextCsvData = [header, ...ranksData]
     setCsvData(nextCsvData)
   }
 
-  const onFileLoaded = async (csvPlayers) => {
+  const onFileLoaded = async (csvPlayers: any[]) => {
     const csvPlayersMap = csvPlayers.reduce((dict, player) => {
       dict[player['Id']] = player
       return dict
-    }, {})
-    console.log('onFileLoaded', csvPlayers)
-    let players, playerLib, posStatsByNumTeamByYear
-    if ( csvPlayers[0]['Source'] === 'Harris' ) {
+    }, {} as { [id: string]: any })
+
+    let players: Player[] = [], 
+      playerLib: PlayerLibrary, 
+      posStatsByNumTeamByYear: PosStatsByNumTeamByYear | undefined
+    if (csvPlayers[0]['Source'] === 'Harris') {
       setAlertMsg("Loading Harris Football Ranks...")
       const harrisRanks = await GetHarrisRanks()
-      posStatsByNumTeamByYear = harrisRanks.posStatsByNumTeamByYear
-      players = harrisRanks.players
-      setRanksSource('Harris')
-    } else if ( csvPlayers[0]['Source'] === 'Harris' ) {
+      if (harrisRanks) {
+        posStatsByNumTeamByYear = harrisRanks.posStatsByNumTeamByYear
+        players = harrisRanks.players
+        setRanksSource('Harris')
+      }
+    } else if (csvPlayers[0]['Source'] === 'FPros') {
       setAlertMsg("Loading FPros Ranks...")
       const fprosRanks = await GetFprosRanks()
-      posStatsByNumTeamByYear = fprosRanks.posStatsByNumTeamByYear
-      players = fprosRanks.players
-      setRanksSource('FPros')
+      if (fprosRanks) {
+        posStatsByNumTeamByYear = fprosRanks.posStatsByNumTeamByYear
+        players = fprosRanks.players
+        setRanksSource('FPros')
+      }
     }
 
     // apply csv ranks
-    players.forEach( player => {
+    players.forEach((player: Player) => {
       const csvPlayer = csvPlayersMap[player.id]
-      if ( csvPlayer ) {
+      if (csvPlayer) {
         player.tier = csvPlayer['Tier']
         player.customStdRank = csvPlayer['Custom STD Rank']
         player.customPprRank = csvPlayer['Custom PPR Rank']
       } else {
-        player.tier = null
-        player.customStdRank = null
-        player.customPprRank = null
+        player.tier = ''
+        player.customStdRank = undefined
+        player.customPprRank = undefined
       }
     })
 
-    playerLib = createPlayerLibrary( players )
-    const ranks = createRanks( players, isStd )
+    playerLib = createPlayerLibrary(players)
+    const ranks = createRanks(players, isStd)
     setRanks(ranks)
-    setPlayerLib( playerLib )
+    setPlayerLib(playerLib)
     setIsUpload(false)
-    setPosStatsByNumTeamByYear( posStatsByNumTeamByYear )
+    if (posStatsByNumTeamByYear) {
+      setPosStatsByNumTeamByYear(posStatsByNumTeamByYear)
+    }
     setAlertMsg(null)
   }
 
