@@ -9,8 +9,9 @@ import {
   PlayerLibrary,
   PlayersByPositionAndTeam,
 } from "../draft"
-import { Player, PosStatsByNumTeamByYear } from '../../types'
+import { Player, PosStatsByNumTeamByYear, Position } from '../../types'
 
+type PlayerRanks = { [key in Position | "Purge"]?: Player[] }
 
 export const useRanks = ({
   isStd = false,
@@ -21,13 +22,13 @@ export const useRanks = ({
   const [isEspnRank, setIsEspnRank] = useState(false)
   const [posStatsByNumTeamByYear, setPosStatsByNumTeamByYear] = useState<PosStatsByNumTeamByYear>({})
   const { availPlayers, harris, purge } = ranks
-  const playerRanks = [
-    [harris.QB, "QB"],
-    [harris.RB, "RB"],
-    [harris.WR, "WR"],
-    [harris.TE, "TE"],
-    [purge, "Purge"],
-  ]
+  const playerRanks: PlayerRanks = {
+    "QB": harris.QB,
+    "RB": harris.RB,
+    "WR": harris.WR,
+    "TE": harris.TE,
+    "Purge": purge,
+  }
   const noPlayers = Object.keys(playerLib).length === 0
 
   // funcs

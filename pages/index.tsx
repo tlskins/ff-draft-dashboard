@@ -21,8 +21,6 @@ import {
   PlayersByPositionAndTeam,
   EspnDraftEventParsed,
   ParsedNflDraftEvent,
-  RankTuple,
-  PurgeTuple,
 } from "../behavior/draft"
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
@@ -86,8 +84,7 @@ const Home: FC = () => {
     playersByPosByTeam, setPlayersByPosByTeam,
     ranks, setRanks,
     posStatsByNumTeamByYear, setPosStatsByNumTeamByYear,
-    isEspnRank, setIsEspnRank,
-    availPlayers, harris, purge,
+    isEspnRank,
     playerRanks,
     noPlayers,
     // funcs
@@ -391,15 +388,13 @@ const Home: FC = () => {
 
     // detect positional runs
     let runDetected = false
-    (playerRanks as [(RankTuple[] | PurgeTuple[]), string][]).forEach(([posRanks, pos]) => {
+    Object.entries(playerRanks).forEach(([pos, posRanks]) => {
       if (posRanks && pos) {
-        const posTopPlayerId = posRanks[0] && (posRanks[0] as RankTuple)[0] // player id
-        const posTopPlayer = playerLib[posTopPlayerId]
+        const posTopPlayer = posRanks[0]
         if ( posRanks.length > 0 && posTopPlayer?.tier && parseInt(posTopPlayer?.tier) !== 0 ) {
           const currTopTier = parseInt(posTopPlayer?.tier)
-          const nextPosRanks = (posRanks as RankTuple[]).filter( r => ![1, 2].includes(pickPredicts[r[0]]))
-          const posNextTopPlayerId = nextPosRanks[0] && nextPosRanks[0][0] // player id
-          const posNextTopPlayer = playerLib[posNextTopPlayerId]
+          const nextPosRanks = (posRanks as Player[]).filter( r => ![1, 2].includes(predictedPicks[r.id]))
+          const posNextTopPlayer = nextPosRanks[0]
           const nextTier = parseInt( posNextTopPlayer?.tier )
           predNextTiers[pos as string] = nextTier
           if ( currTopTier && currTopTier > predRunTiers[pos as string] && ( !nextTier || nextTier - currTopTier >= 2 )) {
@@ -555,7 +550,7 @@ const Home: FC = () => {
             { !noPlayers &&
               <div className="flex flex-row px-4 mr-2 overflow-y-scroll rounded border border-4 h-screen shadow-md bg-white">
                 <StatsSection
-                  viewPlayerId={viewPlayerId}
+                  viewPlayerId={viewPlayerId || ''}
                   playerLib={playerLib}
                   posStatsByNumTeamByYear={posStatsByNumTeamByYear}
                   numTeams={numTeams}
@@ -606,8 +601,7 @@ const Home: FC = () => {
             }
 
             <PositionRankings
-              playerRanks={playerRanks}
-              playerLib={playerLib}
+              playerRanks={playerRanks as any}
               predictedPicks={predictedPicks}
               showNextPreds={showNextPreds}
               isEspnRank={isEspnRank}

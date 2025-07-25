@@ -14,13 +14,10 @@ type PredictedPicks = {
   [key: string]: number
 }
 
-type PlayerRank = [string, string, string, string, string]
-type PositionGroup = (PlayerRank | string[])[]
-type PlayerRanks = [PositionGroup, string][]
+type PlayerRanks = { [key: string]: Player[] | undefined }
 
 interface PositionRankingsProps {
   playerRanks: PlayerRanks,
-  playerLib: { [key: string]: Player },
   predictedPicks: PredictedPicks,
   showNextPreds: boolean,
   isEspnRank: boolean,
@@ -38,7 +35,6 @@ interface PositionRankingsProps {
 
 const PositionRankings = ({
   playerRanks,
-  playerLib,
   predictedPicks,
   showNextPreds,
   isEspnRank,
@@ -57,24 +53,29 @@ const PositionRankings = ({
   const [shownPlayerId, setShownPlayerId] = useState<string | null>(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
 
-  let filteredRanks: PlayerRanks
+  const AnyAiFillStar = AiFillStar as any;
+  const AnyTiDelete = TiDelete as any;
+  const AnyAiFillCheckCircle = AiFillCheckCircle as any;
+  const AnyBsLink = BsLink as any;
+
+  let filteredRanks: [string, Player[]][]
   if (showPredAvailByRound) {
     const myCurrRound = myCurrentRound(currPick, myPickNum, numTeams)
-    filteredRanks = playerRanks.filter(([,posGroup])=> posGroup.length > 0).map(([posGroup, posName])=> {
-      const round1Grp = (posGroup as PlayerRank[]).filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 2).slice(0, 3)
-      const round2Grp = (posGroup as PlayerRank[]).filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 3).slice(0, 3)
-      const round3Grp = (posGroup as PlayerRank[]).filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 4).slice(0, 3)
-      const round4Grp = (posGroup as PlayerRank[]).filter(([playerId,]) => !predictedPicks[playerId] || predictedPicks[playerId] >= 5).slice(0, 3)
+    filteredRanks = Object.entries(playerRanks).filter(([,posGroup])=> posGroup && posGroup.length > 0).map(([posName, posGroup])=> {
+      const round1Grp = (posGroup as Player[]).filter((player) => !predictedPicks[player.id] || predictedPicks[player.id] >= 2).slice(0, 3)
+      const round2Grp = (posGroup as Player[]).filter((player) => !predictedPicks[player.id] || predictedPicks[player.id] >= 3).slice(0, 3)
+      const round3Grp = (posGroup as Player[]).filter((player) => !predictedPicks[player.id] || predictedPicks[player.id] >= 4).slice(0, 3)
+      const round4Grp = (posGroup as Player[]).filter((player) => !predictedPicks[player.id] || predictedPicks[player.id] >= 5).slice(0, 3)
 
-      return [[
-        [,,,, `Round ${myCurrRound + 0}`] as unknown as PlayerRank, ...round1Grp,
-        [,,,, `Round ${myCurrRound + 1}`] as unknown as PlayerRank, ...round2Grp,
-        [,,,, `Round ${myCurrRound + 2}`] as unknown as PlayerRank, ...round3Grp,
-        [,,,, `Round ${myCurrRound + 3}`] as unknown as PlayerRank, ...round4Grp,
-      ], posName]
+      return [posName, [
+        { name: `Round ${myCurrRound + 0}` } as Player, ...round1Grp,
+        { name: `Round ${myCurrRound + 1}` } as Player, ...round2Grp,
+        { name: `Round ${myCurrRound + 2}` } as Player, ...round3Grp,
+        { name: `Round ${myCurrRound + 3}` } as Player, ...round4Grp,
+      ]]
     })
   } else {
-    filteredRanks = playerRanks.filter(([posGroup,])=> posGroup.length > 0)
+    filteredRanks = Object.entries(playerRanks).filter(([,posGroup])=> posGroup && posGroup.length > 0) as [string, Player[]][]
   }
 
 
@@ -129,7 +130,7 @@ const PositionRankings = ({
       </div>
 
       <div className="flex flex-row h-full mb-32">
-        { filteredRanks.map( ([posGroup, posName], i) => {
+        { filteredRanks.map( ([posName, posGroup], i) => {
           const posStyle = getPosStyle(posName)
           return(
             <div key={i}
@@ -141,7 +142,7 @@ const PositionRankings = ({
                   <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[posName] }</p>
                 }
               </div>
-              { (posGroup as PlayerRank[]).slice(0,30).map( ([pId,,,bgColor,text]) => ({ ...playerLib[pId], bgColor, text })).map( (player, playerPosIdx) => {
+              { posGroup.slice(0,30).map( (player, playerPosIdx) => {
                 const {
                   firstName,
                   lastName,
@@ -153,13 +154,9 @@ const PositionRankings = ({
                   customStdRank,
                   espnAdp,
                   target,
-                  bgColor,
-                  text,
-                } = player as Player & { target?: boolean, bgColor: string, text: string }
+                } = player as Player & { target?: boolean }
                 let tierStyle
-                if ( bgColor ) {
-                  tierStyle = bgColor
-                } else if ( shownPlayerId === id && !!shownPlayerBg ) {
+                if ( shownPlayerId === id && !!shownPlayerBg ) {
                   tierStyle = shownPlayerBg
                 } else if ( showNextPreds && predictedPicks[player.id] && predictedPicks[player.id] < 3 ) {
                   tierStyle = `${nextPredBgColor} text-white`
@@ -169,14 +166,14 @@ const PositionRankings = ({
                   tierStyle = getTierStyle(player.tier)
                 }
 
-                if ( text ) {
+                if ( !id ) {
                   return (
-                    <div key={`${text}-${playerPosIdx}`} id={`${text}-${playerPosIdx}`}
-                      className={`px-2 m-1 text-center border rounded shadow-md relative ${tierStyle}`}
+                    <div key={`${name}-${playerPosIdx}`} id={`${name}-${playerPosIdx}`}
+                      className={`px-2 m-1 text-center border rounded shadow-md relative`}
                     >
                       <div className="flex flex-col text-center items-center">
-                        <p className="text-xs font-semibold flex text-center text-white">
-                          { text }
+                        <p className="text-xs font-semibold flex text-center text-white bg-gray-600 rounded px-2">
+                          { name }
                         </p>
                       </div>
                     </div>
@@ -219,7 +216,7 @@ const PositionRankings = ({
                       <p className="text-sm font-semibold flex text-center">
                         { name }
                         { target &&
-                          <AiFillStar
+                          <AnyAiFillStar
                             color="blue"
                             size={24}
                           />
@@ -241,7 +238,7 @@ const PositionRankings = ({
 
                       { shownPlayerId === id &&
                         <div className={`grid grid-cols-3 mt-1 w-full absolute opacity-60`}>
-                          <TiDelete
+                          <AnyTiDelete
                             className="cursor-pointer -mt-2"
                             color="red"
                             onClick={ () => onPurgePlayer(player as Player) }
@@ -250,7 +247,7 @@ const PositionRankings = ({
                             size={46}
                           />
 
-                          <AiFillCheckCircle
+                          <AnyAiFillCheckCircle
                             className="cursor-pointer -mt-1"
                             color="green"
                             onClick={ () => onSelectPlayer(player as Player) }
@@ -259,7 +256,7 @@ const PositionRankings = ({
                             size={33}
                           />
 
-                          <BsLink
+                          <AnyBsLink
                             className="cursor-pointer -mt-2"
                             color="blue"
                             onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }

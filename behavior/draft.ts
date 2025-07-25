@@ -39,18 +39,15 @@ export type PlayersByPositionAndTeam = {
     }
 }
 
-export type RankTuple = [string, number, number]
-export type PurgeTuple = [string]
-
 type PositionRanks = {
-    [pos in Position]?: RankTuple[]
+    [pos in Position]?: Player[]
 }
 
 export interface Ranks {
     isStd: boolean
     harris: PositionRanks
     espn: PositionRanks
-    purge: PurgeTuple[]
+    purge: Player[]
     availPlayers: Player[]
 }
 
@@ -305,11 +302,11 @@ export const removePlayerFromRanks = ( ranks: Ranks, player: Player ): Ranks => 
     rankTypes.forEach( rankType => {
         const posRank = ranks[rankType as 'harris' | 'espn'][player.position]
         if (posRank) {
-            ranks[rankType as 'harris' | 'espn'][player.position] = posRank.filter( p => p[0] !== player.id )
+            ranks[rankType as 'harris' | 'espn'][player.position] = posRank.filter( p => p.id !== player.id )
         }
     })
     ranks.availPlayers = ranks.availPlayers.filter( p => p.id !== player.id )
-    ranks.purge = ranks.purge.filter( p => p[0] !== player.id )
+    ranks.purge = ranks.purge.filter( p => p.id !== player.id )
 
     return { ...ranks }
 }
@@ -319,26 +316,33 @@ export const addPlayerToRanks = (ranks: Ranks, player: Player): void => {
     const harrisRanks = ranks.harris[player.position]
     const espnRanks = ranks.espn[player.position]
 
-    if ( isStd && player.customStdRank && harrisRanks ) {
-        harrisRanks.push([player.id, player.customStdRank, player.espnAdp || 0])
-    } else if ( !isStd && player.customPprRank && harrisRanks ) {
-        harrisRanks.push([player.id, player.customPprRank, player.espnAdp || 0])
+    if ( harrisRanks && ((isStd && player.customStdRank) || (!isStd && player.customPprRank)) ) {
+        harrisRanks.push(player)
     }
     if ( player.espnAdp && espnRanks ) {
-        espnRanks.push([player.id, player.espnAdp, player.espnAdp])
+        espnRanks.push(player)
     }
     ranks.availPlayers.push( player )
 }
 
 export const sortRanks = (ranks: Ranks, byEspn = false): Ranks => {
+    const { isStd } = ranks
     rankTypes.forEach( rankType => {
         allPositions.forEach( pos => {
             const posRanks = ranks[rankType as 'harris' | 'espn'][pos]
             if ( posRanks ) {
                 if ( byEspn ) {
-                    ranks[rankType as 'harris' | 'espn'][pos] = posRanks.sort(([,,rankA],[,,rankB]) => (rankA || 9999) - (rankB || 9999))
+                    ranks[rankType as 'harris' | 'espn'][pos] = posRanks.sort((a,b) => (a.espnAdp || 9999) - (b.espnAdp || 9999))
                 } else {
-                    ranks[rankType as 'harris' | 'espn'][pos] = posRanks.sort(([,rankA],[,rankB]) => (rankA || 9999) - (rankB || 9999))
+                    if (rankType === 'harris') {
+                        if (isStd) {
+                            ranks[rankType as 'harris' | 'espn'][pos] = posRanks.sort((a, b) => (a.customStdRank || 9999) - (b.customStdRank || 9999))
+                        } else {
+                            ranks[rankType as 'harris' | 'espn'][pos] = posRanks.sort((a, b) => (a.customPprRank || 9999) - (b.customPprRank || 9999))
+                        }
+                    } else { // rankType === 'espn'
+                        ranks[rankType as 'harris' | 'espn'][pos] = posRanks.sort((a,b) => (a.espnAdp || 9999) - (b.espnAdp || 9999))
+                    }
                 }
             }
         })
@@ -348,12 +352,12 @@ export const sortRanks = (ranks: Ranks, byEspn = false): Ranks => {
 }
 
 export const purgePlayerFromRanks = ( ranks: Ranks, player: Player ): Ranks => {
-    const purgeIdx = ranks.purge.findIndex( ([id,]) => id === player.id )
+    const purgeIdx = ranks.purge.findIndex( p => p.id === player.id )
     if ( purgeIdx === -1 ) {
         ranks = removePlayerFromRanks( ranks, player )
-        ranks.purge.push( [player.id] )
+        ranks.purge.push( player )
     } else {
-        ranks.purge = ranks.purge.filter( ([id,]) => id !== player.id )
+        ranks.purge = ranks.purge.filter( p => p.id !== player.id )
         addPlayerToRanks( ranks, player )
         ranks = sortRanks( ranks )
     }
@@ -441,22 +445,26 @@ export const nextPickedPlayerId = (
     nextPick: number,
     numTeams: number
 ): { predicted: PredictedPicks; updatedCounts: PositionCounts } => {
-    let hiRank: RankTuple | undefined;
+    let hiRank: Player | undefined;
     let hiRankPos: Position | undefined;
     positions.forEach((pos) => {
         const posRanks = ranks.espn[pos];
         if (posRanks) {
             for (let i = 0; i < posRanks.length; i++) {
-                if (predicted[posRanks[i][0]]) continue;
-                if (!hiRank || hiRank[1] > posRanks[i][1]) {
-                    hiRank = posRanks[i];
+                const currentPlayer = posRanks[i]
+                if (predicted[currentPlayer.id]) continue;
+
+                const currentRank = currentPlayer.espnAdp || 9999
+                const hiPlayerRank = hiRank?.espnAdp || 9999
+                if (!hiRank || hiPlayerRank > currentRank) {
+                    hiRank = currentPlayer;
                     hiRankPos = pos;
                     break;
                 }
             }
         }
     });
-    const playerId = hiRank?.[0];
+    const playerId = hiRank?.id;
 
     if (!playerId || !hiRankPos) {
         return { predicted, updatedCounts: posCounts };
