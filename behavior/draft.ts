@@ -2,29 +2,29 @@ import Moment from 'moment'
 import { Player, Position, PosStatsByNumTeamByYear } from 'types'
 
 // Type Definitions
-interface EspnDraftEventRaw {
+export interface EspnDraftEventRaw {
     imgUrl: string
     pick: string
     [key: string]: any
 }
 
-interface EspnDraftEventParsed {
+export interface EspnDraftEventParsed {
     imgUrl: string
     [key: string]: any
-    id: number | null
+    id: string | null
     pickStr: string
     round: number
     pick: number
 }
 
-interface NflDraftEvent {
+export interface NflDraftEvent {
     name: string
     team: string
     position: Position | string
     pick: number
 }
 
-interface ParsedNflDraftEvent {
+export interface ParsedNflDraftEvent {
     id: string
     ovrPick: number
 }
@@ -39,8 +39,8 @@ export type PlayersByPositionAndTeam = {
     }
 }
 
-type RankTuple = [string, number, number]
-type PurgeTuple = [string]
+export type RankTuple = [string, number, number]
+export type PurgeTuple = [string]
 
 type PositionRanks = {
     [pos in Position]?: RankTuple[]
@@ -114,7 +114,7 @@ export const parseEspnDraftEvents = (draftPicksData: EspnDraftEventRaw[]): EspnD
         const pickMatch = data.pick.match(/^R(\d+), P(\d+) /)
         return {
             ...data,
-            id: imgMatch && parseInt(imgMatch[1]),
+            id: imgMatch && imgMatch[1].toString(), // TODO - changed this id to string - need to test
             pickStr: data.pick,
             round: pickMatch ? parseInt(pickMatch[1]) : 0,
             pick: pickMatch ? parseInt(pickMatch[2]) : 0,
@@ -431,7 +431,16 @@ export const nextPositionPicked = ( roster: Roster, roundNum: number, posCounts:
     return Object.keys( pos ) as Position[]
 }
 
-export const nextPickedPlayerId = ( ranks: Ranks, positions: Position[], predicted: PredictedPicks, posCounts: PositionCounts, myPickNum: number, currPick: number, nextPick: number, numTeams: number ): { predicted: PredictedPicks; updatedCounts: PositionCounts } => {
+export const nextPickedPlayerId = (
+    ranks: Ranks,
+    positions: Position[],
+    predicted: PredictedPicks,
+    posCounts: PositionCounts,
+    myPickNum: number,
+    currPick: number,
+    nextPick: number,
+    numTeams: number
+): { predicted: PredictedPicks; updatedCounts: PositionCounts } => {
     let hiRank: RankTuple | undefined;
     let hiRankPos: Position | undefined;
     positions.forEach((pos) => {
