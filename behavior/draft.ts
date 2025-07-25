@@ -54,7 +54,7 @@ export interface Ranks {
     availPlayers: Player[]
 }
 
-interface Roster {
+export interface Roster {
     Picks: string[]
     QB: string[]
     RB: string[]

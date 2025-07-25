@@ -5,18 +5,26 @@ import {
   createRosters,
   getRoundIdxForPickNum,
   removeFromRoster,
+  Roster,
 } from '../draft'
+import { Player } from '../../types'
+
+interface UseRostersProps {
+  defaultMyPickNum?: number,
+  myPickNum?: number,
+  numTeams?: number,
+}
 
 export const useRosters = ({
   defaultMyPickNum = 6,
   myPickNum,
-  numTeams,
-} = {}) => {
-  const [rosters, setRosters] = useState([])
+  numTeams = 12,
+}: UseRostersProps = {}) => {
+  const [rosters, setRosters] = useState<Roster[]>([])
   const [viewRosterIdx, setViewRosterIdx] = useState(defaultMyPickNum-1)
 
   // functions
-  const getRosterIdxFromPick = pickNum => {
+  const getRosterIdxFromPick = (pickNum: number) => {
     const roundIdx = getRoundIdxForPickNum(pickNum, numTeams)
     const isEvenRound = roundIdx % 2 == 1
     const currRoundPick = calcCurrRoundPick( pickNum, numTeams )
@@ -24,12 +32,12 @@ export const useRosters = ({
 
     return rosterIdx
   }
-  const addPlayerToRoster = ( player, pickNum ) => {
+  const addPlayerToRoster = ( player: Player, pickNum: number ) => {
     const rosterIdx = getRosterIdxFromPick( pickNum )
     const newRosters = addToRoster( rosters, player, rosterIdx)
     setRosters( newRosters )
   }
-  const removePlayerFromRoster = ( player, pickNum ) => {
+  const removePlayerFromRoster = ( player: Player, pickNum: number ) => {
     const rosterIdx = getRosterIdxFromPick( pickNum )
     const nextRosters = removeFromRoster( rosters, player, rosterIdx )
     setRosters( nextRosters )
