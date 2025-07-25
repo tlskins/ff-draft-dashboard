@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { CSVLink } from "react-csv"
 import CSVReader from 'react-csv-reader'
 
-import { GetHarrisRanks, GetFprosRanks } from "../behavior/harris"
+import { GetHarrisRanksMock as GetHarrisRanks, GetFprosRanksMock as GetFprosRanks } from "../behavior/harris"
 import {
   createRanks,
   createPlayerLibrary,
@@ -24,9 +24,11 @@ interface DraftLoaderOptionsProps {
   setPlayerLib: (playerLib: PlayerLibrary) => void;
   setAlertMsg: (msg: string | null) => void;
   setPosStatsByNumTeamByYear: (posStats: PosStatsByNumTeamByYear) => void;
+  updatePlayerLibAndDerivatives: (playerLib: PlayerLibrary, isStd: boolean, numTeams: number, posStatsByNumTeamByYear: PosStatsByNumTeamByYear) => void;
   arePlayersLoaded: boolean;
   isStd: boolean;
   playerLib: PlayerLibrary;
+  numTeams: number;
 }
 
 const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
@@ -34,10 +36,12 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
   setPlayerLib,
   setAlertMsg,
   setPosStatsByNumTeamByYear,
+  updatePlayerLibAndDerivatives,
 
   arePlayersLoaded,
   isStd,
   playerLib,
+  numTeams,
 }) => {
   // csv
   const [ranksSource, setRanksSource] = useState<string | null>(null)
@@ -55,8 +59,7 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
       const ranks = createRanks(players, isStd)
       setRanksSource('Harris')
       setRanks(ranks)
-      setPlayerLib(playerLib)
-      setPosStatsByNumTeamByYear(posStatsByNumTeamByYear)
+      updatePlayerLibAndDerivatives(playerLib, isStd, numTeams, posStatsByNumTeamByYear)
       setAlertMsg(null)
     }
   }
@@ -70,8 +73,7 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
       const ranks = createRanks(players, isStd)
       setRanksSource('FPros')
       setRanks(ranks)
-      setPlayerLib(playerLib)
-      setPosStatsByNumTeamByYear(posStatsByNumTeamByYear)
+      updatePlayerLibAndDerivatives(playerLib, isStd, numTeams, posStatsByNumTeamByYear)
       setAlertMsg(null)
     }
   }
@@ -158,7 +160,7 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
     playerLib = createPlayerLibrary(players)
     const ranks = createRanks(players, isStd)
     setRanks(ranks)
-    setPlayerLib(playerLib)
+    updatePlayerLibAndDerivatives(playerLib, isStd, numTeams, posStatsByNumTeamByYear!)
     setIsUpload(false)
     if (posStatsByNumTeamByYear) {
       setPosStatsByNumTeamByYear(posStatsByNumTeamByYear)

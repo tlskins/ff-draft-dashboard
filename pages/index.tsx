@@ -108,6 +108,38 @@ const Home: FC = () => {
 
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
 
+  console.log('playerLib', playerLib)
+  console.log('playersByPosByTeam', playersByPosByTeam)
+  console.log('ranks', ranks)
+
+
+  const updatePlayerLibAndDerivatives = useCallback((playerLib: PlayerLibrary, isStd: boolean, numTeams: number, posStatsByNumTeamByYear: PosStatsByNumTeamByYear) => {
+    if ( hasCustomTiers == null || hasCustomTiers === false ) {
+      if ( hasCustomTiers == null ) {
+        const players = Object.values(playerLib)
+        const hasNoTiers = players.every( player => player.tier === "" )
+        setHasCustomTiers(!hasNoTiers)
+      }
+      const nextPlayerLib = addDefaultTiers(playerLib, isStd, numTeams)
+      addRankTiers(playerLib, numTeams, posStatsByNumTeamByYear)
+      const playersByPosByTeam: PlayersByPositionAndTeam = Object.values( playerLib ).reduce(( dict: PlayersByPositionAndTeam, player: Player ) => {
+        if (player.position) {
+          if ( !dict[player.position] ) {
+            dict[player.position] = {}
+          }
+          if (dict[player.position] && !dict[player.position]![player.team] ) {
+            dict[player.position]![player.team] = []
+          }
+          dict[player.position]![player.team]!.push(player)
+        }
+
+        return dict
+      }, {})
+      setPlayersByPosByTeam( playersByPosByTeam )
+      setPlayerLib( { ...nextPlayerLib } )
+    }
+  }, [hasCustomTiers]);
+
   // listeners
 
   useEffect(() => {
@@ -323,31 +355,10 @@ const Home: FC = () => {
   // data import export
 
   useEffect(() => {
-    if ( hasCustomTiers == null || hasCustomTiers === false ) {
-      if ( hasCustomTiers == null ) {
-        const players = Object.values(playerLib)
-        const hasNoTiers = players.every( player => player.tier === "" )
-        setHasCustomTiers(!hasNoTiers)
-      }
-      const nextPlayerLib = addDefaultTiers(playerLib, isStd, numTeams)
-      addRankTiers(playerLib, numTeams, posStatsByNumTeamByYear)
-      const playersByPosByTeam: PlayersByPositionAndTeam = Object.values( playerLib ).reduce(( dict: PlayersByPositionAndTeam, player: Player ) => {
-        if (player.position) {
-          if ( !dict[player.position] ) {
-            dict[player.position] = {}
-          }
-          if (dict[player.position] && !dict[player.position]![player.team] ) {
-            dict[player.position]![player.team] = []
-          }
-          dict[player.position]![player.team]!.push(player)
-        }
-
-        return dict
-      }, {})
-      setPlayersByPosByTeam( playersByPosByTeam )
-      setPlayerLib( { ...nextPlayerLib } )
+    if (Object.values(playerLib).length > 0) {
+      updatePlayerLibAndDerivatives(playerLib, isStd, numTeams, posStatsByNumTeamByYear)
     }
-  }, [playerLib, isStd, numTeams, posStatsByNumTeamByYear])
+  }, [playerLib, isStd, numTeams, posStatsByNumTeamByYear, updatePlayerLibAndDerivatives])
 
   const onChangeNumPostPredicts = (numPostPredicts: number) => {
     setNumPostPredicts(numPostPredicts)
@@ -436,9 +447,11 @@ const Home: FC = () => {
             setPlayerLib={setPlayerLib as (playerLib: PlayerLibrary) => void}
             setAlertMsg={setAlertMsg}
             setPosStatsByNumTeamByYear={setPosStatsByNumTeamByYear as (stats: PosStatsByNumTeamByYear) => void}
+            updatePlayerLibAndDerivatives={updatePlayerLibAndDerivatives}
             arePlayersLoaded={Object.keys( playerLib ).length !== 0}
             isStd={isStd}
             playerLib={playerLib}
+            numTeams={numTeams}
           />
 
           <div className="flex flex-row mb-8 mt-2 w-screen justify-center">
@@ -450,8 +463,12 @@ const Home: FC = () => {
                 className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
                 value={numTeams}
                 onChange={ e => {
-                  setNumTeams(parseFloat(e.target.value))
+                  const newNumTeams = parseFloat(e.target.value)
+                  setNumTeams(newNumTeams)
                   setMyPickNum(1)
+                  if (Object.values(playerLib).length > 0) {
+                    updatePlayerLibAndDerivatives(playerLib, isStd, newNumTeams, posStatsByNumTeamByYear)
+                  }
                 }}
                 disabled={draftStarted}
               >
@@ -483,6 +500,9 @@ const Home: FC = () => {
                 onChange={ e => {
                   const newIsStd = e.target.value === "Standard"
                   setIsStd( newIsStd )
+                  if (Object.values(playerLib).length > 0) {
+                    updatePlayerLibAndDerivatives(playerLib, newIsStd, numTeams, posStatsByNumTeamByYear)
+                  }
                 }}
                 disabled={draftStarted}
               >
