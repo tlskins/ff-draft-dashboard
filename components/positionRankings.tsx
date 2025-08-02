@@ -1,30 +1,85 @@
-import React, { useState } from "react"
+import React, { useState, useMemo } from "react"
 import { TiDelete } from 'react-icons/ti'
 import { BsLink } from 'react-icons/bs'
 import { AiFillCheckCircle, AiFillStar } from 'react-icons/ai'
 
 import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor, getPickDiffColor } from '../behavior/styles'
-import { myCurrentRound } from '../behavior/draft'
-import { Player } from "../types"
+import { myCurrentRound, getPlayerMetrics, PlayerRanks } from '../behavior/draft'
+import { Player, FantasySettings, FantasyPosition, BoardSettings } from "../types"
 
 
 let viewPlayerIdTimer: NodeJS.Timeout
+
+type DraftBoardTitleCard = {
+  bgColor: string
+  title: string
+}
+
+const isTitleCard = (card: DraftBoardCard): card is DraftBoardTitleCard => {
+  return 'title' in card &&
+    'bgColor' in card
+}
+
+type DraftBoardCard = Player | DraftBoardTitleCard
+
+interface DraftBoardColumn {
+  columnTitle: string
+  cards: DraftBoardCard[]
+}
+
+interface DraftBoard {
+  standardView: DraftBoardColumn[]
+  predictAvailByRoundView: DraftBoardColumn[]
+}
 
 type PredictedPicks = {
   [key: string]: number
 }
 
-type PlayerRanks = { [key: string]: Player[] | undefined }
+const DraftBoardColumns = [FantasyPosition.QUARTERBACK, FantasyPosition.WIDE_RECEIVER, FantasyPosition.RUNNING_BACK, FantasyPosition.TIGHT_END, 'Purge']
+
+export const getDraftBoard = (
+  playerRanks: PlayerRanks,
+  predictedPicks: PredictedPicks,
+  myCurrRound: number,
+): DraftBoard => {
+  const draftBoard: DraftBoard = {
+    standardView: DraftBoardColumns.map((columnGroup)=> {
+      const posGroup = playerRanks[columnGroup as keyof PlayerRanks]
+      return {
+        columnTitle: columnGroup,
+        cards: posGroup ? [...posGroup] as DraftBoardCard[] : []
+      }
+    }),
+    predictAvailByRoundView: DraftBoardColumns.map((columnGroup)=> {
+      const posGroup = playerRanks[columnGroup as keyof PlayerRanks]
+      const futureRoundAvailPlayers = [1,2,3,4].map(futureRound => {
+        // show top 3 options in each future round
+        const topPlayersPerRound = posGroup.filter((player) => !predictedPicks[player.id] || predictedPicks[player.id] >= futureRound + 1).slice(0, 3)
+        return [
+          { bgColor: 'bg-gray-700', title: `Round ${myCurrRound + futureRound - 1}` } as DraftBoardTitleCard,
+          ...topPlayersPerRound,
+        ]
+      }).flat() as DraftBoardCard[]
+
+      return {
+        columnTitle: columnGroup,
+        cards: futureRoundAvailPlayers
+      }
+    }).filter(Boolean) as DraftBoardColumn[],
+  }
+
+  return draftBoard
+}
 
 interface PositionRankingsProps {
   playerRanks: PlayerRanks,
   predictedPicks: PredictedPicks,
   showNextPreds: boolean,
-  isEspnRank: boolean,
-  isStd: boolean,
   myPickNum: number,
   noPlayers: boolean,
-  numTeams: number,
+  fantasySettings: FantasySettings,
+  boardSettings: BoardSettings,
   currPick: number,
   predNextTiers: { [key: string]: number },
   showPredAvailByRound: boolean,
@@ -37,47 +92,33 @@ const PositionRankings = ({
   playerRanks,
   predictedPicks,
   showNextPreds,
-  isEspnRank,
-  isStd,
   myPickNum,
   noPlayers,
-  numTeams,
   currPick,
   predNextTiers,
   showPredAvailByRound,
+  fantasySettings,
+  boardSettings,
 
   onSelectPlayer,
   onPurgePlayer,
   setViewPlayerId,
 }: PositionRankingsProps) => {
+  const [rankByAdp, setRankByAdp] = useState(false)
   const [shownPlayerId, setShownPlayerId] = useState<string | null>(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
 
-  const AnyAiFillStar = AiFillStar as any;
+  // const AnyAiFillStar = AiFillStar as any;
   const AnyTiDelete = TiDelete as any;
   const AnyAiFillCheckCircle = AiFillCheckCircle as any;
   const AnyBsLink = BsLink as any;
 
-  let filteredRanks: [string, Player[]][]
-  if (showPredAvailByRound) {
-    const myCurrRound = myCurrentRound(currPick, myPickNum, numTeams)
-    filteredRanks = Object.entries(playerRanks).filter(([,posGroup])=> posGroup && posGroup.length > 0).map(([posName, posGroup])=> {
-      const round1Grp = (posGroup as Player[]).filter((player) => !predictedPicks[player.id] || predictedPicks[player.id] >= 2).slice(0, 3)
-      const round2Grp = (posGroup as Player[]).filter((player) => !predictedPicks[player.id] || predictedPicks[player.id] >= 3).slice(0, 3)
-      const round3Grp = (posGroup as Player[]).filter((player) => !predictedPicks[player.id] || predictedPicks[player.id] >= 4).slice(0, 3)
-      const round4Grp = (posGroup as Player[]).filter((player) => !predictedPicks[player.id] || predictedPicks[player.id] >= 5).slice(0, 3)
+  const draftBoard = useMemo(() => {
+    const myCurrRound = myCurrentRound(currPick, myPickNum, fantasySettings.numTeams)
+    return getDraftBoard(playerRanks, predictedPicks, myCurrRound)
+  }, [playerRanks, predictedPicks, myPickNum, fantasySettings.numTeams, currPick])
 
-      return [posName, [
-        { name: `Round ${myCurrRound + 0}` } as Player, ...round1Grp,
-        { name: `Round ${myCurrRound + 1}` } as Player, ...round2Grp,
-        { name: `Round ${myCurrRound + 2}` } as Player, ...round3Grp,
-        { name: `Round ${myCurrRound + 3}` } as Player, ...round4Grp,
-      ]]
-    })
-  } else {
-    filteredRanks = Object.entries(playerRanks).filter(([,posGroup])=> posGroup && posGroup.length > 0) as [string, Player[]][]
-  }
-
+  const draftBoardView = showPredAvailByRound ? draftBoard.predictAvailByRoundView : draftBoard.standardView
 
   return(
     noPlayers ?
@@ -107,9 +148,9 @@ const PositionRankings = ({
               </p>
             </div>
           }
-          { !isEspnRank &&
+          { !rankByAdp &&
             <p className="text-xs mt-1"> 
-              hold SHIFT to see players sorted by ESPN ranking
+              hold SHIFT to see players sorted by { boardSettings.adpRanker } ranking
             </p>
           }
           { !showPredAvailByRound &&
@@ -121,7 +162,7 @@ const PositionRankings = ({
 
         <ul className="list-disc pl-8">
           <li className="font-semibold text-xs text-gray-600 text-left">
-            Sorted By <span className="text-blue-600 font-bold underline uppercase">{ isEspnRank ? 'ESPN ADP' : 'custom ranks' }</span>
+            Sorted By <span className="text-blue-600 font-bold underline uppercase">{ rankByAdp ? `${boardSettings.adpRanker} ADP` : 'custom ranks' }</span>
           </li>
           <li className="font-semibold text-xs text-gray-600 text-justify whitespace-pre">
             Darklighted taken before your <span className="text-blue-600 font-bold underline uppercase">{ showNextPreds? 'next-next' : 'next' }</span> pick
@@ -130,145 +171,149 @@ const PositionRankings = ({
       </div>
 
       <div className="flex flex-row h-full mb-32">
-        { filteredRanks.map( ([posName, posGroup], i) => {
-          const posStyle = getPosStyle(posName)
+        { draftBoardView.map( (draftBoardColumn, i) => {
+          const { columnTitle, cards } = draftBoardColumn
+
+          const posStyle = getPosStyle(columnTitle)
           return(
             <div key={i}
               className="flex flex-col"
             >
               <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500`}>
-                <span className="font-bold underline">{ posName }</span>
-                { Boolean(predNextTiers[posName]) &&
-                  <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[posName] }</p>
+                <span className="font-bold underline">{ columnTitle }</span>
+                { Boolean(predNextTiers[columnTitle]) &&
+                  <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[columnTitle] }</p>
                 }
               </div>
-              { posGroup.slice(0,30).map( (player, playerPosIdx) => {
-                const {
-                  firstName,
-                  lastName,
-                  name,
-                  id,
-                  team,
-                  tier,
-                  customPprRank,
-                  customStdRank,
-                  espnAdp,
-                  target,
-                } = player as Player & { target?: boolean }
-                let tierStyle
-                if ( shownPlayerId === id && !!shownPlayerBg ) {
-                  tierStyle = shownPlayerBg
-                } else if ( showNextPreds && predictedPicks[player.id] && predictedPicks[player.id] < 3 ) {
-                  tierStyle = `${nextPredBgColor} text-white`
-                } else if ( !showNextPreds && predictedPicks[player.id] && predictedPicks[player.id] < 2 ) {
-                  tierStyle = `${predBgColor} text-white`
-                } else {
-                  tierStyle = getTierStyle(player.tier)
-                }
 
-                if ( !id ) {
+              { cards.slice(0,30).map( (card, playerPosIdx) => {
+                if ( isTitleCard(card) ) {
                   return (
-                    <div key={`${name}-${playerPosIdx}`} id={`${name}-${playerPosIdx}`}
-                      className={`px-2 m-1 text-center border rounded shadow-md relative`}
+                    <div key={`${card.title}-${playerPosIdx}`} id={`${card.title}-${playerPosIdx}`}
+                      className={`px-2 m-1 text-center border rounded shadow-md relative ${card.bgColor}`}
                     >
                       <div className="flex flex-col text-center items-center">
-                        <p className="text-xs font-semibold flex text-center text-white bg-gray-600 rounded px-2">
-                          { name }
+                        <p className="text-xs font-semibold flex text-center text-white">
+                          { card.title }
                         </p>
                       </div>
                     </div>
                   )
-                }
-
-
-                const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
-                const rank = isStd ? customStdRank : customPprRank
-                let rankText
-                if ( isEspnRank ) {
-                  rankText = `ESPN ADP #${espnAdp?.toFixed(1)}`
                 } else {
-                  rankText = `#${rank}`
-                }
-                const isBelowAdp = currPick - (espnAdp || 0) >= 0
-                const isBelowRank = currPick - (rank || 0) >= 0
-                const currAdpDiff = Math.abs(currPick - (espnAdp || 0))
-                const currRankDiff = Math.abs(currPick - (rank || 0))
+                  const player = card as Player
+                  const {
+                    firstName,
+                    lastName,
+                    fullName,
+                    id,
+                    team,
+                    // target, TODO - need to handle "target"
+                  } = player
 
-                return(
-                  <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
-                    className={`px-2 py-1 m-1 text-center border rounded shadow-md relative ${tierStyle} cursor-pointer`}
-                    onMouseEnter={ () => {
-                      if ( viewPlayerIdTimer ) {
-                        clearTimeout( viewPlayerIdTimer )
-                      }
-                      viewPlayerIdTimer = setTimeout(() => {
-                        setShownPlayerId(id) 
-                        setViewPlayerId(id)
-                      }, 250)
-                    }}
-                    onMouseLeave={ () => {
-                      if ( viewPlayerIdTimer ) {
-                        clearTimeout( viewPlayerIdTimer )
-                      }
-                    }}
-                  >
-                    <div className="flex flex-col text-center items-center">
-                      <p className="text-sm font-semibold flex text-center">
-                        { name }
-                        { target &&
-                          <AnyAiFillStar
-                            color="blue"
-                            size={24}
-                          />
+                  const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
+                  console.log('playerMetrics', metrics)
+                  const { tier, adp, overallOrPosRank } = metrics
+                  const tierValue = tier?.tierNumber
+                  
+                  let tierStyle
+                  if ( shownPlayerId === id && !!shownPlayerBg ) {
+                    tierStyle = shownPlayerBg
+                  } else if ( showNextPreds && predictedPicks[id] && predictedPicks[id] < 3 ) {
+                    tierStyle = `${nextPredBgColor} text-white`
+                  } else if ( !showNextPreds && predictedPicks[id] && predictedPicks[id] < 2 ) {
+                    tierStyle = `${predBgColor} text-white`
+                  } else {
+                    tierStyle = getTierStyle(tierValue)
+                  }
+  
+                  const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
+                  let rankText
+                  if ( rankByAdp ) {
+                    rankText = `${boardSettings.adpRanker} ADP #${adp?.toFixed(1)}`
+                  } else {
+                    rankText = overallOrPosRank === undefined ? 'Unranked' : `#${overallOrPosRank}`
+                  }
+                  const isBelowAdp = currPick - (adp || 0) >= 0
+                  const isBelowRank = currPick - (overallOrPosRank || 0) >= 0
+                  const currAdpDiff = Math.abs(currPick - (adp || 0))
+                  const currRankDiff = Math.abs(currPick - (overallOrPosRank || 0))
+  
+                  return(
+                    <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
+                      className={`px-2 py-1 m-1 text-center border rounded shadow-md relative ${tierStyle} cursor-pointer`}
+                      onMouseEnter={ () => {
+                        if ( viewPlayerIdTimer ) {
+                          clearTimeout( viewPlayerIdTimer )
                         }
-                      </p>
-                      <p className="text-xs">
-                        { team } - { rankText } { tier ? ` - Tier ${tier}` : "" }
-                      </p>
-                      { !isEspnRank &&
-                        <p className={`text-xs ${getPickDiffColor(currAdpDiff)} rounded px-1`}>
-                          { currAdpDiff.toFixed(1) } { isBelowAdp ? 'BELOW' : 'ABOVE' } ADP
+                        viewPlayerIdTimer = setTimeout(() => {
+                          setShownPlayerId(id) 
+                          setViewPlayerId(id)
+                        }, 250)
+                      }}
+                      onMouseLeave={ () => {
+                        if ( viewPlayerIdTimer ) {
+                          clearTimeout( viewPlayerIdTimer )
+                        }
+                      }}
+                    >
+                      <div className="flex flex-col text-center items-center">
+                        <p className="text-sm font-semibold flex text-center">
+                          { fullName }
+                          {/* { target &&
+                            <AnyAiFillStar
+                              color="blue"
+                              size={24}
+                            />
+                          } */}
                         </p>
-                      }
-                      { isEspnRank &&
-                        <p className={`text-xs ${getPickDiffColor(currRankDiff)} rounded px-1`}>
-                          { currRankDiff.toFixed(1) } { isBelowRank ? 'BELOW' : 'ABOVE' } Rank
+                        <p className="text-xs">
+                          { team } - { rankText } { tier ? ` - Tier ${tierValue}` : "" }
                         </p>
-                      }
-
-                      { shownPlayerId === id &&
-                        <div className={`grid grid-cols-3 mt-1 w-full absolute opacity-60`}>
-                          <AnyTiDelete
-                            className="cursor-pointer -mt-2"
-                            color="red"
-                            onClick={ () => onPurgePlayer(player as Player) }
-                            onMouseEnter={() => setShownPlayerBg("bg-red-500")}
-                            onMouseLeave={() => setShownPlayerBg("")}
-                            size={46}
-                          />
-
-                          <AnyAiFillCheckCircle
-                            className="cursor-pointer -mt-1"
-                            color="green"
-                            onClick={ () => onSelectPlayer(player as Player) }
-                            onMouseEnter={() => setShownPlayerBg("bg-green-400")}
-                            onMouseLeave={() => setShownPlayerBg("")}
-                            size={33}
-                          />
-
-                          <AnyBsLink
-                            className="cursor-pointer -mt-2"
-                            color="blue"
-                            onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
-                            onMouseEnter={() => setShownPlayerBg("bg-blue-400")}
-                            onMouseLeave={() => setShownPlayerBg("")}
-                            size={40}
-                          />
-                        </div>
-                      }
+                        { !rankByAdp &&
+                          <p className={`text-xs ${getPickDiffColor(currAdpDiff)} rounded px-1`}>
+                            { currAdpDiff.toFixed(1) } { isBelowAdp ? 'BELOW' : 'ABOVE' } ADP
+                          </p>
+                        }
+                        { rankByAdp &&
+                          <p className={`text-xs ${getPickDiffColor(currRankDiff)} rounded px-1`}>
+                            { currRankDiff.toFixed(1) } { isBelowRank ? 'BELOW' : 'ABOVE' } Rank
+                          </p>
+                        }
+  
+                        { shownPlayerId === id &&
+                          <div className={`grid grid-cols-3 mt-1 w-full absolute opacity-60`}>
+                            <AnyTiDelete
+                              className="cursor-pointer -mt-2"
+                              color="red"
+                              onClick={ () => onPurgePlayer(player) }
+                              onMouseEnter={() => setShownPlayerBg("bg-red-500")}
+                              onMouseLeave={() => setShownPlayerBg("")}
+                              size={46}
+                            />
+  
+                            <AnyAiFillCheckCircle
+                              className="cursor-pointer -mt-1"
+                              color="green"
+                              onClick={ () => onSelectPlayer(player) }
+                              onMouseEnter={() => setShownPlayerBg("bg-green-400")}
+                              onMouseLeave={() => setShownPlayerBg("")}
+                              size={33}
+                            />
+  
+                            <AnyBsLink
+                              className="cursor-pointer -mt-2"
+                              color="blue"
+                              onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
+                              onMouseEnter={() => setShownPlayerBg("bg-blue-400")}
+                              onMouseLeave={() => setShownPlayerBg("")}
+                              size={40}
+                            />
+                          </div>
+                        }
+                      </div>
                     </div>
-                  </div>
-                )
+                  )
+                }
               })}
             </div>
           )

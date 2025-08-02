@@ -1,76 +1,77 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
-  createRanks,
-  removePlayerFromRanks,
-  addPlayerToRanks,
-  purgePlayerFromRanks,
-  sortRanks,
-  Ranks,
+  removePlayerFromBoard,
   PlayerLibrary,
   PlayersByPositionAndTeam,
+  PlayerRanks,
+  addAvailPlayer,
+  purgePlayerFromPlayerRanks,
+  SortPlayersByMetric,
+  sortPlayerRanksByRank,
+  createPlayerRanks,
 } from "../draft"
-import { Player, PosStatsByNumTeamByYear, Position } from '../../types'
+import { FantasySettings, Player, BoardSettings, ThirdPartyRanker, FantasyRanker } from '../../types'
 
-type PlayerRanks = { [key in Position | "Purge"]?: Player[] }
+interface UseRanksProps {
+  settings: FantasySettings
+}
 
 export const useRanks = ({
-  isStd = false,
-}: { isStd?: boolean } = {}) => {
+  settings,
+}: UseRanksProps) => {
+  const [boardSettings, setBoardSettings] = useState<BoardSettings>({
+    ranker: ThirdPartyRanker.HARRIS,
+    adpRanker: ThirdPartyRanker.ESPN,
+  })
   const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
   const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})
-  const [ranks, setRanks] = useState<Ranks>(createRanks([], isStd))
-  const [isEspnRank, setIsEspnRank] = useState(false)
-  const [posStatsByNumTeamByYear, setPosStatsByNumTeamByYear] = useState<PosStatsByNumTeamByYear>({})
-  const { availPlayers, harris, purge } = ranks
-  const playerRanks: PlayerRanks = {
-    "QB": harris.QB,
-    "RB": harris.RB,
-    "WR": harris.WR,
-    "TE": harris.TE,
-    "Purge": purge,
-  }
+  const [playerRanks, setPlayerRanks] = useState<PlayerRanks>(createPlayerRanks( [], settings, boardSettings ))
+  // const [posStatsByNumTeamByYear, setPosStatsByNumTeamByYear] = useState<PosStatsByNumTeamByYear>({})
   const noPlayers = Object.keys(playerLib).length === 0
 
   // funcs
-  const onRemovePlayerFromRanks = (player: Player) => {
-    const nextRanks = removePlayerFromRanks( ranks, player )
-    setRanks(nextRanks)
-  }
-  const onAddPlayerToRanks = (player: Player) => {
-    addPlayerToRanks( ranks, player )
-    const nextRanks = sortRanks( ranks )
-    setRanks(nextRanks)
-  }
-  const onPurgePlayerFromRanks = (player: Player) => {
-    const nextRanks = purgePlayerFromRanks( ranks, player )
-    setRanks(nextRanks)
-  }
-  const onSortRanksByEspn = (byEspn: boolean) => {
-    const nextRanks = sortRanks( ranks, byEspn )
-    setRanks( nextRanks )
-    setIsEspnRank(byEspn)
-  }
 
-  // effects
-  useEffect(() => {
-    const nextRanks = createRanks( Object.values( playerLib ), isStd)
-    setRanks(nextRanks)
-}, [isStd, playerLib])
+  const onSetRanker = (ranker: FantasyRanker) => {
+    setBoardSettings({ ...boardSettings, ranker })
+  }
+  const onSetAdpRanker = (adpRanker: FantasyRanker) => {
+    setBoardSettings({ ...boardSettings, adpRanker })
+  }
+  const onCreatePlayerRanks = (players: Player[]) => {
+    const nextPlayerRanks = createPlayerRanks( players, settings, boardSettings )
+    setPlayerRanks(nextPlayerRanks)
+  }
+  const onRemovePlayerFromBoard = (player: Player) => {
+    const nextPlayerRanks = removePlayerFromBoard( playerRanks, player )
+    setPlayerRanks(nextPlayerRanks)
+  }
+  const onAddAvailPlayer = (player: Player) => {
+    setPlayerRanks(addAvailPlayer( playerRanks, player, settings, boardSettings ))
+  }
+  const onPurgeAvailPlayer = (player: Player) => {
+    setPlayerRanks(purgePlayerFromPlayerRanks( playerRanks, player, settings, boardSettings ))
+  }
+  const onApplyRankingSortBy = (byAdp: boolean) => {
+    const sortBy = byAdp ? SortPlayersByMetric.Adp : SortPlayersByMetric.OverallOrPosRank
+    const nextPlayerRanks = sortPlayerRanksByRank( playerRanks, settings, boardSettings, sortBy )
+    setPlayerRanks( nextPlayerRanks )
+  }
 
   return {
     // state
+    boardSettings,
     playerLib, setPlayerLib,
     playersByPosByTeam, setPlayersByPosByTeam,
-    ranks, setRanks,
-    posStatsByNumTeamByYear, setPosStatsByNumTeamByYear,
-    isEspnRank, setIsEspnRank,
-    availPlayers, harris, purge,
     playerRanks,
+    settings,
     noPlayers,
     // funcs
-    onRemovePlayerFromRanks,
-    onAddPlayerToRanks,
-    onPurgePlayerFromRanks,
-    onSortRanksByEspn,
+    onRemovePlayerFromBoard,
+    onAddAvailPlayer,
+    onPurgeAvailPlayer,
+    onApplyRankingSortBy,
+    onCreatePlayerRanks,
+    onSetRanker,
+    onSetAdpRanker,
   }
 }

@@ -1,17 +1,12 @@
 import React, { useState } from "react"
 import { CSVLink } from "react-csv"
-import CSVReader from 'react-csv-reader'
+// import CSVReader from 'react-csv-reader'
+import { getPlayerMetrics, PlayerLibrary } from "../behavior/draft"
+import { getPlayerData } from "../behavior/playerData"
 
-import { GetHarrisRanksMock as GetHarrisRanks, GetFprosRanksMock as GetFprosRanks } from "../behavior/harris"
-import {
-  createRanks,
-  createPlayerLibrary,
-  Ranks,
-  PlayerLibrary,
-} from "../behavior/draft"
 import Dropdown from "./dropdown"
 import moment from "moment"
-import { Player, PosStatsByNumTeamByYear } from "types"
+import { FantasySettings, Player, BoardSettings } from "types"
 
 const papaparseOptions = {
   header: true,
@@ -20,61 +15,35 @@ const papaparseOptions = {
 }
 
 interface DraftLoaderOptionsProps {
-  setRanks: (ranks: Ranks) => void;
-  setPlayerLib: (playerLib: PlayerLibrary) => void;
-  setAlertMsg: (msg: string | null) => void;
-  setPosStatsByNumTeamByYear: (posStats: PosStatsByNumTeamByYear) => void;
-  updatePlayerLibAndDerivatives: (playerLib: PlayerLibrary, isStd: boolean, numTeams: number, posStatsByNumTeamByYear: PosStatsByNumTeamByYear) => void;
+  createPlayerLibrary: (players: Player[]) => void;
+  onCreatePlayerRanks: (players: Player[]) => void;
   arePlayersLoaded: boolean;
-  isStd: boolean;
+  settings: FantasySettings;
   playerLib: PlayerLibrary;
-  numTeams: number;
+  boardSettings: BoardSettings;
 }
 
 const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
-  setRanks,
-  setPlayerLib,
-  setAlertMsg,
-  setPosStatsByNumTeamByYear,
-  updatePlayerLibAndDerivatives,
+  onCreatePlayerRanks,
+  createPlayerLibrary,
 
+  settings,
+  boardSettings,
   arePlayersLoaded,
-  isStd,
   playerLib,
-  numTeams,
 }) => {
   // csv
-  const [ranksSource, setRanksSource] = useState<string | null>(null)
   const [csvData, setCsvData] = useState<any[][] | null>(null)
   const [isUpload, setIsUpload] = useState(false)
   const [showDlExtTooltip, setShowDlExtTooltip] = useState(false)
   const [showRanksTooltip, setShowRanksTooltip] = useState(false)
 
-  const onLoadHarrisRanks = async () => {
-    setAlertMsg("Loading Harris Football Ranks...")
-    const harrisData = await GetHarrisRanks()
-    if (harrisData) {
-      const { players, posStatsByNumTeamByYear } = harrisData
-      const playerLib = createPlayerLibrary(players)
-      const ranks = createRanks(players, isStd)
-      setRanksSource('Harris')
-      setRanks(ranks)
-      updatePlayerLibAndDerivatives(playerLib, isStd, numTeams, posStatsByNumTeamByYear)
-      setAlertMsg(null)
-    }
-  }
-
-  const onLoadFprosRanks = async () => {
-    setAlertMsg("Loading Fantasy Pros Ranks...")
-    const fprosData = await GetFprosRanks()
-    if (fprosData) {
-      const { players, posStatsByNumTeamByYear } = fprosData
-      const playerLib = createPlayerLibrary(players)
-      const ranks = createRanks(players, isStd)
-      setRanksSource('FPros')
-      setRanks(ranks)
-      updatePlayerLibAndDerivatives(playerLib, isStd, numTeams, posStatsByNumTeamByYear)
-      setAlertMsg(null)
+  const onLoadPlayers = () => {
+    const playerData = getPlayerData()
+    if (playerData) {
+      const { players } = playerData
+      onCreatePlayerRanks(players)
+      createPlayerLibrary(players)
     }
   }
 
@@ -85,92 +54,87 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
     }
     // get all unique keys in data
     const header = [
-      'Source',
       'Id',
       'Name',
       'Position',
       'Team',
-      'ESPN Overall STD Rank',
-      'ESPN Overall PPR Rank',
-      'ESPN ADP',
-      'Custom STD Rank',
-      'Custom PPR Rank',
+      'Overall Rank',
+      'Position Rank',
+      'ADP',
       'Tier',
     ]
-    const ranksData = Object.values(playerLib).map((player: Player) => {
+    const ranksData = Object.values(playerLib).map((player) => {
+      const playerMetrics = getPlayerMetrics(player, settings, boardSettings)
       return [
-        ranksSource,
         player.id,
-        player.name,
+        player.fullName,
         player.position,
         player.team,
-        player.espnOvrStdRank,
-        player.espnOvrPprRank,
-        (player.espnAdp || 0).toFixed(1),
-        player.customStdRank,
-        player.customPprRank,
-        player.tier,
+        playerMetrics.overallRank,
+        playerMetrics.posRank,
+        playerMetrics.adp,
+        playerMetrics.tier?.tierNumber,
       ]
     })
     const nextCsvData = [header, ...ranksData]
     setCsvData(nextCsvData)
   }
 
-  const onFileLoaded = async (csvPlayers: any[]) => {
-    const csvPlayersMap = csvPlayers.reduce((dict, player) => {
-      dict[player['Id']] = player
-      return dict
-    }, {} as { [id: string]: any })
+  // TODO - fix edit ranks
+  // const onFileLoaded = async (csvPlayers: any[]) => {
+  //   const csvPlayersMap = csvPlayers.reduce((dict, player) => {
+  //     dict[player['Id']] = player
+  //     return dict
+  //   }, {} as { [id: string]: any })
 
-    let players: Player[] = [], 
-      playerLib: PlayerLibrary, 
-      posStatsByNumTeamByYear: PosStatsByNumTeamByYear | undefined
-    if (csvPlayers[0]['Source'] === 'Harris') {
-      setAlertMsg("Loading Harris Football Ranks...")
-      const harrisRanks = await GetHarrisRanks()
-      if (harrisRanks) {
-        posStatsByNumTeamByYear = harrisRanks.posStatsByNumTeamByYear
-        players = harrisRanks.players
-        setRanksSource('Harris')
-      }
-    } else if (csvPlayers[0]['Source'] === 'FPros') {
-      setAlertMsg("Loading FPros Ranks...")
-      const fprosRanks = await GetFprosRanks()
-      if (fprosRanks) {
-        posStatsByNumTeamByYear = fprosRanks.posStatsByNumTeamByYear
-        players = fprosRanks.players
-        setRanksSource('FPros')
-      }
-    }
+  //   let players: Player[] = [], 
+  //     playerLib: PlayerLibrary,
+  //     posStatsByNumTeamByYear: PosStatsByNumTeamByYear | undefined
+  //   if (csvPlayers[0]['Source'] === 'Harris') {
+  //     setAlertMsg("Loading Harris Football Ranks...")
+  //     const harrisRanks = await GetHarrisRanks()
+  //     if (harrisRanks) {
+  //       posStatsByNumTeamByYear = harrisRanks.posStatsByNumTeamByYear
+  //       players = harrisRanks.players
+  //       setRanksSource('Harris')
+  //     }
+  //   } else if (csvPlayers[0]['Source'] === 'FPros') {
+  //     setAlertMsg("Loading FPros Ranks...")
+  //     const fprosRanks = await GetFprosRanks()
+  //     if (fprosRanks) {
+  //       posStatsByNumTeamByYear = fprosRanks.posStatsByNumTeamByYear
+  //       players = fprosRanks.players
+  //       setRanksSource('FPros')
+  //     }
+  //   }
 
-    // apply csv ranks
-    players.forEach((player: Player) => {
-      const csvPlayer = csvPlayersMap[player.id]
-      if (csvPlayer) {
-        player.tier = csvPlayer['Tier']
-        player.customStdRank = csvPlayer['Custom STD Rank']
-        player.customPprRank = csvPlayer['Custom PPR Rank']
-      } else {
-        player.tier = ''
-        player.customStdRank = undefined
-        player.customPprRank = undefined
-      }
-    })
+  //   // apply csv ranks
+  //   players.forEach((player: Player) => {
+  //     const csvPlayer = csvPlayersMap[player.id]
+  //     if (csvPlayer) {
+  //       player.tier = csvPlayer['Tier']
+  //       player.customStdRank = csvPlayer['Custom STD Rank']
+  //       player.customPprRank = csvPlayer['Custom PPR Rank']
+  //     } else {
+  //       player.tier = ''
+  //       player.customStdRank = undefined
+  //       player.customPprRank = undefined
+  //     }
+  //   })
 
-    playerLib = createPlayerLibrary(players)
-    const ranks = createRanks(players, isStd)
-    setRanks(ranks)
-    updatePlayerLibAndDerivatives(playerLib, isStd, numTeams, posStatsByNumTeamByYear!)
-    setIsUpload(false)
-    if (posStatsByNumTeamByYear) {
-      setPosStatsByNumTeamByYear(posStatsByNumTeamByYear)
-    }
-    setAlertMsg(null)
-  }
+  //   playerLib = createPlayerLibrary(players)
+  //   const ranks = createRanks(players, isStd)
+  //   setRanks(ranks)
+  //   updatePlayerLibAndDerivatives(playerLib, isStd, numTeams, posStatsByNumTeamByYear!)
+  //   setIsUpload(false)
+  //   if (posStatsByNumTeamByYear) {
+  //     setPosStatsByNumTeamByYear(posStatsByNumTeamByYear)
+  //   }
+  //   setAlertMsg(null)
+  // }
 
   let ranksOptions = [
-    { title: "Load Current Harris Ranks", callback: onLoadHarrisRanks },
-    { title: "Load Current Avg FantasyPros Ranks", callback: onLoadFprosRanks },
+    { title: "Load Players", callback: onLoadPlayers },
     { title: "Load From CSV", callback: () => setIsUpload(!isUpload) },
   ]
   if ( arePlayersLoaded ) {
@@ -233,14 +197,14 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
       </div>
 
       <div className="flex flex-col w-64 fixed top-4">
-        { isUpload &&
+        {/* { isUpload &&
           <CSVReader
             cssClass="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase text-sm flex flex-col"
             label="Upload Ranks"
             onFileLoaded={ onFileLoaded }
             parserOptions={papaparseOptions}
           />
-        }
+        } */}
 
         { csvData && 
           <CSVLink data={csvData}

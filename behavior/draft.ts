@@ -1,5 +1,5 @@
-import Moment from 'moment'
-import { Player, Position, PosStatsByNumTeamByYear } from 'types'
+
+import { Player, FantasyPosition, FantasySettings, PlayerMetrics, BoardSettings } from 'types'
 
 // Type Definitions
 export interface EspnDraftEventRaw {
@@ -20,7 +20,7 @@ export interface EspnDraftEventParsed {
 export interface NflDraftEvent {
     name: string
     team: string
-    position: Position | string
+    position: FantasyPosition | string
     pick: number
 }
 
@@ -34,37 +34,75 @@ export type PlayerLibrary = {
 }
 
 export type PlayersByPositionAndTeam = {
-    [pos in Position]?: {
+    [pos in FantasyPosition]?: {
         [team: string]: Player[]
     }
 }
 
-type PositionRanks = {
-    [pos in Position]?: Player[]
-}
+// type PositionRanks = {
+//     [pos in FantasyPosition]?: Player[]
+// }
 
-export interface Ranks {
-    isStd: boolean
-    harris: PositionRanks
-    espn: PositionRanks
-    purge: Player[]
-    availPlayers: Player[]
-}
+// export interface Ranks {
+//     isStd: boolean
+//     harris: PositionRanks
+//     espn: PositionRanks
+//     purge: Player[]
+//     availPlayers: Player[]
+// }
 
 export interface Roster {
-    Picks: string[]
-    QB: string[]
-    RB: string[]
-    WR: string[]
-    TE: string[]
+    picks: string[]
+    [FantasyPosition.QUARTERBACK]: string[]
+    [FantasyPosition.RUNNING_BACK]: string[]
+    [FantasyPosition.WIDE_RECEIVER]: string[]
+    [FantasyPosition.TIGHT_END]: string[]
 }
 
-type PositionCounts = {
-    [key in Position]?: number
+export type PositionCounts = {
+    [key in FantasyPosition]?: number
 }
 
 type PredictedPicks = {
     [playerId: string]: number
+}
+
+// presenters
+
+export enum PlayerRankingsBy {
+    PPROverall = 'pprOverall',
+    StandardOverall = 'standardOverall',
+    PPRByPosition = 'pprByPosition',
+    StandardByPosition = 'standardByPosition',
+}
+
+export const getPlayerMetrics = (
+    player: Player,
+    settings: FantasySettings,
+    boardSettings: BoardSettings,
+): PlayerMetrics => {
+    const ranks = player.ranks[boardSettings.ranker]
+    const adpRanks = player.ranks[boardSettings.adpRanker]
+    if ( !ranks || !adpRanks ) {
+        return {
+            overallRank: undefined,
+            posRank: 9999,
+            tier: undefined,
+            adp: undefined,
+            overallOrPosRank: undefined,
+        }
+    }
+    const overallRank = settings.ppr ? ranks.pprOverallRank : ranks.standardOverallRank
+    const posRank = settings.ppr ? ranks.pprPositionRank : ranks.standardPositionRank
+
+    return {
+        overallRank,
+        posRank,
+        tier: settings.ppr ? ranks.pprPositionTier : ranks.standardPositionTier,
+        // TODO - adp should use a new adp field on rankings
+        adp: settings.ppr ? adpRanks.pprOverallRank : adpRanks.standardOverallRank,
+        overallOrPosRank: overallRank == null ? posRank : overallRank,
+    }
 }
 
 // helpers
@@ -103,7 +141,12 @@ const levenshteinDistance = (str1: string, str2: string): number => {
 
 // draft listener
 
-const validPositions: Position[] = ['QB', 'RB', 'WR', 'TE']
+export const rankablePositions: FantasyPosition[] = [
+    FantasyPosition.QUARTERBACK,
+    FantasyPosition.RUNNING_BACK,
+    FantasyPosition.WIDE_RECEIVER,
+    FantasyPosition.TIGHT_END,
+]
 
 export const parseEspnDraftEvents = (draftPicksData: EspnDraftEventRaw[]): EspnDraftEventParsed[] => {
     return draftPicksData.map( data => {
@@ -138,16 +181,19 @@ switch(nflTeam) {
     }
 }
 
-export const parseNflDraftEvents = ( draftPicksData: NflDraftEvent[], playersByPosByTeam: PlayersByPositionAndTeam ): ParsedNflDraftEvent[] => {
+export const parseNflDraftEvents = (
+    draftPicksData: NflDraftEvent[],
+    playersByPosByTeam: PlayersByPositionAndTeam,
+): ParsedNflDraftEvent[] => {
     return draftPicksData.map(draftEvent => {
         console.log('matching nfl event', draftEvent, playersByPosByTeam)
         const { name, team: nflTeam, position, pick: ovrPick } = draftEvent
         const team = parseNflTeamToPlayerTeam( nflTeam )
-        if ( !validPositions.includes( position as Position )) {
+        if ( !rankablePositions.includes( position as FantasyPosition )) {
             return null
         }
 
-        const posPlayers = playersByPosByTeam[position as Position]?.[team] || []
+        const posPlayers = playersByPosByTeam[position as FantasyPosition]?.[team] || []
         const playerByExactName = posPlayers.find( p => playerToNflName( p ) === normalizeNflName( name ) )
         if ( playerByExactName ) {
             return { id: playerByExactName.id, ovrPick}
@@ -175,93 +221,82 @@ export const parseNflDraftEvents = ( draftPicksData: NflDraftEvent[], playersByP
 
 // players
 
-export const createPlayerLibrary = (players: Player[]): PlayerLibrary => players.reduce((acc: PlayerLibrary, player) => {
-    acc[player.id] = player
-    return acc
-}, {})
+// export const rankTypes = ['harris', 'espn']
 
-export const allPositions: Position[] = ['QB', 'RB', 'WR', 'TE']
-export const rankTypes = ['harris', 'espn']
+// export const addDefaultTiers = (playerLib: PlayerLibrary, settings: FantasySettings, ranker: FantasyRanker): PlayerLibrary => {
+//     const players = Object.values(playerLib)
+//     if ( players.some( p => getPlayerMetrics(p, settings, ranker).tier )) {
+//         return playerLib
+//     }
+//     players.forEach( player => {
+//         const metrics = getPlayerMetrics(player, settings, ranker)
+//         const rank = metrics.posRank
+//         if ( rank ) {
+//             playerLib[player.id] = player
+//         }
+//     })
 
-export const addDefaultTiers = (playerLib: PlayerLibrary, isStd: boolean, numTeams: number): PlayerLibrary => {
-    const players = Object.values(playerLib)
-    if ( players.some( p => p.tier )) {
-        return playerLib
-    }
-    players.forEach( player => {
-        const rank = isStd ? player.customStdRank : player.customPprRank
-        if ( rank ) {
-            if ( ['RB', 'WR'].includes( player.position )) {
-                player.tier = (parseInt(String(rank / numTeams)) + 1).toString()
-                playerLib[player.id] = player
-            } else {
-                player.tier = Math.min( numTeams, rank ).toString()
-                playerLib[player.id] = player
-            }
-        }
-    })
-
-    return playerLib
-}
+//     return playerLib
+// }
 
 // rank tiers are statistical wr1, wr2, etc based on num teams
 // differs from tiers as there can be multiple tiers within wr1, wr2 etc
-export const addRankTiers = (playerLib: PlayerLibrary, numTeams: number, posStatsByNumTeamByYear: PosStatsByNumTeamByYear): void => {
-    const arePosStatsEmpty = Object.keys( posStatsByNumTeamByYear ).length === 0
-    const lastYear = parseInt(Moment().format('YYYY'), 10) - 1
-    console.log('addRankTiers', posStatsByNumTeamByYear)
+// export const addRankTiers = (playerLib: PlayerLibrary, numTeams: number, posStatsByNumTeamByYear: PosStatsByNumTeamByYear): void => {
+//     const arePosStatsEmpty = Object.keys( posStatsByNumTeamByYear ).length === 0
+//     const lastYear = parseInt(Moment().format('YYYY'), 10) - 1
+//     console.log('addRankTiers', posStatsByNumTeamByYear)
 
-    Object.keys(playerLib).forEach( playerId => {
-        // add rank tiers
-        let player = playerLib[playerId]
-        if (['WR','RB'].includes(player.position)) {
-            player.stdRankTier = player.customStdRank ? parseInt(String(player.customStdRank / numTeams)) + 1 : 0
-            player.pprRankTier = player.customPprRank ? parseInt(String(player.customPprRank / numTeams)) + 1 : 0
-        } else {
-            player.stdRankTier = player.customStdRank ? Math.min(player.customStdRank, numTeams) : 0
-            player.pprRankTier = player.customPprRank ? Math.min(player.customPprRank, numTeams) : 0
-        }
+//     Object.keys(playerLib).forEach( playerId => {
+//         // add rank tiers
+//         let player = playerLib[playerId]
+//         if (['WR','RB'].includes(player.position)) {
+//             player.stdRankTier = player.customStdRank ? parseInt(String(player.customStdRank / numTeams)) + 1 : 0
+//             player.pprRankTier = player.customPprRank ? parseInt(String(player.customPprRank / numTeams)) + 1 : 0
+//         } else {
+//             player.stdRankTier = player.customStdRank ? Math.min(player.customStdRank, numTeams) : 0
+//             player.pprRankTier = player.customPprRank ? Math.min(player.customPprRank, numTeams) : 0
+//         }
 
-        // add last year tier
-        if ( !arePosStatsEmpty ) {
-            const posStats = posStatsByNumTeamByYear[numTeams][lastYear][player.position]
-            const seasonStats = player.seasonStats.find( ssnStats => ssnStats.year === lastYear )
-            if ( seasonStats && posStats ) {
-                if (
-                    posStats.tier1Stats &&
-                    seasonStats.totalPoints >= posStats.tier1Stats.minTotalPts
-                ) {
-                    player.lastYrTier = 1
-                } else if (
-                    posStats.tier2Stats &&
-                    seasonStats.totalPoints >= posStats.tier2Stats.minTotalPts
-                ) {
-                    player.lastYrTier = 2
-                } else if (
-                    posStats.tier3Stats &&
-                    seasonStats.totalPoints >= posStats.tier3Stats.minTotalPts
-                ) {
-                    player.lastYrTier = 3
-                } else if (
-                    posStats.tier4Stats &&
-                    seasonStats.totalPoints >= posStats.tier4Stats.minTotalPts
-                ) {
-                    player.lastYrTier = 4
-                } else if (
-                    posStats.tier5Stats &&
-                    seasonStats.totalPoints >= posStats.tier5Stats.minTotalPts
-                ) {
-                    player.lastYrTier = 5
-                } else {
-                    player.lastYrTier = 6
-                }
-            }
-        }
+//         // add last year tier
+//         if ( !arePosStatsEmpty ) {
+//             const posStats = posStatsByNumTeamByYear[numTeams][lastYear][player.position]
+//             const seasonStats = player.seasonStats.find( ssnStats => ssnStats.year === lastYear )
+//             if ( seasonStats && posStats ) {
+//                 if (
+//                     posStats.tier1Stats &&
+//                     seasonStats.totalPoints >= posStats.tier1Stats.minTotalPts
+//                 ) {
+//                     player.lastYrTier = 1
+//                 } else if (
+//                     posStats.tier2Stats &&
+//                     seasonStats.totalPoints >= posStats.tier2Stats.minTotalPts
+//                 ) {
+//                     player.lastYrTier = 2
+//                 } else if (
+//                     posStats.tier3Stats &&
+//                     seasonStats.totalPoints >= posStats.tier3Stats.minTotalPts
+//                 ) {
+//                     player.lastYrTier = 3
+//                 } else if (
+//                     posStats.tier4Stats &&
+//                     seasonStats.totalPoints >= posStats.tier4Stats.minTotalPts
+//                 ) {
+//                     player.lastYrTier = 4
+//                 } else if (
+//                     posStats.tier5Stats &&
+//                     seasonStats.totalPoints >= posStats.tier5Stats.minTotalPts
+//                 ) {
+//                     player.lastYrTier = 5
+//                 } else {
+//                     player.lastYrTier = 6
+//                 }
+//             }
+//         }
 
-        // add back to lib
-        playerLib[playerId] = player
-    })
-}
+//         // add back to lib
+//         playerLib[playerId] = player
+//     })
+// }
 
 // rosters
 
@@ -274,102 +309,120 @@ export const getRoundIdxForPickNum = (pickNum: number, numTeams: number): number
 
 // ranks
 
-export const createRanks = (players: Player[], isStd: boolean): Ranks => {
-    const ranks: Ranks = {
-        isStd,
-        harris: {
-            QB: [],
-            RB: [],
-            WR: [],
-            TE: [],
-        },
-        espn: {
-            QB: [],
-            RB: [],
-            WR: [],
-            TE: [],
-        },
-        purge: [],
-        availPlayers: [],
-    }
-    players.forEach( player => addPlayerToRanks( ranks, player ))
-    sortRanks( ranks )
-
-    return ranks
+export type PlayerRanks = {
+    [FantasyPosition.QUARTERBACK]: Player[]
+    [FantasyPosition.RUNNING_BACK]: Player[]
+    [FantasyPosition.WIDE_RECEIVER]: Player[]
+    [FantasyPosition.TIGHT_END]: Player[]
+    'Purge': Player[]
+    availPlayersByOverallRank: Player[]
+    availPlayersByAdp: Player[]
 }
 
-export const removePlayerFromRanks = ( ranks: Ranks, player: Player ): Ranks => {
-    rankTypes.forEach( rankType => {
-        const posRank = ranks[rankType as 'harris' | 'espn'][player.position]
-        if (posRank) {
-            ranks[rankType as 'harris' | 'espn'][player.position] = posRank.filter( p => p.id !== player.id )
-        }
+export const createPlayerRanks = (players: Player[], settings: FantasySettings, boardSettings: BoardSettings): PlayerRanks => {
+    let playerRanks: PlayerRanks = {
+        [FantasyPosition.QUARTERBACK]: [],
+        [FantasyPosition.RUNNING_BACK]: [],
+        [FantasyPosition.WIDE_RECEIVER]: [],
+        [FantasyPosition.TIGHT_END]: [],
+        'Purge': [],
+        availPlayersByOverallRank: [],
+        availPlayersByAdp: [],
+    }
+    players.forEach( player => {
+        playerRanks = addAvailPlayer( playerRanks, player, settings, boardSettings )
     })
-    ranks.availPlayers = ranks.availPlayers.filter( p => p.id !== player.id )
-    ranks.purge = ranks.purge.filter( p => p.id !== player.id )
+    playerRanks = sortPlayerRanksByRank( playerRanks, settings, boardSettings, SortPlayersByMetric.OverallOrPosRank )
 
-    return { ...ranks }
+    return playerRanks
 }
 
-export const addPlayerToRanks = (ranks: Ranks, player: Player): void => {
-    const { isStd } = ranks
-    const harrisRanks = ranks.harris[player.position]
-    const espnRanks = ranks.espn[player.position]
+export const removePlayerFromBoard = ( playerRanks: PlayerRanks, player: Player ): PlayerRanks => {
+    playerRanks.availPlayersByOverallRank = playerRanks.availPlayersByOverallRank.filter( p => p.id !== player.id )
+    playerRanks.availPlayersByAdp = playerRanks.availPlayersByAdp.filter( p => p.id !== player.id )
+    playerRanks.Purge = playerRanks.Purge.filter( p => p.id !== player.id )
+    const playerPos = player.position as keyof PlayerRanks
+    const nextPlayerPosRanks = playerRanks[playerPos].filter( p => p.id !== player.id )
+    playerRanks[playerPos] = nextPlayerPosRanks
 
-    if ( harrisRanks && ((isStd && player.customStdRank) || (!isStd && player.customPprRank)) ) {
-        harrisRanks.push(player)
-    }
-    if ( player.espnAdp && espnRanks ) {
-        espnRanks.push(player)
-    }
-    ranks.availPlayers.push( player )
+    return { ...playerRanks }
 }
 
-export const sortRanks = (ranks: Ranks, byEspn = false): Ranks => {
-    const { isStd } = ranks
-    rankTypes.forEach( rankType => {
-        allPositions.forEach( pos => {
-            const posRanks = ranks[rankType as 'harris' | 'espn'][pos]
-            if ( posRanks ) {
-                if ( byEspn ) {
-                    ranks[rankType as 'harris' | 'espn'][pos] = posRanks.sort((a,b) => (a.espnAdp || 9999) - (b.espnAdp || 9999))
-                } else {
-                    if (rankType === 'harris') {
-                        if (isStd) {
-                            ranks[rankType as 'harris' | 'espn'][pos] = posRanks.sort((a, b) => (a.customStdRank || 9999) - (b.customStdRank || 9999))
-                        } else {
-                            ranks[rankType as 'harris' | 'espn'][pos] = posRanks.sort((a, b) => (a.customPprRank || 9999) - (b.customPprRank || 9999))
-                        }
-                    } else { // rankType === 'espn'
-                        ranks[rankType as 'harris' | 'espn'][pos] = posRanks.sort((a,b) => (a.espnAdp || 9999) - (b.espnAdp || 9999))
-                    }
-                }
-            }
-        })
+export const addAvailPlayer = (playerRanks: PlayerRanks, player: Player, settings: FantasySettings, boardSettings: BoardSettings): PlayerRanks => {
+    playerRanks.availPlayersByOverallRank.push( player )
+    playerRanks.availPlayersByAdp.push( player )
+    playerRanks.availPlayersByOverallRank = playerRanks.availPlayersByOverallRank.sort((a, b) => {
+        const aRank = getPlayerMetrics(a, settings, boardSettings).overallRank
+        const bRank = getPlayerMetrics(b, settings, boardSettings).overallRank
+        return (aRank || 9999) - (bRank || 9999)
+    })
+    playerRanks.availPlayersByAdp = playerRanks.availPlayersByAdp.sort((a, b) => {
+        const aAdp = getPlayerMetrics(a, settings, boardSettings).adp
+        const bAdp = getPlayerMetrics(b, settings, boardSettings).adp
+        return (aAdp || 9999) - (bAdp || 9999)
+    })
+    const playerPos = player.position as keyof PlayerRanks
+    const playerPosRanks = playerRanks[playerPos]
+    playerPosRanks.push(player)
+    playerRanks[playerPos] = sortPlayersByRank( [...playerPosRanks], settings, boardSettings, SortPlayersByMetric.OverallOrPosRank )
+
+    return { ...playerRanks }
+}
+
+export enum SortPlayersByMetric {
+    OverallRank = 'overallRank',
+    PosRank = 'posRank',
+    OverallOrPosRank = 'overallOrPosRank',
+    Adp = 'adp',
+}
+
+export const sortPlayersByRank = (players: Player[], settings: FantasySettings, boardSettings: BoardSettings, sortBy: SortPlayersByMetric): Player[] => {
+    return players.sort((a, b) => {
+        const aRank = getPlayerMetrics(a, settings, boardSettings)[sortBy]
+        const bRank = getPlayerMetrics(b, settings, boardSettings)[sortBy]
+        return (aRank || 9999) - (bRank || 9999)
+    })
+}
+
+export const sortPlayerRanksByRank = (playerRanks: PlayerRanks, settings: FantasySettings, boardSettings: BoardSettings, sortBy: SortPlayersByMetric): PlayerRanks => {
+    rankablePositions.forEach( pos => {
+        const players = playerRanks[pos as keyof PlayerRanks]
+        playerRanks[pos as keyof PlayerRanks] = sortPlayersByRank( players, settings, boardSettings, sortBy )
     })
 
-    return { ...ranks }
+    return { ...playerRanks }
 }
 
-export const purgePlayerFromRanks = ( ranks: Ranks, player: Player ): Ranks => {
-    const purgeIdx = ranks.purge.findIndex( p => p.id === player.id )
+export const purgePlayerFromPlayerRanks = ( playerRanks: PlayerRanks, player: Player, settings: FantasySettings, boardSettings: BoardSettings ): PlayerRanks => {
+    const purgeIdx = playerRanks.Purge.findIndex( p => p.id === player.id )
     if ( purgeIdx === -1 ) {
-        ranks = removePlayerFromRanks( ranks, player )
-        ranks.purge.push( player )
+        playerRanks = removePlayerFromBoard( playerRanks, player )
+        playerRanks.Purge.push( player )
     } else {
-        ranks.purge = ranks.purge.filter( p => p.id !== player.id )
-        addPlayerToRanks( ranks, player )
-        ranks = sortRanks( ranks )
+        playerRanks.Purge = playerRanks.Purge.filter( p => p.id !== player.id )
+        playerRanks = addAvailPlayer( playerRanks, player, settings, boardSettings )
+        playerRanks.availPlayersByOverallRank = sortPlayersByRank(
+            playerRanks.availPlayersByOverallRank,
+            settings,
+            boardSettings,
+            SortPlayersByMetric.OverallOrPosRank,
+        )
+        playerRanks.availPlayersByAdp = sortPlayersByRank(
+            playerRanks.availPlayersByAdp,
+            settings,
+            boardSettings,
+            SortPlayersByMetric.Adp,
+        )
     }
 
-    return { ...ranks }
+    return { ...playerRanks }
 }
 
 // Rosters
 
 export const createRosters = (numTeams: number): Roster[] => {
     const rosters = new Array(numTeams).fill(null).map(() => ({
-        Picks: [],
+        picks: [],
         QB: [],
         RB: [],
         WR: [],
@@ -381,7 +434,7 @@ export const createRosters = (numTeams: number): Roster[] => {
 
 export const addToRoster = ( rosters: Roster[], player: Player, rosterIdx: number ): Roster[] => {
     const roster = rosters[rosterIdx]
-    if ( roster.Picks.includes(player.id)) {
+    if ( roster.picks.includes(player.id)) {
         return rosters
     }
 
@@ -389,7 +442,7 @@ export const addToRoster = ( rosters: Roster[], player: Player, rosterIdx: numbe
         ...rosters.slice(0, rosterIdx),
         {
             ...roster,
-            Picks: [...roster.Picks, player.id],
+            picks: [...roster.picks, player.id],
             [player.position]: [...roster[player.position as 'QB' | 'RB' | 'WR' | 'TE'], player.id],
         },
         ...rosters.slice(rosterIdx+1, rosters.length),
@@ -402,7 +455,7 @@ export const removeFromRoster = ( rosters: Roster[], player: Player, rosterIdx: 
         ...rosters.slice(0, rosterIdx),
         {
             ...roster,
-            Picks: roster.Picks.filter( id => id !== player.id ),
+            Picks: roster.picks.filter( id => id !== player.id ),
             [player.position]: roster[player.position as 'QB' | 'RB' | 'WR' | 'TE'].filter( id => id !== player.id ),
         },
         ...rosters.slice(rosterIdx+1, rosters.length),
@@ -411,8 +464,9 @@ export const removeFromRoster = ( rosters: Roster[], player: Player, rosterIdx: 
     return newRosters
 }
 
+// TODO - make this account for board settings
 // Roster = 1x flex
-export const nextPositionPicked = ( roster: Roster, roundNum: number, posCounts: PositionCounts ): Position[] => {
+export const nextPositionPicked = ( roster: Roster, roundNum: number, posCounts: PositionCounts ): FantasyPosition[] => {
     let pos: PositionCounts = { QB: 1, WR: 1, RB: 1, TE: 1 }
     if ( roundNum <= 3 ) {
         if ( roster.QB.length >= 1 ) delete pos.QB
@@ -432,52 +486,38 @@ export const nextPositionPicked = ( roster: Roster, roundNum: number, posCounts:
     }
     // console.log( 'nextPositionPicked', roundNum, posCounts, Object.keys( pos ) )
 
-    return Object.keys( pos ) as Position[]
+    return Object.keys( pos ) as FantasyPosition[]
 }
 
-export const nextPickedPlayerId = (
-    ranks: Ranks,
-    positions: Position[],
+export const predictNextPick = (
+    availPlayersByAdp: Player[],
+    settings: FantasySettings,
+    boardSettings: BoardSettings,
+    predictedPositions: FantasyPosition[],
     predicted: PredictedPicks,
     posCounts: PositionCounts,
     myPickNum: number,
     currPick: number,
     nextPick: number,
-    numTeams: number
 ): { predicted: PredictedPicks; updatedCounts: PositionCounts } => {
-    let hiRank: Player | undefined;
-    let hiRankPos: Position | undefined;
-    positions.forEach((pos) => {
-        const posRanks = ranks.espn[pos];
-        if (posRanks) {
-            for (let i = 0; i < posRanks.length; i++) {
-                const currentPlayer = posRanks[i]
-                if (predicted[currentPlayer.id]) continue;
+    const sortedAvailPlayers = sortPlayersByRank( availPlayersByAdp, settings, boardSettings, SortPlayersByMetric.Adp )
 
-                const currentRank = currentPlayer.espnAdp || 9999
-                const hiPlayerRank = hiRank?.espnAdp || 9999
-                if (!hiRank || hiPlayerRank > currentRank) {
-                    hiRank = currentPlayer;
-                    hiRankPos = pos;
-                    break;
-                }
-            }
-        }
-    });
-    const playerId = hiRank?.id;
-
-    if (!playerId || !hiRankPos) {
-        return { predicted, updatedCounts: posCounts };
-    } else {
-        const posCount = posCounts[hiRankPos] || 0;
-        return {
-            predicted: {
-                ...predicted,
-                [playerId]: picksSinceCurrPick(currPick, nextPick, myPickNum, numTeams),
-            },
-            updatedCounts: { ...posCounts, [hiRankPos]: posCount + 1 },
-        };
+    const nextPlayer = sortedAvailPlayers.find( p => !predicted[p.id] && predictedPositions.includes( p.position as FantasyPosition ))
+    
+    if ( !nextPlayer ) {
+        return { predicted, updatedCounts: posCounts }
     }
+
+    const nextPos = nextPlayer.position as FantasyPosition
+    const nextPosCount = posCounts[nextPos] || 0
+
+    return {
+        predicted: {
+            ...predicted,
+            [nextPlayer.id]: picksSinceCurrPick(currPick, nextPick, myPickNum, settings.numTeams),
+        },
+        updatedCounts: { ...posCounts, [nextPos]: nextPosCount + 1 },
+    };
 }
 
 export const picksSinceCurrPick = (currPick: number, nextPick: number, myPickNum: number, numTeams: number): number => {

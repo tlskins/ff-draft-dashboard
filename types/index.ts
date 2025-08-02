@@ -1,74 +1,171 @@
-export type Position = "QB" | "RB" | "WR" | "TE" | "DST" | "";
+export enum FantasyPosition {
+    QUARTERBACK = "QB",
+    RUNNING_BACK = "RB",
+    WIDE_RECEIVER = "WR",
+    TIGHT_END = "TE",
+    DEFENSE = "DST",
+    KICKER = "K",
+    NONE = "",
+}
 
-export interface Stats {
-  year: number;
-  totalPoints: number;
-  minTotalPts: number;
-  maxTotalPts: number;
-  ppg: number;
-  minPPG?: number;
-  maxPPG?: number;
-  gamesPlayed: number;
-  rushAttempts: number;
-  rushYards: number;
-  rushTds: number;
-  recs: number;
-  recYards: number;
-  recTds: number;
-  passAttempts: number;
-  passCompletions: number;
-  passYards: number;
-  passTds: number;
-  passInts: number;
+export enum NFLTeam {
+    FA = "FA",
+    ATL = "ATL",
+    BUF = "BUF",
+    CHI = "CHI",
+    CIN = "CIN",
+    CLE = "CLE",
+    DAL = "DAL",
+    DEN = "DEN",
+    DET = "DET",
+    GB = "GB",
+    TEN = "TEN",
+    IND = "IND",
+    KC = "KC",
+    LV = "LV",
+    LAR = "LAR",
+    MIA = "MIA",
+    MIN = "MIN",
+    NE = "NE",
+    NO = "NO",
+    NYG = "NYG",
+    NYJ = "NYJ",
+    PHL = "PHL",
+    ARI = "ARI",
+    PIT = "PIT",
+    LAC = "LAC",
+    SF = "SF",
+    SEA = "SEA",
+    TB = "TB",
+    WAS = "WAS",
+    CAR = "CAR",
+    JAC = "JAC",
+    BAL = "BAL",
+    HOU = "HOU",
+}
+
+export enum ThirdPartyRanker {
+    HARRIS = "Harris",
+    ESPN = "ESPN",
+    FPROS = "FantasyPros",
+}
+
+export enum DataRanker {
+    LAST_SSN_TTL_FPTS = "Last Season Total FPTS",
+    LAST_SSN_PPG = "Last Season PPG",
+    LAST_SSN_PPGS = "Last Season PPG Started",
+}
+
+export type RankBuckets = FantasyPosition.QUARTERBACK | FantasyPosition.RUNNING_BACK | FantasyPosition.WIDE_RECEIVER | FantasyPosition.TIGHT_END | "Purge"
+
+export type FantasyRanker = DataRanker | ThirdPartyRanker;
+
+export interface FantasySettings {
+    ppr: boolean;
+    numTeams: number;
+    numStartingQbs: number;
+    numStartingRbs: number;
+    numStartingWrs: number;
+    numStartingTes: number;
+    numFlexPositions: number;
+    numBenchPlayers: number;
+}
+
+export interface BoardSettings {
+    ranker: FantasyRanker;
+    adpRanker: FantasyRanker;
+}
+
+export interface PlayerStats {
+    rank: number;
+    playerName: string;
+    team: NFLTeam;
+    fantasyPosition: FantasyPosition;
+    age?: number;
+    gamesPlayed?: number;
+    gamesStarted?: number;
+    passCompletions?: number;
+    passAttempts?: number;
+    passYards?: number;
+    passTds?: number;
+    interceptions?: number;
+    rushAttempts?: number;
+    rushYards?: number;
+    rushYardsPerAttempt?: number;
+    rushTds?: number;
+    receivingTargets?: number;
+    receptions?: number;
+    receivingYards?: number;
+    receivingYardsPerReception?: number;
+    receivingTds?: number;
+    fumbles?: number;
+    fumblesLost?: number;
+    totalTds?: number;
+    twoPointConversions?: number;
+    twoPointPasses?: number;
+    fantasyPoints?: number;
+    pprPoints?: number;
+    draftkingsPoints?: number;
+    fanduelPoints?: number;
+    valueBasedDraft?: number;
+    positionRank?: number | null;
+    overallRank?: number | null;
+    playerId: string;
+}
+
+export interface Tier {
+    tierNumber: number;
+    upperLimitPlayerIdx: number;
+    upperLimitValue: number;
+    lowerLimitPlayerIdx: number;
+    lowerLimitValue: number;
+}
+
+export interface PlayerMetrics {
+    overallRank: number | undefined;
+    posRank: number;
+    tier: Tier | undefined;
+    adp: number | undefined;
+    overallOrPosRank: number | undefined;
+}
+
+export interface PlayerRanking {
+    playerId: string;
+    ranker: FantasyRanker;
+    position: FantasyPosition;
+    metricValuePpr?: number;
+    metricValueStd?: number;
+    standardOverallRank?: number;
+    pprOverallRank?: number;
+    standardPositionRank: number; // positional rank must exist
+    standardPositionTier?: Tier;
+    pprPositionRank: number; // positional rank must exist
+    pprPositionTier?: Tier;
+}
+
+export interface RankingSummary {
+    ranker: FantasyRanker;
+    ppr: boolean;
+    replacementLevels: { [key: string]: [number, number] };
+    stdDevs: { [key: string]: number };
+    tiers: { [key: string]: Tier[] };
 }
 
 export interface Player {
-  id: string;
-  firstName: string;
-  lastName: string;
-  name: string;
-  matchName: string;
-  position: Position;
-  team: string;
-  tier: string;
-  customStdRank?: number;
-  customPprRank?: number;
-  customStdOvrRank?: number;
-  customPprOvrRank?: number;
-  espnOvrPprRank?: number;
-  espnOvrStdRank?: number;
-  espnAdp?: number;
-  espnPlayerOutlook?: string;
-  seasonStats: Stats[];
-  lastYrTier: number;
-  lastYrOvrRank: number;
-  stdRankTier: number;
-  pprRankTier: number;
-  pros: string;
-  cons: string;
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    team: NFLTeam;
+    position: FantasyPosition;
+    ranks: { [key in FantasyRanker]: PlayerRanking };
+    lastSeasonStats?: PlayerStats;
+
+    // TODO - need to handle "target"
 }
 
-export interface SeasonPositionalStats {
-  id: string;
-  year: number;
-  position: Position;
-  tier1Stats: Stats | null;
-  tier2Stats: Stats | null;
-  tier3Stats: Stats | null;
-  tier4Stats: Stats | null;
-  tier5Stats: Stats | null;
-  tier6Stats: Stats | null;
-}
-
-export type PosStatsByNumTeamByYear = {
-  [numTeams: number]: {
-    [year: number]: {
-      [pos: string]: SeasonPositionalStats | null;
-    };
-  };
-};
-
-export interface HarrisData {
-  players: Player[];
-  posStatsByNumTeamByYear: PosStatsByNumTeamByYear;
+export interface Rankings {
+    players: Player[];
+    rankingsSummaries: RankingSummary[];
+    settings: FantasySettings;
 } 

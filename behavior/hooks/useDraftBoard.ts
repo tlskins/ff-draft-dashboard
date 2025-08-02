@@ -1,5 +1,6 @@
-import { useMemo, useState, Dispatch, SetStateAction } from 'react';
+import { useMemo, useState, Dispatch, SetStateAction, useEffect } from 'react';
 import { calcCurrRoundPick, getRoundIdxForPickNum } from '../draft';
+import { FantasySettings } from 'types';
 
 interface UseDraftBoardProps {
   defaultNumTeams?: number;
@@ -7,10 +8,8 @@ interface UseDraftBoardProps {
 }
 
 interface UseDraftBoardReturn {
-  numTeams: number;
-  setNumTeams: (numTeams: number) => void;
-  isStd: boolean;
-  setIsStd: Dispatch<SetStateAction<boolean>>;
+  settings: FantasySettings;
+  setIsPpr: (isPpr: boolean) => void;
   draftStarted: boolean;
   setDraftStarted: Dispatch<SetStateAction<boolean>>;
   myPickNum: number;
@@ -24,6 +23,7 @@ interface UseDraftBoardReturn {
   currRound: (string | null)[];
   currRoundPick: number;
   currMyPickNum: number;
+  setNumTeams: (numTeams: number) => void;
   getRoundForPickNum: (pickNum: number) => (string | null)[];
   onDraftPlayer: (playerId: string, pickNum: number) => void;
   onRemoveDraftedPlayer: (pickNum: number) => string | null;
@@ -37,8 +37,16 @@ export const useDraftBoard = ({
   defaultNumTeams = 12,
   defaultMyPickNum = 6,
 }: UseDraftBoardProps = {}): UseDraftBoardReturn => {
-  const [numTeams, setNumTeams] = useState<number>(defaultNumTeams);
-  const [isStd, setIsStd] = useState<boolean>(false);
+  const [settings, setSettings] = useState<FantasySettings>({
+    ppr: false,
+    numTeams: defaultNumTeams,
+    numStartingQbs: 1,
+    numStartingRbs: 2,
+    numStartingWrs: 2,
+    numStartingTes: 1,
+    numFlexPositions: 1,
+    numBenchPlayers: 5,
+  })
   const [draftStarted, setDraftStarted] = useState<boolean>(false);
   const [myPickNum, setMyPickNum] = useState<number>(defaultMyPickNum);
 
@@ -47,17 +55,24 @@ export const useDraftBoard = ({
     new Array(350).fill(null)
   );
 
-  const wrappedSetNumTeams = (numTeams: number) => {
+  useEffect(() => {
+    setSettings({ ...settings, numTeams: defaultNumTeams })
+  }, [defaultNumTeams])
+
+  const setNumTeams = (numTeams: number) => {
     if (draftStarted) {
       return;
     }
-    setNumTeams(numTeams);
+    setSettings({ ...settings, numTeams });
   };
+  const setIsPpr = (isPpr: boolean) => {
+    setSettings({ ...settings, ppr: isPpr })
+  }
   const getRoundForPickNum = (pickNum: number): (string | null)[] => {
-    const roundIdx = getRoundIdxForPickNum(pickNum, numTeams);
+    const roundIdx = getRoundIdxForPickNum(pickNum, settings.numTeams);
     return draftHistory.slice(
-      numTeams * roundIdx,
-      numTeams * roundIdx + numTeams
+      settings.numTeams * roundIdx,
+      settings.numTeams * roundIdx + settings.numTeams
     );
   };
   const onDraftPlayer = (playerId: string, pickNum: number): void => {
@@ -91,35 +106,34 @@ export const useDraftBoard = ({
     }
   };
   const onNavRoundDown = (): void => {
-    const nextCurrPick = currPick + (2 * (numTeams - currRoundPick) + 1);
+    const nextCurrPick = currPick + (2 * (settings.numTeams - currRoundPick) + 1);
     if (nextCurrPick <= draftHistory.length) {
       setCurrPick(nextCurrPick);
     }
   };
 
   const roundIdx = useMemo(
-    () => getRoundIdxForPickNum(currPick, numTeams),
-    [currPick, numTeams]
+    () => getRoundIdxForPickNum(currPick, settings.numTeams),
+    [currPick, settings.numTeams]
   );
   const isEvenRound = useMemo(() => roundIdx % 2 === 1, [roundIdx]);
   const currRound = useMemo(
     () => getRoundForPickNum(currPick),
-    [currPick, draftHistory, numTeams]
+    [currPick, draftHistory, settings.numTeams]
   );
   const currRoundPick = useMemo(
-    () => calcCurrRoundPick(currPick, numTeams),
-    [currPick, numTeams]
+    () => calcCurrRoundPick(currPick, settings.numTeams),
+    [currPick, settings.numTeams]
   );
   const currMyPickNum = useMemo(
-    () => (isEvenRound ? numTeams - myPickNum + 1 : myPickNum),
-    [isEvenRound, myPickNum, numTeams]
+    () => (isEvenRound ? settings.numTeams - myPickNum + 1 : myPickNum),
+    [isEvenRound, myPickNum, settings.numTeams]
   );
 
   return {
-    numTeams,
-    setNumTeams: wrappedSetNumTeams,
-    isStd,
-    setIsStd,
+    settings,
+    setNumTeams,
+    setIsPpr,
     draftStarted,
     setDraftStarted,
     myPickNum,

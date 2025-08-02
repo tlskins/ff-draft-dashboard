@@ -81,7 +81,7 @@ const StatsSection = ({
     tier6Stats,
   ].filter(Boolean) as Stats[]
   const highlightTier = viewPlayer?.lastYrTier
-  const playerStats = viewPlayer?.seasonStats.filter( s => s.year !== currYear && s.year >= currYearSub3 ) || []
+  const playerStats = viewPlayer?.seasonStats?.filter( s => s.year !== currYear && s.year >= currYearSub3 ) || []
   const position = viewPlayer?.position
   const playerProjTier = isStd ? viewPlayer?.stdRankTier : viewPlayer?.pprRankTier
   const tierStatsComp = playerProjTier && playerProjTier <= 6 && (statsByPosYear as any)?.[`tier${playerProjTier}Stats`]

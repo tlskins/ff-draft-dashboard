@@ -6,30 +6,37 @@ import moment, { Moment } from "moment"
 import PageHead from "../components/pageHead"
 import DraftLoaderOptions from "../components/draftLoaderOptions"
 import PositionRankings from "../components/positionRankings"
-import StatsSection from "../components/statsSection"
+// import StatsSection from "../components/statsSection"
 import {
-  addRankTiers,
-  addDefaultTiers,
+  // addRankTiers,
+  // addDefaultTiers,
   nextPositionPicked,
-  nextPickedPlayerId,
-  allPositions,
+  predictNextPick,
   parseEspnDraftEvents,
   parseNflDraftEvents,
   PlayerLibrary,
-  Ranks,
+  // Ranks,
   Roster,
   PlayersByPositionAndTeam,
   EspnDraftEventParsed,
   ParsedNflDraftEvent,
+  PositionCounts,
+  getPlayerMetrics,
 } from "../behavior/draft"
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
 import { useRosters } from '../behavior/hooks/useRosters'
 import { getPosStyle } from "../behavior/styles"
-import { Player, PosStatsByNumTeamByYear, Position } from "types"
+import { rankablePositions } from "../behavior/draft"
+import { Player, FantasyPosition } from "types"
 
 type PredictedPicks = { [playerId: string]: number };
-type TierPredictions = { [key: string]: number };
+type TierPredictions = {
+  [FantasyPosition.QUARTERBACK]: number;
+  [FantasyPosition.RUNNING_BACK]: number;
+  [FantasyPosition.WIDE_RECEIVER]: number;
+  [FantasyPosition.TIGHT_END]: number;
+}
 
 let listeningDraftTitle: {
   [key: string]: {
@@ -44,8 +51,7 @@ var listenerCheckTimer: NodeJS.Timeout
 const Home: FC = () => {
   const {
     // state
-    numTeams, setNumTeams,
-    isStd, setIsStd,
+    settings, setNumTeams, setIsPpr,
     draftStarted, setDraftStarted,
     myPickNum, setMyPickNum,
     currPick, setCurrPick,
@@ -62,7 +68,10 @@ const Home: FC = () => {
     onNavRight,
     onNavRoundUp,
     onNavRoundDown,
-  } = useDraftBoard()
+  } = useDraftBoard({
+    defaultNumTeams: 12,
+    defaultMyPickNum: 6,
+  })
 
   // rosters depend on draft board
   const {
@@ -73,72 +82,79 @@ const Home: FC = () => {
     addPlayerToRoster,
     removePlayerFromRoster,
   } = useRosters({
-    numTeams,
+    numTeams: settings.numTeams,
     myPickNum,
   })
 
   // ranks depend on draft board
   const {
     // state
+    boardSettings,
+    playerRanks, onCreatePlayerRanks,
     playerLib, setPlayerLib,
     playersByPosByTeam, setPlayersByPosByTeam,
-    ranks, setRanks,
-    posStatsByNumTeamByYear, setPosStatsByNumTeamByYear,
-    isEspnRank,
-    playerRanks,
     noPlayers,
     // funcs
-    onRemovePlayerFromRanks,
-    onAddPlayerToRanks,
-    onPurgePlayerFromRanks,
-    onSortRanksByEspn,
-  } = useRanks({ isStd })
+    onRemovePlayerFromBoard,
+    onAddAvailPlayer,
+    onPurgeAvailPlayer,
+    onApplyRankingSortBy,
+    onSetRanker,
+    onSetAdpRanker,
+  } = useRanks({ settings })
   
   const [predictedPicks, setPredictedPicks] = useState<PredictedPicks>({})
   const [showNextPreds, setShowNextPreds] = useState(false)
   const [showPredAvailByRound, setShowPredAvailByRound] = useState(false)
-  const [predRunTiers, setPredRunTiers] = useState<TierPredictions>({ QB: 0, RB: 0, WR: 0, TE: 0 })
-  const [predNextTiers, setPredNextTiers] = useState<TierPredictions>({ QB: 0, RB: 0, WR: 0, TE: 0 })
+  const [predRunTiers, setPredRunTiers] = useState<TierPredictions>({
+    [FantasyPosition.QUARTERBACK]: 0,
+    [FantasyPosition.RUNNING_BACK]: 0,
+    [FantasyPosition.WIDE_RECEIVER]: 0,
+    [FantasyPosition.TIGHT_END]: 0,
+  })
+  const [predNextTiers, setPredNextTiers] = useState<TierPredictions>({
+    [FantasyPosition.QUARTERBACK]: 0,
+    [FantasyPosition.RUNNING_BACK]: 0,
+    [FantasyPosition.WIDE_RECEIVER]: 0,
+    [FantasyPosition.TIGHT_END]: 0,
+  })
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [numPostPredicts, setNumPostPredicts] = useState(0)
-  const [hasCustomTiers, setHasCustomTiers] = useState<boolean | null>(null)
+  // TODO - fix edit custom tiers
+  // const [hasCustomTiers, setHasCustomTiers] = useState<boolean | null>(null)
   const [activeDraftListenerTitle, setActiveDraftListenerTitle] = useState<string | null>(null)
   const [lastListenerAck, setLastListenerAck] = useState<Moment | null>(null)
   const [listenerActive, setListenerActive] = useState(false)
 
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
 
+  console.log('fantasySettings', settings)
+  console.log('boardSettings', boardSettings)
   console.log('playerLib', playerLib)
   console.log('playersByPosByTeam', playersByPosByTeam)
-  console.log('ranks', ranks)
+  console.log('playerRanks', playerRanks)
 
 
-  const updatePlayerLibAndDerivatives = useCallback((playerLib: PlayerLibrary, isStd: boolean, numTeams: number, posStatsByNumTeamByYear: PosStatsByNumTeamByYear) => {
-    if ( hasCustomTiers == null || hasCustomTiers === false ) {
-      if ( hasCustomTiers == null ) {
-        const players = Object.values(playerLib)
-        const hasNoTiers = players.every( player => player.tier === "" )
-        setHasCustomTiers(!hasNoTiers)
-      }
-      const nextPlayerLib = addDefaultTiers(playerLib, isStd, numTeams)
-      addRankTiers(playerLib, numTeams, posStatsByNumTeamByYear)
-      const playersByPosByTeam: PlayersByPositionAndTeam = Object.values( playerLib ).reduce(( dict: PlayersByPositionAndTeam, player: Player ) => {
-        if (player.position) {
-          if ( !dict[player.position] ) {
-            dict[player.position] = {}
-          }
-          if (dict[player.position] && !dict[player.position]![player.team] ) {
-            dict[player.position]![player.team] = []
-          }
-          dict[player.position]![player.team]!.push(player)
+  const createPlayerLibrary = (players: Player[]) => {
+    const playerLib = players.reduce((acc: PlayerLibrary, player) => {
+      acc[player.id] = player
+      return acc
+    }, {})
+    setPlayerLib( playerLib )
+    const playersByPosByTeam = players.reduce((dict: PlayersByPositionAndTeam, player: Player) => {
+      if (player.position) {
+        if ( !dict[player.position] ) {
+          dict[player.position] = {}
         }
-
-        return dict
-      }, {})
-      setPlayersByPosByTeam( playersByPosByTeam )
-      setPlayerLib( { ...nextPlayerLib } )
-    }
-  }, [hasCustomTiers]);
+        if (dict[player.position] && !dict[player.position]![player.team] ) {
+          dict[player.position]![player.team] = []
+        }
+        dict[player.position]![player.team]!.push(player)
+      }
+      return dict
+    }, {})
+    setPlayersByPosByTeam( playersByPosByTeam )
+  }
 
   // listeners
 
@@ -148,7 +164,7 @@ const Home: FC = () => {
     return () => {
       window.removeEventListener("message", processListenedDraftPick )
     }
-  }, [numTeams, ranks, playerLib, rosters, listeningDraftTitle])
+  }, [settings.numTeams, playerRanks, playerLib, rosters, listeningDraftTitle])
 
   useEffect(() => {
     window.addEventListener('keyup', onKeyUp)
@@ -157,7 +173,7 @@ const Home: FC = () => {
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [showNextPreds, predictedPicks, playerRanks, playerLib, isEspnRank, isStd, noPlayers, currPick, predNextTiers])
+  }, [showNextPreds, predictedPicks, playerLib, settings.ppr, noPlayers, currPick, predNextTiers])
 
   const checkListenerActive = useCallback(() => {
     console.log('checkListenerActive', lastListenerAck, lastListenerAck && moment().diff(lastListenerAck, 'seconds'))
@@ -186,12 +202,12 @@ const Home: FC = () => {
       setShowNextPreds( false )
     } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
       // sort by harris
-      onSortRanksByEspn( false )
+      onApplyRankingSortBy( false )
     } else if (['KeyZ'].includes(e.code)) {
       // show predicted avail by round
       setShowPredAvailByRound( false )
     }
-  }, [showNextPreds, predictedPicks, playerRanks, isEspnRank, isStd, noPlayers, currPick, predNextTiers])
+  }, [showNextPreds, predictedPicks, playerLib, playerRanks, settings.ppr, noPlayers, currPick, predNextTiers])
 
   const onKeyDown = useCallback( (e: KeyboardEvent) => {
     // arrow up
@@ -211,12 +227,12 @@ const Home: FC = () => {
       setShowNextPreds(true)
     // shift 
     } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
-      onSortRanksByEspn( true )
+      onApplyRankingSortBy( true )
     } else if (['KeyZ'].includes(e.code)) {
       // show predicted avail by round
       setShowPredAvailByRound( true )
     }
-  }, [ showNextPreds, predictedPicks, playerRanks, playerLib, isEspnRank, isStd, noPlayers, currPick, predNextTiers])
+  }, [ showNextPreds, predictedPicks, playerLib, playerRanks, settings.ppr, noPlayers, currPick, predNextTiers])
 
   const processListenedDraftPick = useCallback( (event: MessageEvent) => {
     if ( event.data.type !== "FROM_EXT" || Object.values( playerLib ).length === 0 ) {
@@ -296,15 +312,15 @@ const Home: FC = () => {
         const { id, ovrPick } = draftPick
         if ( id && playerLib[id] ) {
         const player = playerLib[id]
-          const { name, position, team } = player
+          const { fullName, position, team } = player
           console.log('processing pick', player, draftPick)
-          const pickNum = ovrPick || (('round' in draftPick && 'pick' in draftPick) ? ((draftPick.round-1) * numTeams) + draftPick.pick : 0)
+          const pickNum = ovrPick || (('round' in draftPick && 'pick' in draftPick) ? ((draftPick.round-1) * settings.numTeams) + draftPick.pick : 0)
           onDraftPlayer(String(id), pickNum)
-          onRemovePlayerFromRanks( player )
+          onRemovePlayerFromBoard( player )
           addPlayerToRoster( player, pickNum )
           lastPickNum = pickNum
           toast(
-            `Pick #${pickNum}: ${ name } - ${ position } - ${ team }`,
+            `Pick #${pickNum}: ${ fullName } - ${ position } - ${ team }`,
             {
               type: 'success',
               theme: 'colored',
@@ -319,7 +335,7 @@ const Home: FC = () => {
     if ( !draftStarted ) {
       setDraftStarted(true)
     }
-  }, [numTeams, ranks, playerLib, rosters, listeningDraftTitle, playersByPosByTeam])
+  }, [settings.numTeams, playerRanks, playerLib, rosters, listeningDraftTitle, playersByPosByTeam])
   
   // drafting
 
@@ -333,7 +349,7 @@ const Home: FC = () => {
     if ( !draftStarted ) {
       setDraftStarted(true)
     }
-    onRemovePlayerFromRanks( player )
+    onRemovePlayerFromBoard( player )
     addPlayerToRoster( player, currPick )
   }
 
@@ -341,7 +357,7 @@ const Home: FC = () => {
     const playerId = onRemoveDraftedPlayer(pickNum)
     if (playerId) {
       const player = playerLib[playerId]
-      onAddPlayerToRanks( player )
+      onAddAvailPlayer( player )
       removePlayerFromRoster( player, pickNum )
     }
     setCurrPick(pickNum)
@@ -349,16 +365,10 @@ const Home: FC = () => {
   }
 
   const onPurgePlayer = (player: Player) => {
-    onPurgePlayerFromRanks( player )
+    onPurgeAvailPlayer( player )
   }
 
   // data import export
-
-  useEffect(() => {
-    if (Object.values(playerLib).length > 0) {
-      updatePlayerLibAndDerivatives(playerLib, isStd, numTeams, posStatsByNumTeamByYear)
-    }
-  }, [playerLib, isStd, numTeams, posStatsByNumTeamByYear, updatePlayerLibAndDerivatives])
 
   const onChangeNumPostPredicts = (numPostPredicts: number) => {
     setNumPostPredicts(numPostPredicts)
@@ -366,7 +376,7 @@ const Home: FC = () => {
 
   useEffect(() => {
     predictPicks()
-  }, [currPick, myPickNum, numTeams])
+  }, [currPick, myPickNum, settings.numTeams])
 
   const predictPicks = useCallback(() => {
     if ( rosters.length === 0 ) {
@@ -376,54 +386,69 @@ const Home: FC = () => {
       return
     }
 
+    // build counts of picks by position
     maxCurrPick = currPick
-    let posCounts: { [key in Position]: number } = { QB: 0, RB: 0, WR: 0, TE: 0, DST: 0, "": 0 }
+    let posCounts: PositionCounts = { QB: 0, RB: 0, WR: 0, TE: 0, DST: 0, "": 0 }
     rosters.forEach( roster => {
-      allPositions.forEach( pos => {
-        posCounts[pos] += (roster[pos as keyof Roster] as string[]).length
+      rankablePositions.forEach( pos => {
+        if ( pos in roster && posCounts[pos] !== undefined ) {
+          posCounts[pos] += (roster[pos as keyof Roster] as string[]).length
+        }
       })
     })
-    let pickPredicts: PredictedPicks = {}
 
     // predict next 5 round
-    Array.from(Array(5 * numTeams)).forEach((_, i) => {
+    let pickPredicts: PredictedPicks = {}
+    Array.from(Array(5 * settings.numTeams)).forEach((_, i) => {
       if (currRoundPick > 0) {
         const roster = rosters[currRoundPick-1]
-        const roundNum = Math.floor((currPick+i-1) / numTeams) + 1
+        const roundNum = Math.floor((currPick+i-1) / settings.numTeams) + 1
         const positions = nextPositionPicked( roster, roundNum, posCounts )
-        const { predicted, updatedCounts } = nextPickedPlayerId( ranks, positions, pickPredicts, posCounts, myPickNum, currPick, currPick + i, numTeams )
+        const { predicted, updatedCounts } = predictNextPick(
+          playerRanks.availPlayersByAdp,
+          settings, boardSettings, positions, predictedPicks, posCounts, myPickNum, currPick, currPick + i )
         pickPredicts = predicted
-        posCounts = updatedCounts as { [key in Position]: number }
+        posCounts = updatedCounts as { [key in FantasyPosition]: number }
       }
     })
 
     // detect positional runs
     let runDetected = false
-    Object.entries(playerRanks).forEach(([pos, posRanks]) => {
-      if (posRanks && pos) {
-        const posTopPlayer = posRanks[0]
-        if ( posRanks.length > 0 && posTopPlayer?.tier && parseInt(posTopPlayer?.tier) !== 0 ) {
-          const currTopTier = parseInt(posTopPlayer?.tier)
-          const nextPosRanks = (posRanks as Player[]).filter( r => ![1, 2].includes(predictedPicks[r.id]))
-          const posNextTopPlayer = nextPosRanks[0]
-          const nextTier = parseInt( posNextTopPlayer?.tier )
-          predNextTiers[pos as string] = nextTier
-          if ( currTopTier && currTopTier > predRunTiers[pos as string] && ( !nextTier || nextTier - currTopTier >= 2 )) {
-            const playersTaken = posRanks.length - nextPosRanks.length
-            toast(
+    const minTierDiffRun = 2
+    const tierRunAlerts = [] as string[]
+    Object.keys(predRunTiers).forEach( pos => {
+      const posPlayersByAdp = playerRanks.availPlayersByAdp.filter( p => p.position === pos )
+      const posTopPlayer = posPlayersByAdp[0]
+      if ( !posTopPlayer ) {
+        return
+      }
+      const posNextTopPlayer = posPlayersByAdp[1]
+      if ( Boolean(posNextTopPlayer) ) {
+        const nextTopPlayerMetrics = getPlayerMetrics(posNextTopPlayer, settings, boardSettings)
+        if ( nextTopPlayerMetrics.tier ) {
+          const currTier = nextTopPlayerMetrics.tier.tierNumber
+          const nextPosPlayersByAdp = posPlayersByAdp.filter( p => ![1, 2].includes(predictedPicks[p.id] ))
+          const nextPosTopPlayer = nextPosPlayersByAdp[0]
+          const nextTier = nextPosTopPlayer && getPlayerMetrics(nextPosTopPlayer, settings, boardSettings).tier?.tierNumber
+          if ( !nextTier || (currTier  && currTier > predRunTiers[pos as keyof TierPredictions] && nextTier - currTier >= minTierDiffRun) ) {
+            const playersTaken = posPlayersByAdp.length - nextPosPlayersByAdp.length
+            tierRunAlerts.push(
               `Run on ${ pos } down to tier ${ nextTier } after your next pick with ${ playersTaken } ${ pos }s taken `,
-              {
-                type: 'warning',
-                position:'top-right',
-                theme: 'colored',
-                autoClose: 10000,
-              })
-            predRunTiers[pos as string] = nextTier
-            runDetected = true
+            )
           }
         }
       }
     })
+    
+    tierRunAlerts.forEach( alert => {
+      toast(alert, {
+        type: 'warning',
+        position:'top-right',
+        theme: 'colored',
+        autoClose: 10000,
+      })
+    })
+
     setPredNextTiers(predNextTiers)
     if ( runDetected ) {
       setPredRunTiers(predRunTiers)
@@ -434,7 +459,7 @@ const Home: FC = () => {
 
     console.log('next predictions', pickPredicts)
     setPredictedPicks( pickPredicts )
-  }, [numTeams, ranks, playerLib, playerRanks, rosters, myPickNum, currPick, currRoundPick, predRunTiers, predNextTiers])
+  }, [settings, boardSettings, playerLib, playerRanks, rosters, myPickNum, currPick, currRoundPick, predRunTiers, predNextTiers])
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2 relative">
@@ -443,15 +468,12 @@ const Home: FC = () => {
         {/* Draft Settings */}
         <div className="w-screen justify-center z-10 bg-gray-200 shadow-md">
           <DraftLoaderOptions
-            setRanks={setRanks as (ranks: Ranks) => void}
-            setPlayerLib={setPlayerLib as (playerLib: PlayerLibrary) => void}
-            setAlertMsg={setAlertMsg}
-            setPosStatsByNumTeamByYear={setPosStatsByNumTeamByYear as (stats: PosStatsByNumTeamByYear) => void}
-            updatePlayerLibAndDerivatives={updatePlayerLibAndDerivatives}
+            onCreatePlayerRanks={onCreatePlayerRanks}
+            createPlayerLibrary={createPlayerLibrary}
             arePlayersLoaded={Object.keys( playerLib ).length !== 0}
-            isStd={isStd}
+            settings={settings}
+            boardSettings={boardSettings}
             playerLib={playerLib}
-            numTeams={numTeams}
           />
 
           <div className="flex flex-row mb-8 mt-2 w-screen justify-center">
@@ -461,14 +483,11 @@ const Home: FC = () => {
               </p>
               <select
                 className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
-                value={numTeams}
+                value={settings.numTeams}
                 onChange={ e => {
                   const newNumTeams = parseFloat(e.target.value)
                   setNumTeams(newNumTeams)
                   setMyPickNum(1)
-                  if (Object.values(playerLib).length > 0) {
-                    updatePlayerLibAndDerivatives(playerLib, isStd, newNumTeams, posStatsByNumTeamByYear)
-                  }
                 }}
                 disabled={draftStarted}
               >
@@ -486,7 +505,7 @@ const Home: FC = () => {
                 onChange={ e =>  setMyPickNum(parseInt(e.target.value))}
                 disabled={draftStarted}
               >
-                { Array.from(Array(numTeams)).map( (_, i) => <option key={i+1} value={ i+1 }> { i+1 } </option>) }
+                { Array.from(Array(settings.numTeams)).map( (_, i) => <option key={i+1} value={ i+1 }> { i+1 } </option>) }
               </select>
             </div>
 
@@ -496,13 +515,10 @@ const Home: FC = () => {
               </p>
               <select
                 className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
-                value={isStd ? "Standard" : "PPR"}
+                value={settings.ppr ? "PPR" : "Standard"}
                 onChange={ e => {
-                  const newIsStd = e.target.value === "Standard"
-                  setIsStd( newIsStd )
-                  if (Object.values(playerLib).length > 0) {
-                    updatePlayerLibAndDerivatives(playerLib, newIsStd, numTeams, posStatsByNumTeamByYear)
-                  }
+                  const isPpr = e.target.value === "PPR"
+                  setIsPpr(isPpr)
                 }}
                 disabled={draftStarted}
               >
@@ -542,7 +558,12 @@ const Home: FC = () => {
           <div className="w-full font-semibold shadow rounded-md py-8 pl-32 pr-8 my-8 bg-white">
             <ol className="list-decimal text-left">
               <li className="my-4">
-                Download <span className="text-blue-600 underline mx-1 cursor-pointer" onClick={() => window.open('https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US')}>chrome extension</span>
+                Download
+                <span className="text-blue-600 underline mx-1 cursor-pointer"
+                  onClick={() => window.open('https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US')}
+                >
+                  chrome extension
+                </span>
                 to listen to live drafts. Refresh this website after installing extension. Currently support ESPN or NFL.com draft platforms. Just need to install extension, opening extension is not necessary after installation.
               </li>
               <li className="my-4">
@@ -569,13 +590,14 @@ const Home: FC = () => {
           <div className="flex flex-row justify-center w-screen relative my-4">
             { !noPlayers &&
               <div className="flex flex-row px-4 mr-2 overflow-y-scroll rounded border border-4 h-screen shadow-md bg-white">
-                <StatsSection
+                {/* TODO - fix stats section */}
+                {/* <StatsSection
                   viewPlayerId={viewPlayerId || ''}
                   playerLib={playerLib}
                   posStatsByNumTeamByYear={posStatsByNumTeamByYear}
                   numTeams={numTeams}
                   isStd={isStd}
-                />
+                /> */}
 
                 <div className="flex flex-col rounded h-full overflow-y-auto ml-2 p-1">
                   <p className="font-semibold underline py-2">
@@ -601,14 +623,14 @@ const Home: FC = () => {
                           )
                         })}
                       </select>
-                      { allPositions.map( pos => [rosters[viewRosterIdx][pos as keyof Roster], pos] as [string[], string] ).filter( ([posGroup,]) => posGroup.length > 0 ).map( ([posGroup, pos]) => {
+                      { rankablePositions.map( pos => [rosters[viewRosterIdx][pos as keyof Roster], pos] as [string[], string] ).filter( ([posGroup,]) => posGroup.length > 0 ).map( ([posGroup, pos]) => {
                         return(
                           <div className="mt-1 text-left" key={pos}>
                             <p className="font-semibold"> { pos } ({ posGroup.length }) </p>
                             { posGroup.map( (playerId: string) => {
                               const player = playerLib[playerId]
                               return(
-                                <p className="text-xs" key={playerId}> { player.name } - { player.team } </p>
+                                <p className="text-xs" key={playerId}> { player.fullName } - { player.team } </p>
                               )
                             })}
                           </div>
@@ -621,17 +643,16 @@ const Home: FC = () => {
             }
 
             <PositionRankings
-              playerRanks={playerRanks as any}
+              playerRanks={playerRanks}
               predictedPicks={predictedPicks}
               showNextPreds={showNextPreds}
-              isEspnRank={isEspnRank}
-              isStd={isStd}
               myPickNum={myPickNum}
               noPlayers={noPlayers}
-              numTeams={numTeams}
               currPick={currPick}
               predNextTiers={predNextTiers}
               showPredAvailByRound={showPredAvailByRound}
+              fantasySettings={settings}
+              boardSettings={boardSettings}
               onSelectPlayer={onSelectPlayer}
               onPurgePlayer={onPurgePlayer}
               setViewPlayerId={setViewPlayerId}
@@ -668,7 +689,7 @@ const Home: FC = () => {
                       hover = "hover:bg-yellow-200"
                     }
                     const myPickStyle = i+1 === currMyPickNum ? "border-4 border-green-400" : "border"
-                    const pickNum = roundIdx*numTeams+(i+1)
+                    const pickNum = roundIdx*settings.numTeams+(i+1)
                     return(
                       <td className={`flex flex-col p-1 m-1 rounded ${myPickStyle} ${hover} cursor-pointer text-sm ${bgColor} items-center`}
                         onClick={ pickedPlayerId ? () => onRemovePick(pickNum) : () => onSelectPick( pickNum ) }
@@ -682,7 +703,7 @@ const Home: FC = () => {
                         <p className="font-semibold">
                           { `#${pickNum}` } { pickedPlayerId ? ` | Rd ${roundIdx+1} Pick ${i+1}` : "" }
                         </p>
-                        { player && <p> { player.name } </p> }
+                        { player && <p> { player.fullName } </p> }
                       </td>
                     )
                   })}
