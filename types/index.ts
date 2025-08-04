@@ -210,21 +210,6 @@ export interface Player {
     // TODO - need to handle "target"
 }
 
-// export type PosStatsByNumTeamByYear = {
-//     [numTeams: number]: {
-//         [year: number]: {
-//             [pos: string]: {
-//                 tier1Stats: PlayerStats,
-//                 tier2Stats: PlayerStats,
-//                 tier3Stats: PlayerStats,
-//                 tier4Stats: PlayerStats,
-//                 tier5Stats: PlayerStats,
-//                 tier6Stats: PlayerStats,
-//             }
-//         }
-//     }
-// };
-
 export interface Rankings {
     players: Player[];
     rankingsSummaries: RankingSummary[];

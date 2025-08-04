@@ -5,6 +5,5 @@ import { toCamelCase } from "./presenters";
 
 export const getPlayerData = (): Rankings => {
   const skiplist = Object.values(FantasyPosition);
-  console.log('skiplist', skiplist)
   return toCamelCase(ranks, skiplist) as Rankings;
 }

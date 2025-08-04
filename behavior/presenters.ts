@@ -17,8 +17,6 @@ export const toCamelCase = (obj: any, skiplist: string[] = []): any => {
             result[newKey] = transform(value, (ranksResult: any, rankValue: any, rankKey: string) => {
                 ranksResult[rankKey] = toCamelCase(rankValue, skiplist);
             });
-        // } else if (['tiers', 'replacementLevels', 'stdDevs'].includes(newKey)) {
-        //     result[newKey] = value;
         } else {
             result[newKey] = toCamelCase(value, skiplist);
         }

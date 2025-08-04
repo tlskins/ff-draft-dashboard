@@ -1,26 +1,13 @@
-import React, { useEffect, useState } from "react"
-import { CSVLink } from "react-csv"
-// import CSVReader from 'react-csv-reader'
-import { getPlayerMetrics, PlayerLibrary } from "../behavior/draft"
+import React, { useEffect } from "react"
 import { getPlayerData } from "../behavior/playerData"
 
 import Dropdown from "./dropdown"
-import moment from "moment"
-import { FantasySettings, Player, BoardSettings, RankingSummary } from "types"
+import { Player, RankingSummary } from "types"
 
-const papaparseOptions = {
-  header: true,
-  dynamicTyping: true,
-  skipEmptyLines: true,
-}
 
 interface DraftLoaderOptionsProps {
   createPlayerLibrary: (players: Player[]) => void;
   onCreatePlayerRanks: (players: Player[]) => void;
-  arePlayersLoaded: boolean;
-  settings: FantasySettings;
-  playerLib: PlayerLibrary;
-  boardSettings: BoardSettings;
   setRankingSummaries: (summaries: RankingSummary[]) => void;
 }
 
@@ -28,17 +15,7 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
   onCreatePlayerRanks,
   createPlayerLibrary,
   setRankingSummaries,
-
-  settings,
-  boardSettings,
-  arePlayersLoaded,
-  playerLib,
 }) => {
-  // csv
-  const [csvData, setCsvData] = useState<any[][] | null>(null)
-  const [isUpload, setIsUpload] = useState(false)
-  const [showDlExtTooltip, setShowDlExtTooltip] = useState(false)
-  const [showRanksTooltip, setShowRanksTooltip] = useState(false)
 
   const onLoadPlayers = () => {
     const playerData = getPlayerData()
@@ -54,147 +31,17 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
     onLoadPlayers()
   }, [])
 
-  const onSetCsvData = () => {   
-    if ( csvData ) {
-      setCsvData( null )
-      return
-    }
-    // get all unique keys in data
-    const header = [
-      'Id',
-      'Name',
-      'Position',
-      'Team',
-      'Overall Rank',
-      'Position Rank',
-      'ADP',
-      'Tier',
-    ]
-    const ranksData = Object.values(playerLib).map((player) => {
-      const playerMetrics = getPlayerMetrics(player, settings, boardSettings)
-      return [
-        player.id,
-        player.fullName,
-        player.position,
-        player.team,
-        playerMetrics.overallRank,
-        playerMetrics.posRank,
-        playerMetrics.adp,
-        playerMetrics.tier?.tierNumber,
-      ]
-    })
-    const nextCsvData = [header, ...ranksData]
-    setCsvData(nextCsvData)
-  }
-
-  // TODO - fix edit ranks
-  // const onFileLoaded = async (csvPlayers: any[]) => {
-  //   const csvPlayersMap = csvPlayers.reduce((dict, player) => {
-  //     dict[player['Id']] = player
-  //     return dict
-  //   }, {} as { [id: string]: any })
-
-  //   let players: Player[] = [], 
-  //     playerLib: PlayerLibrary,
-  //     posStatsByNumTeamByYear: PosStatsByNumTeamByYear | undefined
-  //   if (csvPlayers[0]['Source'] === 'Harris') {
-  //     setAlertMsg("Loading Harris Football Ranks...")
-  //     const harrisRanks = await GetHarrisRanks()
-  //     if (harrisRanks) {
-  //       posStatsByNumTeamByYear = harrisRanks.posStatsByNumTeamByYear
-  //       players = harrisRanks.players
-  //       setRanksSource('Harris')
-  //     }
-  //   } else if (csvPlayers[0]['Source'] === 'FPros') {
-  //     setAlertMsg("Loading FPros Ranks...")
-  //     const fprosRanks = await GetFprosRanks()
-  //     if (fprosRanks) {
-  //       posStatsByNumTeamByYear = fprosRanks.posStatsByNumTeamByYear
-  //       players = fprosRanks.players
-  //       setRanksSource('FPros')
-  //     }
-  //   }
-
-  //   // apply csv ranks
-  //   players.forEach((player: Player) => {
-  //     const csvPlayer = csvPlayersMap[player.id]
-  //     if (csvPlayer) {
-  //       player.tier = csvPlayer['Tier']
-  //       player.customStdRank = csvPlayer['Custom STD Rank']
-  //       player.customPprRank = csvPlayer['Custom PPR Rank']
-  //     } else {
-  //       player.tier = ''
-  //       player.customStdRank = undefined
-  //       player.customPprRank = undefined
-  //     }
-  //   })
-
-  //   playerLib = createPlayerLibrary(players)
-  //   const ranks = createRanks(players, isStd)
-  //   setRanks(ranks)
-  //   updatePlayerLibAndDerivatives(playerLib, isStd, numTeams, posStatsByNumTeamByYear!)
-  //   setIsUpload(false)
-  //   if (posStatsByNumTeamByYear) {
-  //     setPosStatsByNumTeamByYear(posStatsByNumTeamByYear)
-  //   }
-  //   setAlertMsg(null)
-  // }
-
-  let ranksOptions = [
-    { title: "Load Players", callback: onLoadPlayers },
-    { title: "Load From CSV", callback: () => setIsUpload(!isUpload) },
-  ]
-  if ( arePlayersLoaded ) {
-    ranksOptions = [...ranksOptions, { title: "Export Ranks", callback: onSetCsvData }]
-  }
-
   return(
     <div className="flex flex-col w-full h-20 border-t relative">
       <div className="flex w-full justify-center items-center">
-        <div
-          onMouseEnter={() => setShowDlExtTooltip(true)}
-          onMouseLeave={() => setShowDlExtTooltip(false)}
-        >
+        <div>
           <Dropdown
             title="Download Extension"
             options={[
               { title: "Download", callback: () => window.open('https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US') },
             ]}
           />
-          {/* { showDlExtTooltip &&
-            <div className="relative" onClick={() => setShowDlExtTooltip(false)}>
-              <div className="absolute mr-20 -my-20 w-96 bg-yellow-300 text-black text-left text-xs font-semibold tracking-wide rounded shadow py-1.5 px-4 bottom-full z-10">
-                <ul className="list-disc pl-6">
-                  <li>Extension to listen to your draft platform</li>
-                  <li>Adds picks to this dashboard in realtime</li>
-                  <li>Just start draft (NFL.com / ESPN) and wait for alert to accept draft events</li>
-                  <li>Keep draft platform at least partially visible so tab does not go to sleep</li>
-                </ul>
-              </div>
-            </div>
-          } */}
         </div>
-        
-        {/* <div
-          onMouseEnter={() => setShowRanksTooltip(true)}
-          onMouseLeave={() => setShowRanksTooltip(false)}
-        >
-          <Dropdown
-            title="Load / Export Ranks"
-            options={ranksOptions}
-          /> */}
-          {/* { showRanksTooltip &&
-            <div className="relative" onClick={() => setShowRanksTooltip(false)}>
-              <div className="absolute mr-20 -my-12 w-96 bg-yellow-300 text-black text-left text-xs font-semibold tracking-wide rounded shadow py-1.5 px-4 bottom-full z-10">
-                <ul className="list-disc pl-6">
-                  <li>Import player rankings from FFPros / Harris Football</li>
-                  <li>Export ranks to csv to edit</li>
-                  <li>Edit custom ranks & tiers (1, 2, 3, etc) to easily distinguish tiers of players in a position group</li>
-                </ul>
-              </div>
-            </div>
-          } */}
-        {/* </div> */}
 
         <Dropdown
           title="Find Mock Draft"
@@ -203,27 +50,6 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
             { title: "NFL.com Mock Draft", callback: () => window.open('https://fantasy.nfl.com/draftcenter/mockdrafts') },
           ]}
         />
-      </div>
-
-      <div className="flex flex-col w-64 fixed top-4">
-        {/* { isUpload &&
-          <CSVReader
-            cssClass="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase text-sm flex flex-col"
-            label="Upload Ranks"
-            onFileLoaded={ onFileLoaded }
-            parserOptions={papaparseOptions}
-          />
-        } */}
-
-        { csvData && 
-          <CSVLink data={csvData}
-            onClick={ () => setCsvData(null)}
-            className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase bg-green-300"
-            filename={`FF${moment().format('YYYY')}_RANKS.csv`}
-          >
-            Download
-          </CSVLink>
-        }
       </div>
     </div>
   )

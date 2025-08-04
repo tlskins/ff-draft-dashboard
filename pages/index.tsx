@@ -110,20 +110,10 @@ const Home: FC = () => {
   const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
   const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
   const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN)
-
+  const [alertMsg, setAlertMsg] = useState<string | null>(null)
+  const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
 
   const currRound = getDraftRoundForPickNum(currPick)
-  
-  // predictions
-  const [alertMsg, setAlertMsg] = useState<string | null>(null)
-
-  console.log('fantasySettings', settings)
-  console.log('boardSettings', boardSettings)
-  console.log('playerLib', playerLib)
-  console.log('playersByPosByTeam', playersByPosByTeam)
-  console.log('playerRanks', playerRanks)
-
-  const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
 
   // board navigation listener
 
@@ -345,56 +335,8 @@ const Home: FC = () => {
         <div className="flex flex-col items-center mt-4">
           {/* Stats and Positional Breakdowns */}
           <div className="flex flex-row justify-center w-screen relative my-4 grid grid-cols-12 gap-1">
-            {/* { !noPlayers &&
-              <div className="flex flex-row px-4 mr-2 overflow-y-scroll rounded border border-4 h-screen w-xl shadow-md bg-white">
-                <HistoricalStats
-                  player={viewPlayerId ? playerLib[viewPlayerId] : null}
-                />
 
-                <div className="flex flex-col rounded h-full overflow-y-auto ml-2 p-1">
-                  <p className="font-semibold underline py-2">
-                    Rosters
-                  </p>
-
-                  { !draftStarted &&
-                    <p className="font-semibold">
-                      Waiting for draft...
-                    </p>
-                  }
-
-                  { draftStarted &&
-                    <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-1 bg-gray-100 shadow-md border">
-                      <select
-                        className="rounded p-1 border font-semibold"
-                        value={viewRosterIdx}
-                        onChange={ e => setViewRosterIdx(parseInt( e.target.value ))}
-                      >
-                        { rosters.map((_,i) => {
-                          return(
-                            <option key={i} value={i}> Team { i+1 } </option>
-                          )
-                        })}
-                      </select>
-                      { rankablePositions.map( pos => [rosters[viewRosterIdx][pos as keyof Roster], pos] as [string[], string] ).filter( ([posGroup,]) => posGroup.length > 0 ).map( ([posGroup, pos]) => {
-                        return(
-                          <div className="mt-1 text-left" key={pos}>
-                            <p className="font-semibold"> { pos } ({ posGroup.length }) </p>
-                            { posGroup.map( (playerId: string) => {
-                              const player = playerLib[playerId]
-                              return(
-                                <p className="text-xs" key={playerId}> { player.fullName } - { player.team } </p>
-                              )
-                            })}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  }
-                </div>
-              </div>
-            } */}
-
-            <div className="col-span-5 flex flex-col justify-start">
+            <div className="col-span-4 flex flex-col justify-start">
               <HistoricalStats
                 settings={settings}
                 player={viewPlayerId ? playerLib[viewPlayerId] : null}
@@ -406,7 +348,7 @@ const Home: FC = () => {
                 ranker={boardSettings.ranker}
               />
             </div>
-            <div className="col-span-5">
+            <div className="col-span-6">
               <PositionRankings
                 playerRanks={playerRanks}
                 predictedPicks={predictedPicks}

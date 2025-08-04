@@ -118,8 +118,6 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player, settings }) =
     </td>)
   );
 
-  console.log('historicalStatsArray', historicalStatsArray, passingStatKeys)
-
   return (
     <div className="py-2 px-4 justify-center">
       <p className="font-semibold underline py-2">

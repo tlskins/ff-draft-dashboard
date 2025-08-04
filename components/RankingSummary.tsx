@@ -1,5 +1,5 @@
 import React from 'react';
-import { RankingSummary, FantasyPosition, Tier, Player, DataRanker, FantasySettings, FantasyRanker } from '../types';
+import { RankingSummary, Player, DataRanker, FantasySettings, FantasyRanker } from '../types';
 import { getProjectedTier } from 'behavior/draft';
 
 interface RankingSummaryProps {
