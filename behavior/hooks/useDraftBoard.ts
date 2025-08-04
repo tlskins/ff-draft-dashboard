@@ -38,7 +38,7 @@ export const useDraftBoard = ({
     numStartingRbs: 2,
     numStartingWrs: 2,
     numStartingTes: 1,
-    numFlexPositions: 1,
+    numFlex: 1,
     numBenchPlayers: 5,
   })
   const [draftStarted, setDraftStarted] = useState<boolean>(false);

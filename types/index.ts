@@ -67,7 +67,7 @@ export interface FantasySettings {
     numStartingRbs: number;
     numStartingWrs: number;
     numStartingTes: number;
-    numFlexPositions: number;
+    numFlex: number;
     numBenchPlayers: number;
 }
 
@@ -225,5 +225,16 @@ export enum RankingView {
   DEFAULT = "Sort By Ranks",
   ADP = "Sort By ADP",
   NEXT_TAKEN = "Show Next Taken",
-} 
+}
 
+export interface OptimalRosterPick {
+    player: Player;
+    round: number;
+}   
+
+export interface OptimalRoster {
+    value: number; 
+    roster: {
+        [pick: number]: OptimalRosterPick;
+    }
+}

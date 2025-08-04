@@ -1,12 +1,13 @@
 import React, { FC } from "react"
 import { Roster, rankablePositions } from "../behavior/draft"
-import { Player } from "../types"
+import { Player, OptimalRoster } from "../types"
 
 interface RostersProps {
   draftStarted: boolean
   viewRosterIdx: number
   setViewRosterIdx: (idx: number) => void
   rosters: Roster[]
+  optimalRoster: OptimalRoster
   playerLib: { [key: string]: Player }
 }
 
@@ -15,6 +16,7 @@ const Rosters: FC<RostersProps> = ({
   viewRosterIdx,
   setViewRosterIdx,
   rosters,
+  optimalRoster,
   playerLib,
 }) => {
   return (
@@ -64,6 +66,27 @@ const Rosters: FC<RostersProps> = ({
                       </p>
                     )
                   })}
+                </div>
+              )
+            })}
+        </div>
+      )}
+
+      {draftStarted && optimalRoster && Object.keys(optimalRoster.roster).length > 0 && (
+        <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-1 bg-blue-50 shadow-md border border-blue-200">
+          <p className="font-semibold underline text-blue-800 mb-2">
+            Optimal Roster (Value: {optimalRoster.value.toFixed(1)})
+          </p>
+          {Object.entries(optimalRoster.roster)
+            .sort(([pickA], [pickB]) => parseInt(pickA) - parseInt(pickB))
+            .map(([pick, optimalPick]) => {
+              const player = optimalPick.player
+              return (
+                <div className="text-xs mb-1 text-left" key={pick}>
+                  <span className="font-medium text-blue-700">
+                    R{optimalPick.round}, P{pick}:
+                  </span>{" "}
+                  <span className="font-medium">{player.fullName}</span> ({player.position}) - {player.team}
                 </div>
               )
             })}

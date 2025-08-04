@@ -38,18 +38,6 @@ export type PlayersByPositionAndTeam = {
     }
 }
 
-// type PositionRanks = {
-//     [pos in FantasyPosition]?: Player[]
-// }
-
-// export interface Ranks {
-//     isStd: boolean
-//     harris: PositionRanks
-//     espn: PositionRanks
-//     purge: Player[]
-//     availPlayers: Player[]
-// }
-
 export interface Roster {
     picks: string[]
     [FantasyPosition.QUARTERBACK]: string[]
@@ -394,7 +382,7 @@ export const removeFromRoster = ( rosters: Roster[], player: Player, rosterIdx: 
         ...rosters.slice(0, rosterIdx),
         {
             ...roster,
-            Picks: roster.picks.filter( id => id !== player.id ),
+            picks: roster.picks.filter( id => id !== player.id ),
             [player.position]: roster[player.position as 'QB' | 'RB' | 'WR' | 'TE'].filter( id => id !== player.id ),
         },
         ...rosters.slice(rosterIdx+1, rosters.length),
@@ -405,27 +393,49 @@ export const removeFromRoster = ( rosters: Roster[], player: Player, rosterIdx: 
 
 // TODO - make this account for board settings
 // Roster = 1x flex
-export const nextPositionPicked = ( roster: Roster, roundNum: number, posCounts: PositionCounts ): FantasyPosition[] => {
-    let pos: PositionCounts = { QB: 1, WR: 1, RB: 1, TE: 1 }
-    if ( roundNum <= 3 ) {
-        if ( roster.QB.length >= 1 ) delete pos.QB
-        if ( roster.TE.length >= 1 ) delete pos.TE
-        if ( roundNum <= 2 && posCounts.TE && posCounts.TE >= 1 ) delete pos.TE
-        if ( roundNum <= 2 && posCounts.QB && posCounts.QB >= 1 ) delete pos.QB
-    } else if ( roundNum <= 6 ) {
-        if ( roster.QB.length >= 1 ) delete pos.QB
-        if ( roster.TE.length >= 1 ) delete pos.TE
-        if ( roster.RB.length >= 3 ) delete pos.RB
-        if ( roster.WR.length >= 3 ) delete pos.WR
-    } else {
-        if ( roster.QB.length >= 2 ) delete pos.QB
-        if ( roster.TE.length >= 2 ) delete pos.TE
-        if ( roster.RB.length >= 5 ) delete pos.RB
-        if ( roster.WR.length >= 5 ) delete pos.WR
-    }
-    // console.log( 'nextPositionPicked', roundNum, posCounts, Object.keys( pos ) )
+type RosterBuild = {
+    round: number;
+    max: number;
+    position: FantasyPosition;
+}
 
-    return Object.keys( pos ) as FantasyPosition[]
+const standardRosterBuild: RosterBuild[] = [
+    { round: 3, position: FantasyPosition.QUARTERBACK, max: 1 },
+    { round: 3, position: FantasyPosition.TIGHT_END, max: 1 },
+    { round: 6, position: FantasyPosition.QUARTERBACK, max: 1 },
+    { round: 6, position: FantasyPosition.TIGHT_END, max: 1 },
+    { round: 6, position: FantasyPosition.RUNNING_BACK, max: 3 },
+    { round: 6, position: FantasyPosition.WIDE_RECEIVER, max: 3 },
+    { round: 16, position: FantasyPosition.QUARTERBACK, max: 2 },
+    { round: 16, position: FantasyPosition.TIGHT_END, max: 2 },
+    { round: 16, position: FantasyPosition.RUNNING_BACK, max: 5 },
+    { round: 16, position: FantasyPosition.WIDE_RECEIVER, max: 5 },
+];
+
+export const nextPositionPicked = ( roster: Roster, roundNum: number, posCounts: PositionCounts ): FantasyPosition[] => {
+    let availablePositions = new Set<FantasyPosition>([
+        FantasyPosition.QUARTERBACK,
+        FantasyPosition.RUNNING_BACK,
+        FantasyPosition.WIDE_RECEIVER,
+        FantasyPosition.TIGHT_END,
+    ]);
+
+    standardRosterBuild.forEach(rule => {
+        if (roundNum <= rule.round) {
+            const positionCount = roster[rule.position as keyof Roster]?.length || 0;
+            if (positionCount >= rule.max) {
+                availablePositions.delete(rule.position);
+            }
+        }
+    });
+
+    // Special case for early rounds to not over-draft TE/QB
+    if (roundNum <= 2) {
+        if (posCounts.TE && posCounts.TE >= 1) availablePositions.delete(FantasyPosition.TIGHT_END);
+        if (posCounts.QB && posCounts.QB >= 1) availablePositions.delete(FantasyPosition.QUARTERBACK);
+    }
+
+    return Array.from(availablePositions);
 }
 
 export const predictNextPick = (
@@ -438,13 +448,13 @@ export const predictNextPick = (
     myPickNum: number,
     currPick: number,
     nextPick: number,
-): { predicted: PredictedPicks; updatedCounts: PositionCounts } => {
+): { predicted: PredictedPicks; updatedCounts: PositionCounts, pickedPlayer: Player | null } => {
     const sortedAvailPlayers = sortPlayersByRank( availPlayersByAdp, settings, boardSettings, SortPlayersByMetric.Adp )
 
     const nextPlayer = sortedAvailPlayers.find( p => !predicted[p.id] && predictedPositions.includes( p.position as FantasyPosition ))
     
     if ( !nextPlayer ) {
-        return { predicted, updatedCounts: posCounts }
+        return { predicted, updatedCounts: posCounts, pickedPlayer: null }
     }
 
     const nextPos = nextPlayer.position as FantasyPosition
@@ -456,6 +466,7 @@ export const predictNextPick = (
             [nextPlayer.id]: picksSinceCurrPick(currPick, nextPick, myPickNum, settings.numTeams),
         },
         updatedCounts: { ...posCounts, [nextPos]: nextPosCount + 1 },
+        pickedPlayer: nextPlayer,
     };
 }
 
@@ -493,7 +504,7 @@ export const getMyNextPick = ( pickNum: number, myPickNum: number, numTeams: num
     }
 }
 
-const getPickInRound = ( pickNum: number, numTeams: number ): number => {
+export const getPickInRound = ( pickNum: number, numTeams: number ): number => {
     const rem = pickNum % numTeams
     return rem === 0 ? numTeams : rem
 }
