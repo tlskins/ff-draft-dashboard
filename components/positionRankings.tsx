@@ -243,7 +243,7 @@ const PositionRankings = ({
 
                   const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
                   const { tier, adp, overallOrPosRank } = metrics
-                  const { tierNumber, upperLimitPlayerIdx, lowerLimitPlayerIdx } = tier || {}
+                  const { tierNumber } = tier || {}
                   
                   let tierStyle
                   if ( shownPlayerId === id && !!shownPlayerBg ) {
@@ -276,10 +276,12 @@ const PositionRankings = ({
                   const isBelowRank = currPick - (overallOrPosRank || 0) >= 0
                   const currAdpDiff = Math.abs(currPick - (adp || 0))
                   const currRankDiff = Math.abs(currPick - (overallOrPosRank || 0))
+                  const isHoveringPlayer = shownPlayerId === id
+                  const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
   
                   return(
                     <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
-                      className={`px-2 py-1 m-1 text-center border rounded shadow-md ${tierStyle} cursor-pointer`}
+                      className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle}`}
                       onMouseEnter={ () => {
                         if ( viewPlayerIdTimer ) {
                           clearTimeout( viewPlayerIdTimer )
@@ -319,7 +321,7 @@ const PositionRankings = ({
                           </p>
                         }
   
-                        { shownPlayerId === id &&
+                        { isHoveringPlayer &&
                           <div className={`grid grid-cols-3 items-center justify-items-center gap-2 mt-2 pt-2 w-full border-t`}>
                             <AnyTiDelete
                               className="cursor-pointer"
