@@ -168,4 +168,15 @@ export interface Rankings {
     players: Player[];
     rankingsSummaries: RankingSummary[];
     settings: FantasySettings;
+}
+
+export enum DraftView {
+  RANKING = "Ranking View",
+  BEST_AVAILABLE = "Best Available By Round",
+}
+
+export enum RankingView {
+  DEFAULT = "Sort By Ranks",
+  ADP = "Sort By ADP",
+  NEXT_TAKEN = "Show Next Taken",
 } 

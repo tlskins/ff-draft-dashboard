@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { CSVLink } from "react-csv"
 // import CSVReader from 'react-csv-reader'
 import { getPlayerMetrics, PlayerLibrary } from "../behavior/draft"
@@ -46,6 +46,10 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
       createPlayerLibrary(players)
     }
   }
+
+  useEffect(() => {
+    onLoadPlayers()
+  }, [])
 
   const onSetCsvData = () => {   
     if ( csvData ) {
@@ -144,17 +148,18 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
   return(
     <div className="flex flex-col w-full h-20 border-t relative">
       <div className="flex w-full justify-center items-center">
-        <div>
+        <div
+          onMouseEnter={() => setShowDlExtTooltip(true)}
+          onMouseLeave={() => setShowDlExtTooltip(false)}
+        >
           <Dropdown
             title="Download Extension"
             options={[
               { title: "Download", callback: () => window.open('https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US') },
             ]}
-            onMouseEnter={() => setShowDlExtTooltip(true)}
-            onMouseLeave={() => setShowDlExtTooltip(false)}
           />
-          { showDlExtTooltip &&
-            <div className="relative">
+          {/* { showDlExtTooltip &&
+            <div className="relative" onClick={() => setShowDlExtTooltip(false)}>
               <div className="absolute mr-20 -my-20 w-96 bg-yellow-300 text-black text-left text-xs font-semibold tracking-wide rounded shadow py-1.5 px-4 bottom-full z-10">
                 <ul className="list-disc pl-6">
                   <li>Extension to listen to your draft platform</li>
@@ -164,18 +169,19 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
                 </ul>
               </div>
             </div>
-          }
+          } */}
         </div>
         
-        <div>
+        {/* <div
+          onMouseEnter={() => setShowRanksTooltip(true)}
+          onMouseLeave={() => setShowRanksTooltip(false)}
+        >
           <Dropdown
             title="Load / Export Ranks"
             options={ranksOptions}
-            onMouseEnter={() => setShowRanksTooltip(true)}
-            onMouseLeave={() => setShowRanksTooltip(false)}
-          />
-          { showRanksTooltip &&
-            <div className="relative">
+          /> */}
+          {/* { showRanksTooltip &&
+            <div className="relative" onClick={() => setShowRanksTooltip(false)}>
               <div className="absolute mr-20 -my-12 w-96 bg-yellow-300 text-black text-left text-xs font-semibold tracking-wide rounded shadow py-1.5 px-4 bottom-full z-10">
                 <ul className="list-disc pl-6">
                   <li>Import player rankings from FFPros / Harris Football</li>
@@ -184,8 +190,8 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
                 </ul>
               </div>
             </div>
-          }
-        </div>
+          } */}
+        {/* </div> */}
 
         <Dropdown
           title="Find Mock Draft"

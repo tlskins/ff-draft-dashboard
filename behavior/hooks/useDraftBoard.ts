@@ -16,21 +16,15 @@ interface UseDraftBoardReturn {
   setMyPickNum: Dispatch<SetStateAction<number>>;
   currPick: number;
   setCurrPick: Dispatch<SetStateAction<number>>;
-  draftHistory: (string | null)[];
-  setDraftHistory: Dispatch<SetStateAction<(string | null)[]>>;
   roundIdx: number;
   isEvenRound: boolean;
-  currRound: (string | null)[];
   currRoundPick: number;
   currMyPickNum: number;
   setNumTeams: (numTeams: number) => void;
-  getRoundForPickNum: (pickNum: number) => (string | null)[];
-  onDraftPlayer: (playerId: string, pickNum: number) => void;
-  onRemoveDraftedPlayer: (pickNum: number) => string | null;
   onNavLeft: () => void;
-  onNavRight: () => void;
+  onNavRight: (draftHistory: (string | null)[]) => void;
   onNavRoundUp: () => void;
-  onNavRoundDown: () => void;
+  onNavRoundDown: (draftHistory: (string | null)[]) => void;
 }
 
 export const useDraftBoard = ({
@@ -51,13 +45,12 @@ export const useDraftBoard = ({
   const [myPickNum, setMyPickNum] = useState<number>(defaultMyPickNum);
 
   const [currPick, setCurrPick] = useState<number>(1);
-  const [draftHistory, setDraftHistory] = useState<(string | null)[]>(
-    new Array(350).fill(null)
-  );
 
   useEffect(() => {
     setSettings({ ...settings, numTeams: defaultNumTeams })
   }, [defaultNumTeams])
+
+  // settings management
 
   const setNumTeams = (numTeams: number) => {
     if (draftStarted) {
@@ -68,29 +61,15 @@ export const useDraftBoard = ({
   const setIsPpr = (isPpr: boolean) => {
     setSettings({ ...settings, ppr: isPpr })
   }
-  const getRoundForPickNum = (pickNum: number): (string | null)[] => {
-    const roundIdx = getRoundIdxForPickNum(pickNum, settings.numTeams);
-    return draftHistory.slice(
-      settings.numTeams * roundIdx,
-      settings.numTeams * roundIdx + settings.numTeams
-    );
-  };
-  const onDraftPlayer = (playerId: string, pickNum: number): void => {
-    draftHistory[pickNum - 1] = playerId;
-    setDraftHistory(draftHistory);
-  };
-  const onRemoveDraftedPlayer = (pickNum: number): string | null => {
-    const playerId = draftHistory[pickNum - 1];
-    draftHistory[pickNum - 1] = null;
-    setDraftHistory(draftHistory);
-    return playerId;
-  };
+
+  // board navigation
+
   const onNavLeft = (): void => {
     if (currPick > 1) {
       isEvenRound ? setCurrPick(currPick + 1) : setCurrPick(currPick - 1);
     }
   };
-  const onNavRight = (): void => {
+  const onNavRight = (draftHistory: (string | null)[]): void => {
     if (currPick < draftHistory.length) {
       const nextCurrPick = isEvenRound ? currPick - 1 : currPick + 1;
       if (nextCurrPick <= draftHistory.length) {
@@ -105,22 +84,19 @@ export const useDraftBoard = ({
       setCurrPick(currPick - (2 * currRoundPick + 1));
     }
   };
-  const onNavRoundDown = (): void => {
+  const onNavRoundDown = (draftHistory: (string | null)[]): void => {
     const nextCurrPick = currPick + (2 * (settings.numTeams - currRoundPick) + 1);
     if (nextCurrPick <= draftHistory.length) {
       setCurrPick(nextCurrPick);
     }
   };
 
+
   const roundIdx = useMemo(
     () => getRoundIdxForPickNum(currPick, settings.numTeams),
     [currPick, settings.numTeams]
   );
   const isEvenRound = useMemo(() => roundIdx % 2 === 1, [roundIdx]);
-  const currRound = useMemo(
-    () => getRoundForPickNum(currPick),
-    [currPick, draftHistory, settings.numTeams]
-  );
   const currRoundPick = useMemo(
     () => calcCurrRoundPick(currPick, settings.numTeams),
     [currPick, settings.numTeams]
@@ -140,16 +116,10 @@ export const useDraftBoard = ({
     setMyPickNum,
     currPick,
     setCurrPick,
-    draftHistory,
-    setDraftHistory,
     roundIdx,
     isEvenRound,
-    currRound,
     currRoundPick,
     currMyPickNum,
-    getRoundForPickNum,
-    onDraftPlayer,
-    onRemoveDraftedPlayer,
     onNavLeft,
     onNavRight,
     onNavRoundUp,

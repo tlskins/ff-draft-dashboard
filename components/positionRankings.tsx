@@ -6,6 +6,7 @@ import { AiFillCheckCircle, AiFillStar } from 'react-icons/ai'
 import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor, getPickDiffColor } from '../behavior/styles'
 import { myCurrentRound, getPlayerMetrics, PlayerRanks } from '../behavior/draft'
 import { Player, FantasySettings, FantasyPosition, BoardSettings } from "../types"
+import { DraftView, SortOption, HighlightOption } from "../pages"
 
 
 let viewPlayerIdTimer: NodeJS.Timeout
@@ -75,36 +76,43 @@ export const getDraftBoard = (
 interface PositionRankingsProps {
   playerRanks: PlayerRanks,
   predictedPicks: PredictedPicks,
-  showNextPreds: boolean,
   myPickNum: number,
   noPlayers: boolean,
   fantasySettings: FantasySettings,
   boardSettings: BoardSettings,
   currPick: number,
   predNextTiers: { [key: string]: number },
-  showPredAvailByRound: boolean,
   onSelectPlayer: (player: Player) => void,
   onPurgePlayer: (player: Player) => void,
   setViewPlayerId: (id: string) => void,
+  draftView: DraftView,
+  setDraftView: (view: DraftView) => void,
+  sortOption: SortOption,
+  setSortOption: (option: SortOption) => void,
+  highlightOption: HighlightOption,
+  setHighlightOption: (option: HighlightOption) => void,
 }
 
 const PositionRankings = ({
   playerRanks,
   predictedPicks,
-  showNextPreds,
   myPickNum,
   noPlayers,
   currPick,
   predNextTiers,
-  showPredAvailByRound,
   fantasySettings,
   boardSettings,
+  draftView,
+  setDraftView,
+  sortOption,
+  setSortOption,
+  highlightOption,
+  setHighlightOption,
 
   onSelectPlayer,
   onPurgePlayer,
   setViewPlayerId,
 }: PositionRankingsProps) => {
-  const [rankByAdp, setRankByAdp] = useState(false)
   const [shownPlayerId, setShownPlayerId] = useState<string | null>(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
 
@@ -118,7 +126,10 @@ const PositionRankings = ({
     return getDraftBoard(playerRanks, predictedPicks, myCurrRound)
   }, [playerRanks, predictedPicks, myPickNum, fantasySettings.numTeams, currPick])
 
+  const showPredAvailByRound = draftView === DraftView.BEST_AVAILABLE
   const draftBoardView = showPredAvailByRound ? draftBoard.predictAvailByRoundView : draftBoard.standardView
+  const showNextPreds = highlightOption === HighlightOption.PREDICTED_TAKEN_NEXT_TURN
+  const rankByAdp = sortOption === SortOption.ADP
 
   return(
     noPlayers ?
@@ -127,6 +138,33 @@ const PositionRankings = ({
     <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded shadow-md bg-white">
       <div className="flex flex-row mb-4 align-center">
         <div className="flex flex-col text-left">
+          <div className="flex flex-row mb-4">
+            <select
+                className="p-1 m-1 border rounded bg-blue-100 shadow"
+                value={draftView}
+                onChange={ e => setDraftView(e.target.value as DraftView) }
+              >
+              { Object.values(DraftView).map( (view: DraftView) => <option key={view} value={ view }> { view } </option>) }
+            </select>
+            { draftView === DraftView.RANKING &&
+              <>
+                <select
+                    className="p-1 m-1 border rounded bg-blue-100 shadow"
+                    value={sortOption}
+                    onChange={ e => setSortOption(e.target.value as SortOption) }
+                  >
+                  { Object.values(SortOption).map( (option: SortOption) => <option key={option} value={ option }> { option } </option>) }
+                </select>
+                <select
+                    className="p-1 m-1 border rounded bg-blue-100 shadow"
+                    value={highlightOption}
+                    onChange={ e => setHighlightOption(e.target.value as HighlightOption) }
+                  >
+                  { Object.values(HighlightOption).map( (option: HighlightOption) => <option key={option} value={ option }> { option } </option>) }
+                </select>
+              </>
+            }
+          </div>
           { !showNextPreds &&
             <>
               <div className="flex flex-row">
@@ -159,15 +197,6 @@ const PositionRankings = ({
             </p>
           }
         </div>
-
-        <ul className="list-disc pl-8">
-          <li className="font-semibold text-xs text-gray-600 text-left">
-            Sorted By <span className="text-blue-600 font-bold underline uppercase">{ rankByAdp ? `${boardSettings.adpRanker} ADP` : 'custom ranks' }</span>
-          </li>
-          <li className="font-semibold text-xs text-gray-600 text-justify whitespace-pre">
-            Darklighted taken before your <span className="text-blue-600 font-bold underline uppercase">{ showNextPreds? 'next-next' : 'next' }</span> pick
-          </li>
-        </ul>
       </div>
 
       <div className="flex flex-row h-full mb-32">

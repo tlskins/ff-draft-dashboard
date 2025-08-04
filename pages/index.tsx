@@ -1,52 +1,33 @@
 /*global chrome*/
 import React, { useEffect, useState, useCallback, FC } from "react"
-import { toast } from "react-toastify"
-import moment, { Moment } from "moment"
 
 import PageHead from "../components/pageHead"
 import DraftLoaderOptions from "../components/draftLoaderOptions"
 import PositionRankings from "../components/positionRankings"
 // import StatsSection from "../components/statsSection"
-import {
-  // addRankTiers,
-  // addDefaultTiers,
-  nextPositionPicked,
-  predictNextPick,
-  parseEspnDraftEvents,
-  parseNflDraftEvents,
-  PlayerLibrary,
-  // Ranks,
-  Roster,
-  PlayersByPositionAndTeam,
-  EspnDraftEventParsed,
-  ParsedNflDraftEvent,
-  PositionCounts,
-  getPlayerMetrics,
-} from "../behavior/draft"
+import { Roster } from "../behavior/draft"
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
-import { useRosters } from '../behavior/hooks/useRosters'
+import { useDraftListener } from '../behavior/hooks/useDraftListener'
+import { usePredictions } from "../behavior/hooks/usePredictions"
 import { getPosStyle } from "../behavior/styles"
 import { rankablePositions } from "../behavior/draft"
-import { Player, FantasyPosition } from "types"
+import { Player, ThirdPartyRanker } from "types"
 
-type PredictedPicks = { [playerId: string]: number };
-type TierPredictions = {
-  [FantasyPosition.QUARTERBACK]: number;
-  [FantasyPosition.RUNNING_BACK]: number;
-  [FantasyPosition.WIDE_RECEIVER]: number;
-  [FantasyPosition.TIGHT_END]: number;
+export enum DraftView {
+  RANKING = "Ranking View",
+  BEST_AVAILABLE = "Best Available By Round",
 }
 
-let listeningDraftTitle: {
-  [key: string]: {
-    listening: boolean | null;
-    acceptToastId: string | number;
-    rejectToastId: string | number;
-  };
-} = {};
-var maxCurrPick = 0
-var listenerCheckTimer: NodeJS.Timeout
+export enum SortOption {
+  RANKS = "Sort By Ranks",
+  ADP = "Sort By ADP",
+}
+
+export enum HighlightOption {
+  PREDICTED_TAKEN = "Highlight Next Taken",
+  PREDICTED_TAKEN_NEXT_TURN = "Highlight Next-Next Taken",
+}
 
 const Home: FC = () => {
   const {
@@ -58,12 +39,9 @@ const Home: FC = () => {
     // memo
     roundIdx,
     isEvenRound,
-    currRound,
     currRoundPick,
     currMyPickNum,
     // funcs
-    onDraftPlayer,
-    onRemoveDraftedPlayer,
     onNavLeft,
     onNavRight,
     onNavRoundUp,
@@ -73,60 +51,67 @@ const Home: FC = () => {
     defaultMyPickNum: 6,
   })
 
-  // rosters depend on draft board
-  const {
-    // state
-    rosters,
-    viewRosterIdx, setViewRosterIdx,
-    // funcs
-    addPlayerToRoster,
-    removePlayerFromRoster,
-  } = useRosters({
-    numTeams: settings.numTeams,
-    myPickNum,
-  })
-
   // ranks depend on draft board
   const {
     // state
     boardSettings,
     playerRanks, onCreatePlayerRanks,
-    playerLib, setPlayerLib,
-    playersByPosByTeam, setPlayersByPosByTeam,
+    playerLib,
+    playersByPosByTeam,
     noPlayers,
+    rosters,
+    draftHistory,
     // funcs
-    onRemovePlayerFromBoard,
-    onAddAvailPlayer,
+    onDraftPlayer,
+    onRemoveDraftedPlayer,
+    getDraftRoundForPickNum,
     onPurgeAvailPlayer,
     onApplyRankingSortBy,
     onSetRanker,
     onSetAdpRanker,
-  } = useRanks({ settings })
-  
-  const [predictedPicks, setPredictedPicks] = useState<PredictedPicks>({})
-  const [showNextPreds, setShowNextPreds] = useState(false)
-  const [showPredAvailByRound, setShowPredAvailByRound] = useState(false)
-  const [predRunTiers, setPredRunTiers] = useState<TierPredictions>({
-    [FantasyPosition.QUARTERBACK]: 0,
-    [FantasyPosition.RUNNING_BACK]: 0,
-    [FantasyPosition.WIDE_RECEIVER]: 0,
-    [FantasyPosition.TIGHT_END]: 0,
+    createPlayerLibrary,
+  } = useRanks({ settings, myPickNum })
+
+  const {
+    listenerActive,
+    activeDraftListenerTitle,
+  } = useDraftListener({
+    playerLib,
+    playersByPosByTeam,
+    rosters,
+    settings,
+    onDraftPlayer,
+    setCurrPick,
+    setDraftStarted,
+    draftStarted,
   })
-  const [predNextTiers, setPredNextTiers] = useState<TierPredictions>({
-    [FantasyPosition.QUARTERBACK]: 0,
-    [FantasyPosition.RUNNING_BACK]: 0,
-    [FantasyPosition.WIDE_RECEIVER]: 0,
-    [FantasyPosition.TIGHT_END]: 0,
+
+  const {
+    predictedPicks,
+    predNextTiers,
+    setNumPostPredicts,
+  } = usePredictions({
+    rosters,
+    playerRanks,
+    settings,
+    boardSettings,
+    currPick,
+    myPickNum,
+    currRoundPick,
+    draftStarted,
   })
-  const [alertMsg, setAlertMsg] = useState<string | null>(null)
-  const [numPostPredicts, setNumPostPredicts] = useState(0)
+
   // TODO - fix edit custom tiers
   // const [hasCustomTiers, setHasCustomTiers] = useState<boolean | null>(null)
-  const [activeDraftListenerTitle, setActiveDraftListenerTitle] = useState<string | null>(null)
-  const [lastListenerAck, setLastListenerAck] = useState<Moment | null>(null)
-  const [listenerActive, setListenerActive] = useState(false)
+  const [viewRosterIdx, setViewRosterIdx] = useState(0)
+  const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
+  const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
+  const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN)
 
-  const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
+  const currRound = getDraftRoundForPickNum(currPick)
+  
+  // predictions
+  const [alertMsg, setAlertMsg] = useState<string | null>(null)
 
   console.log('fantasySettings', settings)
   console.log('boardSettings', boardSettings)
@@ -134,37 +119,9 @@ const Home: FC = () => {
   console.log('playersByPosByTeam', playersByPosByTeam)
   console.log('playerRanks', playerRanks)
 
+  const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
 
-  const createPlayerLibrary = (players: Player[]) => {
-    const playerLib = players.reduce((acc: PlayerLibrary, player) => {
-      acc[player.id] = player
-      return acc
-    }, {})
-    setPlayerLib( playerLib )
-    const playersByPosByTeam = players.reduce((dict: PlayersByPositionAndTeam, player: Player) => {
-      if (player.position) {
-        if ( !dict[player.position] ) {
-          dict[player.position] = {}
-        }
-        if (dict[player.position] && !dict[player.position]![player.team] ) {
-          dict[player.position]![player.team] = []
-        }
-        dict[player.position]![player.team]!.push(player)
-      }
-      return dict
-    }, {})
-    setPlayersByPosByTeam( playersByPosByTeam )
-  }
-
-  // listeners
-
-  useEffect(() => {
-    window.addEventListener("message", processListenedDraftPick )
-    
-    return () => {
-      window.removeEventListener("message", processListenedDraftPick )
-    }
-  }, [settings.numTeams, playerRanks, playerLib, rosters, listeningDraftTitle])
+  // board navigation listener
 
   useEffect(() => {
     window.addEventListener('keyup', onKeyUp)
@@ -173,41 +130,22 @@ const Home: FC = () => {
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [showNextPreds, predictedPicks, playerLib, settings.ppr, noPlayers, currPick, predNextTiers])
-
-  const checkListenerActive = useCallback(() => {
-    console.log('checkListenerActive', lastListenerAck, lastListenerAck && moment().diff(lastListenerAck, 'seconds'))
-    if (lastListenerAck === null || moment().diff(lastListenerAck, 'seconds') > 5) {
-      setListenerActive( false )
-    } else {
-      setListenerActive( true )
-    }
-
-    listenerCheckTimer = setTimeout(checkListenerActive, 6000)
-  }, [listenerActive, lastListenerAck])
-
-  useEffect(() => {
-    checkListenerActive()
-
-    return () => {
-      if ( listenerCheckTimer ) {
-        clearTimeout( listenerCheckTimer )
-      }
-    }
-  }, [checkListenerActive])
+  }, [predictedPicks, playerLib, settings.ppr, noPlayers, currPick, predNextTiers])
+  
 
   // key press / up commands
   const onKeyUp = useCallback( (e: KeyboardEvent) => {
     if (['MetaRight', 'MetaLeft'].includes(e.code)) {
-      setShowNextPreds( false )
+      setHighlightOption(HighlightOption.PREDICTED_TAKEN)
     } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
       // sort by harris
       onApplyRankingSortBy( false )
+      setSortOption(SortOption.RANKS)
     } else if (['KeyZ'].includes(e.code)) {
       // show predicted avail by round
-      setShowPredAvailByRound( false )
+      setDraftView(DraftView.RANKING)
     }
-  }, [showNextPreds, predictedPicks, playerLib, playerRanks, settings.ppr, noPlayers, currPick, predNextTiers])
+  }, [playerLib, playerRanks, settings.ppr, noPlayers, currPick, predNextTiers])
 
   const onKeyDown = useCallback( (e: KeyboardEvent) => {
     // arrow up
@@ -215,133 +153,31 @@ const Home: FC = () => {
       onNavRoundUp()
     // arrow down
     } else if (e.code === 'ArrowDown') {
-      onNavRoundDown()
+      onNavRoundDown(draftHistory)
     // arrow left
     } else if ( e.code === 'ArrowLeft' ) {
       onNavLeft()
     // arrow right
     } else if ( e.code === 'ArrowRight' ) {
-      onNavRight()
+      onNavRight(draftHistory)
       // alt 
     } else if (['MetaRight', 'MetaLeft'].includes(e.code)) {
-      setShowNextPreds(true)
+      setHighlightOption(HighlightOption.PREDICTED_TAKEN_NEXT_TURN)
     // shift 
     } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
       onApplyRankingSortBy( true )
+      setSortOption(SortOption.ADP)
     } else if (['KeyZ'].includes(e.code)) {
       // show predicted avail by round
-      setShowPredAvailByRound( true )
+      setDraftView(DraftView.BEST_AVAILABLE)
     }
-  }, [ showNextPreds, predictedPicks, playerLib, playerRanks, settings.ppr, noPlayers, currPick, predNextTiers])
+  }, [ playerLib, playerRanks, settings.ppr, noPlayers, currPick, predNextTiers, draftHistory])
 
-  const processListenedDraftPick = useCallback( (event: MessageEvent) => {
-    if ( event.data.type !== "FROM_EXT" || Object.values( playerLib ).length === 0 ) {
-      return
-    }
-    if ( event.data.draftData === true ) {
-      console.log('listener ack received in app')
-      setLastListenerAck(moment())
-      return
-    }
-    const { draftData: { draftPicks: draftPicksData, draftTitle, platform } } = event.data
 
-    if ( listeningDraftTitle[draftTitle] === undefined ) {
-      console.log('heard draft initated event', event)
-      const acceptToastId = toast(
-        `Listen to draft: ${ draftTitle }`,
-        {
-          autoClose: false,
-          hideProgressBar: true,
-          type: 'success',
-          theme: 'colored',
-          position:'top-right',
-          containerId: 'AcceptListenDraft',
-          onClick: () => {
-            listeningDraftTitle[draftTitle].listening = true
-            setActiveDraftListenerTitle( draftTitle )
-            toast.dismiss(listeningDraftTitle[draftTitle].rejectToastId)
-          }
-        })
-      const rejectToastId = toast(
-        `Ignore draft: ${ draftTitle }`,
-        {
-          autoClose: false,
-          hideProgressBar: true,
-          type: 'error',
-          theme: 'colored',
-          position:'top-right',
-          containerId: 'RejectListenDraft',
-          onClick: () => {
-            if (listeningDraftTitle[draftTitle]) {
-              listeningDraftTitle[draftTitle].listening = false
-              toast.dismiss(listeningDraftTitle[draftTitle].acceptToastId)
-            }
-          }
-        })
-      listeningDraftTitle = {
-        ...listeningDraftTitle,
-        [draftTitle]: {
-          listening: null,
-          acceptToastId,
-          rejectToastId,
-        }
-      }
-      return
-    } else if ( !listeningDraftTitle[draftTitle].listening || draftPicksData.length === 0 ) {
-      return
-    }
+  // TODO - fix edit custom tiers
+  // const [hasCustomTiers, setHasCustomTiers] = useState<boolean | null>(null)
 
-    // parse draft event data into structured draft pick
-    let draftPicks: (EspnDraftEventParsed | ParsedNflDraftEvent | null)[] | undefined
-    if ( platform === 'ESPN') {
-      draftPicks = parseEspnDraftEvents( draftPicksData )
-    } else if ( platform == 'NFL' ) {
-      draftPicks = parseNflDraftEvents( draftPicksData, playersByPosByTeam )
-    }
-
-    console.log('heard draft event', event)
-
-    if ( !draftPicks || draftPicks.length === 0 ) {
-      return
-    }
-
-    // draft players from events
-    let lastPickNum = 1
-    draftPicks.forEach( draftPick => {
-      if (draftPick) {
-        const { id, ovrPick } = draftPick
-        if ( id && playerLib[id] ) {
-        const player = playerLib[id]
-          const { fullName, position, team } = player
-          console.log('processing pick', player, draftPick)
-          const pickNum = ovrPick || (('round' in draftPick && 'pick' in draftPick) ? ((draftPick.round-1) * settings.numTeams) + draftPick.pick : 0)
-          onDraftPlayer(String(id), pickNum)
-          onRemovePlayerFromBoard( player )
-          addPlayerToRoster( player, pickNum )
-          lastPickNum = pickNum
-          toast(
-            `Pick #${pickNum}: ${ fullName } - ${ position } - ${ team }`,
-            {
-              type: 'success',
-              theme: 'colored',
-              position:'top-right',
-            })
-        }
-      }
-    })
-
-    // set updated draft board and predictions
-    setCurrPick(lastPickNum+1)
-    if ( !draftStarted ) {
-      setDraftStarted(true)
-    }
-  }, [settings.numTeams, playerRanks, playerLib, rosters, listeningDraftTitle, playersByPosByTeam])
-  
   // drafting
-
-  const onSelectPick = (pickNum: number) => {
-    setCurrPick(pickNum)
-  }
 
   const onSelectPlayer = (player: Player) => {
     onDraftPlayer(player.id, currPick)
@@ -349,117 +185,17 @@ const Home: FC = () => {
     if ( !draftStarted ) {
       setDraftStarted(true)
     }
-    onRemovePlayerFromBoard( player )
-    addPlayerToRoster( player, currPick )
   }
 
   const onRemovePick = (pickNum: number) => {
-    const playerId = onRemoveDraftedPlayer(pickNum)
-    if (playerId) {
-      const player = playerLib[playerId]
-      onAddAvailPlayer( player )
-      removePlayerFromRoster( player, pickNum )
-    }
+    onRemoveDraftedPlayer(pickNum)
     setCurrPick(pickNum)
-    onChangeNumPostPredicts(numPostPredicts+1)
+    onChangeNumPostPredicts(1)
   }
 
-  const onPurgePlayer = (player: Player) => {
-    onPurgeAvailPlayer( player )
+  const onChangeNumPostPredicts = (num: number) => {
+    setNumPostPredicts(num)
   }
-
-  // data import export
-
-  const onChangeNumPostPredicts = (numPostPredicts: number) => {
-    setNumPostPredicts(numPostPredicts)
-  }
-
-  useEffect(() => {
-    predictPicks()
-  }, [currPick, myPickNum, settings.numTeams])
-
-  const predictPicks = useCallback(() => {
-    if ( rosters.length === 0 ) {
-      return
-    }
-    if (currPick <= maxCurrPick) {
-      return
-    }
-
-    // build counts of picks by position
-    maxCurrPick = currPick
-    let posCounts: PositionCounts = { QB: 0, RB: 0, WR: 0, TE: 0, DST: 0, "": 0 }
-    rosters.forEach( roster => {
-      rankablePositions.forEach( pos => {
-        if ( pos in roster && posCounts[pos] !== undefined ) {
-          posCounts[pos] += (roster[pos as keyof Roster] as string[]).length
-        }
-      })
-    })
-
-    // predict next 5 round
-    let pickPredicts: PredictedPicks = {}
-    Array.from(Array(5 * settings.numTeams)).forEach((_, i) => {
-      if (currRoundPick > 0) {
-        const roster = rosters[currRoundPick-1]
-        const roundNum = Math.floor((currPick+i-1) / settings.numTeams) + 1
-        const positions = nextPositionPicked( roster, roundNum, posCounts )
-        const { predicted, updatedCounts } = predictNextPick(
-          playerRanks.availPlayersByAdp,
-          settings, boardSettings, positions, predictedPicks, posCounts, myPickNum, currPick, currPick + i )
-        pickPredicts = predicted
-        posCounts = updatedCounts as { [key in FantasyPosition]: number }
-      }
-    })
-
-    // detect positional runs
-    let runDetected = false
-    const minTierDiffRun = 2
-    const tierRunAlerts = [] as string[]
-    Object.keys(predRunTiers).forEach( pos => {
-      const posPlayersByAdp = playerRanks.availPlayersByAdp.filter( p => p.position === pos )
-      const posTopPlayer = posPlayersByAdp[0]
-      if ( !posTopPlayer ) {
-        return
-      }
-      const posNextTopPlayer = posPlayersByAdp[1]
-      if ( Boolean(posNextTopPlayer) ) {
-        const nextTopPlayerMetrics = getPlayerMetrics(posNextTopPlayer, settings, boardSettings)
-        if ( nextTopPlayerMetrics.tier ) {
-          const currTier = nextTopPlayerMetrics.tier.tierNumber
-          const nextPosPlayersByAdp = posPlayersByAdp.filter( p => ![1, 2].includes(predictedPicks[p.id] ))
-          const nextPosTopPlayer = nextPosPlayersByAdp[0]
-          const nextTier = nextPosTopPlayer && getPlayerMetrics(nextPosTopPlayer, settings, boardSettings).tier?.tierNumber
-          if ( !nextTier || (currTier  && currTier > predRunTiers[pos as keyof TierPredictions] && nextTier - currTier >= minTierDiffRun) ) {
-            const playersTaken = posPlayersByAdp.length - nextPosPlayersByAdp.length
-            tierRunAlerts.push(
-              `Run on ${ pos } down to tier ${ nextTier } after your next pick with ${ playersTaken } ${ pos }s taken `,
-            )
-          }
-        }
-      }
-    })
-    
-    tierRunAlerts.forEach( alert => {
-      toast(alert, {
-        type: 'warning',
-        position:'top-right',
-        theme: 'colored',
-        autoClose: 10000,
-      })
-    })
-
-    setPredNextTiers(predNextTiers)
-    if ( runDetected ) {
-      setPredRunTiers(predRunTiers)
-    }
-
-    // console.log('Predictions: ', Object.keys( currPredicts ).sort((a,b) => currPredicts[a] - currPredicts[b]).map( id => playerLib[id].name ))
-    // console.log('Next Predictions: ', Object.keys( nextPredicts ).sort((a,b) => nextPredicts[a] - nextPredicts[b]).map( id => playerLib[id].name ))
-
-    console.log('next predictions', pickPredicts)
-    setPredictedPicks( pickPredicts )
-  }, [settings, boardSettings, playerLib, playerRanks, rosters, myPickNum, currPick, currRoundPick, predRunTiers, predNextTiers])
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2 relative">
@@ -523,6 +259,22 @@ const Home: FC = () => {
                 disabled={draftStarted}
               >
                 { ["Standard", "PPR"].map( opt => <option key={opt} value={ opt }> { opt } </option>) }
+              </select>
+            </div>
+
+            <div className={`flex flex-row text-sm text-center mr-4 rounded shadow-md ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>
+              <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
+                Ranker
+              </p>
+              <select
+                className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
+                value={boardSettings.ranker}
+                onChange={ e => {
+                  onSetRanker(e.target.value as ThirdPartyRanker)
+                }}
+                disabled={draftStarted}
+              >
+                { Object.values(ThirdPartyRanker).map( ranker => <option key={ranker} value={ ranker }> { ranker } </option>) }
               </select>
             </div>
           </div>
@@ -645,16 +397,20 @@ const Home: FC = () => {
             <PositionRankings
               playerRanks={playerRanks}
               predictedPicks={predictedPicks}
-              showNextPreds={showNextPreds}
+              draftView={draftView}
+              setDraftView={setDraftView}
+              sortOption={sortOption}
+              setSortOption={setSortOption}
+              highlightOption={highlightOption}
+              setHighlightOption={setHighlightOption}
               myPickNum={myPickNum}
               noPlayers={noPlayers}
               currPick={currPick}
               predNextTiers={predNextTiers}
-              showPredAvailByRound={showPredAvailByRound}
               fantasySettings={settings}
               boardSettings={boardSettings}
               onSelectPlayer={onSelectPlayer}
-              onPurgePlayer={onPurgePlayer}
+              onPurgePlayer={onPurgeAvailPlayer}
               setViewPlayerId={setViewPlayerId}
             />
           </div>
@@ -674,7 +430,7 @@ const Home: FC = () => {
             <table className="table-auto">
               <tbody>
                 <tr className={`flex justify-between ${isEvenRound ? 'flex-row-reverse' : ''}`}>
-                  { currRound.map( (pickedPlayerId, i) => {
+                  { currRound.map( (pickedPlayerId: string | null, i: number) => {
                     let bgColor = ""
                     let hover = ""
                     const player = pickedPlayerId ? playerLib[pickedPlayerId] : null
@@ -692,7 +448,7 @@ const Home: FC = () => {
                     const pickNum = roundIdx*settings.numTeams+(i+1)
                     return(
                       <td className={`flex flex-col p-1 m-1 rounded ${myPickStyle} ${hover} cursor-pointer text-sm ${bgColor} items-center`}
-                        onClick={ pickedPlayerId ? () => onRemovePick(pickNum) : () => onSelectPick( pickNum ) }
+                        onClick={ pickedPlayerId ? () => onRemovePick(pickNum) : () => setCurrPick( pickNum ) }
                         key={i}
                         onMouseEnter={() => {
                           if ( pickedPlayerId ) {
