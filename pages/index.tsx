@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, FC } from "react"
 import PageHead from "../components/pageHead"
 import DraftLoaderOptions from "../components/draftLoaderOptions"
 import PositionRankings from "../components/positionRankings"
-// import StatsSection from "../components/statsSection"
+import HistoricalStats from "../components/HistoricalStats"
 import { Roster } from "../behavior/draft"
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
@@ -339,17 +339,12 @@ const Home: FC = () => {
 
         <div className="flex flex-col items-center mt-4">
           {/* Stats and Positional Breakdowns */}
-          <div className="flex flex-row justify-center w-screen relative my-4">
-            { !noPlayers &&
-              <div className="flex flex-row px-4 mr-2 overflow-y-scroll rounded border border-4 h-screen shadow-md bg-white">
-                {/* TODO - fix stats section */}
-                {/* <StatsSection
-                  viewPlayerId={viewPlayerId || ''}
-                  playerLib={playerLib}
-                  posStatsByNumTeamByYear={posStatsByNumTeamByYear}
-                  numTeams={numTeams}
-                  isStd={isStd}
-                /> */}
+          <div className="flex flex-row justify-center w-screen relative my-4 grid grid-cols-12 gap-1">
+            {/* { !noPlayers &&
+              <div className="flex flex-row px-4 mr-2 overflow-y-scroll rounded border border-4 h-screen w-xl shadow-md bg-white">
+                <HistoricalStats
+                  player={viewPlayerId ? playerLib[viewPlayerId] : null}
+                />
 
                 <div className="flex flex-col rounded h-full overflow-y-auto ml-2 p-1">
                   <p className="font-semibold underline py-2">
@@ -392,27 +387,75 @@ const Home: FC = () => {
                   }
                 </div>
               </div>
-            }
+            } */}
 
-            <PositionRankings
-              playerRanks={playerRanks}
-              predictedPicks={predictedPicks}
-              draftView={draftView}
-              setDraftView={setDraftView}
-              sortOption={sortOption}
-              setSortOption={setSortOption}
-              highlightOption={highlightOption}
-              setHighlightOption={setHighlightOption}
-              myPickNum={myPickNum}
-              noPlayers={noPlayers}
-              currPick={currPick}
-              predNextTiers={predNextTiers}
-              fantasySettings={settings}
-              boardSettings={boardSettings}
-              onSelectPlayer={onSelectPlayer}
-              onPurgePlayer={onPurgeAvailPlayer}
-              setViewPlayerId={setViewPlayerId}
-            />
+            <div className="col-span-5 flex justify-end">
+              <HistoricalStats
+                player={viewPlayerId ? playerLib[viewPlayerId] : null}
+              />
+            </div>
+            <div className="col-span-5">
+              <PositionRankings
+                playerRanks={playerRanks}
+                predictedPicks={predictedPicks}
+                draftView={draftView}
+                setDraftView={setDraftView}
+                sortOption={sortOption}
+                setSortOption={setSortOption}
+                highlightOption={highlightOption}
+                setHighlightOption={setHighlightOption}
+                myPickNum={myPickNum}
+                noPlayers={noPlayers}
+                currPick={currPick}
+                predNextTiers={predNextTiers}
+                fantasySettings={settings}
+                boardSettings={boardSettings}
+                onSelectPlayer={onSelectPlayer}
+                onPurgePlayer={onPurgeAvailPlayer}
+                setViewPlayerId={setViewPlayerId}
+              />
+            </div>
+
+            <div className="col-span-2 flex flex-col rounded h-full overflow-y-auto ml-2 p-1 w-64 border border-gray-300">
+              <p className="font-semibold underline py-2">
+                Rosters
+              </p>
+
+              { !draftStarted &&
+                <p className="font-semibold">
+                  Waiting for draft...
+                </p>
+              }
+
+              { draftStarted &&
+                <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-1 bg-gray-100 shadow-md border">
+                  <select
+                    className="rounded p-1 border font-semibold"
+                    value={viewRosterIdx}
+                    onChange={ e => setViewRosterIdx(parseInt( e.target.value ))}
+                  >
+                    { rosters.map((_,i) => {
+                      return(
+                        <option key={i} value={i}> Team { i+1 } </option>
+                      )
+                    })}
+                  </select>
+                  { rankablePositions.map( pos => [rosters[viewRosterIdx][pos as keyof Roster], pos] as [string[], string] ).filter( ([posGroup,]) => posGroup.length > 0 ).map( ([posGroup, pos]) => {
+                    return(
+                      <div className="mt-1 text-left" key={pos}>
+                        <p className="font-semibold"> { pos } ({ posGroup.length }) </p>
+                        { posGroup.map( (playerId: string) => {
+                          const player = playerLib[playerId]
+                          return(
+                            <p className="text-xs" key={playerId}> { player.fullName } - { player.team } </p>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                </div>
+              }
+            </div>
           </div>
         </div>
       </main>

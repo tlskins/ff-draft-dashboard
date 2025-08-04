@@ -13,6 +13,8 @@ export const toCamelCase = (obj: any): any => {
             result[newKey] = transform(value, (ranksResult: any, rankValue: any, rankKey: string) => {
                 ranksResult[rankKey] = toCamelCase(rankValue);
             });
+        } else if (newKey === 'historicalStats') {
+            result[newKey] = value;
         } else {
             result[newKey] = toCamelCase(value);
         }

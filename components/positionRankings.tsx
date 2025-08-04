@@ -240,7 +240,6 @@ const PositionRankings = ({
                   } = player
 
                   const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
-                  console.log('playerMetrics', metrics)
                   const { tier, adp, overallOrPosRank } = metrics
                   const tierValue = tier?.tierNumber
                   

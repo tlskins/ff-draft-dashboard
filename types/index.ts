@@ -76,41 +76,80 @@ export interface BoardSettings {
     adpRanker: FantasyRanker;
 }
 
+export const BaseStats = [
+    'team',
+    'Age',
+    'G',
+]
+
+export const PassingStats = [
+    'Pass Cmp',
+    'Pass Att',
+    'Pass Yds',
+    'Pass TD',
+    'Int',
+]
+
+export const RushingStats = [
+    'Rush Att',
+    'Rush Yds',
+    'Rush Y/A',
+    'Rush TD',
+    'Fmb',
+    'FL',
+]
+
+export const ReceivingStats = [
+    'Rec Tgt',
+    'Rec',
+    'Rec Yds',
+    'Rec Y/R',
+    'Rec TD',
+]
+
 export interface PlayerStats {
-    rank: number;
-    playerName: string;
-    team: NFLTeam;
-    fantasyPosition: FantasyPosition;
-    age?: number;
-    gamesPlayed?: number;
-    gamesStarted?: number;
-    passCompletions?: number;
-    passAttempts?: number;
-    passYards?: number;
-    passTds?: number;
-    interceptions?: number;
-    rushAttempts?: number;
-    rushYards?: number;
-    rushYardsPerAttempt?: number;
-    rushTds?: number;
-    receivingTargets?: number;
-    receptions?: number;
-    receivingYards?: number;
-    receivingYardsPerReception?: number;
-    receivingTds?: number;
-    fumbles?: number;
-    fumblesLost?: number;
-    totalTds?: number;
-    twoPointConversions?: number;
-    twoPointPasses?: number;
-    fantasyPoints?: number;
-    pprPoints?: number;
-    draftkingsPoints?: number;
-    fanduelPoints?: number;
-    valueBasedDraft?: number;
-    positionRank?: number | null;
-    overallRank?: number | null;
-    playerId: string;
+    Rk: number;
+    Player: string;
+    name: string;
+    Tm: NFLTeam;
+    team: string;
+    FantPos: FantasyPosition;
+    position: string;
+    Age?: number;
+    G?: number;
+    GS?: number;
+    "Pass Cmp"?: number;
+    "Pass Att"?: number;
+    "Pass Yds"?: number;
+    "Pass TD"?: number;
+    Int?: number;
+    "Rush Att"?: number;
+    "Rush Yds"?: number;
+    "Rush Y/A"?: number;
+    "Rush TD"?: number;
+    Fmb?: number;
+    FL?: number;
+    "Rec Tgt"?: number;
+    Rec?: number;
+    "Rec Yds"?: number;
+    "Rec Y/R"?: number | null;
+    "Rec TD"?: number;
+    TD?: number;
+    "2Pm"?: number | null;
+    "2PP"?: number;
+    FantPt?: number;
+    PPR?: number;
+    DKPt?: number;
+    FDPt?: number;
+    VBD?: number;
+    PosRank?: number | null;
+    OvRank?: number | null;
+    playerId: string; // pro-football-reference id
+    fantasy_points_per_game?: number;
+    fantasy_points_per_game_started?: number;
+    ppr_points_per_game?: number;
+    ppr_points_per_game_started?: number;
+    year?: number | string;
 }
 
 export interface Tier {
@@ -159,10 +198,32 @@ export interface Player {
     team: NFLTeam;
     position: FantasyPosition;
     ranks: { [key in FantasyRanker]: PlayerRanking };
-    lastSeasonStats?: PlayerStats;
+    historicalStats?: { [key: string]: PlayerStats };
+    seasonStats?: PlayerStats[];
+    lastYrTier?: number;
+    lastYrOvrRank?: number;
+    stdRankTier?: number;
+    pprRankTier?: number;
+    pros?: string;
+    cons?: string;
 
     // TODO - need to handle "target"
 }
+
+// export type PosStatsByNumTeamByYear = {
+//     [numTeams: number]: {
+//         [year: number]: {
+//             [pos: string]: {
+//                 tier1Stats: PlayerStats,
+//                 tier2Stats: PlayerStats,
+//                 tier3Stats: PlayerStats,
+//                 tier4Stats: PlayerStats,
+//                 tier5Stats: PlayerStats,
+//                 tier6Stats: PlayerStats,
+//             }
+//         }
+//     }
+// };
 
 export interface Rankings {
     players: Player[];
@@ -180,3 +241,4 @@ export enum RankingView {
   ADP = "Sort By ADP",
   NEXT_TAKEN = "Show Next Taken",
 } 
+
