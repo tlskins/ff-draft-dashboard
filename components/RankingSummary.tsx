@@ -17,6 +17,7 @@ const RankingSummaryDisplay: React.FC<RankingSummaryProps> = ({ settings, active
   const position = activePlayer.position;
   const summary = rankingSummaries.find(s => s.ranker === DataRanker.LAST_SSN_PPG && s.ppr === settings.ppr);
   const projPlayerTier = getProjectedTier(activePlayer, ranker, DataRanker.LAST_SSN_PPG, settings, rankingSummaries);
+  const expAvgProjPlayerPts = projPlayerTier ? (projPlayerTier.upperLimitValue + projPlayerTier.lowerLimitValue) / 2 : 0;
 
   if (!summary) {
     return (
@@ -46,15 +47,34 @@ const RankingSummaryDisplay: React.FC<RankingSummaryProps> = ({ settings, active
       );
   }
 
+  const expPtsAboveReplacement = expAvgProjPlayerPts ? (expAvgProjPlayerPts - replacementLevel[1]) : undefined;
+
   return (
     <div className="py-2 px-4 justify-center">
       <p className="font-semibold underline py-2">
         {summary.ranker} - {position} ({summary.ppr ? 'PPR' : 'Standard'})
       </p>
-      <div className="text-sm">
-        <span>Std Dev: <strong>{stdDev.toFixed(2)}</strong></span>
-        <span className="ml-4">Repl. Level Rank: <strong>{replacementLevel[0]}</strong></span>
-        <span className="ml-4">Repl. Level Points: <strong>{replacementLevel[1].toFixed(2)}</strong></span>
+      <div className="flex flex-row justify-center">
+        <table className="table-auto text-sm border-separate border-spacing-0 border border-slate-500 shadow-md mt-4">
+            <thead>
+                <tr className="text-left">
+                    <th className="border-2 border-slate-700 bg-blue-100 p-2">Std Dev</th>
+                    <th className="border-2 border-slate-700 bg-blue-100 p-2">Repl. Rank</th>
+                    <th className="border-2 border-slate-700 bg-blue-100 p-2">Repl. Points</th>
+                    <th className="border-2 border-slate-700 bg-blue-100 p-2">Exp. Points Above Repl.</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td className="border-2 border-slate-700 text-center p-2">{stdDev.toFixed(2)}</td>
+                    <td className="border-2 border-slate-700 text-center p-2">{replacementLevel[0]}</td>
+                    <td className="border-2 border-slate-700 text-center p-2">{replacementLevel[1].toFixed(2)}</td>
+                    <td className={`border-2 border-slate-700 text-center p-2 ${(expPtsAboveReplacement || 0.0) > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {expPtsAboveReplacement ? expPtsAboveReplacement.toFixed(1) : 'N/A'}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
       </div>
       <div className="flex flex-row justify-center">
         <table className="table-auto text-sm border-separate border-spacing-0 border border-slate-500 shadow-md mt-4">
