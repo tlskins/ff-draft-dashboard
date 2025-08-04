@@ -1,22 +1,26 @@
 import { camelCase, isArray, isObject, transform } from 'lodash';
 
-export const toCamelCase = (obj: any): any => {
+export const toCamelCase = (obj: any, skiplist: string[] = []): any => {
     if (!isObject(obj)) {
         return obj;
     }
     if (isArray(obj)) {
-        return obj.map(v => toCamelCase(v));
+        return obj.map(v => toCamelCase(v, skiplist));
     }
     return transform(obj, (result: any, value: any, key: string) => {
-        const newKey = camelCase(key);
+        let newKey = camelCase(key);
+        if (skiplist.includes(key)) {
+            newKey = key
+        }
+
         if (newKey === 'ranks') {
             result[newKey] = transform(value, (ranksResult: any, rankValue: any, rankKey: string) => {
-                ranksResult[rankKey] = toCamelCase(rankValue);
+                ranksResult[rankKey] = toCamelCase(rankValue, skiplist);
             });
-        } else if (newKey === 'historicalStats') {
-            result[newKey] = value;
+        // } else if (['tiers', 'replacementLevels', 'stdDevs'].includes(newKey)) {
+        //     result[newKey] = value;
         } else {
-            result[newKey] = toCamelCase(value);
+            result[newKey] = toCamelCase(value, skiplist);
         }
     });
 }; 

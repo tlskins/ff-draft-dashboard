@@ -4,8 +4,8 @@ import { BsLink } from 'react-icons/bs'
 import { AiFillCheckCircle, AiFillStar } from 'react-icons/ai'
 
 import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor, getPickDiffColor } from '../behavior/styles'
-import { myCurrentRound, getPlayerMetrics, PlayerRanks } from '../behavior/draft'
-import { Player, FantasySettings, FantasyPosition, BoardSettings } from "../types"
+import { myCurrentRound, getPlayerMetrics, PlayerRanks, getProjectedTier } from '../behavior/draft'
+import { Player, FantasySettings, FantasyPosition, BoardSettings, DataRanker, RankingSummary } from "../types"
 import { DraftView, SortOption, HighlightOption } from "../pages"
 
 
@@ -82,6 +82,7 @@ interface PositionRankingsProps {
   boardSettings: BoardSettings,
   currPick: number,
   predNextTiers: { [key: string]: number },
+  rankingSummaries: RankingSummary[],
   onSelectPlayer: (player: Player) => void,
   onPurgePlayer: (player: Player) => void,
   setViewPlayerId: (id: string) => void,
@@ -102,6 +103,7 @@ const PositionRankings = ({
   predNextTiers,
   fantasySettings,
   boardSettings,
+  rankingSummaries,
   draftView,
   setDraftView,
   sortOption,
@@ -138,7 +140,7 @@ const PositionRankings = ({
     <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded shadow-md bg-white">
       <div className="flex flex-row mb-4 align-center">
         <div className="flex flex-col text-left">
-          <div className="flex flex-row mb-4">
+          <div className="flex flex-row">
             <select
                 className="p-1 m-1 border rounded bg-blue-100 shadow"
                 value={draftView}
@@ -241,7 +243,7 @@ const PositionRankings = ({
 
                   const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
                   const { tier, adp, overallOrPosRank } = metrics
-                  const tierValue = tier?.tierNumber
+                  const { tierNumber, upperLimitPlayerIdx, lowerLimitPlayerIdx } = tier || {}
                   
                   let tierStyle
                   if ( shownPlayerId === id && !!shownPlayerBg ) {
@@ -251,9 +253,18 @@ const PositionRankings = ({
                   } else if ( !showNextPreds && predictedPicks[id] && predictedPicks[id] < 2 ) {
                     tierStyle = `${predBgColor} text-white`
                   } else {
-                    tierStyle = getTierStyle(tierValue)
+                    tierStyle = getTierStyle(tierNumber)
                   }
-  
+
+                  const projPlayerTier = getProjectedTier(
+                    player,
+                    boardSettings.ranker,
+                    DataRanker.LAST_SSN_PPG,
+                    fantasySettings,
+                    rankingSummaries,
+                  )
+                  const projTierText = projPlayerTier ? ` (${((projPlayerTier.upperLimitValue + projPlayerTier.lowerLimitValue) / 2).toFixed(1)} PPG)` : ''
+                  
                   const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
                   let rankText
                   if ( rankByAdp ) {
@@ -295,7 +306,7 @@ const PositionRankings = ({
                           } */}
                         </p>
                         <p className="text-xs">
-                          { team } - { rankText } { tier ? ` - Tier ${tierValue}` : "" }
+                          { team } - { rankText } { tier ? ` - Tier ${tierNumber}${projTierText}` : "" }
                         </p>
                         { !rankByAdp &&
                           <p className={`text-xs ${getPickDiffColor(currAdpDiff)} rounded px-1`}>

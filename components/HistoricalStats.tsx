@@ -7,10 +7,12 @@ import {
   PassingStats,
   RushingStats,
   ReceivingStats,
+  FantasySettings,
 } from '../types';
 
 interface HistoricalStatsProps {
   player: Player | null;
+  settings: FantasySettings;
 }
 
 const formatHeader = (key: string) => {
@@ -20,24 +22,26 @@ const formatHeader = (key: string) => {
 };
 
 const STAT_ABBREVIATION_MAP: { [key: string]: string } = {
-    'G': 'Gms',
-    'GS': 'Gms St',
-    'Pass Cmp': 'Cmp',
-    'Pass Att': 'Pa Atts',
-    'Pass Yds': 'Pa Yds',
-    'Pass TD': 'Pa TDs',
-    'Int': 'Ints',
-    'Rush Att': 'Ru Atts',
-    'Rush Yds': 'Ru Yds',
-    'Rush Y/A': 'Yd/Att',
-    'Rush TD': 'Ru TDs',
-    'Fmb': 'Fmb',
-    'FL': 'Fmb Lost',
-    'Rec Tgt': 'Tgts',
-    'Rec': 'Recs',
-    'Rec Yds': 'Rec Yds',
-    'Rec Y/R': 'Yd/Rec',
-    'Rec TD': 'Rec TDs',
+    'g': 'Gms',
+    'gs': 'Gms St',
+    'passCmp': 'Cmp',
+    'passAtt': 'Pa Atts',
+    'passYds': 'Pa Yds',
+    'passTd': 'Pa TDs',
+    'int': 'Ints',
+    'rushAtt': 'Ru Atts',
+    'rushYds': 'Ru Yds',
+    'rushYA': 'Yd/Att',
+    'rushTd': 'Ru TDs',
+    'fmb': 'Fmb',
+    'fl': 'Fmb Lost',
+    'recTgt': 'Tgts',
+    'rec': 'Recs',
+    'recYds': 'Rec Yds',
+    'recYR': 'Yd/Rec',
+    'recTd': 'Rec TDs',
+    'fantasyPointsPerGame': 'PPG',
+    'pprPointsPerGame': 'PPR PPG',
 };
 
 const STAT_CATEGORY_COLORS: { [key: string]: string } = {
@@ -53,7 +57,7 @@ const formatHeaderV2 = (key: string) => {
 
 type HistoricalStat = PlayerStats & { year: string };
 
-const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player }) => {
+const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player, settings }) => {
   if (!player) {
     return (
       <div className="flex flex-col py-2 px-4">
@@ -84,7 +88,7 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player }) => {
     );
   }
   
-  const baseStatKeys = BaseStats;
+  const baseStatKeys = [...BaseStats, settings.ppr ? 'pprPointsPerGame' : 'fantasyPointsPerGame'];
   let passingStatKeys: string[] = [];
   let rushingStatKeys: string[] = [];
   let receivingStatKeys: string[] = [];
@@ -114,33 +118,37 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player }) => {
     </td>)
   );
 
+  console.log('historicalStatsArray', historicalStatsArray, passingStatKeys)
+
   return (
-    <div className="py-2 px-4">
+    <div className="py-2 px-4 justify-center">
       <p className="font-semibold underline py-2">
         {player.fullName} ({player.position}) Historical Stats
       </p>
-      <table className="table-fixed text-sm border-separate border-spacing-0 border border-slate-500 shadow-md">
-        <thead>
-          <tr className="text-left">
-            <th className="border-2 border-slate-700">Year</th>
-            {renderHeader(baseStatKeys, 'base')}
-            {renderHeader(passingStatKeys, 'passing')}
-            {renderHeader(rushingStatKeys, 'rushing')}
-            {renderHeader(receivingStatKeys, 'receiving')}
-          </tr>
-        </thead>
-        <tbody>
-          {historicalStatsArray.map((stats) => (
-            <tr key={stats.year}>
-              <td className="border-2 border-slate-700 text-center">{stats.year}</td>
-              {renderRow(stats, baseStatKeys, 'base')}
-              {renderRow(stats, passingStatKeys, 'passing')}
-              {renderRow(stats, rushingStatKeys, 'rushing')}
-              {renderRow(stats, receivingStatKeys, 'receiving')}
+      <div className="flex flex-row justify-center">
+        <table className="table-fixed text-sm border-separate border-spacing-0 border border-slate-500 shadow-md">
+          <thead>
+            <tr className="text-left">
+              <th className="border-2 border-slate-700">Year</th>
+              {renderHeader(baseStatKeys, 'base')}
+              {renderHeader(passingStatKeys, 'passing')}
+              {renderHeader(rushingStatKeys, 'rushing')}
+              {renderHeader(receivingStatKeys, 'receiving')}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {historicalStatsArray.map((stats) => (
+              <tr key={stats.year}>
+                <td className="border-2 border-slate-700 text-center">{stats.year}</td>
+                {renderRow(stats, baseStatKeys, 'base')}
+                {renderRow(stats, passingStatKeys, 'passing')}
+                {renderRow(stats, rushingStatKeys, 'rushing')}
+                {renderRow(stats, receivingStatKeys, 'receiving')}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

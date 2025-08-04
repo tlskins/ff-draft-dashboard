@@ -16,7 +16,7 @@ import {
   createRosters,
   removeFromRoster,
 } from "../draft"
-import { FantasySettings, Player, BoardSettings, ThirdPartyRanker, FantasyRanker } from '../../types'
+import { FantasySettings, Player, BoardSettings, ThirdPartyRanker, FantasyRanker, RankingSummary } from '../../types'
 
 interface UseRanksProps {
   settings: FantasySettings
@@ -36,7 +36,7 @@ export const useRanks = ({
   const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
   const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})
   const [playerRanks, setPlayerRanks] = useState<PlayerRanks>(createPlayerRanks( [], settings, boardSettings ))
-  // const [posStatsByNumTeamByYear, setPosStatsByNumTeamByYear] = useState<PosStatsByNumTeamByYear>({})
+  const [rankingSummaries, setRankingSummaries] = useState<RankingSummary[]>([])
   const noPlayers = Object.keys(playerLib).length === 0
 
   // TODO - 350 should come from player length in backend
@@ -155,6 +155,7 @@ export const useRanks = ({
 
   return {
     // state
+    rankingSummaries,
     boardSettings,
     playerLib,
     playersByPosByTeam, setPlayersByPosByTeam,
@@ -174,5 +175,6 @@ export const useRanks = ({
     createPlayerLibrary,
     onSetRanker,
     onSetAdpRanker,
+    setRankingSummaries,
   }
 }

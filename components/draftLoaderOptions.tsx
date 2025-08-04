@@ -6,7 +6,7 @@ import { getPlayerData } from "../behavior/playerData"
 
 import Dropdown from "./dropdown"
 import moment from "moment"
-import { FantasySettings, Player, BoardSettings } from "types"
+import { FantasySettings, Player, BoardSettings, RankingSummary } from "types"
 
 const papaparseOptions = {
   header: true,
@@ -21,11 +21,13 @@ interface DraftLoaderOptionsProps {
   settings: FantasySettings;
   playerLib: PlayerLibrary;
   boardSettings: BoardSettings;
+  setRankingSummaries: (summaries: RankingSummary[]) => void;
 }
 
 const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
   onCreatePlayerRanks,
   createPlayerLibrary,
+  setRankingSummaries,
 
   settings,
   boardSettings,
@@ -41,9 +43,10 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
   const onLoadPlayers = () => {
     const playerData = getPlayerData()
     if (playerData) {
-      const { players } = playerData
+      const { players, rankingsSummaries } = playerData
       onCreatePlayerRanks(players)
       createPlayerLibrary(players)
+      setRankingSummaries(rankingsSummaries)
     }
   }
 

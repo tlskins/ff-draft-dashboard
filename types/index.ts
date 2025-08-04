@@ -78,65 +78,65 @@ export interface BoardSettings {
 
 export const BaseStats = [
     'team',
-    'Age',
-    'G',
+    'age',
+    'g',
 ]
 
 export const PassingStats = [
-    'Pass Cmp',
-    'Pass Att',
-    'Pass Yds',
-    'Pass TD',
-    'Int',
+    'passCmp',
+    'passAtt',
+    'passYds',
+    'passTd',
+    'int',
 ]
 
 export const RushingStats = [
-    'Rush Att',
-    'Rush Yds',
-    'Rush Y/A',
-    'Rush TD',
-    'Fmb',
-    'FL',
+    'rushAtt',
+    'rushYds',
+    'rushYA',
+    'rushTd',
+    'fmb',
+    'fl',
 ]
 
 export const ReceivingStats = [
-    'Rec Tgt',
-    'Rec',
-    'Rec Yds',
-    'Rec Y/R',
-    'Rec TD',
+    'recTgt',
+    'rec',
+    'recYds',
+    'recYR',
+    'recTd',
 ]
 
 export interface PlayerStats {
-    Rk: number;
-    Player: string;
+    rk: number;
+    player: string;
     name: string;
-    Tm: NFLTeam;
+    tm: NFLTeam;
     team: string;
-    FantPos: FantasyPosition;
+    fantPos: FantasyPosition;
     position: string;
-    Age?: number;
-    G?: number;
-    GS?: number;
-    "Pass Cmp"?: number;
-    "Pass Att"?: number;
-    "Pass Yds"?: number;
-    "Pass TD"?: number;
-    Int?: number;
-    "Rush Att"?: number;
-    "Rush Yds"?: number;
-    "Rush Y/A"?: number;
-    "Rush TD"?: number;
-    Fmb?: number;
-    FL?: number;
-    "Rec Tgt"?: number;
-    Rec?: number;
-    "Rec Yds"?: number;
-    "Rec Y/R"?: number | null;
-    "Rec TD"?: number;
-    TD?: number;
+    age?: number;
+    g?: number;
+    gs?: number;
+    passCmp?: number;
+    passAtt?: number;
+    passYds?: number;
+    passTd?: number;
+    int?: number;
+    rushAtt?: number;
+    rushYds?: number;
+    rushYA?: number;
+    rushTd?: number;
+    fmb?: number;
+    fl?: number;
+    recTgt?: number;
+    rec?: number;
+    recYds?: number;
+    recYR?: number | null;
+    recTd?: number;
+    td?: number;
     "2Pm"?: number | null;
-    "2PP"?: number;
+    "2Pp"?: number;
     FantPt?: number;
     PPR?: number;
     DKPt?: number;
@@ -145,10 +145,10 @@ export interface PlayerStats {
     PosRank?: number | null;
     OvRank?: number | null;
     playerId: string; // pro-football-reference id
-    fantasy_points_per_game?: number;
-    fantasy_points_per_game_started?: number;
-    ppr_points_per_game?: number;
-    ppr_points_per_game_started?: number;
+    fantasyPointsPerGame?: number;
+    fantasyPointsPerGameStarted?: number;
+    pprPointsPerGame?: number;
+    pprPointsPerGameStarted?: number;
     year?: number | string;
 }
 
@@ -185,9 +185,9 @@ export interface PlayerRanking {
 export interface RankingSummary {
     ranker: FantasyRanker;
     ppr: boolean;
-    replacementLevels: { [key: string]: [number, number] };
-    stdDevs: { [key: string]: number };
-    tiers: { [key: string]: Tier[] };
+    replacementLevels: { [key in FantasyPosition]: [number, number] }; // [position index, points]
+    stdDevs: { [key in FantasyPosition]: number };
+    tiers: { [key in FantasyPosition]: Tier[] };
 }
 
 export interface Player {

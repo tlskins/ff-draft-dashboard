@@ -5,6 +5,7 @@ import PageHead from "../components/pageHead"
 import DraftLoaderOptions from "../components/draftLoaderOptions"
 import PositionRankings from "../components/positionRankings"
 import HistoricalStats from "../components/HistoricalStats"
+import RankingSummaryDisplay from "../components/RankingSummary"
 import { Roster } from "../behavior/draft"
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
@@ -54,6 +55,7 @@ const Home: FC = () => {
   // ranks depend on draft board
   const {
     // state
+    rankingSummaries,
     boardSettings,
     playerRanks, onCreatePlayerRanks,
     playerLib,
@@ -70,6 +72,7 @@ const Home: FC = () => {
     onSetRanker,
     onSetAdpRanker,
     createPlayerLibrary,
+    setRankingSummaries,
   } = useRanks({ settings, myPickNum })
 
   const {
@@ -107,6 +110,7 @@ const Home: FC = () => {
   const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
   const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
   const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN)
+
 
   const currRound = getDraftRoundForPickNum(currPick)
   
@@ -210,6 +214,7 @@ const Home: FC = () => {
             settings={settings}
             boardSettings={boardSettings}
             playerLib={playerLib}
+            setRankingSummaries={setRankingSummaries}
           />
 
           <div className="flex flex-row mb-8 mt-2 w-screen justify-center">
@@ -389,9 +394,16 @@ const Home: FC = () => {
               </div>
             } */}
 
-            <div className="col-span-5 flex justify-end">
+            <div className="col-span-5 flex flex-col justify-start">
               <HistoricalStats
+                settings={settings}
                 player={viewPlayerId ? playerLib[viewPlayerId] : null}
+              />
+              <RankingSummaryDisplay
+                activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
+                rankingSummaries={rankingSummaries}
+                settings={settings}
+                ranker={boardSettings.ranker}
               />
             </div>
             <div className="col-span-5">
@@ -410,6 +422,7 @@ const Home: FC = () => {
                 predNextTiers={predNextTiers}
                 fantasySettings={settings}
                 boardSettings={boardSettings}
+                rankingSummaries={rankingSummaries}
                 onSelectPlayer={onSelectPlayer}
                 onPurgePlayer={onPurgeAvailPlayer}
                 setViewPlayerId={setViewPlayerId}

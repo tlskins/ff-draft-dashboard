@@ -1,5 +1,4 @@
-
-import { Player, FantasyPosition, FantasySettings, PlayerMetrics, BoardSettings } from 'types'
+import { Player, FantasyPosition, FantasySettings, PlayerMetrics, BoardSettings, Tier, RankingSummary, DataRanker, FantasyRanker } from 'types'
 
 // Type Definitions
 export interface EspnDraftEventRaw {
@@ -103,6 +102,25 @@ export const getPlayerMetrics = (
         adp: settings.ppr ? adpRanks.pprOverallRank : adpRanks.standardOverallRank,
         overallOrPosRank: overallRank == null ? posRank : overallRank,
     }
+}
+
+export const getProjectedTier = (
+    player: Player,
+    ranker: FantasyRanker,
+    projDataRanker: DataRanker,
+    settings: FantasySettings,
+    rankingSummaries: RankingSummary[],
+): Tier | undefined => {
+    const summary = rankingSummaries.find(s => s.ranker === projDataRanker && s.ppr === settings.ppr);
+    const playerRanks = player.ranks[ranker];
+    const playerTier = settings.ppr ? playerRanks.pprPositionTier : playerRanks.standardPositionTier;
+
+    if ( !summary || !playerTier ) {
+        return undefined
+    }
+
+    const tiers = summary.tiers[player.position] || []
+    return tiers.find(t => t.tierNumber === playerTier.tierNumber)
 }
 
 // helpers
