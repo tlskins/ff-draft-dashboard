@@ -279,7 +279,7 @@ const PositionRankings = ({
   
                   return(
                     <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
-                      className={`px-2 py-1 m-1 text-center border rounded shadow-md relative ${tierStyle} cursor-pointer`}
+                      className={`px-2 py-1 m-1 text-center border rounded shadow-md ${tierStyle} cursor-pointer`}
                       onMouseEnter={ () => {
                         if ( viewPlayerIdTimer ) {
                           clearTimeout( viewPlayerIdTimer )
@@ -320,32 +320,32 @@ const PositionRankings = ({
                         }
   
                         { shownPlayerId === id &&
-                          <div className={`grid grid-cols-3 mt-1 w-full absolute opacity-60`}>
+                          <div className={`grid grid-cols-3 items-center justify-items-center gap-2 mt-2 pt-2 w-full border-t`}>
                             <AnyTiDelete
-                              className="cursor-pointer -mt-2"
+                              className="cursor-pointer"
                               color="red"
                               onClick={ () => onPurgePlayer(player) }
                               onMouseEnter={() => setShownPlayerBg("bg-red-500")}
                               onMouseLeave={() => setShownPlayerBg("")}
-                              size={46}
+                              size={32}
                             />
   
                             <AnyAiFillCheckCircle
-                              className="cursor-pointer -mt-1"
+                              className="cursor-pointer"
                               color="green"
                               onClick={ () => onSelectPlayer(player) }
                               onMouseEnter={() => setShownPlayerBg("bg-green-400")}
                               onMouseLeave={() => setShownPlayerBg("")}
-                              size={33}
+                              size={26}
                             />
   
                             <AnyBsLink
-                              className="cursor-pointer -mt-2"
+                              className="cursor-pointer"
                               color="blue"
                               onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
                               onMouseEnter={() => setShownPlayerBg("bg-blue-400")}
                               onMouseLeave={() => setShownPlayerBg("")}
-                              size={40}
+                              size={30}
                             />
                           </div>
                         }
