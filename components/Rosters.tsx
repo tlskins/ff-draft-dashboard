@@ -1,6 +1,14 @@
 import React, { FC } from "react"
 import { Roster, rankablePositions, getProjectedTier } from "../behavior/draft"
-import { DataRanker, Player, OptimalRoster, RankingSummary, BoardSettings, FantasySettings } from "../types"
+import {
+  DataRanker,
+  Player,
+  OptimalRoster,
+  RankingSummary,
+  BoardSettings,
+  FantasySettings,
+} from "../types"
+import { getPosStyle } from "../behavior/styles"
 
 interface RostersProps {
   draftStarted: boolean
@@ -37,10 +45,9 @@ const Rosters: FC<RostersProps> = ({
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="border-b border-blue-300">
-                  <th className="text-left py-1 px-2 font-medium text-blue-700">Round</th>
                   <th className="text-left py-1 px-2 font-medium text-blue-700">Pick</th>
-                  <th className="text-left py-1 px-2 font-medium text-blue-700">Player</th>
                   <th className="text-left py-1 px-2 font-medium text-blue-700">Pos</th>
+                  <th className="text-left py-1 px-2 font-medium text-blue-700">Player</th>
                   <th className="text-left py-1 px-2 font-medium text-blue-700">Team</th>
                   <th className="text-left py-1 px-2 font-medium text-blue-700">{optimalRoster.metric}</th>
                 </tr>
@@ -54,10 +61,9 @@ const Rosters: FC<RostersProps> = ({
                     const tierValue = tier ? (tier.lowerLimitValue + tier.upperLimitValue) / 2 : 0;
                     return (
                       <tr key={pick} className="border-b border-blue-200 hover:bg-blue-100">
-                        <td className="py-1 px-2 font-medium">{optimalPick.round}</td>
-                        <td className="py-1 px-2 font-medium">{pick}</td>
+                        <td className="py-1 px-2 font-medium">R {optimalPick.round} (P{pick})</td>
+                        <td className={`py-1 px-2 rounded-md ${getPosStyle(player.position)}`}>{player.position}</td>
                         <td className="py-1 px-2 font-medium">{player.fullName}</td>
-                        <td className="py-1 px-2">{player.position}</td>
                         <td className="py-1 px-2">{player.team}</td>
                         <td className="py-1 px-2">{tierValue.toFixed(1)}</td>
                       </tr>
