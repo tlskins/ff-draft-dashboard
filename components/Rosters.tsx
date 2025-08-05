@@ -37,10 +37,10 @@ const Rosters: FC<RostersProps> = ({
   const currentOptimalRoster = optimalRosters[selectedOptimalRosterIdx] || optimalRosters[0];
 
   return (
-    <div className="flex flex-col rounded h-full w-full overflow-y-auto ml-2 p-1 border border-gray-300">
+    <div className="flex flex-col rounded h-full w-full overflow-y-auto ml-2 p-1">
 
       {draftStarted && currentOptimalRoster && Object.keys(currentOptimalRoster.roster).length > 0 && (
-        <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-1 bg-blue-50 shadow-md border border-blue-200">
+        <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-2 bg-blue-50 shadow-md border border-blue-200">
           <div className="flex items-center justify-between mb-2">
             <p className="font-semibold underline">
               Your Optimal {currentOptimalRoster.type} Roster ({currentOptimalRoster.value.toFixed(1)} {currentOptimalRoster.metric})
@@ -97,7 +97,7 @@ const Rosters: FC<RostersProps> = ({
 
       {!draftStarted && <p className="font-semibold">Waiting for draft...</p>}
       {draftStarted && (
-        <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-1 shadow-md border">
+        <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-2 shadow-md border">
           <div className="flex items-center justify-between mb-2">
             <p className="font-semibold underline">Rosters</p>
             <select
