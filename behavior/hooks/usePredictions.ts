@@ -176,12 +176,12 @@ export const usePredictions = ({
   rankingSummaries,
 }: UsePredictionsProps) => {
   const [predictedPicks, setPredictedPicks] = useState<PredictedPicks>({});
-  const [optimalRoster, setOptimalRoster] = useState<OptimalRoster>({
+  const [optimalRosters, setOptimalRosters] = useState<OptimalRoster[]>([{
     value: 0,
     type: OptimalRosterType.Greedy,
     metric: getDataRankerMetric(DataRanker.LAST_SSN_PPG),
     roster: {} }
-  );
+  ]);
   const [predRunTiers, setPredRunTiers] = useState<TierPredictions>({
     [FantasyPosition.QUARTERBACK]: 0,
     [FantasyPosition.RUNNING_BACK]: 0,
@@ -230,12 +230,8 @@ export const usePredictions = ({
         }).filter((p): p is Player => p !== undefined);
     });
     
-    let bestRoster: OptimalRoster = {
-      value: 0,
-      type: OptimalRosterType.Greedy,
-      metric: getDataRankerMetric(DataRanker.LAST_SSN_PPG),
-      roster: {}
-    };
+    let topRosters: OptimalRoster[] = [];
+    const maxRosters = 10;
 
     const findBestRoster = (
         pickIndex: number,
@@ -251,12 +247,18 @@ export const usePredictions = ({
         const allPositionsFilled = totalPositionsFilled >= totalRequiredPositions;
         
         if (pickIndex >= myPicks.length || allPositionsFilled) {
-            if (currentValue > bestRoster.value) {
-                bestRoster = {
-                  ...bestRoster,
-                  roster: currentRoster.roster,
-                  value: currentValue,
-                };
+            const completedRoster: OptimalRoster = {
+                value: currentValue,
+                type: OptimalRosterType.Greedy,
+                metric: getDataRankerMetric(DataRanker.LAST_SSN_PPG),
+                roster: currentRoster.roster,
+            };
+
+            // Add to top rosters and keep only top 10
+            topRosters.push(completedRoster);
+            topRosters.sort((a, b) => b.value - a.value);
+            if (topRosters.length > maxRosters) {
+                topRosters = topRosters.slice(0, maxRosters);
             }
             return;
         }
@@ -317,7 +319,18 @@ export const usePredictions = ({
       0,
       { QB: 0, RB: 0, WR: 0, TE: 0 }
     );
-    setOptimalRoster(bestRoster);
+    
+    // Ensure we have at least one roster with default values
+    if (topRosters.length === 0) {
+        topRosters = [{
+            value: 0,
+            type: OptimalRosterType.Greedy,
+            metric: getDataRankerMetric(DataRanker.LAST_SSN_PPG),
+            roster: {}
+        }];
+    }
+    
+    setOptimalRosters(topRosters);
   }, [boardSettings, currPick, myPickNum, playerRanks, rankingSummaries, rosters, settings]);
 
   const predictPicks = useCallback(() => {
@@ -375,5 +388,5 @@ export const usePredictions = ({
   }, [predictPicks, numPostPredicts, draftStarted, predictOptimalGreedyRoster]);
 
 
-  return { predictedPicks, predNextTiers, setNumPostPredicts, optimalRoster };
+  return { predictedPicks, predNextTiers, setNumPostPredicts, optimalRosters };
 }; 

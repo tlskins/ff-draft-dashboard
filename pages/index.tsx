@@ -92,7 +92,7 @@ const Home: FC = () => {
     predictedPicks,
     predNextTiers,
     setNumPostPredicts,
-    optimalRoster,
+    optimalRosters,
   } = usePredictions({
     rosters,
     playerRanks,
@@ -104,7 +104,7 @@ const Home: FC = () => {
     rankingSummaries,
   })
 
-  console.log('optimalRoster', optimalRoster)
+  console.log('optimalRosters', optimalRosters)
 
   // TODO - fix edit custom tiers
   // const [hasCustomTiers, setHasCustomTiers] = useState<boolean | null>(null)
@@ -376,7 +376,7 @@ const Home: FC = () => {
                 viewRosterIdx={viewRosterIdx}
                 setViewRosterIdx={setViewRosterIdx}
                 rosters={rosters}
-                optimalRoster={optimalRoster}
+                optimalRosters={optimalRosters}
                 playerLib={playerLib}
                 rankingSummaries={rankingSummaries}
                 boardSettings={boardSettings}
