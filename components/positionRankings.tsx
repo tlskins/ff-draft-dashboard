@@ -238,6 +238,7 @@ const PositionRankings = ({
                     fullName,
                     id,
                     team,
+                    position,
                     // target, TODO - need to handle "target"
                   } = player
 
@@ -270,7 +271,7 @@ const PositionRankings = ({
                   if ( rankByAdp ) {
                     rankText = `${boardSettings.adpRanker} ADP #${adp?.toFixed(1)}`
                   } else {
-                    rankText = posRank === undefined ? 'Unranked' : `#${posRank}`
+                    rankText = posRank === undefined ? 'Unranked' : `${position}${posRank}`
                   }
                   const isBelowAdp = currPick - (adp || 0) >= 0
                   const isBelowRank = currPick - (posRank || 0) >= 0
@@ -300,7 +301,7 @@ const PositionRankings = ({
                     >
                       <div className="flex flex-col text-center items-center">
                         <p className="text-sm font-semibold flex text-center">
-                          { fullName }
+                          { fullName } ({team})
                           {/* { target &&
                             <AnyAiFillStar
                               color="blue"
@@ -309,7 +310,7 @@ const PositionRankings = ({
                           } */}
                         </p>
                         <p className="text-xs">
-                          { team } - { rankText } { tier ? ` - Tier ${tierNumber}${projTierText}` : "" }
+                          { rankText } { tier ? ` - Tier ${tierNumber}${projTierText}` : "" }
                         </p>
                         { !rankByAdp &&
                           <p className={`text-xs ${getPickDiffColor(currAdpDiff)} text-white rounded px-1 py-0.5 mt-0.5`}>
