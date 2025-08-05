@@ -44,7 +44,7 @@ export const useDraftListener = ({
   const [lastListenerAck, setLastListenerAck] = useState<Moment | null>(null)
   const [listenerActive, setListenerActive] = useState(false)
   
-  const listenerCheckTimer = useRef<NodeJS.Timeout>()
+  const listenerCheckTimer = useRef<NodeJS.Timeout | null>(null)
 
   const checkListenerActive = useCallback(() => {
     if (lastListenerAck === null || moment().diff(lastListenerAck, 'seconds') > 5) {
