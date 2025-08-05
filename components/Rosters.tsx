@@ -39,7 +39,7 @@ const Rosters: FC<RostersProps> = ({
   return (
     <div className="flex flex-col rounded h-full w-full overflow-y-auto ml-2 p-1">
 
-      {draftStarted && currentOptimalRoster && Object.keys(currentOptimalRoster.roster).length > 0 && (
+      {currentOptimalRoster && Object.keys(currentOptimalRoster.roster).length > 0 && (
         <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-2 bg-blue-50 shadow-md border border-blue-200">
           <div className="flex items-center justify-between mb-2">
             <p className="font-semibold underline">

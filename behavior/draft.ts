@@ -92,6 +92,10 @@ export const getPlayerMetrics = (
     }
 }
 
+export const getPlayerAdp = (player: Player, settings: FantasySettings, boardSettings: BoardSettings) => {
+    return getPlayerMetrics(player, settings, boardSettings).adp || 9999;
+}
+
 export const getProjectedTier = (
     player: Player,
     ranker: FantasyRanker,
@@ -173,7 +177,9 @@ const normalizeNflName = (name: string): string => name.toLowerCase().replace(/[
     .replace('ii', '')
     .replace(' jr', '')
     .trim()
+
 const playerToNflName = (player: Player): string => `${ player.firstName[0].toLowerCase() } ${ normalizeNflName( player.lastName )}`
+
 const parseNflTeamToPlayerTeam = (nflTeam: string): string => {
 switch(nflTeam) {
     case 'JAX':

@@ -22,6 +22,7 @@ import {
   getMyPicksBetween,
   getProjectedTier,
   getRoundIdxForPickNum,
+  getPlayerAdp,
 } from '../draft';
 import { Player, RankingSummary } from 'types';
 
@@ -203,9 +204,6 @@ export const usePredictions = ({
     const getPlayerRank = (player: Player) => {
         return settings.ppr ? player.pprRankTier || 999 : player.stdRankTier || 999;
     }
-    const getPlayerAdp = (player: Player) => {
-        return getPlayerMetrics(player, settings, boardSettings).adp || 9999;
-    }
     const playerRanksByPos = rankablePositions.reduce((acc, pos) => {
         acc[pos] = playerRanks[pos as keyof PlayerRanks].sort((a, b) => getPlayerRank(a) - getPlayerRank(b));
         return acc;
@@ -216,7 +214,7 @@ export const usePredictions = ({
         availablePlayersByRound[myPick] = rankablePositions.map(pos => {
             // Get players available at this pick (ADP >= myPick means they should still be available)
             const availablePlayersForPos = playerRanksByPos[pos].filter(p => {
-                const adp = getPlayerAdp(p);
+                const adp = getPlayerAdp(p, settings, boardSettings);
                 return adp >= myPick && adp < 999; // Exclude players with no ADP data (9999)
             });
             
@@ -382,9 +380,7 @@ export const usePredictions = ({
 
   useEffect(() => {
     predictPicks();
-    if (draftStarted) {
-        predictOptimalGreedyRoster();
-    }
+    predictOptimalGreedyRoster();
   }, [predictPicks, numPostPredicts, draftStarted, predictOptimalGreedyRoster]);
 
 

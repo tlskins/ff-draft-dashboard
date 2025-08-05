@@ -101,16 +101,16 @@ const RankingSummaryDisplay: React.FC<RankingSummaryProps> = ({ settings, active
               const tierAvg = (tier.lowerLimitValue + tier.upperLimitValue) / 2;
               return (
               <tr key={tier.tierNumber}>
-                <td key={`tier-${tier.tierNumber}`} className={`border-2 border-slate-700 text-center p-2 ${tierColor}`}>
+                <td key={`tier-${tier.tierNumber}`} className={`border-2 border-slate-700 text-center px-2 ${tierColor}`}>
                   {tier.tierNumber}
                 </td>
-                <td key={`tier-${tier.tierNumber}-players`} className={`border-2 border-slate-700 text-center p-2 ${tierColor}`}>
+                <td key={`tier-${tier.tierNumber}-players`} className={`border-2 border-slate-700 text-center px-2 ${tierColor}`}>
                   {tier.lowerLimitPlayerIdx-tier.upperLimitPlayerIdx}
                 </td>
-                <td key={`tier-${tier.tierNumber}-range`} className={`border-2 border-slate-700 text-center p-2 ${tierColor}`}>
+                <td key={`tier-${tier.tierNumber}-range`} className={`border-2 border-slate-700 text-center px-2 ${tierColor}`}>
                   {tier.lowerLimitValue} - {tier.upperLimitValue}
                 </td>
-                <td key={`tier-${tier.tierNumber}-avg`} className={`border-2 border-slate-700 text-center p-2 ${tierColor}`}>
+                <td key={`tier-${tier.tierNumber}-avg`} className={`border-2 border-slate-700 text-center px-2 ${tierColor}`}>
                   {tierAvg.toFixed(2)}
                 </td>
               </tr>
