@@ -6,6 +6,8 @@ import {
   BoardSettings,
   DataRanker,
   OptimalRoster,
+  getDataRankerMetric,
+  OptimalRosterType,
 } from '../../types';
 import {
   Roster,
@@ -174,7 +176,12 @@ export const usePredictions = ({
   rankingSummaries,
 }: UsePredictionsProps) => {
   const [predictedPicks, setPredictedPicks] = useState<PredictedPicks>({});
-  const [optimalRoster, setOptimalRoster] = useState<OptimalRoster>({ value: 0, roster: {} });
+  const [optimalRoster, setOptimalRoster] = useState<OptimalRoster>({
+    value: 0,
+    type: OptimalRosterType.Greedy,
+    metric: getDataRankerMetric(DataRanker.LAST_SSN_PPG),
+    roster: {} }
+  );
   const [predRunTiers, setPredRunTiers] = useState<TierPredictions>({
     [FantasyPosition.QUARTERBACK]: 0,
     [FantasyPosition.RUNNING_BACK]: 0,
@@ -191,7 +198,7 @@ export const usePredictions = ({
 
   const maxCurrPick = useRef(0);
 
-  const predictOptimalRoster = useCallback(() => {
+  const predictOptimalGreedyRoster = useCallback(() => {
     const myPicks = getMyPicksBetween(currPick-1, settings.numTeams * 10, myPickNum, settings.numTeams);
     const getPlayerRank = (player: Player) => {
         return settings.ppr ? player.pprRankTier || 999 : player.stdRankTier || 999;
@@ -223,7 +230,12 @@ export const usePredictions = ({
         }).filter((p): p is Player => p !== undefined);
     });
     
-    let bestRoster: OptimalRoster = { value: 0, roster: {} };
+    let bestRoster: OptimalRoster = {
+      value: 0,
+      type: OptimalRosterType.Greedy,
+      metric: getDataRankerMetric(DataRanker.LAST_SSN_PPG),
+      roster: {}
+    };
 
     const findBestRoster = (
         pickIndex: number,
@@ -240,7 +252,11 @@ export const usePredictions = ({
         
         if (pickIndex >= myPicks.length || allPositionsFilled) {
             if (currentValue > bestRoster.value) {
-                bestRoster = { roster: currentRoster.roster, value: currentValue };
+                bestRoster = {
+                  ...bestRoster,
+                  roster: currentRoster.roster,
+                  value: currentValue,
+                };
             }
             return;
         }
@@ -295,7 +311,12 @@ export const usePredictions = ({
         });
     }
 
-    findBestRoster(0, { value: 0, roster: {} }, 0, { QB: 0, RB: 0, WR: 0, TE: 0 });
+    findBestRoster(
+      0,
+      { value: 0, type: OptimalRosterType.Greedy, metric: getDataRankerMetric(DataRanker.LAST_SSN_PPG), roster: {} },
+      0,
+      { QB: 0, RB: 0, WR: 0, TE: 0 }
+    );
     setOptimalRoster(bestRoster);
   }, [boardSettings, currPick, myPickNum, playerRanks, rankingSummaries, rosters, settings]);
 
@@ -349,9 +370,9 @@ export const usePredictions = ({
   useEffect(() => {
     predictPicks();
     if (draftStarted) {
-        predictOptimalRoster();
+        predictOptimalGreedyRoster();
     }
-  }, [predictPicks, numPostPredicts, draftStarted, predictOptimalRoster]);
+  }, [predictPicks, numPostPredicts, draftStarted, predictOptimalGreedyRoster]);
 
 
   return { predictedPicks, predNextTiers, setNumPostPredicts, optimalRoster };

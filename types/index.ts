@@ -56,6 +56,25 @@ export enum DataRanker {
     LAST_SSN_PPGS = "Last Season PPG Started",
 }
 
+export enum DataRankerMetric {
+    PPG = "PPG",
+    PPGS = "PPGS",
+    TTL_FPTS = "TTL FPTS",
+}
+
+export const getDataRankerMetric = (ranker: DataRanker) => {
+    switch (ranker) {
+        case DataRanker.LAST_SSN_TTL_FPTS:
+            return DataRankerMetric.TTL_FPTS;
+        case DataRanker.LAST_SSN_PPG:
+            return DataRankerMetric.PPG;
+        case DataRanker.LAST_SSN_PPGS:
+            return DataRankerMetric.PPGS;
+        default:
+            return DataRankerMetric.PPG;
+    }
+}
+
 export type RankBuckets = FantasyPosition.QUARTERBACK | FantasyPosition.RUNNING_BACK | FantasyPosition.WIDE_RECEIVER | FantasyPosition.TIGHT_END | "Purge"
 
 export type FantasyRanker = DataRanker | ThirdPartyRanker;
@@ -232,8 +251,14 @@ export interface OptimalRosterPick {
     round: number;
 }   
 
+export enum OptimalRosterType {
+    Greedy = "Greedy",
+}
+
 export interface OptimalRoster {
-    value: number; 
+    value: number;
+    type: OptimalRosterType;
+    metric: DataRankerMetric;
     roster: {
         [pick: number]: OptimalRosterPick;
     }

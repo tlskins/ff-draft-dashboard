@@ -332,7 +332,7 @@ const Home: FC = () => {
 
         <div className="flex flex-col items-center mt-4">
           {/* Stats and Positional Breakdowns */}
-          <div className="flex flex-row justify-center w-screen relative my-4 grid grid-cols-12 gap-1">
+          <div className="flex flex-row justify-center w-screen relative my-4 grid grid-cols-12 gap-1 px-1">
 
             <div className="col-span-4 flex flex-col justify-start">
               <HistoricalStats
@@ -346,7 +346,8 @@ const Home: FC = () => {
                 ranker={boardSettings.ranker}
               />
             </div>
-            <div className="col-span-6">
+
+            <div className="col-span-5">
               <PositionRankings
                 playerRanks={playerRanks}
                 predictedPicks={predictedPicks}
@@ -369,14 +370,19 @@ const Home: FC = () => {
               />
             </div>
 
-            <Rosters
-              draftStarted={draftStarted}
-              viewRosterIdx={viewRosterIdx}
-              setViewRosterIdx={setViewRosterIdx}
-              rosters={rosters}
-              optimalRoster={optimalRoster}
-              playerLib={playerLib}
-            />
+            <div className="col-span-3"> 
+              <Rosters
+                draftStarted={draftStarted}
+                viewRosterIdx={viewRosterIdx}
+                setViewRosterIdx={setViewRosterIdx}
+                rosters={rosters}
+                optimalRoster={optimalRoster}
+                playerLib={playerLib}
+                rankingSummaries={rankingSummaries}
+                boardSettings={boardSettings}
+                settings={settings}
+              />
+            </div>
           </div>
         </div>
       </main>
