@@ -242,7 +242,7 @@ const PositionRankings = ({
                   } = player
 
                   const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
-                  const { tier, adp, overallOrPosRank } = metrics
+                  const { tier, adp, posRank } = metrics
                   const { tierNumber } = tier || {}
                   
                   let tierStyle
@@ -270,13 +270,13 @@ const PositionRankings = ({
                   if ( rankByAdp ) {
                     rankText = `${boardSettings.adpRanker} ADP #${adp?.toFixed(1)}`
                   } else {
-                    rankText = overallOrPosRank === undefined ? 'Unranked' : `#${overallOrPosRank}`
+                    rankText = posRank === undefined ? 'Unranked' : `#${posRank}`
                   }
                   const isBelowAdp = currPick - (adp || 0) >= 0
-                  const isBelowRank = currPick - (overallOrPosRank || 0) >= 0
+                  const isBelowRank = currPick - (posRank || 0) >= 0
                   const adpRound = getRoundIdxForPickNum(adp === undefined ? 999 : Math.floor(adp), fantasySettings.numTeams) + 1
                   const currAdpDiff = Math.abs(currPick - (adp || 0))
-                  const currRankDiff = Math.abs(currPick - (overallOrPosRank || 0))
+                  const currRankDiff = Math.abs(currPick - (posRank || 0))
                   const isHoveringPlayer = shownPlayerId === id
                   const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
   

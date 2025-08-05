@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   addToRoster,
   calcCurrRoundPick,
@@ -113,10 +113,10 @@ export const useRanks = ({
   const onSetAdpRanker = (adpRanker: FantasyRanker) => {
     setBoardSettings({ ...boardSettings, adpRanker })
   }
-  const onCreatePlayerRanks = (players: Player[]) => {
+  const onCreatePlayerRanks = useCallback((players: Player[]) => {
     const nextPlayerRanks = createPlayerRanks( players, settings, boardSettings )
     setPlayerRanks(nextPlayerRanks)
-  }
+  }, [settings, boardSettings])
   const onRemovePlayerFromBoard = (player: Player) => {
     const nextPlayerRanks = removePlayerFromBoard( playerRanks, player )
     setPlayerRanks(nextPlayerRanks)
@@ -128,7 +128,7 @@ export const useRanks = ({
     setPlayerRanks(purgePlayerFromPlayerRanks( playerRanks, player, settings, boardSettings ))
   }
   const onApplyRankingSortBy = (byAdp: boolean) => {
-    const sortBy = byAdp ? SortPlayersByMetric.Adp : SortPlayersByMetric.OverallOrPosRank
+    const sortBy = byAdp ? SortPlayersByMetric.Adp : SortPlayersByMetric.PosRank
     const nextPlayerRanks = sortPlayerRanksByRank( playerRanks, settings, boardSettings, sortBy )
     setPlayerRanks( nextPlayerRanks )
   }
@@ -158,7 +158,7 @@ export const useRanks = ({
     rankingSummaries,
     boardSettings,
     playerLib,
-    playersByPosByTeam, setPlayersByPosByTeam,
+    playersByPosByTeam,
     playerRanks,
     settings,
     noPlayers,
@@ -176,5 +176,6 @@ export const useRanks = ({
     onSetRanker,
     onSetAdpRanker,
     setRankingSummaries,
+    setPlayersByPosByTeam,
   }
 }

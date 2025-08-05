@@ -56,13 +56,14 @@ const Home: FC = () => {
     // state
     rankingSummaries,
     boardSettings,
-    playerRanks, onCreatePlayerRanks,
+    playerRanks,
     playerLib,
     playersByPosByTeam,
     noPlayers,
     rosters,
     draftHistory,
     // funcs
+    onCreatePlayerRanks,
     onDraftPlayer,
     onRemoveDraftedPlayer,
     getDraftRoundForPickNum,
@@ -103,8 +104,6 @@ const Home: FC = () => {
     draftStarted,
     rankingSummaries,
   })
-
-  console.log('optimalRosters', optimalRosters)
 
   // TODO - fix edit custom tiers
   // const [hasCustomTiers, setHasCustomTiers] = useState<boolean | null>(null)
@@ -200,6 +199,8 @@ const Home: FC = () => {
         {/* Draft Settings */}
         <div className="w-screen justify-center z-10 bg-gray-200 shadow-md">
           <DraftLoaderOptions
+            settings={settings}
+            boardSettings={boardSettings}
             onCreatePlayerRanks={onCreatePlayerRanks}
             createPlayerLibrary={createPlayerLibrary}
             setRankingSummaries={setRankingSummaries}

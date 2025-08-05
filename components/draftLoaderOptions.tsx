@@ -1,23 +1,29 @@
-import React, { useEffect } from "react"
+import React, { useCallback, useEffect } from "react"
 import { getPlayerData } from "../behavior/playerData"
 
 import Dropdown from "./dropdown"
-import { Player, RankingSummary } from "types"
+import { BoardSettings, FantasySettings, Player, RankingSummary } from "types"
 
 
 interface DraftLoaderOptionsProps {
+  boardSettings: BoardSettings;
+  settings: FantasySettings;
   createPlayerLibrary: (players: Player[]) => void;
   onCreatePlayerRanks: (players: Player[]) => void;
   setRankingSummaries: (summaries: RankingSummary[]) => void;
 }
 
 const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
+  boardSettings,
+  settings,
+
   onCreatePlayerRanks,
   createPlayerLibrary,
   setRankingSummaries,
 }) => {
 
-  const onLoadPlayers = () => {
+  const onLoadPlayers = useCallback(() => {
+    console.log('onLoadPlayers', boardSettings?.ranker)
     const playerData = getPlayerData()
     if (playerData) {
       const { players, rankingsSummaries } = playerData
@@ -25,11 +31,11 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
       createPlayerLibrary(players)
       setRankingSummaries(rankingsSummaries)
     }
-  }
+  }, [onCreatePlayerRanks, createPlayerLibrary, setRankingSummaries, boardSettings])
 
   useEffect(() => {
     onLoadPlayers()
-  }, [])
+  }, [boardSettings?.ranker, settings?.ppr])
 
   return(
     <div className="flex flex-col w-full h-20 border-t relative">

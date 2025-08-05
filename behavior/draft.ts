@@ -105,6 +105,10 @@ export const getProjectedTier = (
 ): Tier | undefined => {
     const summary = rankingSummaries.find(s => s.ranker === projDataRanker && s.ppr === settings.ppr);
     const playerRanks = player.ranks[ranker];
+    if ( !playerRanks ) {
+        return undefined
+    }
+
     const playerTier = settings.ppr ? playerRanks.pprPositionTier : playerRanks.standardPositionTier;
 
     if ( !summary || !playerTier ) {
@@ -265,7 +269,9 @@ export const createPlayerRanks = (players: Player[], settings: FantasySettings, 
     players.forEach( player => {
         playerRanks = addAvailPlayer( playerRanks, player, settings, boardSettings )
     })
-    playerRanks = sortPlayerRanksByRank( playerRanks, settings, boardSettings, SortPlayersByMetric.OverallOrPosRank )
+    playerRanks = sortPlayerRanksByRank( playerRanks, settings, boardSettings, SortPlayersByMetric.PosRank )
+    
+    console.log('createPlayerRanks', settings, boardSettings, playerRanks)
 
     return playerRanks
 }
@@ -297,7 +303,7 @@ export const addAvailPlayer = (playerRanks: PlayerRanks, player: Player, setting
     const playerPos = player.position as keyof PlayerRanks
     const playerPosRanks = playerRanks[playerPos]
     playerPosRanks.push(player)
-    playerRanks[playerPos] = sortPlayersByRank( [...playerPosRanks], settings, boardSettings, SortPlayersByMetric.OverallOrPosRank )
+    playerRanks[playerPos] = sortPlayersByRank( [...playerPosRanks], settings, boardSettings, SortPlayersByMetric.PosRank )
 
     return { ...playerRanks }
 }
@@ -338,7 +344,7 @@ export const purgePlayerFromPlayerRanks = ( playerRanks: PlayerRanks, player: Pl
             playerRanks.availPlayersByOverallRank,
             settings,
             boardSettings,
-            SortPlayersByMetric.OverallOrPosRank,
+            SortPlayersByMetric.PosRank,
         )
         playerRanks.availPlayersByAdp = sortPlayersByRank(
             playerRanks.availPlayersByAdp,
