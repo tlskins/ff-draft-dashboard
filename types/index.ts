@@ -48,6 +48,7 @@ export enum ThirdPartyRanker {
     HARRIS = "Harris",
     ESPN = "ESPN",
     FPROS = "FantasyPros",
+    CUSTOM = "Custom",
 }
 
 export enum DataRanker {
@@ -216,7 +217,7 @@ export interface Player {
     fullName: string;
     team: NFLTeam;
     position: FantasyPosition;
-    ranks: { [key in FantasyRanker]: PlayerRanking };
+    ranks: { [key in FantasyRanker]?: PlayerRanking };
     historicalStats?: { [key: string]: PlayerStats };
     seasonStats?: PlayerStats[];
     lastYrTier?: number;

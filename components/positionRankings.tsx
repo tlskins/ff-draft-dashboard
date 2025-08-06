@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from "react"
 import { TiDelete } from 'react-icons/ti'
 import { BsLink } from 'react-icons/bs'
-import { AiFillCheckCircle, AiFillStar } from 'react-icons/ai'
+import { AiFillCheckCircle } from 'react-icons/ai'
 
 import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor, getPickDiffColor } from '../behavior/styles'
 import { myCurrentRound, getPlayerMetrics, PlayerRanks, getProjectedTier, getRoundIdxForPickNum } from '../behavior/draft'
-import { Player, FantasySettings, FantasyPosition, BoardSettings, DataRanker, RankingSummary } from "../types"
+import { Player, FantasySettings, FantasyPosition, BoardSettings, DataRanker, RankingSummary, ThirdPartyRanker } from "../types"
 import { DraftView, SortOption, HighlightOption } from "../pages"
 
 
@@ -92,6 +92,15 @@ interface PositionRankingsProps {
   setSortOption: (option: SortOption) => void,
   highlightOption: HighlightOption,
   setHighlightOption: (option: HighlightOption) => void,
+  isEditingCustomRanking: boolean,
+  hasCustomRanking: boolean,
+  canEditCustomRankings: boolean,
+  onReorderPlayer: (playerId: string, position: keyof PlayerRanks, newIndex: number) => void,
+  onStartCustomRanking: () => void,
+  onFinishCustomRanking: () => void,
+  onClearCustomRanking: () => void,
+  selectedRankerToCopy: ThirdPartyRanker,
+  setSelectedRankerToCopy: (ranker: ThirdPartyRanker) => void,
 }
 
 const PositionRankings = ({
@@ -110,6 +119,15 @@ const PositionRankings = ({
   setSortOption,
   highlightOption,
   setHighlightOption,
+  isEditingCustomRanking,
+  hasCustomRanking,
+  canEditCustomRankings,
+  onReorderPlayer,
+  onStartCustomRanking,
+  onFinishCustomRanking,
+  onClearCustomRanking,
+  selectedRankerToCopy,
+  setSelectedRankerToCopy,
 
   onSelectPlayer,
   onPurgePlayer,
@@ -117,6 +135,8 @@ const PositionRankings = ({
 }: PositionRankingsProps) => {
   const [shownPlayerId, setShownPlayerId] = useState<string | null>(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
+  const [draggedPlayer, setDraggedPlayer] = useState<Player | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   // const AnyAiFillStar = AiFillStar as any;
   const AnyTiDelete = TiDelete as any;
@@ -132,6 +152,35 @@ const PositionRankings = ({
   const draftBoardView = showPredAvailByRound ? draftBoard.predictAvailByRoundView : draftBoard.standardView
   const showNextPreds = highlightOption === HighlightOption.PREDICTED_TAKEN_NEXT_TURN
   const rankByAdp = sortOption === SortOption.ADP
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, player: Player) => {
+    setDraggedPlayer(player)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverIndex(index)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, columnTitle: string, dropIndex: number) => {
+    e.preventDefault()
+    if (!draggedPlayer || !isEditingCustomRanking) return
+
+    const positionKey = columnTitle as keyof PlayerRanks
+    if (positionKey !== 'Purge' && positionKey !== 'availPlayersByOverallRank' && positionKey !== 'availPlayersByAdp') {
+      onReorderPlayer(draggedPlayer.id, positionKey, dropIndex)
+    }
+    
+    setDraggedPlayer(null)
+    setDragOverIndex(null)
+  }
 
   return(
     noPlayers ?
@@ -165,6 +214,48 @@ const PositionRankings = ({
                   { Object.values(HighlightOption).map( (option: HighlightOption) => <option key={option} value={ option }> { option } </option>) }
                 </select>
               </>
+            }
+            { draftView === DraftView.CUSTOM_RANKING && !isEditingCustomRanking &&
+              <>
+                <select
+                    className="p-1 m-1 border rounded bg-green-100 shadow"
+                    value={selectedRankerToCopy}
+                    onChange={ e => setSelectedRankerToCopy(e.target.value as ThirdPartyRanker) }
+                  >
+                  { Object.values(ThirdPartyRanker).filter(ranker => ranker !== ThirdPartyRanker.CUSTOM).map( (ranker: ThirdPartyRanker) => <option key={ranker} value={ ranker }> Copy from {ranker} </option>) }
+                </select>
+                <button
+                    className={`p-1 m-1 border rounded shadow ${canEditCustomRankings 
+                      ? 'bg-green-500 text-white hover:bg-green-600' 
+                      : 'bg-gray-400 text-gray-600 cursor-not-allowed'}`}
+                    onClick={canEditCustomRankings ? onStartCustomRanking : undefined}
+                    disabled={!canEditCustomRankings}
+                    title={!canEditCustomRankings ? "Cannot edit rankings when players have been drafted or purged" : ""}
+                  >
+                    Start Custom Ranking
+                </button>
+              </>
+            }
+            { isEditingCustomRanking &&
+              <>
+                <button
+                    className="p-1 m-1 border rounded bg-red-500 text-white shadow hover:bg-red-600"
+                    onClick={onFinishCustomRanking}
+                  >
+                    Finish Editing
+                </button>
+                <span className="p-1 m-1 text-sm font-semibold text-green-600">
+                  Drag players to reorder rankings
+                </span>
+              </>
+            }
+            { hasCustomRanking && !isEditingCustomRanking &&
+              <button
+                  className="p-1 m-1 border rounded bg-gray-500 text-white shadow hover:bg-gray-600"
+                  onClick={onClearCustomRanking}
+                >
+                  Clear Custom Rankings
+              </button>
             }
           </div>
           { !showNextPreds &&
@@ -281,9 +372,19 @@ const PositionRankings = ({
                   const isHoveringPlayer = shownPlayerId === id
                   const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
   
+                  const isDraggedOver = isEditingCustomRanking && dragOverIndex === playerPosIdx
+                  const isDragged = isEditingCustomRanking && draggedPlayer?.id === id
+                  const dragOverStyle = isDraggedOver ? 'border-2 border-dashed border-blue-500 bg-blue-50' : ''
+                  const draggedStyle = isDragged ? 'opacity-50' : ''
+
                   return(
                     <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
-                      className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle}`}
+                      className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle} ${dragOverStyle} ${draggedStyle} ${isEditingCustomRanking ? 'cursor-move' : ''}`}
+                      draggable={isEditingCustomRanking}
+                      onDragStart={(e) => isEditingCustomRanking && handleDragStart(e, player)}
+                      onDragOver={(e) => isEditingCustomRanking && handleDragOver(e, playerPosIdx)}
+                      onDragLeave={() => isEditingCustomRanking && handleDragLeave()}
+                      onDrop={(e) => isEditingCustomRanking && handleDrop(e, columnTitle, playerPosIdx)}
                       onMouseEnter={ () => {
                         if ( viewPlayerIdTimer ) {
                           clearTimeout( viewPlayerIdTimer )
@@ -323,7 +424,7 @@ const PositionRankings = ({
                           </p>
                         }
   
-                        { isHoveringPlayer &&
+                        { isHoveringPlayer && !isEditingCustomRanking &&
                           <div className={`grid grid-cols-3 items-center justify-items-center gap-2 mt-2 pt-2 w-full border-t`}>
                             <AnyTiDelete
                               className="cursor-pointer"

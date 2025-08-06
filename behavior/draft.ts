@@ -68,8 +68,8 @@ export const getPlayerMetrics = (
     settings: FantasySettings,
     boardSettings: BoardSettings,
 ): PlayerMetrics => {
-    const ranks = player.ranks[boardSettings.ranker]
-    const adpRanks = player.ranks[boardSettings.adpRanker]
+    const ranks = player.ranks?.[boardSettings.ranker]
+    const adpRanks = player.ranks?.[boardSettings.adpRanker]
     if ( !ranks || !adpRanks ) {
         return {
             overallRank: undefined,
@@ -104,7 +104,7 @@ export const getProjectedTier = (
     rankingSummaries: RankingSummary[],
 ): Tier | undefined => {
     const summary = rankingSummaries.find(s => s.ranker === projDataRanker && s.ppr === settings.ppr);
-    const playerRanks = player.ranks[ranker];
+    const playerRanks = player.ranks?.[ranker];
     if ( !playerRanks ) {
         return undefined
     }

@@ -17,6 +17,7 @@ import { Player, ThirdPartyRanker } from "types"
 export enum DraftView {
   RANKING = "Ranking View",
   BEST_AVAILABLE = "Best Available By Round",
+  CUSTOM_RANKING = "Create Custom Ranking",
 }
 
 export enum SortOption {
@@ -62,6 +63,7 @@ const Home: FC = () => {
     noPlayers,
     rosters,
     draftHistory,
+    isEditingCustomRanking,
     // funcs
     onCreatePlayerRanks,
     onDraftPlayer,
@@ -73,7 +75,15 @@ const Home: FC = () => {
     onSetAdpRanker,
     createPlayerLibrary,
     setRankingSummaries,
+    // custom ranking funcs
+    canEditCustomRankings,
+    onStartCustomRanking,
+    onFinishCustomRanking,
+    onClearCustomRanking,
+    onReorderPlayerInPosition,
   } = useRanks({ settings, myPickNum })
+
+  const usingCustomRanking = boardSettings.ranker === ThirdPartyRanker.CUSTOM
 
   const {
     listenerActive,
@@ -113,6 +123,9 @@ const Home: FC = () => {
   const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN)
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
+  
+  // Custom ranking UI state
+  const [selectedRankerToCopy, setSelectedRankerToCopy] = useState<ThirdPartyRanker>(ThirdPartyRanker.HARRIS)
 
   const currRound = getDraftRoundForPickNum(currPick)
 
@@ -190,6 +203,24 @@ const Home: FC = () => {
 
   const onChangeNumPostPredicts = (num: number) => {
     setNumPostPredicts(num)
+  }
+
+  // Custom ranking wrapper functions
+  const handleStartCustomRanking = () => {
+    const success = onStartCustomRanking(selectedRankerToCopy)
+    if (success) {
+      setDraftView(DraftView.CUSTOM_RANKING)
+    }
+  }
+
+  const handleFinishCustomRanking = () => {
+    onFinishCustomRanking()
+    setDraftView(DraftView.RANKING)
+  }
+
+  const handleClearCustomRanking = () => {
+    onClearCustomRanking()
+    setDraftView(DraftView.RANKING)
   }
 
   return (
@@ -351,7 +382,7 @@ const Home: FC = () => {
             <div className="col-span-5">
               <PositionRankings
                 playerRanks={playerRanks}
-                predictedPicks={predictedPicks}
+                predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
                 draftView={draftView}
                 setDraftView={setDraftView}
                 sortOption={sortOption}
@@ -361,13 +392,22 @@ const Home: FC = () => {
                 myPickNum={myPickNum}
                 noPlayers={noPlayers}
                 currPick={currPick}
-                predNextTiers={predNextTiers}
+                predNextTiers={isEditingCustomRanking || usingCustomRanking ? {} : predNextTiers}
                 fantasySettings={settings}
                 boardSettings={boardSettings}
                 rankingSummaries={rankingSummaries}
                 onSelectPlayer={onSelectPlayer}
                 onPurgePlayer={onPurgeAvailPlayer}
                 setViewPlayerId={setViewPlayerId}
+                isEditingCustomRanking={isEditingCustomRanking}
+                hasCustomRanking={usingCustomRanking}
+                canEditCustomRankings={canEditCustomRankings()}
+                onReorderPlayer={onReorderPlayerInPosition}
+                onStartCustomRanking={handleStartCustomRanking}
+                onFinishCustomRanking={handleFinishCustomRanking}
+                onClearCustomRanking={handleClearCustomRanking}
+                selectedRankerToCopy={selectedRankerToCopy}
+                setSelectedRankerToCopy={setSelectedRankerToCopy}
               />
             </div>
 

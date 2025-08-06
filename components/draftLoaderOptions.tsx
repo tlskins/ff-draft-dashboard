@@ -35,7 +35,7 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
 
   useEffect(() => {
     onLoadPlayers()
-  }, [boardSettings?.ranker, settings?.ppr])
+  }, [])
 
   return(
     <div className="flex flex-col w-full h-20 border-t relative">
