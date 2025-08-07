@@ -7,6 +7,7 @@ import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor, getPickDiffCol
 import { myCurrentRound, getPlayerMetrics, PlayerRanks, getProjectedTier, getRoundIdxForPickNum } from '../behavior/draft'
 import { Player, FantasySettings, FantasyPosition, BoardSettings, DataRanker, RankingSummary, ThirdPartyRanker } from "../types"
 import { DraftView, SortOption, HighlightOption } from "../pages"
+import TierSlider from './TierSlider'
 
 
 let viewPlayerIdTimer: NodeJS.Timeout
@@ -99,8 +100,8 @@ interface PositionRankingsProps {
   onStartCustomRanking: () => void,
   onFinishCustomRanking: () => void,
   onClearCustomRanking: () => void,
-  selectedRankerToCopy: ThirdPartyRanker,
-  setSelectedRankerToCopy: (ranker: ThirdPartyRanker) => void,
+  onUpdateTierBoundary: (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => void,
+  onCancelCustomRanking: () => void,
 }
 
 const PositionRankings = ({
@@ -126,8 +127,8 @@ const PositionRankings = ({
   onStartCustomRanking,
   onFinishCustomRanking,
   onClearCustomRanking,
-  selectedRankerToCopy,
-  setSelectedRankerToCopy,
+  onUpdateTierBoundary,
+  onCancelCustomRanking,
 
   onSelectPlayer,
   onPurgePlayer,
@@ -152,6 +153,7 @@ const PositionRankings = ({
   const draftBoardView = showPredAvailByRound ? draftBoard.predictAvailByRoundView : draftBoard.standardView
   const showNextPreds = highlightOption === HighlightOption.PREDICTED_TAKEN_NEXT_TURN
   const rankByAdp = sortOption === SortOption.ADP
+  const showTierSliders = isEditingCustomRanking
 
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, player: Player) => {
@@ -215,27 +217,7 @@ const PositionRankings = ({
                 </select>
               </>
             }
-            { draftView === DraftView.CUSTOM_RANKING && !isEditingCustomRanking &&
-              <>
-                <select
-                    className="p-1 m-1 border rounded bg-green-100 shadow"
-                    value={selectedRankerToCopy}
-                    onChange={ e => setSelectedRankerToCopy(e.target.value as ThirdPartyRanker) }
-                  >
-                  { Object.values(ThirdPartyRanker).filter(ranker => ranker !== ThirdPartyRanker.CUSTOM).map( (ranker: ThirdPartyRanker) => <option key={ranker} value={ ranker }> Copy from {ranker} </option>) }
-                </select>
-                <button
-                    className={`p-1 m-1 border rounded shadow ${canEditCustomRankings 
-                      ? 'bg-green-500 text-white hover:bg-green-600' 
-                      : 'bg-gray-400 text-gray-600 cursor-not-allowed'}`}
-                    onClick={canEditCustomRankings ? onStartCustomRanking : undefined}
-                    disabled={!canEditCustomRankings}
-                    title={!canEditCustomRankings ? "Cannot edit rankings when players have been drafted or purged" : ""}
-                  >
-                    Start Custom Ranking
-                </button>
-              </>
-            }
+
             { isEditingCustomRanking &&
               <>
                 <button
@@ -245,7 +227,7 @@ const PositionRankings = ({
                     Finish Editing
                 </button>
                 <span className="p-1 m-1 text-sm font-semibold text-green-600">
-                  Drag players to reorder rankings
+                  Drag players to reorder rankings • Drag tier handles to adjust tier boundaries
                 </span>
               </>
             }
@@ -297,10 +279,13 @@ const PositionRankings = ({
           const { columnTitle, cards } = draftBoardColumn
 
           const posStyle = getPosStyle(columnTitle)
+          const playerCards = cards.filter(card => !isTitleCard(card)) as Player[]
+          
           return(
             <div key={i}
-              className="flex flex-col"
+              className="flex flex-row"
             >
+              <div className="flex flex-col">
               <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500`}>
                 <span className="font-bold underline">{ columnTitle }</span>
                 { Boolean(predNextTiers[columnTitle]) &&
@@ -459,10 +444,71 @@ const PositionRankings = ({
                   )
                 }
               })}
+              </div>
+              
+              {/* Tier Slider */}
+              { showTierSliders && columnTitle !== 'Purge' && playerCards.length > 0 &&
+                <TierSlider
+                  position={columnTitle as keyof PlayerRanks}
+                  fantasySettings={fantasySettings}
+                  boardSettings={boardSettings}
+                  onUpdateTierBoundary={onUpdateTierBoundary}
+                  allCards={cards}
+                />
+              }
             </div>
           )
         })}
       </div>
+
+            {/* Custom Ranking Confirmation Modal */}
+      {draftView === DraftView.CUSTOM_RANKING && !isEditingCustomRanking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Create Custom Ranking
+            </h3>
+            {canEditCustomRankings ? (
+              <>
+                <p className="text-gray-700 mb-6">
+                  Create a custom ranking based on <span className="font-bold text-green-600">{boardSettings.ranker}</span> rankings?
+                </p>
+                <p className="text-sm text-gray-600 mb-6">
+                  You'll be able to drag players to reorder rankings and adjust tier boundaries.
+                </p>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={onCancelCustomRanking}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  >
+                    No
+                  </button>
+                  <button
+                    onClick={onStartCustomRanking}
+                    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                  >
+                    Yes
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-red-600 mb-6">
+                  Cannot create custom rankings when players have been drafted or purged.
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={onCancelCustomRanking}
+                    className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+                  >
+                    OK
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -297,6 +297,69 @@ export const useRanks = ({
     setPlayerRanks(nextPlayerRanks)
   }
 
+  const onUpdateTierBoundary = (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => {
+    console.log('onUpdateTierBoundary', position, tierNumber, newBoundaryIndex)
+    if (!isEditingCustomRanking || !canEditCustomRankings()) return
+
+    const positionPlayers = [...playerRanks[position]]
+    
+    // Get current tier boundaries
+    const tierBoundaries: number[] = []
+    let currentTierNum: number | undefined = undefined
+    
+    positionPlayers.forEach((player, index) => {
+      const customRanking = player.ranks?.[ThirdPartyRanker.CUSTOM]
+      if (customRanking) {
+        const tierNum = settings.ppr 
+          ? customRanking.pprPositionTier?.tierNumber 
+          : customRanking.standardPositionTier?.tierNumber
+        
+        if (tierNum !== currentTierNum && currentTierNum !== undefined) {
+          tierBoundaries.push(index)
+        }
+        currentTierNum = tierNum
+      }
+    })
+    
+    // Update the specific boundary
+    if (tierNumber <= tierBoundaries.length) {
+      tierBoundaries[tierNumber - 1] = newBoundaryIndex
+    }
+    
+    // Reassign tier numbers based on new boundaries
+    let currentTier = 1
+    positionPlayers.forEach((player, index) => {
+      const customRanking = player.ranks?.[ThirdPartyRanker.CUSTOM]
+      if (customRanking) {
+        // Check if we've crossed a tier boundary
+        if (tierBoundaries.includes(index)) {
+          currentTier++
+        }
+        
+        const tierData = {
+          tierNumber: currentTier,
+          upperLimitPlayerIdx: index,
+          upperLimitValue: 0, // Placeholder - would need actual metric values
+          lowerLimitPlayerIdx: index,
+          lowerLimitValue: 0, // Placeholder - would need actual metric values
+        }
+        
+        if (settings.ppr) {
+          customRanking.pprPositionTier = tierData
+        } else {
+          customRanking.standardPositionTier = tierData
+        }
+        
+        // Update the player in the library
+        playerLib[player.id] = { ...player, ranks: { ...player.ranks, [ThirdPartyRanker.CUSTOM]: customRanking } }
+      }
+    })
+    
+    // Recreate player ranks to reflect the tier changes
+    const nextPlayerRanks = createPlayerRanks(Object.values(playerLib), settings, boardSettings)
+    setPlayerRanks(nextPlayerRanks)
+  }
+
   return {
     // state
     rankingSummaries,
@@ -328,5 +391,6 @@ export const useRanks = ({
     onFinishCustomRanking,
     onClearCustomRanking,
     onReorderPlayerInPosition,
+    onUpdateTierBoundary,
   }
 }

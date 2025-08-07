@@ -81,6 +81,7 @@ const Home: FC = () => {
     onFinishCustomRanking,
     onClearCustomRanking,
     onReorderPlayerInPosition,
+    onUpdateTierBoundary,
   } = useRanks({ settings, myPickNum })
 
   const usingCustomRanking = boardSettings.ranker === ThirdPartyRanker.CUSTOM
@@ -124,8 +125,7 @@ const Home: FC = () => {
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   
-  // Custom ranking UI state
-  const [selectedRankerToCopy, setSelectedRankerToCopy] = useState<ThirdPartyRanker>(ThirdPartyRanker.HARRIS)
+  // Custom ranking state - modal now shows automatically when draftView === CUSTOM_RANKING
 
   const currRound = getDraftRoundForPickNum(currPick)
 
@@ -207,7 +207,7 @@ const Home: FC = () => {
 
   // Custom ranking wrapper functions
   const handleStartCustomRanking = () => {
-    const success = onStartCustomRanking(selectedRankerToCopy)
+    const success = onStartCustomRanking(boardSettings.ranker as ThirdPartyRanker)
     if (success) {
       setDraftView(DraftView.CUSTOM_RANKING)
     }
@@ -406,8 +406,10 @@ const Home: FC = () => {
                 onStartCustomRanking={handleStartCustomRanking}
                 onFinishCustomRanking={handleFinishCustomRanking}
                 onClearCustomRanking={handleClearCustomRanking}
-                selectedRankerToCopy={selectedRankerToCopy}
-                setSelectedRankerToCopy={setSelectedRankerToCopy}
+                onUpdateTierBoundary={onUpdateTierBoundary}
+                onCancelCustomRanking={() => {
+                  setDraftView(DraftView.RANKING)
+                }}
               />
             </div>
 
