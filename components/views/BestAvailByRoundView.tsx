@@ -56,8 +56,9 @@ const BestAvailByRoundView = ({
       {/* Info text for best available by round view */}
       <div className="flex flex-row mb-4 align-center">
         <div className="flex flex-col text-left">
+          <h2 className="text-2xl font-bold">Best Available By Round</h2>
           <p className="text-xs mt-1 font-semibold text-blue-600"> 
-            Showing predicted players available to you by round
+            Showing best predicted players available to you by round
           </p>
         </div>
       </div>

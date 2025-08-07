@@ -3,8 +3,6 @@ import { Player, FantasySettings, BoardSettings } from '../../types'
 import { getPlayerAdp, getPlayerMetrics, getRoundIdxForPickNum, PlayerRanks } from '../../behavior/draft'
 import { getPosStyle, getTierStyle } from '../../behavior/styles'
 
-let viewPlayerIdTimer: NodeJS.Timeout
-
 interface ADPViewProps {
   playerRanks: PlayerRanks
   fantasySettings: FantasySettings
@@ -197,17 +195,10 @@ const ADPView: React.FC<ADPViewProps> = ({
                     className={`p-2 rounded shadow-sm cursor-pointer transition-colors ${bgColor} ${cardBorderStyle}`}
                     onClick={() => onSelectPlayer(player)}
                     onMouseEnter={() => {
-                      if (viewPlayerIdTimer) {
-                        clearTimeout(viewPlayerIdTimer)
-                      }
-                      viewPlayerIdTimer = setTimeout(() => {
-                        setViewPlayerId(player.id)
-                      }, 250)
+                      setViewPlayerId(player.id)
                     }}
                     onMouseLeave={() => {
-                      if (viewPlayerIdTimer) {
-                        clearTimeout(viewPlayerIdTimer)
-                      }
+                      setViewPlayerId('')
                     }}
                   >
                     <div className="flex flex-col text-center items-center">

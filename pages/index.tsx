@@ -17,7 +17,7 @@ import { getProjectedTier } from "../behavior/draft"
 import { Player, ThirdPartyRanker, DataRanker } from "types"
 
 export enum DraftView {
-  RANKING = "Ranking View",
+  RANKING = "Rankings By Position",
   BEST_AVAILABLE = "Best Available By Round",
   CUSTOM_RANKING = "Create Custom Ranking",
 }
@@ -387,7 +387,7 @@ const Home: FC = () => {
                 <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-2 bg-blue-50 shadow-md border border-blue-200">
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-semibold underline">
-                      Your Optimal {currentOptimalRoster.type} Roster ({currentOptimalRoster.value.toFixed(1)} {currentOptimalRoster.metric})
+                      Optimal Roster By Rank vs ADP ({currentOptimalRoster.value.toFixed(1)} {currentOptimalRoster.metric})
                     </p>
                     {optimalRosters.length > 1 && (
                       <select
