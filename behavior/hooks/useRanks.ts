@@ -70,6 +70,10 @@ export const useRanks = ({
     }
   }, [myPickNum])
 
+  useEffect(() => {
+    onRecalculatePlayerRanks()
+  }, [settings.ppr, boardSettings.ranker, playerLib])
+
   const getRosterIdxFromPick = (pickNum: number) => {
     const roundIdx = getRoundIdxForPickNum(pickNum, settings.numTeams)
     const isEvenRound = roundIdx % 2 == 1
@@ -118,10 +122,15 @@ export const useRanks = ({
 
   // funcs
 
+  const onRecalculatePlayerRanks = useCallback(() => {
+    console.log('onRecalculatePlayerRanks', settings, boardSettings, playerLib)
+    const nextPlayerRanks = createPlayerRanks(Object.values(playerLib), settings, boardSettings)
+    setPlayerRanks(nextPlayerRanks)
+  }, [settings, boardSettings, playerLib])
   const onSetRanker = (ranker: FantasyRanker) => {
     const nextBoardSettings = { ...boardSettings, ranker }
     setBoardSettings(nextBoardSettings)
-    onCreatePlayerRanks(Object.values(playerLib), nextBoardSettings)
+    // onCreatePlayerRanks(Object.values(playerLib), nextBoardSettings)
   }
   const onSetAdpRanker = (adpRanker: FantasyRanker) => {
     setBoardSettings({ ...boardSettings, adpRanker })
