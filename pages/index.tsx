@@ -6,6 +6,7 @@ import DraftLoaderOptions from "../components/draftLoaderOptions"
 import PositionRankings from "../components/positionRankings"
 import HistoricalStats from "../components/HistoricalStats"
 import RankingSummaryDisplay from "../components/RankingSummary"
+import ADPView from "../components/views/ADPView"
 
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
@@ -126,6 +127,8 @@ const Home: FC = () => {
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
+
+  console.log("viewPlayerId", viewPlayerId)
   
   // Custom ranking state - modal now shows automatically when draftView === CUSTOM_RANKING
   
@@ -484,11 +487,19 @@ const Home: FC = () => {
                 playerLib={playerLib}
                 draftStarted={draftStarted}
                 getDraftRoundForPickNum={getDraftRoundForPickNum}
+                viewPlayerId={viewPlayerId}
               />
             </div>
 
             <div className="col-span-4">
-              PLACEHOLDER
+              <ADPView
+                playerRanks={playerRanks}
+                fantasySettings={settings}
+                boardSettings={boardSettings}
+                onSelectPlayer={onSelectPlayer}
+                setViewPlayerId={setViewPlayerId}
+                viewPlayerId={viewPlayerId}
+              />
             </div>
           </div>
         </div>

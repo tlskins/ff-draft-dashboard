@@ -44,6 +44,7 @@ interface PositionRankingsProps {
   playerLib: { [key: string]: Player },
   draftStarted: boolean,
   getDraftRoundForPickNum: (pickNum: number) => (string | null)[],
+  viewPlayerId: string | null,
 }
 
 const PositionRankings = ({
@@ -79,6 +80,7 @@ const PositionRankings = ({
   onSelectPlayer,
   onPurgePlayer,
   setViewPlayerId,
+  viewPlayerId,
 }: PositionRankingsProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
 
@@ -110,6 +112,7 @@ const PositionRankings = ({
     playerLib,
     draftStarted,
     getDraftRoundForPickNum,
+    viewPlayerId,
   }
 
   const renderCurrentView = () => {

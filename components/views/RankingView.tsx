@@ -29,8 +29,8 @@ const RankingView = ({
   setSortOption,
   highlightOption,
   setHighlightOption,
+  viewPlayerId,
 }: RankingViewProps) => {
-  const [shownPlayerId, setShownPlayerId] = useState<string | null>(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
 
   const { AnyTiDelete, AnyAiFillCheckCircle, AnyBsLink } = getIconTypes()
@@ -186,11 +186,11 @@ const RankingView = ({
                         } = player
 
                         const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
-                        const { tier, adp, posRank } = metrics
+                        const { tier, adp, posRank, overallRank } = metrics
                         const { tierNumber } = tier || {}
                         
                         let tierStyle
-                        if ( shownPlayerId === id && !!shownPlayerBg ) {
+                        if ( viewPlayerId === id && !!shownPlayerBg ) {
                           tierStyle = shownPlayerBg
                         } else if ( showNextPreds && predictedPicks[id] && predictedPicks[id] < 3 ) {
                           tierStyle = `${nextPredBgColor} text-white`
@@ -217,30 +217,35 @@ const RankingView = ({
                           rankText = posRank === undefined ? 'Unranked' : `${position}${posRank}`
                         }
                         const isBelowAdp = currPick - (adp || 0) >= 0
-                        const isBelowRank = currPick - (posRank || 0) >= 0
+                        const isBelowRank = currPick - (overallRank || 0) >= 0
                         const adpRound = getRoundIdxForPickNum(adp === undefined ? 999 : Math.floor(adp), fantasySettings.numTeams) + 1
                         const currAdpDiff = Math.abs(currPick - (adp || 0))
-                        const currRankDiff = Math.abs(currPick - (posRank || 0))
-                        const isHoveringPlayer = shownPlayerId === id
+                        const currRankDiff = Math.abs(currPick - (overallRank || 0))
+                        const isHoveringPlayer = viewPlayerId === id
                         const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
+                        if ( team === 'WAS' ) {
+                          console.log("viewPlayerId", viewPlayerId)
+                          console.log("id", id)
+                          console.log("isHoveringPlayer", isHoveringPlayer)
+                        }
 
                         return(
                           <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
                             className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle}`}
                             onMouseEnter={ () => {
-                              if ( viewPlayerIdTimer ) {
-                                clearTimeout( viewPlayerIdTimer )
-                              }
-                              viewPlayerIdTimer = setTimeout(() => {
-                                setShownPlayerId(id) 
-                                setViewPlayerId(id)
-                              }, 250)
+                              setViewPlayerId(id)
+                              // if ( viewPlayerIdTimer ) {
+                              //   clearTimeout( viewPlayerIdTimer )
+                              // }
+                              // viewPlayerIdTimer = setTimeout(() => {
+                              //   setViewPlayerId(id)
+                              // }, 250)
                             }}
-                            onMouseLeave={ () => {
-                              if ( viewPlayerIdTimer ) {
-                                clearTimeout( viewPlayerIdTimer )
-                              }
-                            }}
+                            // onMouseLeave={ () => {
+                            //   if ( viewPlayerIdTimer ) {
+                            //     clearTimeout( viewPlayerIdTimer )
+                            //   }
+                            // }}
                           >
                             <div className="flex flex-col text-center items-center">
                               <p className="text-sm font-semibold flex text-center">

@@ -45,6 +45,7 @@ export interface SharedViewProps {
   playerLib: { [key: string]: Player }
   draftStarted: boolean
   getDraftRoundForPickNum: (pickNum: number) => (string | null)[]
+  viewPlayerId: string | null
 }
 
 // Props specific to ranking view
