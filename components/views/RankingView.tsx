@@ -221,6 +221,7 @@ const RankingView = ({
                         const adpRound = getRoundIdxForPickNum(adp === undefined ? 999 : Math.floor(adp), fantasySettings.numTeams) + 1
                         const currAdpDiff = Math.abs(currPick - (adp || 0))
                         const currRankDiff = Math.abs(currPick - (overallRank || 0))
+                        const rankDiffScore = ((overallRank || 999) - (adp || 999)) * -1
                         const isHoveringPlayer = viewPlayerId === id
                         const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
 
@@ -247,11 +248,11 @@ const RankingView = ({
                                 { fullName } ({team})
                               </p>
                               <p className="text-xs">
-                                { rankText } { tier ? ` - Tier ${tierNumber}${projTierText}` : "" }
+                                { rankText } ({rankDiffScore > 0 ? '+' : '-'}{Math.abs(rankDiffScore)} vs ADP) { tier ? ` | Tier ${tierNumber}${projTierText}` : "" }
                               </p>
                               { !rankByAdp &&
                                 <p className={`text-xs ${getPickDiffColor(currAdpDiff)} text-white rounded px-1 py-0.5 mt-0.5`}>
-                                  { currAdpDiff.toFixed(0) } { isBelowAdp ? 'BELOW' : 'ABOVE' } ADP (R{adpRound} P{adp?.toFixed(1)})
+                                  NOW { currAdpDiff.toFixed(0) } { isBelowAdp ? 'BELOW' : 'ABOVE' } ADP (R{adpRound} P{adp?.toFixed(1)})
                                 </p>
                               }
                               { rankByAdp &&
