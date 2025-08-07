@@ -4,7 +4,7 @@ import { BsLink } from 'react-icons/bs'
 import { AiFillCheckCircle } from 'react-icons/ai'
 
 import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor, getPickDiffColor } from '../behavior/styles'
-import { myCurrentRound, getPlayerMetrics, PlayerRanks, getProjectedTier, getRoundIdxForPickNum } from '../behavior/draft'
+import { myCurrentRound, getPlayerMetrics, PlayerRanks, getProjectedTier, getRoundIdxForPickNum, Roster } from '../behavior/draft'
 import { Player, FantasySettings, FantasyPosition, BoardSettings, DataRanker, RankingSummary, ThirdPartyRanker } from "../types"
 import { DraftView, SortOption, HighlightOption } from "../pages"
 import TierSlider from './TierSlider'
@@ -102,6 +102,10 @@ interface PositionRankingsProps {
   onClearCustomRanking: () => void,
   onUpdateTierBoundary: (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => void,
   onCancelCustomRanking: () => void,
+  rosters: Roster[],
+  playerLib: { [key: string]: Player },
+  draftStarted: boolean,
+  getDraftRoundForPickNum: (pickNum: number) => (string | null)[],
 }
 
 const PositionRankings = ({
@@ -129,6 +133,10 @@ const PositionRankings = ({
   onClearCustomRanking,
   onUpdateTierBoundary,
   onCancelCustomRanking,
+  rosters,
+  playerLib,
+  draftStarted,
+  getDraftRoundForPickNum,
 
   onSelectPlayer,
   onPurgePlayer,
@@ -138,6 +146,7 @@ const PositionRankings = ({
   const [shownPlayerBg, setShownPlayerBg] = useState("")
   const [draggedPlayer, setDraggedPlayer] = useState<Player | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const [showPurgedModal, setShowPurgedModal] = useState(false)
 
   // const AnyAiFillStar = AiFillStar as any;
   const AnyTiDelete = TiDelete as any;
@@ -149,11 +158,28 @@ const PositionRankings = ({
     return getDraftBoard(playerRanks, predictedPicks, myCurrRound)
   }, [playerRanks, predictedPicks, myPickNum, fantasySettings.numTeams, currPick])
 
+  // Get user's roster
+  const myRosterIdx = myPickNum - 1
+  const myRoster = rosters[myRosterIdx] || { QB: [], RB: [], WR: [], TE: [], picks: [] }
+  
+  // Helper function to get round for a picked player
+  const getPlayerDraftRound = (playerId: string): number => {
+    const pickIndex = myRoster.picks.indexOf(playerId)
+    if (pickIndex === -1) return 0
+    
+    // Simple calculation: each position has picks in order, so we can calculate round
+    // based on when the player was picked in our roster
+    return pickIndex + 1
+  }
+
   const showPredAvailByRound = draftView === DraftView.BEST_AVAILABLE
   const draftBoardView = showPredAvailByRound ? draftBoard.predictAvailByRoundView : draftBoard.standardView
   const showNextPreds = highlightOption === HighlightOption.PREDICTED_TAKEN_NEXT_TURN
   const rankByAdp = sortOption === SortOption.ADP
   const showTierSliders = isEditingCustomRanking
+
+  const purgeColumn = draftBoardView.find(column => column.columnTitle === 'Purge')
+  const purgedCount = purgeColumn?.cards?.filter(card => !isTitleCard(card)).length || 0
 
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, player: Player) => {
@@ -188,7 +214,7 @@ const PositionRankings = ({
     noPlayers ?
     <></>
     :
-    <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded shadow-md bg-white">
+    <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded shadow-md bg-white text-sm">
       <div className="flex flex-row mb-4 align-center">
         <div className="flex flex-col text-left">
           <div className="flex flex-row">
@@ -239,6 +265,13 @@ const PositionRankings = ({
                   Clear Custom Rankings
               </button>
             }
+            
+            <button
+              className="p-1 m-1 border rounded bg-red-500 text-white shadow hover:bg-red-600"
+              onClick={() => setShowPurgedModal(true)}
+            >
+              View Purged Players ({purgedCount})
+            </button>
           </div>
           { !showNextPreds &&
             <>
@@ -275,193 +308,226 @@ const PositionRankings = ({
       </div>
 
       <div className="flex flex-row h-full mb-32">
-        { draftBoardView.map( (draftBoardColumn, i) => {
-          const { columnTitle, cards } = draftBoardColumn
+        <div className="flex flex-col">
+          { draftStarted && (
+            <div className="flex flex-row justify-center grid grid-cols-4 gap-1">
+              { draftBoardView.filter(column => column.columnTitle !== 'Purge').map( (draftBoardColumn, i) => {
+                const { columnTitle } = draftBoardColumn
+                const position = columnTitle as FantasyPosition
+                const rosterPlayers = (myRoster as any)[position] || []
 
-          const posStyle = getPosStyle(columnTitle)
-          const playerCards = cards.filter(card => !isTitleCard(card)) as Player[]
-          
-          return(
-            <div key={i}
-              className="flex flex-row"
-            >
-              <div className="flex flex-col">
-              <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500`}>
-                <span className="font-bold underline">{ columnTitle }</span>
-                { Boolean(predNextTiers[columnTitle]) &&
-                  <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[columnTitle] }</p>
-                }
-              </div>
+                return(
+                  <div className="flex flex-col">
+                    { rosterPlayers.map( (playerId: string) => {
+                      const player = playerLib[playerId]
+                      if (!player) return null
+                      const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
+                      const { tier } = metrics
+                      const { tierNumber } = tier || {}
+                      const { fullName, team } = player
+                      const roundDrafted = getPlayerDraftRound(playerId)
+                      const tierStyle = getTierStyle(tierNumber)
 
-              { cards.slice(0,30).map( (card, playerPosIdx) => {
-                if ( isTitleCard(card) ) {
-                  return (
-                    <div key={`${card.title}-${playerPosIdx}`} id={`${card.title}-${playerPosIdx}`}
-                      className={`px-2 m-1 text-center border rounded shadow-md relative ${card.bgColor}`}
-                    >
-                      <div className="flex flex-col text-center items-center">
-                        <p className="text-xs font-semibold flex text-center text-white">
-                          { card.title }
-                        </p>
-                      </div>
-                    </div>
-                  )
-                } else {
-                  const player = card as Player
-                  const {
-                    firstName,
-                    lastName,
-                    fullName,
-                    id,
-                    team,
-                    position,
-                    // target, TODO - need to handle "target"
-                  } = player
-
-                  const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
-                  const { tier, adp, posRank } = metrics
-                  const { tierNumber } = tier || {}
-                  
-                  let tierStyle
-                  if ( shownPlayerId === id && !!shownPlayerBg ) {
-                    tierStyle = shownPlayerBg
-                  } else if ( showNextPreds && predictedPicks[id] && predictedPicks[id] < 3 ) {
-                    tierStyle = `${nextPredBgColor} text-white`
-                  } else if ( !showNextPreds && predictedPicks[id] && predictedPicks[id] < 2 ) {
-                    tierStyle = `${predBgColor} text-white`
-                  } else {
-                    tierStyle = getTierStyle(tierNumber)
-                  }
-
-                  const projPlayerTier = getProjectedTier(
-                    player,
-                    boardSettings.ranker,
-                    DataRanker.LAST_SSN_PPG,
-                    fantasySettings,
-                    rankingSummaries,
-                  )
-                  const projTierText = projPlayerTier ? ` (${((projPlayerTier.upperLimitValue + projPlayerTier.lowerLimitValue) / 2).toFixed(1)} PPG)` : ''
-                  
-                  const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
-                  let rankText
-                  if ( rankByAdp ) {
-                    rankText = `${boardSettings.adpRanker} ADP #${adp?.toFixed(1)}`
-                  } else {
-                    rankText = posRank === undefined ? 'Unranked' : `${position}${posRank}`
-                  }
-                  const isBelowAdp = currPick - (adp || 0) >= 0
-                  const isBelowRank = currPick - (posRank || 0) >= 0
-                  const adpRound = getRoundIdxForPickNum(adp === undefined ? 999 : Math.floor(adp), fantasySettings.numTeams) + 1
-                  const currAdpDiff = Math.abs(currPick - (adp || 0))
-                  const currRankDiff = Math.abs(currPick - (posRank || 0))
-                  const isHoveringPlayer = shownPlayerId === id
-                  const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
-  
-                  const isDraggedOver = isEditingCustomRanking && dragOverIndex === playerPosIdx
-                  const isDragged = isEditingCustomRanking && draggedPlayer?.id === id
-                  const dragOverStyle = isDraggedOver ? 'border-2 border-dashed border-blue-500 bg-blue-50' : ''
-                  const draggedStyle = isDragged ? 'opacity-50' : ''
-
-                  return(
-                    <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
-                      className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle} ${dragOverStyle} ${draggedStyle} ${isEditingCustomRanking ? 'cursor-move' : ''}`}
-                      draggable={isEditingCustomRanking}
-                      onDragStart={(e) => isEditingCustomRanking && handleDragStart(e, player)}
-                      onDragOver={(e) => isEditingCustomRanking && handleDragOver(e, playerPosIdx)}
-                      onDragLeave={() => isEditingCustomRanking && handleDragLeave()}
-                      onDrop={(e) => isEditingCustomRanking && handleDrop(e, columnTitle, playerPosIdx)}
-                      onMouseEnter={ () => {
-                        if ( viewPlayerIdTimer ) {
-                          clearTimeout( viewPlayerIdTimer )
-                        }
-                        viewPlayerIdTimer = setTimeout(() => {
-                          setShownPlayerId(id) 
-                          setViewPlayerId(id)
-                        }, 250)
-                      }}
-                      onMouseLeave={ () => {
-                        if ( viewPlayerIdTimer ) {
-                          clearTimeout( viewPlayerIdTimer )
-                        }
-                      }}
-                    >
-                      <div className="flex flex-col text-center items-center">
-                        <p className="text-sm font-semibold flex text-center">
-                          { fullName } ({team})
-                          {/* { target &&
-                            <AnyAiFillStar
-                              color="blue"
-                              size={24}
-                            />
-                          } */}
-                        </p>
-                        <p className="text-xs">
-                          { rankText } { tier ? ` - Tier ${tierNumber}${projTierText}` : "" }
-                        </p>
-                        { !rankByAdp &&
-                          <p className={`text-xs ${getPickDiffColor(currAdpDiff)} text-white rounded px-1 py-0.5 mt-0.5`}>
-                            { currAdpDiff.toFixed(0) } { isBelowAdp ? 'BELOW' : 'ABOVE' } ADP (R{adpRound} P{adp?.toFixed(1)})
-                          </p>
-                        }
-                        { rankByAdp &&
-                          <p className={`text-xs ${getPickDiffColor(currRankDiff)} text-white rounded px-1 py-0.5 mt-0.5`}>
-                            { currRankDiff.toFixed(0) } { isBelowRank ? 'BELOW' : 'ABOVE' } Rank
-                          </p>
-                        }
-  
-                        { isHoveringPlayer && !isEditingCustomRanking &&
-                          <div className={`grid grid-cols-3 items-center justify-items-center gap-2 mt-2 pt-2 w-full border-t`}>
-                            <AnyTiDelete
-                              className="cursor-pointer"
-                              color="red"
-                              onClick={ () => onPurgePlayer(player) }
-                              onMouseEnter={() => setShownPlayerBg("bg-red-500")}
-                              onMouseLeave={() => setShownPlayerBg("")}
-                              size={32}
-                            />
-  
-                            <AnyAiFillCheckCircle
-                              className="cursor-pointer"
-                              color="green"
-                              onClick={ () => onSelectPlayer(player) }
-                              onMouseEnter={() => setShownPlayerBg("bg-green-400")}
-                              onMouseLeave={() => setShownPlayerBg("")}
-                              size={26}
-                            />
-  
-                            <AnyBsLink
-                              className="cursor-pointer"
-                              color="blue"
-                              onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
-                              onMouseEnter={() => setShownPlayerBg("bg-blue-400")}
-                              onMouseLeave={() => setShownPlayerBg("")}
-                              size={30}
-                            />
-                          </div>
-                        }
-                      </div>
-                    </div>
-                  )
-                }
+                      return(
+                        <div key={playerId}
+                          className={`px-2 py-1 m-1 text-center rounded shadow-md w-full ${tierStyle}`}
+                        >
+                          <p className="font-semibold">{fullName} ({team})</p>
+                          <p className="text-xs">R{roundDrafted} | Tier {tierNumber}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
               })}
-              </div>
-              
-              {/* Tier Slider */}
-              { showTierSliders && columnTitle !== 'Purge' && playerCards.length > 0 &&
-                <TierSlider
-                  position={columnTitle as keyof PlayerRanks}
-                  fantasySettings={fantasySettings}
-                  boardSettings={boardSettings}
-                  onUpdateTierBoundary={onUpdateTierBoundary}
-                  allCards={cards}
-                />
-              }
             </div>
-          )
-        })}
+          )}
+          
+          <div className="flex flex-row">
+            { draftBoardView.filter(column => column.columnTitle !== 'Purge').map( (draftBoardColumn, i) => {
+              const { columnTitle, cards } = draftBoardColumn
+
+              const posStyle = getPosStyle(columnTitle)
+              const playerCards = cards.filter(card => !isTitleCard(card)) as Player[]
+              
+              return(
+                <div key={i}
+                  className="flex flex-row"
+                >
+                  <div className="flex flex-col">
+                  <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500`}>
+                    <span className="font-bold underline">{ columnTitle }</span>
+                    { Boolean(predNextTiers[columnTitle]) &&
+                      <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[columnTitle] }</p>
+                    }
+                  </div>
+
+                  { cards.slice(0, 50).map( (card, playerPosIdx) => {
+                    if ( isTitleCard(card) ) {
+                      return (
+                        <div key={`${card.title}-${playerPosIdx}`} id={`${card.title}-${playerPosIdx}`}
+                          className={`px-2 m-1 text-center border rounded shadow-md relative ${card.bgColor}`}
+                        >
+                          <div className="flex flex-col text-center items-center">
+                            <p className="text-xs font-semibold flex text-center text-white">
+                              { card.title }
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    } else {
+                      const player = card as Player
+                      const {
+                        firstName,
+                        lastName,
+                        fullName,
+                        id,
+                        team,
+                        position,
+                      } = player
+
+                      const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
+                      const { tier, adp, posRank } = metrics
+                      const { tierNumber } = tier || {}
+                      
+                      let tierStyle
+                      if ( shownPlayerId === id && !!shownPlayerBg ) {
+                        tierStyle = shownPlayerBg
+                      } else if ( showNextPreds && predictedPicks[id] && predictedPicks[id] < 3 ) {
+                        tierStyle = `${nextPredBgColor} text-white`
+                      } else if ( !showNextPreds && predictedPicks[id] && predictedPicks[id] < 2 ) {
+                        tierStyle = `${predBgColor} text-white`
+                      } else {
+                        tierStyle = getTierStyle(tierNumber)
+                      }
+
+                      const projPlayerTier = getProjectedTier(
+                        player,
+                        boardSettings.ranker,
+                        DataRanker.LAST_SSN_PPG,
+                        fantasySettings,
+                        rankingSummaries,
+                      )
+                      const projTierText = projPlayerTier ? ` (${((projPlayerTier.upperLimitValue + projPlayerTier.lowerLimitValue) / 2).toFixed(1)} PPG)` : ''
+                      
+                      const playerUrl = `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
+                      let rankText
+                      if ( rankByAdp ) {
+                        rankText = `${boardSettings.adpRanker} ADP #${adp?.toFixed(1)}`
+                      } else {
+                        rankText = posRank === undefined ? 'Unranked' : `${position}${posRank}`
+                      }
+                      const isBelowAdp = currPick - (adp || 0) >= 0
+                      const isBelowRank = currPick - (posRank || 0) >= 0
+                      const adpRound = getRoundIdxForPickNum(adp === undefined ? 999 : Math.floor(adp), fantasySettings.numTeams) + 1
+                      const currAdpDiff = Math.abs(currPick - (adp || 0))
+                      const currRankDiff = Math.abs(currPick - (posRank || 0))
+                      const isHoveringPlayer = shownPlayerId === id
+                      const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
+      
+                      const isDraggedOver = isEditingCustomRanking && dragOverIndex === playerPosIdx
+                      const isDragged = isEditingCustomRanking && draggedPlayer?.id === id
+                      const dragOverStyle = isDraggedOver ? 'border-2 border-dashed border-blue-500 bg-blue-50' : ''
+                      const draggedStyle = isDragged ? 'opacity-50' : ''
+
+                      return(
+                        <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
+                          className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle} ${dragOverStyle} ${draggedStyle} ${isEditingCustomRanking ? 'cursor-move' : ''}`}
+                          draggable={isEditingCustomRanking}
+                          onDragStart={(e) => isEditingCustomRanking && handleDragStart(e, player)}
+                          onDragOver={(e) => isEditingCustomRanking && handleDragOver(e, playerPosIdx)}
+                          onDragLeave={() => isEditingCustomRanking && handleDragLeave()}
+                          onDrop={(e) => isEditingCustomRanking && handleDrop(e, columnTitle, playerPosIdx)}
+                          onMouseEnter={ () => {
+                            if ( viewPlayerIdTimer ) {
+                              clearTimeout( viewPlayerIdTimer )
+                            }
+                            viewPlayerIdTimer = setTimeout(() => {
+                              setShownPlayerId(id) 
+                              setViewPlayerId(id)
+                            }, 250)
+                          }}
+                          onMouseLeave={ () => {
+                            if ( viewPlayerIdTimer ) {
+                              clearTimeout( viewPlayerIdTimer )
+                            }
+                          }}
+                        >
+                          <div className="flex flex-col text-center items-center">
+                            <p className="text-sm font-semibold flex text-center">
+                              { fullName } ({team})
+                            </p>
+                            <p className="text-xs">
+                              { rankText } { tier ? ` - Tier ${tierNumber}${projTierText}` : "" }
+                            </p>
+                            { !rankByAdp &&
+                              <p className={`text-xs ${getPickDiffColor(currAdpDiff)} text-white rounded px-1 py-0.5 mt-0.5`}>
+                                { currAdpDiff.toFixed(0) } { isBelowAdp ? 'BELOW' : 'ABOVE' } ADP (R{adpRound} P{adp?.toFixed(1)})
+                              </p>
+                            }
+                            { rankByAdp &&
+                              <p className={`text-xs ${getPickDiffColor(currRankDiff)} text-white rounded px-1 py-0.5 mt-0.5`}>
+                                { currRankDiff.toFixed(0) } { isBelowRank ? 'BELOW' : 'ABOVE' } Rank
+                              </p>
+                            }
+      
+                            { isHoveringPlayer && !isEditingCustomRanking &&
+                              <div className={`grid grid-cols-3 items-center justify-items-center gap-2 mt-2 pt-2 w-full border-t`}>
+                                <AnyTiDelete
+                                  className="cursor-pointer"
+                                  color="red"
+                                  onClick={ () => onPurgePlayer(player) }
+                                  onMouseEnter={() => setShownPlayerBg("bg-red-500")}
+                                  onMouseLeave={() => setShownPlayerBg("")}
+                                  size={32}
+                                />
+      
+                                <AnyAiFillCheckCircle
+                                  className="cursor-pointer"
+                                  color="green"
+                                  onClick={ () => onSelectPlayer(player) }
+                                  onMouseEnter={() => setShownPlayerBg("bg-green-400")}
+                                  onMouseLeave={() => setShownPlayerBg("")}
+                                  size={26}
+                                />
+      
+                                <AnyBsLink
+                                  className="cursor-pointer"
+                                  color="blue"
+                                  onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
+                                  onMouseEnter={() => setShownPlayerBg("bg-blue-400")}
+                                  onMouseLeave={() => setShownPlayerBg("")}
+                                  size={30}
+                                />
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      )
+                    }
+                  })}
+                  </div>
+                  
+                  {/* Tier Slider */}
+                  { showTierSliders && columnTitle !== 'Purge' && playerCards.length > 0 &&
+                    <TierSlider
+                      position={columnTitle as keyof PlayerRanks}
+                      fantasySettings={fantasySettings}
+                      boardSettings={boardSettings}
+                      onUpdateTierBoundary={onUpdateTierBoundary}
+                      allCards={cards}
+                    />
+                  }
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
-            {/* Custom Ranking Confirmation Modal */}
+
+
+      {/* Custom Ranking Confirmation Modal */}
       {draftView === DraftView.CUSTOM_RANKING && !isEditingCustomRanking && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
@@ -506,6 +572,81 @@ const PositionRankings = ({
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Purged Players Modal */}
+      {showPurgedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full mx-4 max-h-96 overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-red-800">
+                Purged Players
+              </h3>
+              <button
+                onClick={() => setShowPurgedModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            { (() => {
+              const purgeColumn = draftBoardView.find(column => column.columnTitle === 'Purge')
+              const playerCards = purgeColumn?.cards?.filter(card => !isTitleCard(card)) as Player[] || []
+              
+              if (playerCards.length === 0) {
+                return (
+                  <p className="text-gray-600 text-center py-8">
+                    No players have been purged.
+                  </p>
+                )
+              }
+              
+              return (
+                <>
+                  <p className="text-sm text-red-600 mb-4">
+                    Click on any player to remove them from the purge list.
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    { playerCards.map( (player, playerPosIdx) => {
+                      const {
+                        fullName,
+                        id,
+                        team,
+                        position,
+                      } = player
+
+                      const posStyle = getPosStyle(position)
+
+                      return(
+                        <div key={`purged-${id}-${playerPosIdx}`}
+                          className={`px-3 py-2 rounded shadow-md cursor-pointer border hover:border-gray-500 transition-colors ${posStyle}`}
+                          onClick={() => {
+                            onPurgePlayer(player)
+                            // Close modal if no more purged players
+                            const remainingPurged = playerCards.length - 1
+                            if (remainingPurged === 0) {
+                              setShowPurgedModal(false)
+                            }
+                          }}
+                        >
+                          <div className="flex flex-col text-center items-center">
+                            <p className="text-sm font-semibold">
+                              { fullName }
+                            </p>
+                            <p className="text-xs">
+                              { position } - { team }
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
           </div>
         </div>
       )}

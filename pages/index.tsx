@@ -6,13 +6,14 @@ import DraftLoaderOptions from "../components/draftLoaderOptions"
 import PositionRankings from "../components/positionRankings"
 import HistoricalStats from "../components/HistoricalStats"
 import RankingSummaryDisplay from "../components/RankingSummary"
-import Rosters from "../components/Rosters"
+
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
 import { useDraftListener } from '../behavior/hooks/useDraftListener'
 import { usePredictions } from "../behavior/hooks/usePredictions"
-import { getPosStyle } from "../behavior/styles"
-import { Player, ThirdPartyRanker } from "types"
+import { getPosStyle, getTierStyle } from "../behavior/styles"
+import { getProjectedTier } from "../behavior/draft"
+import { Player, ThirdPartyRanker, DataRanker } from "types"
 
 export enum DraftView {
   RANKING = "Ranking View",
@@ -124,8 +125,11 @@ const Home: FC = () => {
   const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN)
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
+  const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
   
   // Custom ranking state - modal now shows automatically when draftView === CUSTOM_RANKING
+  
+  const currentOptimalRoster = optimalRosters[selectedOptimalRosterIdx] || optimalRosters[0]
 
   const currRound = getDraftRoundForPickNum(currPick)
 
@@ -364,8 +368,75 @@ const Home: FC = () => {
         <div className="flex flex-col items-center mt-4">
           {/* Stats and Positional Breakdowns */}
           <div className="flex flex-row justify-center w-screen relative my-4 grid grid-cols-12 gap-1 px-1">
+            {/* <div className="col-span-1 flex flex-col justify-start ml-2 p-1">
+              <Rosters
+                draftStarted={draftStarted}
+                viewRosterIdx={viewRosterIdx}
+                setViewRosterIdx={setViewRosterIdx}
+                rosters={rosters}
+                playerLib={playerLib}
+                rankingSummaries={rankingSummaries}
+                boardSettings={boardSettings}
+                settings={settings}
+              />
+            </div> */}
 
-            <div className="col-span-4 flex flex-col justify-start">
+            <div className="col-span-4 flex flex-col justify-start ml-2 p-1">
+              {currentOptimalRoster && Object.keys(currentOptimalRoster.roster).length > 0 && (
+                <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-2 bg-blue-50 shadow-md border border-blue-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="font-semibold underline">
+                      Your Optimal {currentOptimalRoster.type} Roster ({currentOptimalRoster.value.toFixed(1)} {currentOptimalRoster.metric})
+                    </p>
+                    {optimalRosters.length > 1 && (
+                      <select
+                        className="ml-2 px-2 py-1 text-xs border border-blue-300 rounded bg-white"
+                        value={selectedOptimalRosterIdx}
+                        onChange={(e) => setSelectedOptimalRosterIdx(parseInt(e.target.value))}
+                      >
+                        {optimalRosters.map((roster, idx) => (
+                          <option key={idx} value={idx}>
+                            #{idx + 1} ({roster.value.toFixed(1)} {roster.metric})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  <div className="overflow-x-auto text-left">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-blue-300">
+                          <th className="text-left py-1 px-2 font-medium text-blue-700">Pick</th>
+                          <th className="text-left py-1 px-2 font-medium text-blue-700">Pos</th>
+                          <th className="text-left py-1 px-2 font-medium text-blue-700">Player</th>
+                          <th className="text-left py-1 px-2 font-medium text-blue-700">Team</th>
+                          <th className="text-left py-1 px-2 font-medium text-blue-700">Tier</th>
+                          <th className="text-left py-1 px-2 font-medium text-blue-700">{currentOptimalRoster.metric}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(currentOptimalRoster.roster)
+                          .sort(([pickA], [pickB]) => parseInt(pickA) - parseInt(pickB))
+                          .map(([pick, optimalPick]) => {
+                            const player = optimalPick.player
+                            const tier = getProjectedTier(player, boardSettings.ranker, DataRanker.LAST_SSN_PPG, settings, rankingSummaries);
+                            const tierValue = tier ? (tier.lowerLimitValue + tier.upperLimitValue) / 2 : 0;
+                            return (
+                              <tr key={pick} className="border-b border-blue-200 hover:bg-blue-100">
+                                <td className="py-1 px-2 font-medium">R{optimalPick.round} (P{pick})</td>
+                                <td className={`py-1 px-2 rounded-md ${getPosStyle(player.position)}`}>{player.position}</td>
+                                <td className="py-1 px-2 font-medium">{player.fullName}</td>
+                                <td className="py-1 px-2">{player.team}</td>
+                                <td className={`py-1 px-2 ${getTierStyle(tier?.tierNumber || 0)}`}>{tier?.tierNumber || "N/A"}</td>
+                                <td className="py-1 px-2">{tierValue.toFixed(1)}</td>
+                              </tr>
+                            )
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
               <HistoricalStats
                 settings={settings}
                 player={viewPlayerId ? playerLib[viewPlayerId] : null}
@@ -378,7 +449,7 @@ const Home: FC = () => {
               />
             </div>
 
-            <div className="col-span-5">
+            <div className="col-span-4">
               <PositionRankings
                 playerRanks={playerRanks}
                 predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
@@ -409,21 +480,15 @@ const Home: FC = () => {
                 onCancelCustomRanking={() => {
                   setDraftView(DraftView.RANKING)
                 }}
+                rosters={rosters}
+                playerLib={playerLib}
+                draftStarted={draftStarted}
+                getDraftRoundForPickNum={getDraftRoundForPickNum}
               />
             </div>
 
-            <div className="col-span-3"> 
-              <Rosters
-                draftStarted={draftStarted}
-                viewRosterIdx={viewRosterIdx}
-                setViewRosterIdx={setViewRosterIdx}
-                rosters={rosters}
-                optimalRosters={optimalRosters}
-                playerLib={playerLib}
-                rankingSummaries={rankingSummaries}
-                boardSettings={boardSettings}
-                settings={settings}
-              />
+            <div className="col-span-4">
+              PLACEHOLDER
             </div>
           </div>
         </div>

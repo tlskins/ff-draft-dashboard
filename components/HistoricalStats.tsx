@@ -119,7 +119,7 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player, settings }) =
   );
 
   return (
-    <div className="py-2 px-4 justify-center">
+    <div className="py-2 px-4 justify-center text-sm">
       <p className="font-semibold underline py-2">
         {player.fullName} ({player.position}) Historical Stats
       </p>
