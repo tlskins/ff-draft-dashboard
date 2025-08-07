@@ -230,7 +230,6 @@ const Home: FC = () => {
         {/* Draft Settings */}
         <div className="w-screen justify-center z-10 bg-gray-200 shadow-md">
           <DraftLoaderOptions
-            settings={settings}
             boardSettings={boardSettings}
             onCreatePlayerRanks={onCreatePlayerRanks}
             createPlayerLibrary={createPlayerLibrary}

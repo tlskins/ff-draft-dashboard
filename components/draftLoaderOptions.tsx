@@ -2,20 +2,18 @@ import React, { useCallback, useEffect } from "react"
 import { getPlayerData } from "../behavior/playerData"
 
 import Dropdown from "./dropdown"
-import { BoardSettings, FantasySettings, Player, RankingSummary } from "types"
+import { BoardSettings, Player, RankingSummary } from "types"
 
 
 interface DraftLoaderOptionsProps {
   boardSettings: BoardSettings;
-  settings: FantasySettings;
   createPlayerLibrary: (players: Player[]) => void;
-  onCreatePlayerRanks: (players: Player[]) => void;
+  onCreatePlayerRanks: (players: Player[], boardSettings: BoardSettings) => void;
   setRankingSummaries: (summaries: RankingSummary[]) => void;
 }
 
 const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
   boardSettings,
-  settings,
 
   onCreatePlayerRanks,
   createPlayerLibrary,
@@ -27,7 +25,7 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
     const playerData = getPlayerData()
     if (playerData) {
       const { players, rankingsSummaries } = playerData
-      onCreatePlayerRanks(players)
+      onCreatePlayerRanks(players, boardSettings)
       createPlayerLibrary(players)
       setRankingSummaries(rankingsSummaries)
     }

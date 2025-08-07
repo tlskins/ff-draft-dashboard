@@ -63,11 +63,6 @@ export enum DataRankerMetric {
     TTL_FPTS = "TTL FPTS",
 }
 
-export enum CustomRankingEditMode {
-    RANKS = "Edit Ranks",
-    TIERS = "Edit Tiers",
-}
-
 export const getDataRankerMetric = (ranker: DataRanker) => {
     switch (ranker) {
         case DataRanker.LAST_SSN_TTL_FPTS:

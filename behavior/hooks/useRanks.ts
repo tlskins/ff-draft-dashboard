@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { cloneDeep } from 'lodash'
 import {
   addToRoster,
   calcCurrRoundPick,
@@ -120,12 +119,14 @@ export const useRanks = ({
   // funcs
 
   const onSetRanker = (ranker: FantasyRanker) => {
-    setBoardSettings({ ...boardSettings, ranker })
+    const nextBoardSettings = { ...boardSettings, ranker }
+    setBoardSettings(nextBoardSettings)
+    onCreatePlayerRanks(Object.values(playerLib), nextBoardSettings)
   }
   const onSetAdpRanker = (adpRanker: FantasyRanker) => {
     setBoardSettings({ ...boardSettings, adpRanker })
   }
-  const onCreatePlayerRanks = useCallback((players: Player[]) => {
+  const onCreatePlayerRanks = useCallback((players: Player[], boardSettings: BoardSettings) => {
     console.log('onCreatePlayerRanks', players, settings, boardSettings)
     const nextPlayerRanks = createPlayerRanks( players, settings, boardSettings )
     setPlayerRanks(nextPlayerRanks)
