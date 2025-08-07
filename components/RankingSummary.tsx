@@ -50,7 +50,7 @@ const RankingSummaryDisplay: React.FC<RankingSummaryProps> = ({ settings, active
   const expPtsAboveReplacement = expAvgProjPlayerPts ? (expAvgProjPlayerPts - replacementLevel[1]) : undefined;
 
   return (
-    <div className="py-2 px-4 justify-center">
+    <div className="py-2 px-4 justify-center text-sm">
       <p className="font-semibold underline py-2">
         {summary.ranker} - {position} ({summary.ppr ? 'PPR' : 'Standard'})
       </p>
@@ -58,10 +58,10 @@ const RankingSummaryDisplay: React.FC<RankingSummaryProps> = ({ settings, active
         <table className="table-auto text-sm border-separate border-spacing-0 border border-slate-500 shadow-md mt-4">
             <thead>
                 <tr className="text-left">
-                    <th className="border-2 border-slate-700 bg-blue-100 p-2">Std Dev</th>
-                    <th className="border-2 border-slate-700 bg-blue-100 p-2">Repl. Rank</th>
-                    <th className="border-2 border-slate-700 bg-blue-100 p-2">Repl. Points</th>
-                    <th className="border-2 border-slate-700 bg-blue-100 p-2">Exp. Points Above Repl.</th>
+                    <th className="border-2 border-slate-700 bg-blue-100 px-2 py-1">Std Dev</th>
+                    <th className="border-2 border-slate-700 bg-blue-100 px-2 py-1">Repl. Rank</th>
+                    <th className="border-2 border-slate-700 bg-blue-100 px-2 py-1">Repl. Points</th>
+                    <th className="border-2 border-slate-700 bg-blue-100 px-2 py-1">Exp. Points Above Repl.</th>
                 </tr>
             </thead>
             <tbody>
@@ -77,7 +77,7 @@ const RankingSummaryDisplay: React.FC<RankingSummaryProps> = ({ settings, active
         </table>
       </div>
       <div className="flex flex-row justify-center">
-        <table className="table-auto text-sm border-separate border-spacing-0 border border-slate-500 shadow-md mt-4">
+        <table className="table-auto text-sm border-separate border-spacing-0 border border-slate-500 shadow-md mt-4 text-sm">
           <thead>
             <tr className="text-left">
               <th className="border-2 border-slate-700 bg-blue-100 p-2">
@@ -94,7 +94,7 @@ const RankingSummaryDisplay: React.FC<RankingSummaryProps> = ({ settings, active
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="text-xs">
             {tiers.map((tier) => {
               const isPlayerTier = tier.tierNumber === projPlayerTier?.tierNumber;
               const tierColor = isPlayerTier ? 'bg-green-100' : 'bg-blue-100';

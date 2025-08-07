@@ -25,23 +25,24 @@ const STAT_ABBREVIATION_MAP: { [key: string]: string } = {
     'g': 'Gms',
     'gs': 'Gms St',
     'passCmp': 'Cmp',
-    'passAtt': 'Pa Atts',
-    'passYds': 'Pa Yds',
-    'passTd': 'Pa TDs',
+    'passAtt': 'P.Att',
+    'passYds': 'P.Yds',
+    'passTd': 'P.TDs',
     'int': 'Ints',
-    'rushAtt': 'Ru Atts',
-    'rushYds': 'Ru Yds',
+    'rushAtt': 'R.Att',
+    'rushYds': 'R.Yds',
     'rushYA': 'Yd/Att',
-    'rushTd': 'Ru TDs',
+    'rushTd': 'R.TDs',
     'fmb': 'Fmb',
-    'fl': 'Fmb Lost',
+    'fl': 'F.Lost',
     'recTgt': 'Tgts',
     'rec': 'Recs',
-    'recYds': 'Rec Yds',
+    'recYds': 'R.Yds',
     'recYR': 'Yd/Rec',
-    'recTd': 'Rec TDs',
+    'recTd': 'R.TDs',
     'fantasyPointsPerGame': 'PPG',
     'pprPointsPerGame': 'PPR PPG',
+    'team': 'Tm',
 };
 
 const STAT_CATEGORY_COLORS: { [key: string]: string } = {
@@ -124,7 +125,7 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player, settings }) =
         {player.fullName} ({player.position}) Historical Stats
       </p>
       <div className="flex flex-row justify-center">
-        <table className="table-fixed text-sm border-separate border-spacing-0 border border-slate-500 shadow-md">
+        <table className="table-fixed text-xs border-separate border-spacing-0 border border-slate-500 shadow-md">
           <thead>
             <tr className="text-left">
               <th className="border-2 border-slate-700">Year</th>
