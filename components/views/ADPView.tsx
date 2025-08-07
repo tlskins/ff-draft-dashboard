@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { Player, FantasySettings, BoardSettings } from '../../types'
 import { getPlayerAdp, getPlayerMetrics, getRoundIdxForPickNum, PlayerRanks } from '../../behavior/draft'
-import { getPosStyle } from '../../behavior/styles'
+import { getPosStyle, getTierStyle } from '../../behavior/styles'
 
 let viewPlayerIdTimer: NodeJS.Timeout
 
@@ -14,6 +14,8 @@ interface ADPViewProps {
   setViewPlayerId: (id: string) => void
 }
 
+type PositionFilter = 'All' | 'QB' | 'RB' | 'WR' | 'TE'
+
 const ADPView: React.FC<ADPViewProps> = ({
   playerRanks,
   fantasySettings,
@@ -23,6 +25,7 @@ const ADPView: React.FC<ADPViewProps> = ({
   setViewPlayerId,
 }) => {
   const [currentPage, setCurrentPage] = useState(0) // 0-based page index
+  const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
   
   const roundsPerPage = 4
   const totalPages = Math.ceil(14 / roundsPerPage) // 4 pages (rounds 1-4, 5-8, 9-12, 13-14)
@@ -39,20 +42,25 @@ const ADPView: React.FC<ADPViewProps> = ({
       rounds[round] = []
     }
     
-          // Organize available players by ADP rounds
-      availablePlayers.forEach(player => {
-        const adp = getPlayerAdp(player, fantasySettings, boardSettings)
+    // Filter players by position if a specific position is selected
+    const filteredPlayers = positionFilter === 'All' 
+      ? availablePlayers 
+      : availablePlayers.filter(player => player.position === positionFilter)
+    
+    // Organize filtered players by ADP rounds
+    filteredPlayers.forEach(player => {
+      const adp = getPlayerAdp(player, fantasySettings, boardSettings)
+      
+      // Only include players with valid ADP data
+      if (adp && adp < 999) {
+        const adpRound = Math.floor((adp - 1) / fantasySettings.numTeams) + 1
         
-        // Only include players with valid ADP data
-        if (adp && adp < 999) {
-          const adpRound = Math.floor((adp - 1) / fantasySettings.numTeams) + 1
-          
-          // Add player to all rounds from round 1 up to their ADP round (since they should be available until drafted)
-          for (let round = 1; round <= Math.min(adpRound, numRounds); round++) {
-            rounds[round].push(player)
-          }
+        // Add player to all rounds from round 1 up to their ADP round (since they should be available until drafted)
+        for (let round = 1; round <= Math.min(adpRound, numRounds); round++) {
+          rounds[round].push(player)
         }
-      })
+      }
+    })
     
     // Sort players within each round by ADP
     Object.keys(rounds).forEach(round => {
@@ -66,7 +74,7 @@ const ADPView: React.FC<ADPViewProps> = ({
     })
     
     return rounds
-  }, [playerRanks.availPlayersByAdp, fantasySettings, boardSettings])
+  }, [playerRanks.availPlayersByAdp, fantasySettings, boardSettings, positionFilter])
 
   const handlePrevPage = () => {
     setCurrentPage(Math.max(0, currentPage - 1))
@@ -101,8 +109,20 @@ const ADPView: React.FC<ADPViewProps> = ({
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-semibold text-gray-800">
             Available By Round Sorted By Rank
+            {positionFilter !== 'All' && ` - ${positionFilter} Only`}
           </h2>
           <div className="flex items-center space-x-2">
+            <select
+              value={positionFilter}
+              onChange={(e) => setPositionFilter(e.target.value as PositionFilter)}
+              className="px-2 py-1 text-sm border border-gray-300 rounded bg-white text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="All">All Positions</option>
+              <option value="QB">QB Only</option>
+              <option value="RB">RB Only</option>
+              <option value="WR">WR Only</option>
+              <option value="TE">TE Only</option>
+            </select>
             <button
               onClick={handlePrevPage}
               disabled={currentPage === 0}
@@ -130,12 +150,18 @@ const ADPView: React.FC<ADPViewProps> = ({
             </button>
           </div>
         </div>
-        <p className="text-sm text-gray-600">
-          Shows players available in each round based on their Average Draft Position
-        </p>
-        <p className="text-xs text-gray-500 mt-1">
-          Use ← → arrow keys or buttons to navigate between round groups
-        </p>
+        <div className="flex flex-col text-left">
+          <p className="text-sm text-gray-600">
+            Grayed out players you can still get in the next round
+          </p>
+          <p className="text-sm text-gray-600">
+            Shows players available in each round based on their Average Draft Position
+            {positionFilter !== 'All' && ` (filtered to ${positionFilter} players only)`}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Use ← → arrow keys or buttons to navigate between round groups
+          </p>
+        </div>
       </div>
       
       <div className="grid grid-cols-4 gap-2 min-w-full">
@@ -155,9 +181,15 @@ const ADPView: React.FC<ADPViewProps> = ({
                 const adp = getPlayerAdp(player, fantasySettings, boardSettings)
                 const posStyle = getPosStyle(player.position)
                 const adpRound = getRoundIdxForPickNum(adp, fantasySettings.numTeams) + 1
+                const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
+                const { tier } = metrics
+                const { tierNumber } = tier || {}
+                const tierStyle = getTierStyle(tierNumber)
+
                 const isHoveringPlayer = viewPlayerId === player.id
                 const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
-                const bgColor = isHoveringPlayer ? 'bg-yellow-300' : (adpRound === round ? posStyle : 'bg-gray-100')
+                const defaultCardBgStyle = positionFilter === 'All' ? posStyle : tierStyle
+                const bgColor = isHoveringPlayer ? 'bg-yellow-300' : (adpRound === round ? defaultCardBgStyle : 'bg-gray-100')
                 
                 return (
                   <div
