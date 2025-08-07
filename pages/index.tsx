@@ -486,6 +486,8 @@ const Home: FC = () => {
                 draftStarted={draftStarted}
                 getDraftRoundForPickNum={getDraftRoundForPickNum}
                 viewPlayerId={viewPlayerId}
+                draftHistory={draftHistory}
+                viewRosterIdx={myPickNum-1}
               />
             </div>
 

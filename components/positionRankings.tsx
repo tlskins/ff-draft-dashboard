@@ -9,6 +9,7 @@ import { getPosStyle } from '../behavior/styles'
 import RankingView from './views/RankingView'
 import BestAvailByRoundView from './views/BestAvailByRoundView'
 import EditRankingsView from './views/EditRankingsView'
+import RosterDisplay from './RosterDisplay'
 
 
 
@@ -45,6 +46,8 @@ interface PositionRankingsProps {
   draftStarted: boolean,
   getDraftRoundForPickNum: (pickNum: number) => (string | null)[],
   viewPlayerId: string | null,
+  draftHistory: (string | null)[],
+  viewRosterIdx: number,
 }
 
 const PositionRankings = ({
@@ -76,6 +79,8 @@ const PositionRankings = ({
   playerLib,
   draftStarted,
   getDraftRoundForPickNum,
+  draftHistory,
+  viewRosterIdx,
 
   onSelectPlayer,
   onPurgePlayer,
@@ -83,6 +88,7 @@ const PositionRankings = ({
   viewPlayerId,
 }: PositionRankingsProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
+  const [showRostersModal, setShowRostersModal] = useState(false)
 
   const draftBoard = useMemo(() => {
     const myCurrRound = myCurrentRound(currPick, myPickNum, fantasySettings.numTeams)
@@ -163,12 +169,20 @@ const PositionRankings = ({
             </select>
             
             { draftView === DraftView.RANKING && (
-              <button
-                className="p-1 m-1 border rounded bg-red-500 text-white shadow hover:bg-red-600"
-                onClick={() => setShowPurgedModal(true)}
-              >
-                View Purged Players ({purgedCount})
-              </button>
+              <>
+                <button
+                  className="p-1 m-1 border rounded bg-red-500 text-white shadow hover:bg-red-600"
+                  onClick={() => setShowPurgedModal(true)}
+                >
+                  View Purged Players ({purgedCount})
+                </button>
+                <button
+                  className="p-1 m-1 border rounded bg-green-500 text-white shadow hover:bg-green-600"
+                  onClick={() => setShowRostersModal(true)}
+                >
+                  View Rosters
+                </button>
+              </>
             ) }
           </div>
         </div>
@@ -296,6 +310,27 @@ const PositionRankings = ({
                 </>
               )
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Rosters Modal */}
+      {showRostersModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <RosterDisplay
+              rosters={rosters}
+              draftHistory={draftHistory}
+              playerLib={playerLib}
+              settings={fantasySettings}
+              viewRosterIdx={viewRosterIdx}
+            />
+            <button
+              onClick={() => setShowRostersModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl z-10 bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
+            >
+              ×
+            </button>
           </div>
         </div>
       )}
