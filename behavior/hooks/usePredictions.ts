@@ -200,7 +200,9 @@ export const usePredictions = ({
   const maxCurrPick = useRef(0);
 
   const predictOptimalGreedyRoster = useCallback(() => {
-    const myPicks = getMyPicksBetween(currPick-1, settings.numTeams * 10, myPickNum, settings.numTeams);
+    // When draft hasn't started, predict from pick 1. When started, predict from current pick
+    const startPick = draftStarted ? currPick - 1 : 1;
+    const myPicks = getMyPicksBetween(startPick, settings.numTeams * 10, myPickNum, settings.numTeams);
     const getPlayerRank = (player: Player) => {
         return settings.ppr ? player.pprRankTier || 999 : player.stdRankTier || 999;
     }
@@ -329,7 +331,7 @@ export const usePredictions = ({
     }
     
     setOptimalRosters(topRosters);
-  }, [boardSettings, currPick, myPickNum, playerRanks, rankingSummaries, rosters, settings]);
+  }, [boardSettings, currPick, draftStarted, myPickNum, playerRanks, rankingSummaries, rosters, settings]);
 
   const predictPicks = useCallback(() => {
     if (rosters.length === 0 || !draftStarted) {

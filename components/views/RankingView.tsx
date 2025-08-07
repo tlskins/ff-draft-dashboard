@@ -223,11 +223,6 @@ const RankingView = ({
                         const currRankDiff = Math.abs(currPick - (overallRank || 0))
                         const isHoveringPlayer = viewPlayerId === id
                         const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
-                        if ( team === 'WAS' ) {
-                          console.log("viewPlayerId", viewPlayerId)
-                          console.log("id", id)
-                          console.log("isHoveringPlayer", isHoveringPlayer)
-                        }
 
                         return(
                           <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}

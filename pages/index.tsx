@@ -128,8 +128,6 @@ const Home: FC = () => {
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
 
-  console.log("viewPlayerId", viewPlayerId)
-  
   // Custom ranking state - modal now shows automatically when draftView === CUSTOM_RANKING
   
   const currentOptimalRoster = optimalRosters[selectedOptimalRosterIdx] || optimalRosters[0]

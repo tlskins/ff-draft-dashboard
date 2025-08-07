@@ -21,7 +21,6 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
 }) => {
 
   const onLoadPlayers = useCallback(() => {
-    console.log('onLoadPlayers', boardSettings?.ranker)
     const playerData = getPlayerData()
     if (playerData) {
       const { players, rankingsSummaries } = playerData

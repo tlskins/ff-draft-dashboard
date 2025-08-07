@@ -127,7 +127,6 @@ export const useRanks = ({
     setBoardSettings({ ...boardSettings, adpRanker })
   }
   const onCreatePlayerRanks = useCallback((players: Player[], boardSettings: BoardSettings) => {
-    console.log('onCreatePlayerRanks', players, settings, boardSettings)
     const nextPlayerRanks = createPlayerRanks( players, settings, boardSettings )
     setPlayerRanks(nextPlayerRanks)
   }, [settings, boardSettings])
@@ -223,7 +222,6 @@ export const useRanks = ({
     setPlayerLib({ ...nextPlayerLib })
     setPlayersByPosByTeam({ ...nextPlayersByPosByTeam })
     setPlayerRanks({ ...nextRanks })
-    console.log('start custom ranking', nextPlayerLib, nextPlayersByPosByTeam, nextRanks)
     return true
   }
 
@@ -232,7 +230,6 @@ export const useRanks = ({
   }
 
   const onClearCustomRanking = () => {
-    console.log('onClearCustomRanking', playerLib, playerRanks)
     // Remove custom rankings from all players
     Object.values(playerLib).forEach(player => {
       if (player.ranks?.[ThirdPartyRanker.CUSTOM]) {
@@ -252,7 +249,6 @@ export const useRanks = ({
   }
 
   const onReorderPlayerInPosition = (playerId: string, position: keyof PlayerRanks, newIndex: number) => {
-    console.log('onReorderPlayerInPosition', playerId, position, newIndex)
     if (!isEditingCustomRanking || !canEditCustomRankings()) return
 
     const positionPlayers = [...playerRanks[position]]
@@ -299,7 +295,6 @@ export const useRanks = ({
   }
 
   const onUpdateTierBoundary = (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => {
-    console.log('onUpdateTierBoundary', position, tierNumber, newBoundaryIndex)
     if (!isEditingCustomRanking || !canEditCustomRankings()) return
 
     const positionPlayers = [...playerRanks[position]]
