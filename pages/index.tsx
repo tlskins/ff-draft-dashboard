@@ -369,18 +369,6 @@ const Home: FC = () => {
         <div className="flex flex-col items-center mt-4">
           {/* Stats and Positional Breakdowns */}
           <div className="flex flex-row justify-center w-screen relative my-4 grid grid-cols-12 gap-1 px-1">
-            {/* <div className="col-span-1 flex flex-col justify-start ml-2 p-1">
-              <Rosters
-                draftStarted={draftStarted}
-                viewRosterIdx={viewRosterIdx}
-                setViewRosterIdx={setViewRosterIdx}
-                rosters={rosters}
-                playerLib={playerLib}
-                rankingSummaries={rankingSummaries}
-                boardSettings={boardSettings}
-                settings={settings}
-              />
-            </div> */}
 
             <div className="col-span-3 flex flex-col justify-start ml-2 p-1">
               {currentOptimalRoster && Object.keys(currentOptimalRoster.roster).length > 0 && (
@@ -438,15 +426,15 @@ const Home: FC = () => {
                   </div>
                 </div>
               )}
-              <HistoricalStats
-                settings={settings}
-                player={viewPlayerId ? playerLib[viewPlayerId] : null}
-              />
               <RankingSummaryDisplay
                 activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
                 rankingSummaries={rankingSummaries}
                 settings={settings}
                 ranker={boardSettings.ranker}
+              />
+              <HistoricalStats
+                settings={settings}
+                player={viewPlayerId ? playerLib[viewPlayerId] : null}
               />
             </div>
 
