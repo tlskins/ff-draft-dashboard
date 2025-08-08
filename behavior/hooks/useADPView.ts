@@ -18,8 +18,8 @@ export const useADPView = ({ playerRanks, fantasySettings, boardSettings, myPick
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
   
   const roundsPerPage = 3
-  const totalPages = Math.ceil(14 / roundsPerPage) // 4 pages (rounds 1-4, 5-8, 9-12, 13-14)
-  const startRound = currentPage * roundsPerPage + 1
+  const totalPages = 14 - roundsPerPage + 1 // 12 pages (rounds 1-3, 2-4, ..., 12-14)
+  const startRound = currentPage + 1
   const endRound = Math.min(startRound + roundsPerPage - 1, 14)
   
   // Organize player targets by round with dividers

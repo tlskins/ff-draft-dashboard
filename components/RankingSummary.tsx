@@ -77,7 +77,7 @@ const RankingSummaryDisplay: React.FC<RankingSummaryProps> = ({ settings, active
         </table>
       </div>
       <div className="flex flex-row justify-center">
-        <table className="table-auto text-sm border-separate border-spacing-0 border border-slate-500 shadow-md mt-4 text-sm">
+        <table className="table-auto text-sm border-separate border-spacing-0 border border-slate-500 shadow-md mt-4">
           <thead>
             <tr className="text-left">
               <th className="border-2 border-slate-700 bg-blue-100 p-2">
@@ -97,7 +97,7 @@ const RankingSummaryDisplay: React.FC<RankingSummaryProps> = ({ settings, active
           <tbody className="text-xs">
             {tiers.map((tier) => {
               const isPlayerTier = tier.tierNumber === projPlayerTier?.tierNumber;
-              const tierColor = isPlayerTier ? 'bg-green-100' : 'bg-blue-100';
+              const tierColor = isPlayerTier ? 'bg-yellow-300' : '';
               const tierAvg = (tier.lowerLimitValue + tier.upperLimitValue) / 2;
               return (
               <tr key={tier.tierNumber}>
