@@ -8,8 +8,6 @@ import { RankingViewProps } from "../../types/DraftBoardTypes"
 import { getDraftBoard, getIconTypes } from "../../behavior/DraftBoardUtils"
 import { isTitleCard } from "../../types/DraftBoardTypes"
 
-let viewPlayerIdTimer: NodeJS.Timeout
-
 const RankingView = ({
   playerRanks,
   predictedPicks,
@@ -62,7 +60,7 @@ const RankingView = ({
     <>
       {/* Controls for ranking view */}
       <div className="flex flex-row mb-4 align-center">
-        <div className="flex flex-col text-left">
+        <div className="flex flex-col text-left h-32">
           <h2 className="text-2xl font-bold mb-2">Rankings By Position</h2>
           <div className="flex flex-row mb-2">
             <select
@@ -81,32 +79,39 @@ const RankingView = ({
             </select>
           </div>
           
-          { !showNextPreds &&
-            <>
+          {/* Fixed height container for prediction info */}
+          <div className="h-12">
+            { !showNextPreds &&
+              <>
+                <div className="flex flex-row">
+                  <div className={`w-8 h-2 rounded ${ predBgColor }`} />
+                  <p className="ml-2 text-xs font-semibold">
+                    ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 2 ).length }) players predicted taken before your turn
+                  </p>
+                </div>
+                <p className="text-xs mt-1"> 
+                  hold ALT to see players predicted taken before your NEXT turn
+                </p>
+              </>
+            }
+            { showNextPreds &&
               <div className="flex flex-row">
-                <div className={`w-8 h-2 rounded ${ predBgColor }`} />
-                <p className="ml-2 text-xs font-semibold">
-                  ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 2 ).length }) players predicted taken before your turn
+                <div className={`w-8 h-2 rounded ${ nextPredBgColor }`} />
+                <p className="ml-2 text-xs">
+                  ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 3 ).length }) players predicted taken before your NEXT-NEXT turn
                 </p>
               </div>
-              <p className="text-xs mt-1"> 
-                hold ALT to see players predicted taken before your NEXT turn
+            }
+          </div>
+          
+          {/* Fixed height container for sort help text */}
+          <div className="h-5">
+            { !rankByAdp &&
+              <p className="text-xs"> 
+                hold SHIFT to see players sorted by { boardSettings.adpRanker } ranking
               </p>
-            </>
-          }
-          { showNextPreds &&
-            <div className="flex flex-row">
-              <div className={`w-8 h-2 rounded ${ nextPredBgColor }`} />
-              <p className="ml-2 text-xs">
-                ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 3 ).length }) players predicted taken before your NEXT-NEXT turn
-              </p>
-            </div>
-          }
-          { !rankByAdp &&
-            <p className="text-xs mt-1"> 
-              hold SHIFT to see players sorted by { boardSettings.adpRanker } ranking
-            </p>
-          }
+            }
+          </div>
         </div>
       </div>
 
@@ -231,18 +236,7 @@ const RankingView = ({
                             className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle}`}
                             onMouseEnter={ () => {
                               setViewPlayerId(id)
-                              // if ( viewPlayerIdTimer ) {
-                              //   clearTimeout( viewPlayerIdTimer )
-                              // }
-                              // viewPlayerIdTimer = setTimeout(() => {
-                              //   setViewPlayerId(id)
-                              // }, 250)
                             }}
-                            // onMouseLeave={ () => {
-                            //   if ( viewPlayerIdTimer ) {
-                            //     clearTimeout( viewPlayerIdTimer )
-                            //   }
-                            // }}
                           >
                             <div className="flex flex-col text-center items-center">
                               <p className="text-sm font-semibold flex text-center">
