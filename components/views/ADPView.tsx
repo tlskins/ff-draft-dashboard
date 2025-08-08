@@ -15,6 +15,7 @@ interface ADPViewProps {
   playerTargets: PlayerTarget[]
   playerLib: { [key: string]: Player }
   addPlayerTarget: (player: Player, targetBelowPick: number) => void
+  replacePlayerTargets: (targets: PlayerTarget[]) => void
   removePlayerTarget: (playerId: string) => void
 }
 
@@ -29,6 +30,7 @@ const ADPView: React.FC<ADPViewProps> = ({
   playerTargets,
   playerLib,
   addPlayerTarget,
+  replacePlayerTargets,
   removePlayerTarget,
 }) => {
   const {
@@ -43,7 +45,10 @@ const ADPView: React.FC<ADPViewProps> = ({
     organizedTargets,
     handlePrevPage,
     handleNextPage,
-  } = useADPView({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib })
+    handleSaveFavorites,
+    handleLoadFavorites,
+    handleClearFavorites,
+  } = useADPView({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib, addPlayerTarget, replacePlayerTargets, removePlayerTarget })
   
   const getRoundCount = useCallback((round: number) => {
     return (playersByRound[round] || []).filter( (player, playerIdx) => {
@@ -126,6 +131,28 @@ const ADPView: React.FC<ADPViewProps> = ({
             <p className="text-xs text-purple-600">
               ({playerTargets.length} players)
             </p>
+            <div className="flex gap-1 mt-2">
+              <button
+                onClick={handleSaveFavorites}
+                className="flex-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                disabled={playerTargets.length === 0}
+              >
+                Save
+              </button>
+              <button
+                onClick={handleLoadFavorites}
+                className="flex-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              >
+                Load
+              </button>
+              <button
+                onClick={handleClearFavorites}
+                className="flex-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                disabled={playerTargets.length === 0}
+              >
+                Clear
+              </button>
+            </div>
           </div>
           
           <div className="flex flex-col space-y-1 p-2">

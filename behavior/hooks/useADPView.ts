@@ -11,9 +11,12 @@ interface UseADPViewProps {
   myPicks: number[]
   playerTargets: PlayerTarget[]
   playerLib: { [key: string]: Player }
+  addPlayerTarget: (player: Player, targetBelowPick: number) => void
+  replacePlayerTargets: (targets: PlayerTarget[]) => void
+  removePlayerTarget: (playerId: string) => void
 }
 
-export const useADPView = ({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib }: UseADPViewProps) => {
+export const useADPView = ({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib, addPlayerTarget, replacePlayerTargets, removePlayerTarget }: UseADPViewProps) => {
   const [currentPage, setCurrentPage] = useState(0) // 0-based page index
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
   
@@ -137,6 +140,51 @@ export const useADPView = ({ playerRanks, fantasySettings, boardSettings, myPick
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [currentPage, totalPages])
 
+  // Favorites management functions
+  const handleSaveFavorites = () => {
+    try {
+      localStorage.setItem('ff-draft-favorites', JSON.stringify(playerTargets))
+      alert('Favorites saved successfully!')
+    } catch (error) {
+      alert('Failed to save favorites')
+    }
+  }
+
+  const handleLoadFavorites = () => {
+    try {
+      const savedFavorites = localStorage.getItem('ff-draft-favorites')
+      if (savedFavorites) {
+        const savedTargets = JSON.parse(savedFavorites) as PlayerTarget[]
+        if (Array.isArray(savedTargets) && savedTargets.length > 0) {
+          const newTargets = savedTargets.filter( target => {
+            const player = playerLib[target.playerId]
+            return Boolean(player)
+          })
+          console.log('newTargets', newTargets)
+          replacePlayerTargets(newTargets)
+          alert(`Loaded ${newTargets.length} favorites!`)
+        } else {
+          alert('No saved favorites found')
+        }
+      } else {
+        alert('No saved favorites found')
+      }
+    } catch (error) {
+      alert('Failed to load favorites')
+    }
+  }
+
+  const handleClearFavorites = () => {
+    if (confirm('Are you sure you want to clear all player targets?')) {
+      playerTargets.forEach(target => removePlayerTarget(target.playerId))
+      try {
+        localStorage.removeItem('ff-draft-favorites')
+      } catch (error) {
+        // Ignore localStorage errors on clear
+      }
+    }
+  }
+
   return {
     // State
     currentPage,
@@ -154,5 +202,8 @@ export const useADPView = ({ playerRanks, fantasySettings, boardSettings, myPick
     // Functions
     handlePrevPage,
     handleNextPage,
+    handleSaveFavorites,
+    handleLoadFavorites,
+    handleClearFavorites,
   }
 } 

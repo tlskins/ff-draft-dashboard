@@ -89,6 +89,7 @@ const Home: FC = () => {
     // player targeting funcs
     addPlayerTarget,
     removePlayerTarget,
+    replacePlayerTargets,
   } = useRanks({ settings, myPickNum })
 
   const usingCustomRanking = boardSettings.ranker === ThirdPartyRanker.CUSTOM
@@ -498,6 +499,7 @@ const Home: FC = () => {
                 playerTargets={playerTargets}
                 playerLib={playerLib}
                 addPlayerTarget={addPlayerTarget}
+                replacePlayerTargets={replacePlayerTargets}
                 removePlayerTarget={removePlayerTarget}
               />
             </div>

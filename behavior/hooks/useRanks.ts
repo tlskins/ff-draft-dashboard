@@ -56,6 +56,8 @@ export const useRanks = ({
   })
   const [rankingSummaries, setRankingSummaries] = useState<RankingSummary[]>([])
   const noPlayers = Object.keys(playerLib).length === 0
+
+  console.log('playerTargets', playerTargets)
   
   // Custom ranking state
   const [isEditingCustomRanking, setIsEditingCustomRanking] = useState(false)
@@ -378,7 +380,7 @@ export const useRanks = ({
   }
 
   // Player targeting functions
-  const addPlayerTarget = (player: Player, targetBelowPick: number) => {
+  const addPlayerTarget = useCallback((player: Player, targetBelowPick: number) => {
     // Check if player is already targeted
     const isAlreadyTargeted = playerTargets.some(target => target.playerId === player.id)
     if (isAlreadyTargeted) return
@@ -388,11 +390,15 @@ export const useRanks = ({
       targetBelowPick
     }
     setPlayerTargets([...playerTargets, newTarget])
-  }
+  }, [playerTargets])
 
-  const removePlayerTarget = (playerId: string) => {
+  const replacePlayerTargets = useCallback((newTargets: PlayerTarget[]) => {
+    setPlayerTargets(newTargets)
+  }, [playerTargets])
+
+  const removePlayerTarget = useCallback((playerId: string) => {
     setPlayerTargets(playerTargets.filter(target => target.playerId !== playerId))
-  }
+  }, [playerTargets])
 
   return {
     // state
@@ -429,6 +435,7 @@ export const useRanks = ({
     onUpdateTierBoundary,
     // player targeting funcs
     addPlayerTarget,
+    replacePlayerTargets,
     removePlayerTarget,
   }
 }
