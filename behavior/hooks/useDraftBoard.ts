@@ -53,7 +53,7 @@ export const useDraftBoard = ({
 
   useEffect(() => {
     const picksPerPlayer = 14
-    setMyPicks(getMyPicksBetween(1, settings.numTeams * picksPerPlayer, myPickNum, settings.numTeams))
+    setMyPicks(getMyPicksBetween(0, settings.numTeams * picksPerPlayer, myPickNum, settings.numTeams))
   }, [myPickNum, settings.numTeams])
 
   // settings management

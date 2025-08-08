@@ -25,7 +25,6 @@ const ADPView: React.FC<ADPViewProps> = ({
   boardSettings,
   viewPlayerId,
   myPicks,
-  onSelectPlayer,
   setViewPlayerId,
   playerTargets,
   playerLib,
@@ -37,7 +36,6 @@ const ADPView: React.FC<ADPViewProps> = ({
     currentPage,
     positionFilter,
     setPositionFilter,
-    roundsPerPage,
     totalPages,
     startRound,
     endRound,
@@ -228,7 +226,7 @@ const ADPView: React.FC<ADPViewProps> = ({
                 const firstTeamPlayers = roundPlayers.slice(0, fantasySettings.numTeams)
                 const remainingPlayers = roundPlayers.slice(fantasySettings.numTeams)
                 
-                const renderPlayer = (player: any, idx: number, isInFirstGroup: boolean = false) => {
+                const renderPlayer = (player: any, idx: number) => {
                   const adp = getPlayerAdp(player, fantasySettings, boardSettings)
                   const posStyle = getPosStyle(player.position)
                   const adpRound = getRoundIdxForPickNum(adp, fantasySettings.numTeams) + 1
@@ -297,10 +295,10 @@ const ADPView: React.FC<ADPViewProps> = ({
                   <>
                     {firstTeamPlayers.length > 0 && (
                       <div className="border-2 border border-gray-400 rounded-lg p-1 space-y-1">
-                        {firstTeamPlayers.map((player, idx) => renderPlayer(player, idx, true))}
+                        {firstTeamPlayers.map((player, idx) => renderPlayer(player, idx))}
                       </div>
                     )}
-                    {remainingPlayers.map((player, idx) => renderPlayer(player, idx + fantasySettings.numTeams, false))}
+                    {remainingPlayers.map((player, idx) => renderPlayer(player, idx + fantasySettings.numTeams))}
                   </>
                 )
               })()}

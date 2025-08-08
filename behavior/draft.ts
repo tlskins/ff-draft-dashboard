@@ -497,6 +497,13 @@ export const picksSinceCurrPick = (currPick: number, nextPick: number, myPickNum
 export const getMyPicksBetween = ( startPick: number, endPick: number, myPickNum: number, numTeams: number ): number[] => {
     let myNextPick = startPick
     const myPicks = []
+    
+    // Special case: if startPick is 0 (before draft starts), find my first pick directly
+    if (startPick === 0 && myPickNum <= endPick) {
+        myPicks.push(myPickNum);
+        myNextPick = myPickNum;
+    }
+    
     while ( myNextPick < endPick ) {
         myNextPick = getMyNextPick( myNextPick, myPickNum, numTeams )
         if ( myNextPick <= endPick ) {

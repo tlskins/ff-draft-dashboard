@@ -16,7 +16,16 @@ interface UseADPViewProps {
   removePlayerTarget: (playerId: string) => void
 }
 
-export const useADPView = ({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib, addPlayerTarget, replacePlayerTargets, removePlayerTarget }: UseADPViewProps) => {
+export const useADPView = ({
+  playerRanks,
+  fantasySettings,
+  boardSettings,
+  myPicks,
+  playerTargets,
+  playerLib,
+  replacePlayerTargets,
+  removePlayerTarget,
+}: UseADPViewProps) => {
   const [currentPage, setCurrentPage] = useState(0) // 0-based page index
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
   
@@ -84,6 +93,7 @@ export const useADPView = ({ playerRanks, fantasySettings, boardSettings, myPick
       ? availablePlayers 
       : availablePlayers.filter(player => player.position === positionFilter)
     
+    console.log('create players by round', myPicks, fantasySettings, boardSettings)
     // Organize filtered players by ADP rounds
     filteredPlayers.forEach(player => {
       const adp = getPlayerAdp(player, fantasySettings, boardSettings)
@@ -99,7 +109,7 @@ export const useADPView = ({ playerRanks, fantasySettings, boardSettings, myPick
       }
     })
     
-    // Sort players within each round by ADP
+    // Sort players within each round by overall rank
     Object.keys(rounds).forEach(round => {
       rounds[parseInt(round)].sort((a, b) => {
         const metricsA = getPlayerMetrics(a, fantasySettings, boardSettings)
