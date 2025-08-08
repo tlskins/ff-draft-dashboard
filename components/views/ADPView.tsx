@@ -1,105 +1,60 @@
-import React, { useMemo, useState, useEffect } from 'react'
-import { Player, FantasySettings, BoardSettings } from '../../types'
+import React, { useCallback } from 'react'
+import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../types'
 import { getPlayerAdp, getPlayerMetrics, getRoundIdxForPickNum, PlayerRanks } from '../../behavior/draft'
 import { getPosStyle, getTierStyle } from '../../behavior/styles'
+import { useADPView, PositionFilter } from '../../behavior/hooks/useADPView'
 
 interface ADPViewProps {
   playerRanks: PlayerRanks
   fantasySettings: FantasySettings
   boardSettings: BoardSettings
   viewPlayerId: string | null
+  myPicks: number[]
   onSelectPlayer: (player: Player) => void
   setViewPlayerId: (id: string) => void
+  playerTargets: PlayerTarget[]
+  playerLib: { [key: string]: Player }
+  addPlayerTarget: (player: Player, targetBelowPick: number) => void
+  removePlayerTarget: (playerId: string) => void
 }
-
-type PositionFilter = 'All' | 'QB' | 'RB' | 'WR' | 'TE'
 
 const ADPView: React.FC<ADPViewProps> = ({
   playerRanks,
   fantasySettings,
   boardSettings,
   viewPlayerId,
+  myPicks,
   onSelectPlayer,
   setViewPlayerId,
+  playerTargets,
+  playerLib,
+  addPlayerTarget,
+  removePlayerTarget,
 }) => {
-  const [currentPage, setCurrentPage] = useState(0) // 0-based page index
-  const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
+  const {
+    currentPage,
+    positionFilter,
+    setPositionFilter,
+    roundsPerPage,
+    totalPages,
+    startRound,
+    endRound,
+    playersByRound,
+    organizedTargets,
+    handlePrevPage,
+    handleNextPage,
+  } = useADPView({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib })
   
-  const roundsPerPage = 4
-  const totalPages = Math.ceil(14 / roundsPerPage) // 4 pages (rounds 1-4, 5-8, 9-12, 13-14)
-  const startRound = currentPage * roundsPerPage + 1
-  const endRound = Math.min(startRound + roundsPerPage - 1, 14)
-  
-  const playersByRound = useMemo(() => {
-    const availablePlayers = playerRanks.availPlayersByAdp
-    const numRounds = 14
-    const rounds: { [round: number]: Player[] } = {}
-    
-    // Initialize rounds 1-14
-    for (let round = 1; round <= numRounds; round++) {
-      rounds[round] = []
-    }
-    
-    // Filter players by position if a specific position is selected
-    const filteredPlayers = positionFilter === 'All' 
-      ? availablePlayers 
-      : availablePlayers.filter(player => player.position === positionFilter)
-    
-    // Organize filtered players by ADP rounds
-    filteredPlayers.forEach(player => {
+  const getRoundCount = useCallback((round: number) => {
+    return (playersByRound[round] || []).filter( (player, playerIdx) => {
+      if ( playerIdx >= fantasySettings.numTeams ) {
+        return false
+      }
       const adp = getPlayerAdp(player, fantasySettings, boardSettings)
-      
-      // Only include players with valid ADP data
-      if (adp && adp < 999) {
-        const adpRound = Math.floor((adp - 1) / fantasySettings.numTeams) + 1
-        
-        // Add player to all rounds from round 1 up to their ADP round (since they should be available until drafted)
-        for (let round = 1; round <= Math.min(adpRound, numRounds); round++) {
-          rounds[round].push(player)
-        }
-      }
-    })
-    
-    // Sort players within each round by ADP
-    Object.keys(rounds).forEach(round => {
-      rounds[parseInt(round)].sort((a, b) => {
-        const metricsA = getPlayerMetrics(a, fantasySettings, boardSettings)
-        const metricsB = getPlayerMetrics(b, fantasySettings, boardSettings)
-        const rankA = metricsA.overallRank || 999
-        const rankB = metricsB.overallRank || 999
-        return rankA - rankB
-      })
-    })
-    
-    return rounds
-  }, [playerRanks.availPlayersByAdp, fantasySettings, boardSettings, positionFilter])
-
-  const handlePrevPage = () => {
-    setCurrentPage(Math.max(0, currentPage - 1))
-  }
-  
-  const handleNextPage = () => {
-    setCurrentPage(Math.min(totalPages - 1, currentPage + 1))
-  }
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      // Only handle if no input is focused
-      if (document.activeElement?.tagName === 'INPUT') return
-      
-      if (event.key === 'ArrowLeft' && currentPage > 0) {
-        event.preventDefault()
-        handlePrevPage()
-      } else if (event.key === 'ArrowRight' && currentPage < totalPages - 1) {
-        event.preventDefault()
-        handleNextPage()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyPress)
-    return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [currentPage, totalPages])
+      const adpRound = getRoundIdxForPickNum(adp, fantasySettings.numTeams) + 1
+      return adpRound === round
+    }).length
+  }, [fantasySettings, boardSettings, playersByRound])
 
   return (
     <div className="h-screen overflow-y-scroll bg-white p-4">
@@ -163,6 +118,75 @@ const ADPView: React.FC<ADPViewProps> = ({
       </div>
       
       <div className="grid grid-cols-4 gap-2 min-w-full">
+        <div className="flex flex-col min-w-0">
+          <div className="sticky top-0 bg-yellow-300 border-b-2 border-purple-300 p-2 text-center">
+            <h3 className="text-sm font-semibold text-purple-800">
+              Player Targets
+            </h3>
+            <p className="text-xs text-purple-600">
+              ({playerTargets.length} players)
+            </p>
+          </div>
+          
+          <div className="flex flex-col space-y-1 p-2">
+            {organizedTargets.map((item, idx) => {
+              if (item.type === 'divider') {
+                return (
+                  <div key={`divider-${item.round}-${item.pick}`}
+                    className="pt-2 mt-2"
+                  >
+                    <p className="text-xs rounded bg-blue-500 text-white text-center font-semibold py-1 px-2">
+                      Round {item.round} - Pick {item.pick}
+                    </p>
+                  </div>
+                )
+              } else {
+                const player = item.player
+                const adp = getPlayerAdp(player, fantasySettings, boardSettings)
+                const posStyle = getPosStyle(player.position)
+                const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
+                const { tier } = metrics
+                const { tierNumber } = tier || {}
+                const tierStyle = getTierStyle(tierNumber)
+
+                const isHoveringPlayer = viewPlayerId === player.id
+                const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
+                const defaultCardBgStyle = positionFilter === 'All' ? posStyle : tierStyle
+                const bgColor = isHoveringPlayer ? 'bg-yellow-300' : defaultCardBgStyle
+                
+                return (
+                  <div
+                    key={`target-${player.id}-${idx}`}
+                    className={`p-2 rounded shadow-sm cursor-pointer transition-colors ${bgColor} ${cardBorderStyle}`}
+                    onClick={() => removePlayerTarget(player.id)}
+                    onMouseEnter={() => {
+                      setViewPlayerId(player.id)
+                    }}
+                    onMouseLeave={() => {
+                      setViewPlayerId('')
+                    }}
+                  >
+                    <div className="flex flex-col text-center items-center">
+                      <p className="text-xs font-semibold truncate w-full">
+                        {player.fullName}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {player.position} - {player.team}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        ADP: {adp.toFixed(1)}
+                      </p>
+                      <p className="text-xs text-red-600 font-medium">
+                        Click to remove
+                      </p>
+                    </div>
+                  </div>
+                )
+              }
+            })}
+          </div>
+        </div>
+
         {Array.from({ length: endRound - startRound + 1 }, (_, i) => startRound + i).map(round => (
           <div key={round} className="flex flex-col min-w-0">
             <div className="sticky top-0 bg-blue-100 border-b-2 border-blue-300 p-2 text-center">
@@ -170,7 +194,7 @@ const ADPView: React.FC<ADPViewProps> = ({
                 Round {round}
               </h3>
               <p className="text-xs text-blue-600">
-                ({playersByRound[round]?.length || 0} players)
+                ({getRoundCount(round)} players)
               </p>
             </div>
             
@@ -189,11 +213,14 @@ const ADPView: React.FC<ADPViewProps> = ({
                 const defaultCardBgStyle = positionFilter === 'All' ? posStyle : tierStyle
                 const bgColor = isHoveringPlayer ? 'bg-yellow-300' : (adpRound === round ? defaultCardBgStyle : 'bg-gray-100')
                 
+                // Find the user's pick for this round
+                const userPickForRound = myPicks[round - 1] // round is 1-based, array is 0-based
+                const isPlayerTargeted = playerTargets.some(target => target.playerId === player.id)
+                
                 return (
                   <div
                     key={`${player.id}-${round}-${idx}`}
-                    className={`p-2 rounded shadow-sm cursor-pointer transition-colors ${bgColor} ${cardBorderStyle}`}
-                    onClick={() => onSelectPlayer(player)}
+                    className={`p-2 rounded shadow-sm transition-colors ${bgColor} ${cardBorderStyle}`}
                     onMouseEnter={() => {
                       setViewPlayerId(player.id)
                     }}
@@ -211,6 +238,30 @@ const ADPView: React.FC<ADPViewProps> = ({
                       <p className="text-xs text-gray-500">
                         ADP: {adp.toFixed(1)}
                       </p>
+                      <div className="flex gap-1 mt-1">
+                        {!isPlayerTargeted && userPickForRound && (
+                          <button
+                            className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              addPlayerTarget(player, userPickForRound)
+                            }}
+                          >
+                            Target
+                          </button>
+                        )}
+                        {isPlayerTargeted && (
+                          <button
+                            className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              removePlayerTarget(player.id)
+                            }}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )

@@ -1,5 +1,5 @@
 import { useMemo, useState, Dispatch, SetStateAction, useEffect } from 'react';
-import { calcCurrRoundPick, getRoundIdxForPickNum } from '../draft';
+import { calcCurrRoundPick, getRoundIdxForPickNum, getMyPicksBetween } from '../draft';
 import { FantasySettings } from 'types';
 
 interface UseDraftBoardProps {
@@ -20,6 +20,7 @@ interface UseDraftBoardReturn {
   isEvenRound: boolean;
   currRoundPick: number;
   currMyPickNum: number;
+  myPicks: number[];
   setNumTeams: (numTeams: number) => void;
   onNavLeft: () => void;
   onNavRight: (draftHistory: (string | null)[]) => void;
@@ -43,12 +44,17 @@ export const useDraftBoard = ({
   })
   const [draftStarted, setDraftStarted] = useState<boolean>(false);
   const [myPickNum, setMyPickNum] = useState<number>(defaultMyPickNum);
-
   const [currPick, setCurrPick] = useState<number>(1);
+  const [myPicks, setMyPicks] = useState<number[]>([])
 
   useEffect(() => {
     setSettings({ ...settings, numTeams: defaultNumTeams })
   }, [defaultNumTeams])
+
+  useEffect(() => {
+    const picksPerPlayer = 14
+    setMyPicks(getMyPicksBetween(1, settings.numTeams * picksPerPlayer, myPickNum, settings.numTeams))
+  }, [myPickNum, settings.numTeams])
 
   // settings management
 
@@ -120,6 +126,7 @@ export const useDraftBoard = ({
     isEvenRound,
     currRoundPick,
     currMyPickNum,
+    myPicks,
     onNavLeft,
     onNavRight,
     onNavRoundUp,

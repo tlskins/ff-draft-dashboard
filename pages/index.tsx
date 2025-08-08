@@ -44,6 +44,7 @@ const Home: FC = () => {
     isEvenRound,
     currRoundPick,
     currMyPickNum,
+    myPicks,
     // funcs
     onNavLeft,
     onNavRight,
@@ -66,6 +67,7 @@ const Home: FC = () => {
     rosters,
     draftHistory,
     isEditingCustomRanking,
+    playerTargets,
     // funcs
     onCreatePlayerRanks,
     onDraftPlayer,
@@ -84,6 +86,9 @@ const Home: FC = () => {
     onClearCustomRanking,
     onReorderPlayerInPosition,
     onUpdateTierBoundary,
+    // player targeting funcs
+    addPlayerTarget,
+    removePlayerTarget,
   } = useRanks({ settings, myPickNum })
 
   const usingCustomRanking = boardSettings.ranker === ThirdPartyRanker.CUSTOM
@@ -127,6 +132,8 @@ const Home: FC = () => {
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
+
+  console.log('index page playerRanks', playerRanks)
 
   // Custom ranking state - modal now shows automatically when draftView === CUSTOM_RANKING
   
@@ -375,7 +382,7 @@ const Home: FC = () => {
                 <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-2 bg-blue-50 shadow-md border border-blue-200">
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-semibold underline">
-                      Optimal Roster By Rank vs ADP ({currentOptimalRoster.value.toFixed(1)} {currentOptimalRoster.metric})
+                      Optimal Total {currentOptimalRoster.metric} Roster By Proj Tier ({currentOptimalRoster.value.toFixed(1)} {currentOptimalRoster.metric})
                     </p>
                     {optimalRosters.length > 1 && (
                       <select
@@ -487,6 +494,11 @@ const Home: FC = () => {
                 onSelectPlayer={onSelectPlayer}
                 setViewPlayerId={setViewPlayerId}
                 viewPlayerId={viewPlayerId}
+                myPicks={myPicks}
+                playerTargets={playerTargets}
+                playerLib={playerLib}
+                addPlayerTarget={addPlayerTarget}
+                removePlayerTarget={removePlayerTarget}
               />
             </div>
           </div>

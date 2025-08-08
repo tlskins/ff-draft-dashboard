@@ -264,3 +264,8 @@ export interface OptimalRoster {
         [pick: number]: OptimalRosterPick;
     }
 }
+
+export interface PlayerTarget {
+    playerId: string;
+    targetBelowPick?: number;
+}

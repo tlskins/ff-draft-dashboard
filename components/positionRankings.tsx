@@ -160,7 +160,7 @@ const PositionRankings = ({
         <div className="flex flex-col text-left">
           <div className="flex flex-row">
             <select
-              className="p-1 m-1 border rounded bg-blue-100 shadow"
+              className="px-3 py-1 mx-2 border rounded bg-blue-100 shadow"
               value={draftView}
               disabled={isEditingCustomRanking}
               onChange={ e => setDraftView(e.target.value as DraftView) }
@@ -171,13 +171,13 @@ const PositionRankings = ({
             { draftView === DraftView.RANKING && (
               <>
                 <button
-                  className="p-1 m-1 border rounded bg-red-500 text-white shadow hover:bg-red-600"
+                  className="px-3 py-1 text-sm rounded bg-red-300 hover:bg-red-600 hover:text-white mx-2"
                   onClick={() => setShowPurgedModal(true)}
                 >
                   View Purged Players ({purgedCount})
                 </button>
                 <button
-                  className="p-1 m-1 border rounded bg-green-500 text-white shadow hover:bg-green-600"
+                  className="px-3 py-1 text-sm rounded bg-green-300 hover:bg-green-600 hover:text-white mx-2"
                   onClick={() => setShowRostersModal(true)}
                 >
                   View Rosters

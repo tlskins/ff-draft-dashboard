@@ -16,7 +16,16 @@ import {
   createRosters,
   removeFromRoster,
 } from "../draft"
-import { FantasySettings, Player, BoardSettings, ThirdPartyRanker, FantasyRanker, RankingSummary, FantasyPosition } from '../../types'
+import {
+  FantasySettings,
+  Player,
+  BoardSettings,
+  ThirdPartyRanker,
+  FantasyRanker,
+  RankingSummary,
+  FantasyPosition,
+  PlayerTarget,
+} from '../../types'
 
 interface UseRanksProps {
   settings: FantasySettings
@@ -35,6 +44,7 @@ export const useRanks = ({
   })
   const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
   const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})
+  const [playerTargets, setPlayerTargets] = useState<PlayerTarget[]>([])
   const [playerRanks, setPlayerRanks] = useState<PlayerRanks>({
     [FantasyPosition.QUARTERBACK]: [],
     [FantasyPosition.RUNNING_BACK]: [],
@@ -149,11 +159,13 @@ export const useRanks = ({
   const onPurgeAvailPlayer = (player: Player) => {
     setPlayerRanks(purgePlayerFromPlayerRanks( playerRanks, player, settings, boardSettings ))
   }
-  const onApplyRankingSortBy = (byAdp: boolean) => {
+  const onApplyRankingSortBy = useCallback((byAdp: boolean) => {
     const sortBy = byAdp ? SortPlayersByMetric.Adp : SortPlayersByMetric.PosRank
-    const nextPlayerRanks = sortPlayerRanksByRank( playerRanks, settings, boardSettings, sortBy )
-    setPlayerRanks( nextPlayerRanks )
-  }
+    setPlayerRanks(currentPlayerRanks => {
+      const nextPlayerRanks = sortPlayerRanksByRank( currentPlayerRanks, settings, boardSettings, sortBy )
+      return nextPlayerRanks
+    })
+  }, [settings, boardSettings])
   const createPlayerLibrary = (players: Player[]) => {
     const playerLib = players.reduce((acc: PlayerLibrary, player) => {
       acc[player.id] = player
@@ -365,6 +377,23 @@ export const useRanks = ({
     setPlayerRanks(nextPlayerRanks)
   }
 
+  // Player targeting functions
+  const addPlayerTarget = (player: Player, targetBelowPick: number) => {
+    // Check if player is already targeted
+    const isAlreadyTargeted = playerTargets.some(target => target.playerId === player.id)
+    if (isAlreadyTargeted) return
+
+    const newTarget: PlayerTarget = {
+      playerId: player.id,
+      targetBelowPick
+    }
+    setPlayerTargets([...playerTargets, newTarget])
+  }
+
+  const removePlayerTarget = (playerId: string) => {
+    setPlayerTargets(playerTargets.filter(target => target.playerId !== playerId))
+  }
+
   return {
     // state
     rankingSummaries,
@@ -378,6 +407,7 @@ export const useRanks = ({
     rosters,
     viewRosterIdx,
     isEditingCustomRanking,
+    playerTargets,
     // funcs
     onDraftPlayer,
     onRemoveDraftedPlayer,
@@ -397,5 +427,8 @@ export const useRanks = ({
     onClearCustomRanking,
     onReorderPlayerInPosition,
     onUpdateTierBoundary,
+    // player targeting funcs
+    addPlayerTarget,
+    removePlayerTarget,
   }
 }
