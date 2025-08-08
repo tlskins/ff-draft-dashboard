@@ -197,11 +197,8 @@ const ADPView: React.FC<ADPViewProps> = ({
                       <p className="text-xs font-semibold truncate w-full">
                         {player.fullName}
                       </p>
-                      <p className="text-xs text-gray-600">
-                        {player.position} - {player.team}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        ADP: {adp.toFixed(1)}
+                      <p className="text-xs font-medium text-gray-600">
+                        {player.position} | {player.team} | ADP {adp.toFixed(0)}
                       </p>
                       <p className="text-xs text-red-600 font-medium">
                         Click to remove
@@ -225,7 +222,7 @@ const ADPView: React.FC<ADPViewProps> = ({
               </p>
             </div>
             
-            <div className="flex flex-col space-y-1 p-2">
+            <div className="flex flex-col space-y-1 p-0.5">
               {(() => {
                 const roundPlayers = playersByRound[round] || []
                 const firstTeamPlayers = roundPlayers.slice(0, fantasySettings.numTeams)
@@ -252,7 +249,7 @@ const ADPView: React.FC<ADPViewProps> = ({
                   return (
                     <div
                       key={`${player.id}-${round}-${idx}`}
-                      className={`p-2 rounded shadow-sm transition-colors ${bgColor} ${cardBorderStyle}`}
+                      className={`p-0.5 mt-0.5 rounded shadow-sm transition-colors ${bgColor} ${cardBorderStyle}`}
                       onMouseEnter={() => {
                         setViewPlayerId(player.id)
                       }}
@@ -260,20 +257,17 @@ const ADPView: React.FC<ADPViewProps> = ({
                         setViewPlayerId('')
                       }}
                     >
-                      <div className="flex flex-col text-center items-center">
+                      <div className="flex flex-col text-center items-center py-0.5">
                         <p className="text-xs font-semibold truncate w-full">
                           {player.fullName}
                         </p>
-                        <p className="text-xs text-gray-600">
-                          {player.position} | {player.team}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          ADP RD {adpRound}
+                        <p className="text-xs font-medium text-gray-600">
+                          {player.position} | {player.team} | ADP RD {adpRound}
                         </p>
                         <div className="flex gap-1 mt-1">
                           {!isPlayerTargeted && userPickForRound && (
                             <button
-                              className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                              className="px-1 py-0.5 text-xs bg-green-500 text-white rounded shadow hover:bg-green-600 transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 addPlayerTarget(player, userPickForRound)
@@ -284,7 +278,7 @@ const ADPView: React.FC<ADPViewProps> = ({
                           )}
                           {isPlayerTargeted && (
                             <button
-                              className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                              className="px-1 py-0.5 text-xs bg-red-500 text-white rounded shadow hover:bg-red-600 transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 removePlayerTarget(player.id)
@@ -302,7 +296,7 @@ const ADPView: React.FC<ADPViewProps> = ({
                 return (
                   <>
                     {firstTeamPlayers.length > 0 && (
-                      <div className="border-2 border border-gray-400 rounded-lg p-2 space-y-1">
+                      <div className="border-2 border border-gray-400 rounded-lg p-1 space-y-1">
                         {firstTeamPlayers.map((player, idx) => renderPlayer(player, idx, true))}
                       </div>
                     )}
