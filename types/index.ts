@@ -51,6 +51,11 @@ export enum ThirdPartyRanker {
     CUSTOM = "Custom",
 }
 
+export enum ThirdPartyADPRanker {
+    ESPN = ThirdPartyRanker.ESPN,
+    FPROS = ThirdPartyRanker.FPROS,
+}
+
 export enum DataRanker {
     LAST_SSN_TTL_FPTS = "Last Season Total FPTS",
     LAST_SSN_PPG = "Last Season PPG",
@@ -93,7 +98,7 @@ export interface FantasySettings {
 
 export interface BoardSettings {
     ranker: FantasyRanker;
-    adpRanker: FantasyRanker;
+    adpRanker: ThirdPartyADPRanker;
 }
 
 export const BaseStats = [
@@ -194,6 +199,7 @@ export interface PlayerRanking {
     position: FantasyPosition;
     metricValuePpr?: number;
     metricValueStd?: number;
+    adp?: number;
     standardOverallRank?: number;
     pprOverallRank?: number;
     standardPositionRank: number; // positional rank must exist

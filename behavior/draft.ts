@@ -81,13 +81,13 @@ export const getPlayerMetrics = (
     }
     const overallRank = settings.ppr ? ranks.pprOverallRank : ranks.standardOverallRank
     const posRank = settings.ppr ? ranks.pprPositionRank : ranks.standardPositionRank
+    const adp = adpRanks.adp || 999
 
     return {
         overallRank,
         posRank,
         tier: settings.ppr ? ranks.pprPositionTier : ranks.standardPositionTier,
-        // TODO - adp should use a new adp field on rankings
-        adp: settings.ppr ? adpRanks.pprOverallRank : adpRanks.standardOverallRank,
+        adp: parseFloat(adp.toFixed(1)),
         overallOrPosRank: overallRank == null ? posRank : overallRank,
     }
 }
@@ -328,6 +328,8 @@ export const sortPlayerRanksByRank = (playerRanks: PlayerRanks, settings: Fantas
         const players = playerRanks[pos as keyof PlayerRanks]
         playerRanks[pos as keyof PlayerRanks] = sortPlayersByRank( players, settings, boardSettings, sortBy )
     })
+    playerRanks.availPlayersByOverallRank = sortPlayersByRank( playerRanks.availPlayersByOverallRank, settings, boardSettings, SortPlayersByMetric.OverallRank )
+    playerRanks.availPlayersByAdp = sortPlayersByRank( playerRanks.availPlayersByAdp, settings, boardSettings, SortPlayersByMetric.Adp )
 
     return { ...playerRanks }
 }

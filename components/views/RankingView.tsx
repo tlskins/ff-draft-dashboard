@@ -220,8 +220,8 @@ const RankingView = ({
                         const isBelowAdp = currPick - (adp || 0) >= 0
                         const isBelowRank = currPick - (overallRank || 0) >= 0
                         const adpRound = getRoundIdxForPickNum(adp === undefined ? 999 : Math.floor(adp), fantasySettings.numTeams) + 1
-                        const currAdpDiff = Math.abs(currPick - (adp || 0))
-                        const currRankDiff = Math.abs(currPick - (overallRank || 0))
+                        const currAdpDiff = Math.abs(currPick - (adp || 0)).toFixed(1)
+                        const currRankDiff = Math.abs(currPick - (overallRank || 0)).toFixed(1)
                         const rankDiffScore = ((overallRank || 999) - (adp || 999)) * -1
                         const isHoveringPlayer = viewPlayerId === id
                         const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
@@ -249,16 +249,16 @@ const RankingView = ({
                                 { fullName } ({team})
                               </p>
                               <p className="text-xs">
-                                { rankText } ({rankDiffScore > 0 ? '+' : '-'}{Math.abs(rankDiffScore)} vs ADP) { tier ? ` | Tier ${tierNumber}${projTierText}` : "" }
+                                { rankText } ({rankDiffScore > 0 ? '+' : '-'}{Math.abs(rankDiffScore).toFixed(1)} vs ADP) { tier ? ` | Tier ${tierNumber}${projTierText}` : "" }
                               </p>
                               { !rankByAdp &&
                                 <p className={`text-xs ${getPickDiffColor(currAdpDiff)} text-white rounded px-1 py-0.5 mt-0.5`}>
-                                  NOW { currAdpDiff.toFixed(0) } { isBelowAdp ? 'BELOW' : 'ABOVE' } ADP (R{adpRound} P{adp?.toFixed(1)})
+                                  NOW { currAdpDiff } { isBelowAdp ? 'BELOW' : 'ABOVE' } ADP (R{adpRound} P{adp?.toFixed(1)})
                                 </p>
                               }
                               { rankByAdp &&
                                 <p className={`text-xs ${getPickDiffColor(currRankDiff)} text-white rounded px-1 py-0.5 mt-0.5`}>
-                                  { currRankDiff.toFixed(0) } { isBelowRank ? 'BELOW' : 'ABOVE' } Rank
+                                  { currRankDiff } { isBelowRank ? 'BELOW' : 'ABOVE' } Rank
                                 </p>
                               }
         

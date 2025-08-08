@@ -25,6 +25,7 @@ import {
   RankingSummary,
   FantasyPosition,
   PlayerTarget,
+  ThirdPartyADPRanker,
 } from '../../types'
 
 interface UseRanksProps {
@@ -40,7 +41,7 @@ export const useRanks = ({
 }: UseRanksProps) => {
   const [boardSettings, setBoardSettings] = useState<BoardSettings>({
     ranker: ThirdPartyRanker.HARRIS,
-    adpRanker: ThirdPartyRanker.ESPN,
+    adpRanker: ThirdPartyADPRanker.ESPN,
   })
   const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
   const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})
@@ -57,8 +58,6 @@ export const useRanks = ({
   const [rankingSummaries, setRankingSummaries] = useState<RankingSummary[]>([])
   const noPlayers = Object.keys(playerLib).length === 0
 
-  console.log('playerTargets', playerTargets)
-  
   // Custom ranking state
   const [isEditingCustomRanking, setIsEditingCustomRanking] = useState(false)
 
@@ -84,7 +83,7 @@ export const useRanks = ({
 
   useEffect(() => {
     onRecalculatePlayerRanks()
-  }, [settings.ppr, boardSettings.ranker, playerLib])
+  }, [settings.ppr, boardSettings.ranker, boardSettings.adpRanker, playerLib])
 
   const getRosterIdxFromPick = (pickNum: number) => {
     const roundIdx = getRoundIdxForPickNum(pickNum, settings.numTeams)
@@ -140,11 +139,9 @@ export const useRanks = ({
     setPlayerRanks(nextPlayerRanks)
   }, [settings, boardSettings, playerLib])
   const onSetRanker = (ranker: FantasyRanker) => {
-    const nextBoardSettings = { ...boardSettings, ranker }
-    setBoardSettings(nextBoardSettings)
-    // onCreatePlayerRanks(Object.values(playerLib), nextBoardSettings)
+    setBoardSettings({ ...boardSettings, ranker })
   }
-  const onSetAdpRanker = (adpRanker: FantasyRanker) => {
+  const onSetAdpRanker = (adpRanker: ThirdPartyADPRanker) => {
     setBoardSettings({ ...boardSettings, adpRanker })
   }
   const onCreatePlayerRanks = useCallback((players: Player[], boardSettings: BoardSettings) => {

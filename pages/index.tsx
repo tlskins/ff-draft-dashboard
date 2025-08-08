@@ -14,7 +14,7 @@ import { useDraftListener } from '../behavior/hooks/useDraftListener'
 import { usePredictions } from "../behavior/hooks/usePredictions"
 import { getPosStyle, getTierStyle } from "../behavior/styles"
 import { getProjectedTier } from "../behavior/draft"
-import { Player, ThirdPartyRanker, DataRanker } from "types"
+import { Player, ThirdPartyRanker, DataRanker, ThirdPartyADPRanker } from "types"
 
 export enum DraftView {
   RANKING = "Rankings By Position",
@@ -124,17 +124,11 @@ const Home: FC = () => {
     rankingSummaries,
   })
 
-  // TODO - fix edit custom tiers
-  // const [hasCustomTiers, setHasCustomTiers] = useState<boolean | null>(null)
-  const [viewRosterIdx, setViewRosterIdx] = useState(0)
   const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
   const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
   const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN)
-  const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
-
-  console.log('index page playerRanks', playerRanks)
 
   // Custom ranking state - modal now shows automatically when draftView === CUSTOM_RANKING
   
@@ -152,7 +146,6 @@ const Home: FC = () => {
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [predictedPicks, playerLib, settings.ppr, noPlayers, currPick, predNextTiers])
-  
 
   // key press / up commands
   const onKeyUp = useCallback( (e: KeyboardEvent) => {
@@ -194,9 +187,6 @@ const Home: FC = () => {
     }
   }, [ playerLib, playerRanks, settings.ppr, noPlayers, currPick, predNextTiers, draftHistory])
 
-
-  // TODO - fix edit custom tiers
-  // const [hasCustomTiers, setHasCustomTiers] = useState<boolean | null>(null)
 
   // drafting
 
@@ -314,6 +304,22 @@ const Home: FC = () => {
                 { Object.values(ThirdPartyRanker).map( ranker => <option key={ranker} value={ ranker }> { ranker } </option>) }
               </select>
             </div>
+
+            <div className={`flex flex-row text-sm text-center mr-4 rounded shadow-md ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>
+              <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
+                ADP Source
+              </p>
+              <select
+                className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
+                value={boardSettings.adpRanker}
+                onChange={ e => {
+                  onSetAdpRanker(e.target.value as ThirdPartyADPRanker)
+                }}
+                disabled={draftStarted}
+              >
+                { Object.values(ThirdPartyADPRanker).map( ranker => <option key={ranker} value={ ranker }> { ranker } </option>) }
+              </select>
+            </div>
           </div>
         </div>
 
@@ -335,44 +341,7 @@ const Home: FC = () => {
               </p>
             }
           </div>
-
-          { alertMsg &&
-            <div className="flex flex-row h-full items-center justify-center items-center px-2 py-1 my-4 shadow-lg rounded-lg border-2 bg-green-200">
-              <p className="font-semibold text-sm text-green-500 my-1"> { alertMsg } </p>
-            </div>
-          }
         </div>
-
-        { (!draftStarted && noPlayers && !alertMsg) &&
-          <div className="w-full font-semibold shadow rounded-md py-8 pl-32 pr-8 my-8 bg-white">
-            <ol className="list-decimal text-left">
-              <li className="my-4">
-                Download
-                <span className="text-blue-600 underline mx-1 cursor-pointer"
-                  onClick={() => window.open('https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US')}
-                >
-                  chrome extension
-                </span>
-                to listen to live drafts. Refresh this website after installing extension. Currently support ESPN or NFL.com draft platforms. Just need to install extension, opening extension is not necessary after installation.
-              </li>
-              <li className="my-4">
-                Choose your draft settings including your pick number, # of teams, and format (STD / PPR).
-              </li>
-              <li className="my-4">
-                Load ranks from your favorite analysts to get started.
-              </li>
-              <li className="my-4">
-                Optionally export ranks to csv and edit custom ranks and or tiers.
-              </li>
-              <li className="my-4">
-                Find a mock draft or open your draft platform app in a separate window. Remember to keep your draft platform at least partially visible so that the tab doesn't go to sleep. Press the green alert to start listening to the draft's picks.
-              </li>
-              <li className="my-4">
-                Hover on players to view player profiles and positional stats. Click players to manually select players at current picks. Press left, right arrows to navigate to different picks within a round. Press up and down to navigate to different rounds.
-              </li>
-            </ol>
-          </div>
-        }
 
         <div className="flex flex-col items-center mt-4">
           {/* Stats and Positional Breakdowns */}
@@ -509,10 +478,6 @@ const Home: FC = () => {
 
       { draftStarted &&
         <div className="flex items-center justify-center w-full h-24 border-t border-gray-300 fixed bottom-0 z-10 bg-gray-200">
-          {/* <div className="flex flex-col">
-            <a href="https://www.flaticon.com/free-icons/pulse" title="pulse icons">Pulse icons created by Kalashnyk - <span className="font-bold ml-2 text-blue-600 underline">Flaticon</span></a>
-          </div> */}
-
           <div className="flex flex-col items-center">
             <p className="font-semibold underline text-center rounded py-1">
               Round { roundIdx+1 } Pick { currRoundPick } (#{ currPick } Overall)

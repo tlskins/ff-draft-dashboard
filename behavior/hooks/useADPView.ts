@@ -160,7 +160,6 @@ export const useADPView = ({ playerRanks, fantasySettings, boardSettings, myPick
             const player = playerLib[target.playerId]
             return Boolean(player)
           })
-          console.log('newTargets', newTargets)
           replacePlayerTargets(newTargets)
           alert(`Loaded ${newTargets.length} favorites!`)
         } else {
