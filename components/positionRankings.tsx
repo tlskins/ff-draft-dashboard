@@ -171,13 +171,13 @@ const PositionRankings = ({
             { draftView === DraftView.RANKING && (
               <>
                 <button
-                  className="px-3 py-1 text-sm rounded bg-red-300 hover:bg-red-600 hover:text-white mx-2"
+                  className="px-3 py-1 text-sm rounded shadow bg-red-300 hover:bg-red-600 hover:text-white mx-2"
                   onClick={() => setShowPurgedModal(true)}
                 >
                   View Purged Players ({purgedCount})
                 </button>
                 <button
-                  className="px-3 py-1 text-sm rounded bg-green-300 hover:bg-green-600 hover:text-white mx-2"
+                  className="px-3 py-1 text-sm rounded shadow bg-green-300 hover:bg-green-600 hover:text-white mx-2"
                   onClick={() => setShowRostersModal(true)}
                 >
                   View Rosters

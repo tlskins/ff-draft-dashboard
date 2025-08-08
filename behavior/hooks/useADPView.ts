@@ -17,7 +17,7 @@ export const useADPView = ({ playerRanks, fantasySettings, boardSettings, myPick
   const [currentPage, setCurrentPage] = useState(0) // 0-based page index
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
   
-  const roundsPerPage = 3
+  const roundsPerPage = 4
   const totalPages = 14 - roundsPerPage + 1 // 12 pages (rounds 1-3, 2-4, ..., 12-14)
   const startRound = currentPage + 1
   const endRound = Math.min(startRound + roundsPerPage - 1, 14)

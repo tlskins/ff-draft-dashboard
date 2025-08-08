@@ -117,7 +117,7 @@ const ADPView: React.FC<ADPViewProps> = ({
         </div>
       </div>
       
-      <div className="grid grid-cols-4 gap-2 min-w-full">
+      <div className="grid grid-cols-5 gap-2 min-w-full">
         <div className="flex flex-col min-w-0">
           <div className="sticky top-0 bg-yellow-300 border-b-2 border-purple-300 p-2 text-center">
             <h3 className="text-sm font-semibold text-purple-800">
@@ -199,73 +199,90 @@ const ADPView: React.FC<ADPViewProps> = ({
             </div>
             
             <div className="flex flex-col space-y-1 p-2">
-              {playersByRound[round]?.map((player, idx) => {
-                const adp = getPlayerAdp(player, fantasySettings, boardSettings)
-                const posStyle = getPosStyle(player.position)
-                const adpRound = getRoundIdxForPickNum(adp, fantasySettings.numTeams) + 1
-                const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
-                const { tier } = metrics
-                const { tierNumber } = tier || {}
-                const tierStyle = getTierStyle(tierNumber)
+              {(() => {
+                const roundPlayers = playersByRound[round] || []
+                const firstTeamPlayers = roundPlayers.slice(0, fantasySettings.numTeams)
+                const remainingPlayers = roundPlayers.slice(fantasySettings.numTeams)
+                
+                const renderPlayer = (player: any, idx: number, isInFirstGroup: boolean = false) => {
+                  const adp = getPlayerAdp(player, fantasySettings, boardSettings)
+                  const posStyle = getPosStyle(player.position)
+                  const adpRound = getRoundIdxForPickNum(adp, fantasySettings.numTeams) + 1
+                  const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
+                  const { tier } = metrics
+                  const { tierNumber } = tier || {}
+                  const tierStyle = getTierStyle(tierNumber)
 
-                const isHoveringPlayer = viewPlayerId === player.id
-                const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
-                const defaultCardBgStyle = positionFilter === 'All' ? posStyle : tierStyle
-                const bgColor = isHoveringPlayer ? 'bg-yellow-300' : (adpRound === round ? defaultCardBgStyle : 'bg-gray-100')
-                
-                // Find the user's pick for this round
-                const userPickForRound = myPicks[round - 1] // round is 1-based, array is 0-based
-                const isPlayerTargeted = playerTargets.some(target => target.playerId === player.id)
-                
-                return (
-                  <div
-                    key={`${player.id}-${round}-${idx}`}
-                    className={`p-2 rounded shadow-sm transition-colors ${bgColor} ${cardBorderStyle}`}
-                    onMouseEnter={() => {
-                      setViewPlayerId(player.id)
-                    }}
-                    onMouseLeave={() => {
-                      setViewPlayerId('')
-                    }}
-                  >
-                    <div className="flex flex-col text-center items-center">
-                      <p className="text-xs font-semibold truncate w-full">
-                        {player.fullName}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {player.position} - {player.team}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        ADP: {adp.toFixed(1)}
-                      </p>
-                      <div className="flex gap-1 mt-1">
-                        {!isPlayerTargeted && userPickForRound && (
-                          <button
-                            className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              addPlayerTarget(player, userPickForRound)
-                            }}
-                          >
-                            Target
-                          </button>
-                        )}
-                        {isPlayerTargeted && (
-                          <button
-                            className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              removePlayerTarget(player.id)
-                            }}
-                          >
-                            Remove
-                          </button>
-                        )}
+                  const isHoveringPlayer = viewPlayerId === player.id
+                  const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
+                  const defaultCardBgStyle = positionFilter === 'All' ? posStyle : tierStyle
+                  const bgColor = isHoveringPlayer ? 'bg-yellow-300' : (adpRound === round ? defaultCardBgStyle : 'bg-gray-100')
+                  
+                  // Find the user's pick for this round
+                  const userPickForRound = myPicks[round - 1] // round is 1-based, array is 0-based
+                  const isPlayerTargeted = playerTargets.some(target => target.playerId === player.id)
+                  
+                  return (
+                    <div
+                      key={`${player.id}-${round}-${idx}`}
+                      className={`p-2 rounded shadow-sm transition-colors ${bgColor} ${cardBorderStyle}`}
+                      onMouseEnter={() => {
+                        setViewPlayerId(player.id)
+                      }}
+                      onMouseLeave={() => {
+                        setViewPlayerId('')
+                      }}
+                    >
+                      <div className="flex flex-col text-center items-center">
+                        <p className="text-xs font-semibold truncate w-full">
+                          {player.fullName}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          {player.position} | {player.team}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          ADP RD {adpRound}
+                        </p>
+                        <div className="flex gap-1 mt-1">
+                          {!isPlayerTargeted && userPickForRound && (
+                            <button
+                              className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                addPlayerTarget(player, userPickForRound)
+                              }}
+                            >
+                              Target
+                            </button>
+                          )}
+                          {isPlayerTargeted && (
+                            <button
+                              className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                removePlayerTarget(player.id)
+                              }}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )
+                }
+                
+                return (
+                  <>
+                    {firstTeamPlayers.length > 0 && (
+                      <div className="border-2 border border-gray-400 rounded-lg p-2 space-y-1">
+                        {firstTeamPlayers.map((player, idx) => renderPlayer(player, idx, true))}
+                      </div>
+                    )}
+                    {remainingPlayers.map((player, idx) => renderPlayer(player, idx + fantasySettings.numTeams, false))}
+                  </>
                 )
-              })}
+              })()}
             </div>
           </div>
         ))}

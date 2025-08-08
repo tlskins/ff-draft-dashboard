@@ -63,11 +63,8 @@ const RankingView = ({
       {/* Controls for ranking view */}
       <div className="flex flex-row mb-4 align-center">
         <div className="flex flex-col text-left">
-          <h2 className="text-2xl font-bold">Rankings By Position</h2>
-          <p className="text-sm text-gray-600">
-            Sort players by { boardSettings.ranker } ranking
-          </p>
-          <div className="flex flex-row">
+          <h2 className="text-2xl font-bold mb-2">Rankings By Position</h2>
+          <div className="flex flex-row mb-2">
             <select
                 className="p-1 m-1 border rounded bg-blue-100 shadow"
                 value={sortOption}
