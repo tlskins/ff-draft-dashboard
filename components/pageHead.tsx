@@ -9,11 +9,16 @@ interface PageHeadProps {
 }
 
 const PageHead: React.FC<PageHeadProps> = ({
-  title = "FF Draft Dashboard",
+  title = "Drafty",
   desc = "Live drafting dashboard that predicts players taken and better view of available players",
 }) => {
   return (
     <Head>
+      {/* Favicon */}
+      <link rel="icon" type="image/png" href="/sushitech_favicon.png" />
+      <link rel="shortcut icon" type="image/png" href="/sushitech_favicon.png" />
+      <link rel="apple-touch-icon" href="/sushitech_favicon.png" />
+      
       {process.env.NEXT_PUBLIC_ENV !== "dev" && (
         <>
           <script
@@ -38,7 +43,7 @@ const PageHead: React.FC<PageHeadProps> = ({
                     `,}}>
                 </script> */}
 
-          <title>FF Draft Dashboard</title>
+          <title>Drafty</title>
           <meta name="description" content={desc} />
 
           {/* <meta property="og:url" content="https://tennis-community-web.vercel.app/"/> */}
