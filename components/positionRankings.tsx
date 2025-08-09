@@ -41,6 +41,10 @@ interface PositionRankingsProps {
   onClearCustomRanking: () => void,
   onUpdateTierBoundary: (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => void,
   onCancelCustomRanking: () => void,
+  saveCustomRankings: () => boolean,
+  loadCustomRankings: () => boolean,
+  hasCustomRankingsSaved: () => boolean,
+  clearSavedCustomRankings: () => boolean,
   rosters: Roster[],
   playerLib: { [key: string]: Player },
   draftStarted: boolean,
@@ -48,6 +52,8 @@ interface PositionRankingsProps {
   viewPlayerId: string | null,
   draftHistory: (string | null)[],
   viewRosterIdx: number,
+  listenerActive: boolean,
+  activeDraftListenerTitle: string | null,
 }
 
 const PositionRankings = ({
@@ -75,12 +81,18 @@ const PositionRankings = ({
   onClearCustomRanking,
   onUpdateTierBoundary,
   onCancelCustomRanking,
+  saveCustomRankings,
+  loadCustomRankings,
+  hasCustomRankingsSaved,
+  clearSavedCustomRankings,
   rosters,
   playerLib,
   draftStarted,
   getDraftRoundForPickNum,
   draftHistory,
   viewRosterIdx,
+  listenerActive,
+  activeDraftListenerTitle,
 
   onSelectPlayer,
   onPurgePlayer,
@@ -132,6 +144,7 @@ const PositionRankings = ({
           onFinishCustomRanking={onFinishCustomRanking}
           onClearCustomRanking={onClearCustomRanking}
           onUpdateTierBoundary={onUpdateTierBoundary}
+          saveCustomRankings={saveCustomRankings}
         />
       )
     }
@@ -156,7 +169,27 @@ const PositionRankings = ({
     <></>
     :
     <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded shadow-md bg-white text-sm">
-      <div className="flex flex-row mb-4 align-center">
+      <div className="flex flex-col items-center justify-center content-center mb-2">
+        <div className="flex flex-col items-center w-full">
+          { (!activeDraftListenerTitle && !listenerActive) &&
+            <p className="bg-gray-300 font-semibold shadow rounded-md text-sm my-1 px-4">
+              Listener inactive
+            </p>
+          }
+          { (!activeDraftListenerTitle && listenerActive) &&
+            <p className="bg-yellow-300 font-semibold shadow rounded-md text-sm my-1 px-4">
+              Listener active...
+            </p>
+          }
+          { activeDraftListenerTitle &&
+            <p className="bg-green-300 font-semibold shadow rounded-md text-sm my-1 px-4">
+              Listening to: { activeDraftListenerTitle }
+            </p>
+          }
+        </div>
+      </div>  
+    
+      <div className="flex flex-row mb-4 align-center justify-center items-center content-center w-full">
         <div className="flex flex-col text-left">
           <div className="flex flex-row">
             <select
@@ -169,7 +202,7 @@ const PositionRankings = ({
             </select>
             
             { draftView === DraftView.RANKING && (
-              <>
+              <div className="flex flex-row">
                 <button
                   className="px-3 py-1 text-sm rounded shadow bg-red-300 hover:bg-red-600 hover:text-white mx-2"
                   onClick={() => setShowPurgedModal(true)}
@@ -182,7 +215,21 @@ const PositionRankings = ({
                 >
                   View Rosters
                 </button>
-              </>
+                {hasCustomRankingsSaved() && canEditCustomRankings && (
+                  <button
+                    className="px-3 py-1 text-sm rounded shadow bg-purple-300 hover:bg-purple-600 hover:text-white mx-2"
+                    onClick={() => {
+                      const success = loadCustomRankings()
+                      if (success) {
+                        // Optionally show a success message or update UI state
+                        console.log('Custom rankings loaded successfully')
+                      }
+                    }}
+                  >
+                    Load Saved Custom Rankings
+                  </button>
+                )}
+              </div>
             ) }
           </div>
         </div>

@@ -90,6 +90,11 @@ const Home: FC = () => {
     addPlayerTarget,
     removePlayerTarget,
     replacePlayerTargets,
+    // save/load custom rankings funcs
+    saveCustomRankings,
+    loadCustomRankings,
+    hasCustomRankingsSaved,
+    clearSavedCustomRankings,
     onLoadPlayers,
   } = useRanks({ settings, myPickNum })
 
@@ -322,25 +327,7 @@ const Home: FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center content-center mt-4">
-          <div className="flex flex-col items-center w-full">
-            { (!activeDraftListenerTitle && !listenerActive) &&
-              <p className="bg-gray-300 font-semibold shadow rounded-md text-sm my-1 px-4">
-                Listener inactive
-              </p>
-            }
-            { (!activeDraftListenerTitle && listenerActive) &&
-              <p className="bg-yellow-300 font-semibold shadow rounded-md text-sm my-1 px-4">
-                Listener active...
-              </p>
-            }
-            { activeDraftListenerTitle &&
-              <p className="bg-green-300 font-semibold shadow rounded-md text-sm my-1 px-4">
-                Listening to: { activeDraftListenerTitle }
-              </p>
-            }
-          </div>
-        </div>
+
 
         <div className="flex flex-col items-center mt-4">
           {/* Stats and Positional Breakdowns */}
@@ -445,6 +432,10 @@ const Home: FC = () => {
                 onCancelCustomRanking={() => {
                   setDraftView(DraftView.RANKING)
                 }}
+                saveCustomRankings={saveCustomRankings}
+                loadCustomRankings={loadCustomRankings}
+                hasCustomRankingsSaved={hasCustomRankingsSaved}
+                clearSavedCustomRankings={clearSavedCustomRankings}
                 rosters={rosters}
                 playerLib={playerLib}
                 draftStarted={draftStarted}
@@ -452,6 +443,8 @@ const Home: FC = () => {
                 viewPlayerId={viewPlayerId}
                 draftHistory={draftHistory}
                 viewRosterIdx={myPickNum-1}
+                listenerActive={listenerActive}
+                activeDraftListenerTitle={activeDraftListenerTitle}
               />
             </div>
 

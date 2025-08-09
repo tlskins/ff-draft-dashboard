@@ -82,57 +82,55 @@ const RankingView = ({
     <>
       {/* Controls for ranking view */}
       <div className="flex flex-row mb-4 align-center">
-        <div className="flex flex-col text-left h-32">
-          <h2 className="text-2xl font-bold mb-2">Rankings By Position</h2>
-          <div className="flex flex-row mb-2">
-            <select
-                className="p-1 m-1 border rounded bg-blue-100 shadow"
-                value={sortOption}
-                onChange={ e => setSortOption(e.target.value as SortOption) }
-              >
-              { Object.values(SortOption).map( (option: SortOption) => <option key={option} value={ option }> { option } </option>) }
-            </select>
-            <select
-                className="p-1 m-1 border rounded bg-blue-100 shadow"
-                value={highlightOption}
-                onChange={ e => setHighlightOption(e.target.value as HighlightOption) }
-              >
-              { Object.values(HighlightOption).map( (option: HighlightOption) => <option key={option} value={ option }> { option } </option>) }
-            </select>
-          </div>
-          
-          {/* Fixed height container for prediction info */}
-          <div className="h-12">
-            { !showNextPreds &&
-              <>
-                <div className="flex flex-row">
-                  <div className={`w-8 h-2 rounded ${ predBgColor }`} />
-                  <p className="ml-2 text-xs font-semibold">
-                    ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 2 ).length }) players predicted taken before your turn
+        <div className="flex flex-col text-left h-16 w-full">
+          <div className="grid grid-cols-2">
+            <div className="flex flex-col">
+              <h2 className="text-2xl font-bold mb-2">Rankings By Position</h2>
+              <div className="flex flex-row mb-2">
+                <select
+                    className="p-1 m-1 border rounded bg-blue-100 shadow"
+                    value={sortOption}
+                    onChange={ e => setSortOption(e.target.value as SortOption) }
+                  >
+                  { Object.values(SortOption).map( (option: SortOption) => <option key={option} value={ option }> { option } </option>) }
+                </select>
+                <select
+                    className="p-1 m-1 border rounded bg-blue-100 shadow"
+                    value={highlightOption}
+                    onChange={ e => setHighlightOption(e.target.value as HighlightOption) }
+                  >
+                  { Object.values(HighlightOption).map( (option: HighlightOption) => <option key={option} value={ option }> { option } </option>) }
+                </select>
+              </div>
+            </div>
+            <div className="flex flex-col h-full items-end content-end justify-end pb-2">
+              { !showNextPreds &&
+                <>
+                  <div className="flex flex-row justify-end">
+                    <div className={`w-8 h-2 rounded ${ predBgColor }`} />
+                    <p className="ml-2 text-xs font-semibold">
+                      ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 2 ).length }) players predicted taken before your turn
+                    </p>
+                  </div>
+                  <p className="text-xs mt-1 text-right"> 
+                    hold ALT to see players predicted taken before your NEXT turn
+                  </p>
+                </>
+              }
+              { showNextPreds &&
+                <div className="flex flex-row justify-end">
+                  <div className={`w-8 h-2 rounded ${ nextPredBgColor }`} />
+                  <p className="ml-2 text-xs text-right">
+                    ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 3 ).length }) players predicted taken before your NEXT-NEXT turn
                   </p>
                 </div>
-                <p className="text-xs mt-1"> 
-                  hold ALT to see players predicted taken before your NEXT turn
+              }
+              { !rankByAdp &&
+                <p className="text-xs text-right"> 
+                  hold SHIFT to see players sorted by { boardSettings.adpRanker } ranking
                 </p>
-              </>
-            }
-            { showNextPreds &&
-              <div className="flex flex-row">
-                <div className={`w-8 h-2 rounded ${ nextPredBgColor }`} />
-                <p className="ml-2 text-xs">
-                  ({ Object.values(predictedPicks).filter( p => !!p && p > 0 && p < 3 ).length }) players predicted taken before your NEXT-NEXT turn
-                </p>
-              </div>
-            }
-          </div>
-          
-          {/* Fixed height container for sort help text */}
-          <div className="h-5">
-            { !rankByAdp &&
-              <p className="text-xs"> 
-                hold SHIFT to see players sorted by { boardSettings.adpRanker } ranking
-              </p>
-            }
+              }
+            </div>
           </div>
         </div>
       </div>
@@ -189,9 +187,7 @@ const RankingView = ({
           <div className="flex flex-row">
             { draftBoardView.filter((column: any) => column.columnTitle !== 'Purge').map( (draftBoardColumn: any, i: number) => {
               const { columnTitle, cards } = draftBoardColumn
-
               const posStyle = getPosStyle(columnTitle)
-              
               return(
                 <div key={i} className="flex flex-row">
                   <div className="flex flex-col">

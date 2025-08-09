@@ -30,6 +30,7 @@ const EditRankingsView = ({
   onFinishCustomRanking,
   onClearCustomRanking,
   onUpdateTierBoundary,
+  saveCustomRankings,
 }: EditRankingsViewProps) => {
   const [shownPlayerId, setShownPlayerId] = useState<string | null>(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
@@ -103,14 +104,27 @@ const EditRankingsView = ({
             </span>
             <div className="flex flex-row">
               <button
-                  className="p-2 m-1 border rounded-md bg-green-500 text-white hover:bg-blue-600"
+                  className="p-2 m-1 border rounded-md bg-blue-500 text-white hover:bg-blue-600"
+                  onClick={() => {
+                    const success = saveCustomRankings()
+                    if (success) {
+                      alert('Custom rankings saved successfully!')
+                    } else {
+                      alert('Failed to save custom rankings')
+                    }
+                  }}
+                >
+                  Save Rankings
+              </button>
+              <button
+                  className="p-2 m-1 border rounded-md bg-green-500 text-white hover:bg-green-600"
                   onClick={onFinishCustomRanking}
                 >
                   Finish Editing
               </button>
               { hasCustomRanking &&
                 <button
-                    className="p-2 m-1 border rounded-md bg-gray-500 text-white hover:bg-blue-600"
+                    className="p-2 m-1 border rounded-md bg-gray-500 text-white hover:bg-gray-600"
                     onClick={onClearCustomRanking}
                   >
                     Clear Custom Rankings

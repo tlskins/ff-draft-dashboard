@@ -231,6 +231,7 @@ export const useRanks = ({
             ...player.ranks,
             [ThirdPartyRanker.CUSTOM]: {
               ...sourceRanking,
+              copiedRanker: selectedRankerToCopy,
               ranker: ThirdPartyRanker.CUSTOM,
             }
           }
@@ -405,6 +406,100 @@ export const useRanks = ({
     setPlayerTargets(playerTargets.filter(target => target.playerId !== playerId))
   }, [playerTargets])
 
+  // Save/Load custom rankings functionality
+  const saveCustomRankings = useCallback(() => {
+    if (!isEditingCustomRanking && boardSettings.ranker !== ThirdPartyRanker.CUSTOM) {
+      console.warn("Cannot save custom rankings when not using custom ranker")
+      return false
+    }
+
+    const saveData = {
+      players: Object.values(playerLib),
+      rankingSummaries: rankingSummaries,
+      cachedAt: rankingsCachedAt,
+      savedAt: new Date().toISOString(),
+      settings: settings // Save current fantasy settings too
+    }
+
+    try {
+      localStorage.setItem('ff-draft-custom-rankings', JSON.stringify(saveData))
+      console.log('Custom rankings saved successfully')
+      return true
+    } catch (error) {
+      console.error('Failed to save custom rankings:', error)
+      return false
+    }
+  }, [playerLib, rankingSummaries, rankingsCachedAt, isEditingCustomRanking, boardSettings.ranker, settings])
+
+  const loadCustomRankings = useCallback(() => {
+    try {
+      const savedData = localStorage.getItem('ff-draft-custom-rankings')
+      if (!savedData) {
+        return false
+      }
+
+      const parsedData = JSON.parse(savedData)
+      const { players, rankingSummaries: savedRankingSummaries, cachedAt: savedCachedAt } = parsedData
+
+      // Verify that we have valid custom rankings in the saved data
+      const hasCustomRankings = players.some((player: Player) => 
+        player.ranks && player.ranks[ThirdPartyRanker.CUSTOM]
+      )
+
+      if (!hasCustomRankings) {
+        console.warn("No custom rankings found in saved data")
+        return false
+      }
+
+      // Cannot load if draft has started or players are purged
+      if (!canEditCustomRankings()) {
+        console.warn("Cannot load custom rankings when draft has started or players are purged")
+        return false
+      }
+
+      // Load the data
+      onLoadPlayers(players, savedRankingSummaries, savedCachedAt)
+      
+      // Switch to custom ranker
+      setBoardSettings({ ...boardSettings, ranker: ThirdPartyRanker.CUSTOM })
+      
+      console.log('Custom rankings loaded successfully')
+      return true
+    } catch (error) {
+      console.error('Failed to load custom rankings:', error)
+      return false
+    }
+  }, [onLoadPlayers, boardSettings, canEditCustomRankings])
+
+  const hasCustomRankingsSaved = useCallback(() => {
+    try {
+      const savedData = localStorage.getItem('ff-draft-custom-rankings')
+      if (!savedData) return false
+
+      const parsedData = JSON.parse(savedData)
+      const { players } = parsedData
+
+      // Check if saved data has custom rankings
+      return players.some((player: Player) => 
+        player.ranks && player.ranks[ThirdPartyRanker.CUSTOM]
+      )
+    } catch (error) {
+      console.error('Error checking for saved custom rankings:', error)
+      return false
+    }
+  }, [])
+
+  const clearSavedCustomRankings = useCallback(() => {
+    try {
+      localStorage.removeItem('ff-draft-custom-rankings')
+      console.log('Saved custom rankings cleared')
+      return true
+    } catch (error) {
+      console.error('Failed to clear saved custom rankings:', error)
+      return false
+    }
+  }, [])
+
   return {
     // state
     rankingSummaries,
@@ -442,6 +537,11 @@ export const useRanks = ({
     addPlayerTarget,
     replacePlayerTargets,
     removePlayerTarget,
+    // save/load custom rankings funcs
+    saveCustomRankings,
+    loadCustomRankings,
+    hasCustomRankingsSaved,
+    clearSavedCustomRankings,
     // load funcs
     onLoadPlayers,
   }

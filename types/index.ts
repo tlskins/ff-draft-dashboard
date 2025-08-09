@@ -195,6 +195,7 @@ export interface PlayerMetrics {
 
 export interface PlayerRanking {
     playerId: string;
+    copiedRanker?: FantasyRanker;
     ranker: FantasyRanker;
     position: FantasyPosition;
     metricValuePpr?: number;
