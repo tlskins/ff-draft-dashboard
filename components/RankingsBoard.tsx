@@ -178,7 +178,7 @@ const RankingsBoard = ({
   const hasSavedCustomRankings = hasCustomRankingsSaved()
 
   const savedRankingsOptions = useMemo(() => {
-    const dropdownOptions: {title: string, callback: () => void}[] = []
+    const dropdownOptions = []
 
     if (!hasSavedCustomRankings) {
       return []
@@ -214,6 +214,7 @@ const RankingsBoard = ({
 
     return dropdownOptions
   }, [hasSavedCustomRankings, canEditCustomRankings, copiedRanker, loadPlayers, clearSavedCustomRankings])
+
 
   return(
     noPlayers ?

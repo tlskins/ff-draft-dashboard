@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   addToRoster,
   calcCurrRoundPick,
@@ -44,6 +44,8 @@ export const useRanks = ({
     adpRanker: ThirdPartyADPRanker.ESPN,
   })
   const [rankingsCachedAt, setRankingsCachedAt] = useState<string | null>(null)
+  const [rankingsEditedAt, setRankingsEditedAt] = useState<string | null>(null)
+  const [copiedRanker, setCopiedRanker] = useState<ThirdPartyRanker | null>(null)
   const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
   const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})
   const [playerTargets, setPlayerTargets] = useState<PlayerTarget[]>([])
@@ -86,11 +88,19 @@ export const useRanks = ({
     onRecalculatePlayerRanks()
   }, [settings.ppr, boardSettings.ranker, boardSettings.adpRanker, playerLib])
 
-  const onLoadPlayers = useCallback((players: Player[], rankingsSummaries: RankingSummary[], cachedAt: string) => {
+  const onLoadPlayers = useCallback((
+    players: Player[],
+    rankingsSummaries: RankingSummary[],
+    cachedAt: string,
+    editedAt?: string,
+    copiedRanker?: ThirdPartyRanker,
+  ) => {
     onCreatePlayerRanks(players, boardSettings)
     createPlayerLibrary(players)
     setRankingSummaries(rankingsSummaries)
     setRankingsCachedAt(cachedAt)
+    setRankingsEditedAt(editedAt || null)
+    setCopiedRanker(copiedRanker || null)
   }, [boardSettings])
 
   const getRosterIdxFromPick = (pickNum: number) => {
@@ -142,7 +152,6 @@ export const useRanks = ({
   // funcs
 
   const onRecalculatePlayerRanks = useCallback(() => {
-    console.log('onRecalculatePlayerRanks', settings, boardSettings, playerLib)
     const nextPlayerRanks = createPlayerRanks(Object.values(playerLib), settings, boardSettings)
     setPlayerRanks(nextPlayerRanks)
   }, [settings, boardSettings, playerLib])
@@ -155,7 +164,7 @@ export const useRanks = ({
   const onCreatePlayerRanks = useCallback((players: Player[], boardSettings: BoardSettings) => {
     const nextPlayerRanks = createPlayerRanks( players, settings, boardSettings )
     setPlayerRanks(nextPlayerRanks)
-  }, [settings, boardSettings])
+  }, [settings])
   const onRemovePlayerFromBoard = (player: Player) => {
     const nextPlayerRanks = removePlayerFromBoard( playerRanks, player )
     setPlayerRanks(nextPlayerRanks)
@@ -251,6 +260,7 @@ export const useRanks = ({
     setPlayerLib({ ...nextPlayerLib })
     setPlayersByPosByTeam({ ...nextPlayersByPosByTeam })
     setPlayerRanks({ ...nextRanks })
+    setCopiedRanker(selectedRankerToCopy)
     return true
   }
 
@@ -270,11 +280,13 @@ export const useRanks = ({
     })
     
     setIsEditingCustomRanking(false)
-    setBoardSettings({ ...boardSettings, ranker: ThirdPartyRanker.HARRIS }) // Reset to default
+    const nextBoardSettings = { ...boardSettings, ranker: ThirdPartyRanker.HARRIS }
+    setBoardSettings(nextBoardSettings)
     
     // Recreate player ranks without custom rankings
-    const nextPlayerRanks = createPlayerRanks(Object.values(playerLib), settings, { ...boardSettings, ranker: ThirdPartyRanker.HARRIS })
+    const nextPlayerRanks = createPlayerRanks(Object.values(playerLib), settings, nextBoardSettings)
     setPlayerRanks(nextPlayerRanks)
+    setCopiedRanker(null)
   }
 
   const onReorderPlayerInPosition = (playerId: string, position: keyof PlayerRanks, newIndex: number) => {
@@ -321,10 +333,11 @@ export const useRanks = ({
     // Recreate player ranks to reflect the changes
     const nextPlayerRanks = createPlayerRanks(Object.values(playerLib), settings, boardSettings)
     setPlayerRanks(nextPlayerRanks)
+    setRankingsEditedAt(new Date().toISOString())
   }
 
   const onUpdateTierBoundary = (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => {
-    if (!isEditingCustomRanking || !canEditCustomRankings()) return
+    if (!isEditingCustomRanking || !canEditCustomRankings() || newBoundaryIndex < 1) return
 
     const positionPlayers = [...playerRanks[position]]
     
@@ -383,6 +396,7 @@ export const useRanks = ({
     // Recreate player ranks to reflect the tier changes
     const nextPlayerRanks = createPlayerRanks(Object.values(playerLib), settings, boardSettings)
     setPlayerRanks(nextPlayerRanks)
+    setRankingsEditedAt(new Date().toISOString())
   }
 
   // Player targeting functions
@@ -418,7 +432,9 @@ export const useRanks = ({
       rankingSummaries: rankingSummaries,
       cachedAt: rankingsCachedAt,
       savedAt: new Date().toISOString(),
-      settings: settings // Save current fantasy settings too
+      settings: settings, // Save current fantasy settings too
+      copiedRanker: copiedRanker,
+      editedAt: rankingsEditedAt,
     }
 
     try {
@@ -429,7 +445,7 @@ export const useRanks = ({
       console.error('Failed to save custom rankings:', error)
       return false
     }
-  }, [playerLib, rankingSummaries, rankingsCachedAt, isEditingCustomRanking, boardSettings.ranker, settings])
+  }, [playerLib, rankingSummaries, rankingsCachedAt, rankingsEditedAt, isEditingCustomRanking, boardSettings.ranker, settings, copiedRanker])
 
   const loadCustomRankings = useCallback(() => {
     try {
@@ -439,7 +455,13 @@ export const useRanks = ({
       }
 
       const parsedData = JSON.parse(savedData)
-      const { players, rankingSummaries: savedRankingSummaries, cachedAt: savedCachedAt } = parsedData
+      const {
+        players,
+        rankingSummaries: savedRankingSummaries,
+        cachedAt: savedCachedAt,
+        copiedRanker: savedCopiedRanker,
+        editedAt: savedEditedAt,
+      } = parsedData
 
       // Verify that we have valid custom rankings in the saved data
       const hasCustomRankings = players.some((player: Player) => 
@@ -458,11 +480,11 @@ export const useRanks = ({
       }
 
       // Load the data
-      onLoadPlayers(players, savedRankingSummaries, savedCachedAt)
+      onLoadPlayers(players, savedRankingSummaries, savedCachedAt, savedEditedAt, savedCopiedRanker as ThirdPartyRanker)
       
       // Switch to custom ranker
       setBoardSettings({ ...boardSettings, ranker: ThirdPartyRanker.CUSTOM })
-      
+
       console.log('Custom rankings loaded successfully')
       return true
     } catch (error) {
@@ -500,6 +522,14 @@ export const useRanks = ({
     }
   }, [])
 
+  const resetBoardSettings = useCallback(() => {
+    setBoardSettings({
+      ranker: ThirdPartyRanker.HARRIS,
+      adpRanker: ThirdPartyADPRanker.ESPN,
+    })
+    setCopiedRanker(null)
+  }, [])
+
   return {
     // state
     rankingSummaries,
@@ -514,6 +544,9 @@ export const useRanks = ({
     viewRosterIdx,
     isEditingCustomRanking,
     playerTargets,
+    rankingsCachedAt,
+    copiedRanker,
+    rankingsEditedAt,
     // funcs
     onDraftPlayer,
     onRemoveDraftedPlayer,
@@ -542,6 +575,7 @@ export const useRanks = ({
     loadCustomRankings,
     hasCustomRankingsSaved,
     clearSavedCustomRankings,
+    resetBoardSettings,
     // load funcs
     onLoadPlayers,
   }

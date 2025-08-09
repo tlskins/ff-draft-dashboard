@@ -11,6 +11,7 @@ type DropdownProps = {
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
   className?: string;
+  buttonClassName?: string;
 };
 
 const Dropdown: React.FC<DropdownProps> = ({
@@ -18,6 +19,8 @@ const Dropdown: React.FC<DropdownProps> = ({
   options,
   onMouseEnter,
   onMouseLeave,
+  className,
+  buttonClassName,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -42,14 +45,14 @@ const Dropdown: React.FC<DropdownProps> = ({
 
   return (
     <div
-      className="relative inline-block text-left"
+      className={`relative px-3 py-1 text-sm rounded shadow text-left ${className || ''}`}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       ref={dropdownRef}
     >
       <button
         type="button"
-        className="tracking-wide font-semibold border rounded px-4 py-2 m-2 cursor-pointer shadow-md uppercase text-sm"
+        className={`cursor-pointer text-sm ${buttonClassName || ''}`}
         onClick={handleToggle}
       >
         {title}

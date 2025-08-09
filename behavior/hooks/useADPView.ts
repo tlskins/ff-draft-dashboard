@@ -93,7 +93,6 @@ export const useADPView = ({
       ? availablePlayers 
       : availablePlayers.filter(player => player.position === positionFilter)
     
-    console.log('create players by round', myPicks, fantasySettings, boardSettings)
     // Organize filtered players by ADP rounds
     filteredPlayers.forEach(player => {
       const adp = getPlayerAdp(player, fantasySettings, boardSettings)

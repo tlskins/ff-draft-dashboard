@@ -271,8 +271,6 @@ export const createPlayerRanks = (players: Player[], settings: FantasySettings, 
     })
     playerRanks = sortPlayerRanksByRank( playerRanks, settings, boardSettings, SortPlayersByMetric.PosRank )
     
-    console.log('createPlayerRanks', settings, boardSettings, playerRanks)
-
     return playerRanks
 }
 

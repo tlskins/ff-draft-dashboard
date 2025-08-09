@@ -28,6 +28,9 @@ const RankingView = ({
   highlightOption,
   setHighlightOption,
   viewPlayerId,
+  rankingsCachedAt,
+  copiedRanker,
+  rankingsEditedAt,
 }: RankingViewProps) => {
   const [shownPlayerBg, setShownPlayerBg] = useState("")
   const [animatingOutPlayers, setAnimatingOutPlayers] = useState<Set<string>>(new Set())
@@ -77,16 +80,33 @@ const RankingView = ({
   const draftBoardView = draftBoard.standardView
   const showNextPreds = highlightOption === HighlightOption.PREDICTED_TAKEN_NEXT_TURN
   const rankByAdp = sortOption === SortOption.ADP
+  const isUsingCustomRanks = copiedRanker && rankingsCachedAt && rankingsEditedAt
 
   return (
     <>
       {/* Controls for ranking view */}
-      <div className="flex flex-row mb-4 align-center">
+      <div className="flex flex-row mb-8 align-center">
         <div className="flex flex-col text-left h-16 w-full">
           <div className="grid grid-cols-2">
             <div className="flex flex-col">
-              <h2 className="text-2xl font-bold mb-2">Rankings By Position</h2>
-              <div className="flex flex-row mb-2">
+              <div className="flex flex-col mb-4">
+                <h2 className="text-2xl font-bold">Rankings By Position</h2>
+                <div className="h-1">
+                  { isUsingCustomRanks &&
+                    <p className="text-xs">
+                      Base { copiedRanker } ranks from { new Date(rankingsCachedAt).toLocaleString() } last edited { new Date(rankingsEditedAt).toLocaleString() }
+                    </p>
+                  }
+                  {
+                    !isUsingCustomRanks && rankingsCachedAt &&
+                    <p className="text-xs">
+                      Latest rankings from { new Date(rankingsCachedAt).toLocaleString() }
+                    </p>
+                  }
+                </div>
+              </div>
+
+              <div className="flex flex-row">
                 <select
                     className="p-1 m-1 border rounded bg-blue-100 shadow"
                     value={sortOption}

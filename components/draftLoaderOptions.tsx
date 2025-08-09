@@ -1,32 +1,9 @@
-import React, { useCallback, useEffect } from "react"
-import { getPlayerData } from "../behavior/playerData"
+import React from "react"
 
 import Dropdown from "./dropdown"
-import { BoardSettings, Player, RankingSummary } from "types"
 
 
-interface DraftLoaderOptionsProps {
-  boardSettings: BoardSettings;
-  onLoadPlayers: (players: Player[], rankingsSummaries: RankingSummary[], cachedAt: string) => void;
-}
-
-const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
-  boardSettings,
-  onLoadPlayers,
-}) => {
-
-  const loadPlayers = useCallback(() => {
-    const playerData = getPlayerData()
-    if (playerData) {
-      const { players, rankingsSummaries, cachedAt } = playerData
-      onLoadPlayers(players, rankingsSummaries, cachedAt)
-    }
-  }, [boardSettings])
-
-  useEffect(() => {
-    loadPlayers()
-  }, [])
-
+const DraftLoaderOptions: React.FC = () => {
   return(
     <div className="flex flex-col w-full h-14 border-t relative">
       <div className="flex w-full justify-center items-center">
@@ -36,6 +13,8 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
             options={[
               { title: "Download", callback: () => window.open('https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US') },
             ]}
+            className="m-2 px-3 py-2 hover:text-white hover:bg-blue-800 cursor-pointer"
+            buttonClassName="font-semibold tracking-wide uppercase"
           />
         </div>
 
@@ -45,6 +24,8 @@ const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
             { title: "ESPN Mock Draft", callback: () => window.open(`https://fantasy.espn.com/football/mockdraftlobby?addata=right_rail_mock_ffl2023`) },
             { title: "NFL.com Mock Draft", callback: () => window.open('https://fantasy.nfl.com/draftcenter/mockdrafts') },
           ]}
+          className="m-2 px-3 py-2 hover:text-white hover:bg-blue-800 cursor-pointer"
+          buttonClassName="font-semibold tracking-wide uppercase"
         />
       </div>
     </div>

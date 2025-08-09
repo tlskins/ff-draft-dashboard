@@ -124,10 +124,10 @@ const EditRankingsView = ({
               </button>
               { hasCustomRanking &&
                 <button
-                    className="p-2 m-1 border rounded-md bg-gray-500 text-white hover:bg-gray-600"
-                    onClick={onClearCustomRanking}
-                  >
-                    Clear Custom Rankings
+                  className="p-2 m-1 border rounded-md bg-gray-500 text-white hover:bg-gray-600"
+                  onClick={onClearCustomRanking}
+                >
+                  Clear Custom Rankings
                 </button>
               }
             </div>

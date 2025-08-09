@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback, FC } from "react"
 
 import PageHead from "../components/pageHead"
 import DraftLoaderOptions from "../components/draftLoaderOptions"
-import PositionRankings from "../components/positionRankings"
+import RankingsBoard from "../components/RankingsBoard"
 import HistoricalStats from "../components/HistoricalStats"
 import RankingSummaryDisplay from "../components/RankingSummary"
 import ADPView from "../components/views/ADPView"
@@ -15,6 +15,7 @@ import { usePredictions } from "../behavior/hooks/usePredictions"
 import { getPosStyle, getTierStyle } from "../behavior/styles"
 import { getProjectedTier } from "../behavior/draft"
 import { Player, ThirdPartyRanker, DataRanker, ThirdPartyADPRanker } from "types"
+import { getPlayerData } from "@/behavior/playerData"
 
 export enum DraftView {
   RANKING = "Rankings By Position",
@@ -68,8 +69,10 @@ const Home: FC = () => {
     draftHistory,
     isEditingCustomRanking,
     playerTargets,
+    copiedRanker,
+    rankingsCachedAt,
+    rankingsEditedAt,
     // funcs
-    onCreatePlayerRanks,
     onDraftPlayer,
     onRemoveDraftedPlayer,
     getDraftRoundForPickNum,
@@ -77,8 +80,6 @@ const Home: FC = () => {
     onApplyRankingSortBy,
     onSetRanker,
     onSetAdpRanker,
-    createPlayerLibrary,
-    setRankingSummaries,
     // custom ranking funcs
     canEditCustomRankings,
     onStartCustomRanking,
@@ -95,6 +96,7 @@ const Home: FC = () => {
     loadCustomRankings,
     hasCustomRankingsSaved,
     clearSavedCustomRankings,
+    resetBoardSettings,
     onLoadPlayers,
   } = useRanks({ settings, myPickNum })
 
@@ -135,6 +137,22 @@ const Home: FC = () => {
   const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
+
+  const loadPlayers = useCallback(() => {
+    const playerData = getPlayerData()
+    if (playerData) {
+      const { players, rankingsSummaries, cachedAt } = playerData
+      onLoadPlayers(players, rankingsSummaries, cachedAt)
+      
+      // Reset board settings to default ranker when loading fresh data
+      // This ensures we're not trying to use CUSTOM ranker on fresh data that doesn't have custom rankings
+      resetBoardSettings()
+    }
+  }, [onLoadPlayers, resetBoardSettings])
+
+  useEffect(() => {
+    loadPlayers()
+  }, [])
 
   // Custom ranking state - modal now shows automatically when draftView === CUSTOM_RANKING
   
@@ -238,10 +256,7 @@ const Home: FC = () => {
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center bg-gray-50">
         {/* Draft Settings */}
         <div className="w-screen justify-center z-10 bg-gray-200 shadow-md">
-          <DraftLoaderOptions
-            boardSettings={boardSettings}
-            onLoadPlayers={onLoadPlayers}
-          />
+          <DraftLoaderOptions/>
 
           <div className="flex flex-row mb-8 mt-2 w-screen justify-center">
             <div className={`flex flex-row text-sm text-center mr-4 rounded shadow-md ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>
@@ -402,7 +417,7 @@ const Home: FC = () => {
             </div>
 
             <div className="col-span-5">
-              <PositionRankings
+              <RankingsBoard
                 playerRanks={playerRanks}
                 predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
                 draftView={draftView}
@@ -445,6 +460,10 @@ const Home: FC = () => {
                 viewRosterIdx={myPickNum-1}
                 listenerActive={listenerActive}
                 activeDraftListenerTitle={activeDraftListenerTitle}
+                copiedRanker={copiedRanker}
+                rankingsCachedAt={rankingsCachedAt}
+                rankingsEditedAt={rankingsEditedAt}
+                loadPlayers={loadPlayers}
               />
             </div>
 
