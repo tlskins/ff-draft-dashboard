@@ -43,6 +43,7 @@ export const useRanks = ({
     ranker: ThirdPartyRanker.HARRIS,
     adpRanker: ThirdPartyADPRanker.ESPN,
   })
+  const [rankingsCachedAt, setRankingsCachedAt] = useState<string | null>(null)
   const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
   const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})
   const [playerTargets, setPlayerTargets] = useState<PlayerTarget[]>([])
@@ -84,6 +85,13 @@ export const useRanks = ({
   useEffect(() => {
     onRecalculatePlayerRanks()
   }, [settings.ppr, boardSettings.ranker, boardSettings.adpRanker, playerLib])
+
+  const onLoadPlayers = useCallback((players: Player[], rankingsSummaries: RankingSummary[], cachedAt: string) => {
+    onCreatePlayerRanks(players, boardSettings)
+    createPlayerLibrary(players)
+    setRankingSummaries(rankingsSummaries)
+    setRankingsCachedAt(cachedAt)
+  }, [boardSettings])
 
   const getRosterIdxFromPick = (pickNum: number) => {
     const roundIdx = getRoundIdxForPickNum(pickNum, settings.numTeams)
@@ -434,5 +442,7 @@ export const useRanks = ({
     addPlayerTarget,
     replacePlayerTargets,
     removePlayerTarget,
+    // load funcs
+    onLoadPlayers,
   }
 }

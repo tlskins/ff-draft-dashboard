@@ -52,7 +52,7 @@ const RankingSummaryDisplay: React.FC<RankingSummaryProps> = ({ settings, active
   return (
     <div className="py-2 px-4 justify-center text-sm">
       <p className="font-semibold underline py-2">
-        {summary.ranker} - {position} ({summary.ppr ? 'PPR' : 'Standard'})
+        {summary.ranker} {summary.ppr ? 'PPR' : 'Standard'} {position} Tiers Overview
       </p>
       <div className="flex flex-row justify-center">
         <table className="table-auto text-sm border-separate border-spacing-0 border border-slate-500 shadow-md mt-4">

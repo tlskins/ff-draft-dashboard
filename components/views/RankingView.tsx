@@ -30,8 +30,27 @@ const RankingView = ({
   viewPlayerId,
 }: RankingViewProps) => {
   const [shownPlayerBg, setShownPlayerBg] = useState("")
+  const [animatingOutPlayers, setAnimatingOutPlayers] = useState<Set<string>>(new Set())
+  const [isRosterVisible, setIsRosterVisible] = useState(true)
 
   const { AnyTiDelete, AnyAiFillCheckCircle, AnyBsLink } = getIconTypes()
+
+  // Handler for selecting a player with animation
+  const handleSelectPlayer = (player: Player) => {
+    // Add player to animating out set
+    setAnimatingOutPlayers(prev => new Set(prev).add(player.id))
+    
+    // After animation completes, call the actual onSelectPlayer
+    setTimeout(() => {
+      onSelectPlayer(player)
+      // Remove from animating set (cleanup, though component may unmount)
+      setAnimatingOutPlayers(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(player.id)
+        return newSet
+      })
+    }, 600) // 600ms total animation time
+  }
 
   const draftBoard = useMemo(() => {
     const myCurrRound = myCurrentRound(currPick, myPickNum, fantasySettings.numTeams)
@@ -41,6 +60,9 @@ const RankingView = ({
   // Get user's roster
   const myRosterIdx = myPickNum - 1
   const myRoster = rosters[myRosterIdx] || { QB: [], RB: [], WR: [], TE: [], picks: [] }
+  const myRosterEmpty = useMemo(() => {
+    return myRoster.QB.length === 0 && myRoster.RB.length === 0 && myRoster.WR.length === 0 && myRoster.TE.length === 0
+  }, [myRoster])
   
   // Helper function to get round for a picked player
   const getPlayerDraftRound = (playerId: string): number => {
@@ -117,7 +139,20 @@ const RankingView = ({
 
       <div className="flex flex-row h-full mb-32">
         <div className="flex flex-col">
-          { draftStarted && (
+          {/* Render my roster header - always show when draft started and roster not empty */}
+          { draftStarted && !myRosterEmpty && (
+            <div className="flex flex-row col-span-4 text-center justify-center mb-2">
+              <p 
+                className="text-sm font-semibold underline cursor-pointer hover:text-blue-600 transition-colors"
+                onClick={() => setIsRosterVisible(!isRosterVisible)}
+              >
+                My Roster {isRosterVisible ? '▼' : '▶'}
+              </p>
+            </div>
+          )}
+          
+          {/* Render my roster content */}
+          { draftStarted && !myRosterEmpty && isRosterVisible && (
             <div className="flex flex-row justify-center grid grid-cols-4 gap-1">
               { draftBoardView.filter((column: any) => column.columnTitle !== 'Purge').map( (draftBoardColumn: any, i: number) => {
                 const { columnTitle } = draftBoardColumn
@@ -195,8 +230,13 @@ const RankingView = ({
                         const { tier, adp, posRank, overallRank } = metrics
                         const { tierNumber } = tier || {}
                         
+                        const isAnimatingOut = animatingOutPlayers.has(id)
+                        
                         let tierStyle
-                        if ( viewPlayerId === id && !!shownPlayerBg ) {
+                        if ( isAnimatingOut ) {
+                          // Apply gray-out animation styling
+                          tierStyle = 'bg-purple-800 text-white opacity-50 scale-95'
+                        } else if ( viewPlayerId === id && !!shownPlayerBg ) {
                           tierStyle = shownPlayerBg
                         } else if ( showNextPreds && predictedPicks[id] && predictedPicks[id] < 3 ) {
                           tierStyle = `${nextPredBgColor} text-white`
@@ -233,9 +273,11 @@ const RankingView = ({
 
                         return(
                           <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
-                            className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle}`}
+                            className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle} transition-all duration-500 ease-in-out transform`}
                             onMouseEnter={ () => {
-                              setViewPlayerId(id)
+                              if (!isAnimatingOut) {
+                                setViewPlayerId(id)
+                              }
                             }}
                           >
                             <div className="flex flex-col text-center items-center">
@@ -256,7 +298,7 @@ const RankingView = ({
                                 </p>
                               }
         
-                              { isHoveringPlayer &&
+                              { isHoveringPlayer && !isAnimatingOut &&
                                 <div className={`grid grid-cols-3 items-center justify-items-center gap-2 mt-2 pt-2 w-full border-t`}>
                                   <AnyTiDelete
                                     className="cursor-pointer"
@@ -270,7 +312,7 @@ const RankingView = ({
                                   <AnyAiFillCheckCircle
                                     className="cursor-pointer"
                                     color="green"
-                                    onClick={ () => onSelectPlayer(player) }
+                                    onClick={ () => handleSelectPlayer(player) }
                                     onMouseEnter={() => setShownPlayerBg("bg-green-400")}
                                     onMouseLeave={() => setShownPlayerBg("")}
                                     size={26}

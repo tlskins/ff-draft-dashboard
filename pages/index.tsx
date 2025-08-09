@@ -90,6 +90,7 @@ const Home: FC = () => {
     addPlayerTarget,
     removePlayerTarget,
     replacePlayerTargets,
+    onLoadPlayers,
   } = useRanks({ settings, myPickNum })
 
   const usingCustomRanking = boardSettings.ranker === ThirdPartyRanker.CUSTOM
@@ -234,9 +235,7 @@ const Home: FC = () => {
         <div className="w-screen justify-center z-10 bg-gray-200 shadow-md">
           <DraftLoaderOptions
             boardSettings={boardSettings}
-            onCreatePlayerRanks={onCreatePlayerRanks}
-            createPlayerLibrary={createPlayerLibrary}
-            setRankingSummaries={setRankingSummaries}
+            onLoadPlayers={onLoadPlayers}
           />
 
           <div className="flex flex-row mb-8 mt-2 w-screen justify-center">
@@ -323,7 +322,7 @@ const Home: FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center content-center mt-2">
+        <div className="flex flex-col items-center justify-center content-center mt-4">
           <div className="flex flex-col items-center w-full">
             { (!activeDraftListenerTitle && !listenerActive) &&
               <p className="bg-gray-300 font-semibold shadow rounded-md text-sm my-1 px-4">
@@ -345,7 +344,7 @@ const Home: FC = () => {
 
         <div className="flex flex-col items-center mt-4">
           {/* Stats and Positional Breakdowns */}
-          <div className="flex flex-row justify-center w-screen relative my-4 grid grid-cols-12 gap-1 px-1">
+          <div className="flex flex-row justify-center w-screen relative mb-4 grid grid-cols-12 gap-1 px-1">
 
             <div className="col-span-3 flex flex-col justify-start ml-2 p-1">
               {currentOptimalRoster && Object.keys(currentOptimalRoster.roster).length > 0 && (

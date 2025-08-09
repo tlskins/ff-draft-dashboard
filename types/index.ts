@@ -237,6 +237,7 @@ export interface Player {
 }
 
 export interface Rankings {
+    cachedAt: string;
     players: Player[];
     rankingsSummaries: RankingSummary[];
     settings: FantasySettings;

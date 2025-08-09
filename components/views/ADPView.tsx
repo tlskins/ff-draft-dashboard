@@ -60,7 +60,7 @@ const ADPView: React.FC<ADPViewProps> = ({
   }, [fantasySettings, boardSettings, playersByRound])
 
   return (
-    <div className="h-screen overflow-y-scroll bg-white p-4">
+    <div className="h-screen overflow-y-scroll bg-white p-2">
       <div className="mb-4">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-semibold text-gray-800">
@@ -129,7 +129,10 @@ const ADPView: React.FC<ADPViewProps> = ({
             <p className="text-xs text-purple-600">
               ({playerTargets.length} players)
             </p>
-            <div className="flex gap-1 mt-2">
+          </div>
+          
+          <div className="flex flex-col space-y-1 p-2">
+          <div className="flex gap-1 mt-2">
               <button
                 onClick={handleSaveFavorites}
                 className="flex-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
@@ -151,9 +154,7 @@ const ADPView: React.FC<ADPViewProps> = ({
                 Clear
               </button>
             </div>
-          </div>
-          
-          <div className="flex flex-col space-y-1 p-2">
+
             {organizedTargets.map((item, idx) => {
               if (item.type === 'divider') {
                 return (

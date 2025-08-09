@@ -7,35 +7,28 @@ import { BoardSettings, Player, RankingSummary } from "types"
 
 interface DraftLoaderOptionsProps {
   boardSettings: BoardSettings;
-  createPlayerLibrary: (players: Player[]) => void;
-  onCreatePlayerRanks: (players: Player[], boardSettings: BoardSettings) => void;
-  setRankingSummaries: (summaries: RankingSummary[]) => void;
+  onLoadPlayers: (players: Player[], rankingsSummaries: RankingSummary[], cachedAt: string) => void;
 }
 
 const DraftLoaderOptions: React.FC<DraftLoaderOptionsProps> = ({
   boardSettings,
-
-  onCreatePlayerRanks,
-  createPlayerLibrary,
-  setRankingSummaries,
+  onLoadPlayers,
 }) => {
 
-  const onLoadPlayers = useCallback(() => {
+  const loadPlayers = useCallback(() => {
     const playerData = getPlayerData()
     if (playerData) {
-      const { players, rankingsSummaries } = playerData
-      onCreatePlayerRanks(players, boardSettings)
-      createPlayerLibrary(players)
-      setRankingSummaries(rankingsSummaries)
+      const { players, rankingsSummaries, cachedAt } = playerData
+      onLoadPlayers(players, rankingsSummaries, cachedAt)
     }
-  }, [onCreatePlayerRanks, createPlayerLibrary, setRankingSummaries, boardSettings])
+  }, [boardSettings])
 
   useEffect(() => {
-    onLoadPlayers()
+    loadPlayers()
   }, [])
 
   return(
-    <div className="flex flex-col w-full h-20 border-t relative">
+    <div className="flex flex-col w-full h-14 border-t relative">
       <div className="flex w-full justify-center items-center">
         <div>
           <Dropdown
