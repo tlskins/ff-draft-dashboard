@@ -286,11 +286,15 @@ const Home: FC = () => {
             {/* Logo */}
             <div className="flex-shrink-0">
               <img 
-                src="/sushi_tech_drafty_logo_transparent.png" 
+                src="/friedchickentechlogo.png" 
                 alt="Drafty Logo" 
                 className="h-32 w-auto"
               />
             </div>
+
+            <h2 className="text-2xl font-bold">
+              Drafty
+            </h2>
 
             <div className="flex flex-row mb-4 mt-2 justify-center">
               <div className={`flex flex-row text-sm text-center mr-4 rounded shadow-md ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>

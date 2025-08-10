@@ -15,9 +15,9 @@ const PageHead: React.FC<PageHeadProps> = ({
   return (
     <Head>
       {/* Favicon */}
-      <link rel="icon" type="image/png" href="/sushitech_favicon.png" />
-      <link rel="shortcut icon" type="image/png" href="/sushitech_favicon.png" />
-      <link rel="apple-touch-icon" href="/sushitech_favicon.png" />
+      <link rel="icon" type="image/png" href="/friedchickentechfavicon.png" />
+      <link rel="shortcut icon" type="image/png" href="/friedchickentechfavicon.png" />
+      <link rel="apple-touch-icon" href="/friedchickentechfavicon.png" />
       
       {process.env.NEXT_PUBLIC_ENV !== "dev" && (
         <>
