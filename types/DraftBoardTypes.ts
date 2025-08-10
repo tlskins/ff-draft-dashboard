@@ -1,4 +1,4 @@
-import { Player, FantasySettings, BoardSettings, RankingSummary, ThirdPartyRanker } from "."
+import { Player, FantasySettings, BoardSettings, RankingSummary, ThirdPartyRanker, Rankings } from "."
 import { PlayerRanks, Roster } from "../behavior/draft"
 import { SortOption, HighlightOption } from "../pages"
 
@@ -54,9 +54,7 @@ export interface RankingViewProps extends SharedViewProps {
   setSortOption: (option: SortOption) => void
   highlightOption: HighlightOption
   setHighlightOption: (option: HighlightOption) => void
-  rankingsCachedAt: string | null
-  copiedRanker: ThirdPartyRanker | null
-  rankingsEditedAt: string | null
+  rankings: Rankings
 }
 
 // Props specific to edit rankings view

@@ -69,9 +69,7 @@ const Home: FC = () => {
     draftHistory,
     isEditingCustomRanking,
     playerTargets,
-    copiedRanker,
-    rankingsCachedAt,
-    rankingsEditedAt,
+    rankings,
     // funcs
     onDraftPlayer,
     onRemoveDraftedPlayer,
@@ -502,7 +500,6 @@ const Home: FC = () => {
                 onReorderPlayer={onReorderPlayerInPosition}
                 onStartCustomRanking={handleStartCustomRanking}
                 onFinishCustomRanking={handleFinishCustomRanking}
-                onClearCustomRanking={handleClearCustomRanking}
                 onUpdateTierBoundary={onUpdateTierBoundary}
                 onCancelCustomRanking={() => {
                   setDraftView(DraftView.RANKING)
@@ -520,10 +517,8 @@ const Home: FC = () => {
                 viewRosterIdx={myPickNum-1}
                 listenerActive={listenerActive}
                 activeDraftListenerTitle={activeDraftListenerTitle}
-                copiedRanker={copiedRanker}
-                rankingsCachedAt={rankingsCachedAt}
-                rankingsEditedAt={rankingsEditedAt}
                 loadCurrentRankings={loadCurrentRankings}
+                rankings={rankings}
               />
             </div>
 

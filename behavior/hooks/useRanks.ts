@@ -350,7 +350,7 @@ export const useRanks = ({
     setRankings,
   ])
 
-  const onUpdateTierBoundary = (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number, rankingsSummary: RankingSummary) => {
+  const onUpdateTierBoundary = (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => {
     if (!isEditingCustomRanking || !canEditCustomRankings() || newBoundaryIndex < 1) return
 
     const positionPlayers = [...playerRanks[position]]

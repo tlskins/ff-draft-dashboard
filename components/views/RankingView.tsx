@@ -28,9 +28,7 @@ const RankingView = ({
   highlightOption,
   setHighlightOption,
   viewPlayerId,
-  rankingsCachedAt,
-  copiedRanker,
-  rankingsEditedAt,
+  rankings,
 }: RankingViewProps) => {
   const [shownPlayerBg, setShownPlayerBg] = useState("")
   const [animatingOutPlayers, setAnimatingOutPlayers] = useState<Set<string>>(new Set())
@@ -80,7 +78,7 @@ const RankingView = ({
   const draftBoardView = draftBoard.standardView
   const showNextPreds = highlightOption === HighlightOption.PREDICTED_TAKEN_NEXT_TURN
   const rankByAdp = sortOption === SortOption.ADP
-  const isUsingCustomRanks = copiedRanker && rankingsCachedAt && rankingsEditedAt
+  const isUsingCustomRanks = rankings.copiedRanker && rankings.cachedAt && rankings.editedAt
 
   return (
     <>
@@ -94,13 +92,13 @@ const RankingView = ({
                 <div className="h-1">
                   { isUsingCustomRanks &&
                     <p className="text-xs">
-                      Base { copiedRanker } ranks from { new Date(rankingsCachedAt).toLocaleString() } last edited { new Date(rankingsEditedAt).toLocaleString() }
+                      Base { rankings.copiedRanker } ranks from { new Date(rankings.cachedAt).toLocaleString() } last edited { new Date(rankings.editedAt).toLocaleString() }
                     </p>
                   }
                   {
-                    !isUsingCustomRanks && rankingsCachedAt &&
+                    !isUsingCustomRanks && rankings.cachedAt &&
                     <p className="text-xs">
-                      Latest rankings from { new Date(rankingsCachedAt).toLocaleString() }
+                      Latest rankings from { new Date(rankings.cachedAt).toLocaleString() }
                     </p>
                   }
                 </div>

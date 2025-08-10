@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react"
 
 import { myCurrentRound, PlayerRanks, Roster } from '../behavior/draft'
-import { Player, FantasySettings, BoardSettings, RankingSummary, ThirdPartyRanker } from "../types"
+import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings } from "../types"
 import { DraftView, SortOption, HighlightOption } from "../pages"
 import { getDraftBoard } from '../behavior/DraftBoardUtils'
 import { isTitleCard, PredictedPicks } from '../types/DraftBoardTypes'
@@ -54,10 +54,8 @@ interface RankingsBoardProps {
   viewRosterIdx: number,
   listenerActive: boolean,
   activeDraftListenerTitle: string | null,
-  copiedRanker: ThirdPartyRanker | null,
-  rankingsCachedAt: string | null,
-  rankingsEditedAt: string | null,
   loadCurrentRankings: () => void,
+  rankings: Rankings,
 }
 
 const RankingsBoard = ({
@@ -96,9 +94,7 @@ const RankingsBoard = ({
   viewRosterIdx,
   listenerActive,
   activeDraftListenerTitle,
-  copiedRanker,
-  rankingsCachedAt,
-  rankingsEditedAt,
+  rankings,
   loadCurrentRankings,
   onSelectPlayer,
   onPurgePlayer,
@@ -166,9 +162,7 @@ const RankingsBoard = ({
         setSortOption={setSortOption}
         highlightOption={highlightOption}
         setHighlightOption={setHighlightOption}
-        rankingsCachedAt={rankingsCachedAt}
-        rankingsEditedAt={rankingsEditedAt}
-        copiedRanker={copiedRanker}
+        rankings={rankings}
       />
     )
   }
@@ -190,7 +184,7 @@ const RankingsBoard = ({
       }
     })
                   
-    if (canEditCustomRankings && !copiedRanker) {
+    if (canEditCustomRankings && !rankings.copiedRanker) {
       dropdownOptions.push({
         title: "Load Saved Rankings",
         callback: () => {
@@ -203,7 +197,7 @@ const RankingsBoard = ({
       })
     }
     
-    if (copiedRanker) {
+    if (rankings.copiedRanker) {
       dropdownOptions.push({
         title: "Load Latest Rankings",
         callback: loadCurrentRankings
@@ -211,7 +205,7 @@ const RankingsBoard = ({
     }
 
     return dropdownOptions
-  }, [hasSavedCustomRankings, canEditCustomRankings, copiedRanker, loadCurrentRankings, clearSavedCustomRankings])
+  }, [hasSavedCustomRankings, canEditCustomRankings, rankings.copiedRanker, loadCurrentRankings, clearSavedCustomRankings])
 
 
   return(
