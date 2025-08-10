@@ -84,7 +84,6 @@ const Home: FC = () => {
     canEditCustomRankings,
     onStartCustomRanking,
     onFinishCustomRanking,
-    onClearCustomRanking,
     onReorderPlayerInPosition,
     onUpdateTierBoundary,
     // player targeting funcs
@@ -143,20 +142,16 @@ const Home: FC = () => {
     setIsHeaderCollapsed(!isHeaderCollapsed)
   }
 
-  const loadPlayers = useCallback(() => {
-    const playerData = getPlayerData()
-    if (playerData) {
-      const { players, rankingsSummaries, cachedAt } = playerData
-      onLoadPlayers(players, rankingsSummaries, cachedAt)
-      
-      // Reset board settings to default ranker when loading fresh data
-      // This ensures we're not trying to use CUSTOM ranker on fresh data that doesn't have custom rankings
+  const loadCurrentRankings = useCallback(() => {
+    const currentRankings = getPlayerData()
+    if (currentRankings) {
+      onLoadPlayers(currentRankings)
       resetBoardSettings()
     }
   }, [onLoadPlayers, resetBoardSettings])
 
   useEffect(() => {
-    loadPlayers()
+    loadCurrentRankings()
   }, [])
 
   // Custom ranking state - modal now shows automatically when draftView === CUSTOM_RANKING
@@ -251,7 +246,7 @@ const Home: FC = () => {
   }
 
   const handleClearCustomRanking = () => {
-    onClearCustomRanking()
+    loadCurrentRankings()
     setDraftView(DraftView.RANKING)
   }
 
@@ -528,7 +523,7 @@ const Home: FC = () => {
                 copiedRanker={copiedRanker}
                 rankingsCachedAt={rankingsCachedAt}
                 rankingsEditedAt={rankingsEditedAt}
-                loadPlayers={loadPlayers}
+                loadCurrentRankings={loadCurrentRankings}
               />
             </div>
 

@@ -28,9 +28,9 @@ const EditRankingsView = ({
   hasCustomRanking,
   onReorderPlayer,
   onFinishCustomRanking,
-  onClearCustomRanking,
   onUpdateTierBoundary,
   saveCustomRankings,
+  loadCurrentRankings,
 }: EditRankingsViewProps) => {
   const [shownPlayerId, setShownPlayerId] = useState<string | null>(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
@@ -125,7 +125,7 @@ const EditRankingsView = ({
               { hasCustomRanking &&
                 <button
                   className="p-2 m-1 border rounded-md bg-gray-500 text-white hover:bg-gray-600"
-                  onClick={onClearCustomRanking}
+                  onClick={loadCurrentRankings}
                 >
                   Clear Custom Rankings
                 </button>

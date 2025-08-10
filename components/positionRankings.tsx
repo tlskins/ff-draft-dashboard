@@ -39,7 +39,6 @@ interface RankingsBoardProps {
   onReorderPlayer: (playerId: string, position: keyof PlayerRanks, newIndex: number) => void,
   onStartCustomRanking: () => void,
   onFinishCustomRanking: () => void,
-  onClearCustomRanking: () => void,
   onUpdateTierBoundary: (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => void,
   onCancelCustomRanking: () => void,
   saveCustomRankings: () => boolean,
@@ -58,7 +57,7 @@ interface RankingsBoardProps {
   copiedRanker: ThirdPartyRanker | null,
   rankingsCachedAt: string | null,
   rankingsEditedAt: string | null,
-  loadPlayers: () => void,
+  loadCurrentRankings: () => void,
 }
 
 const RankingsBoard = ({
@@ -83,7 +82,6 @@ const RankingsBoard = ({
   onReorderPlayer,
   onStartCustomRanking,
   onFinishCustomRanking,
-  onClearCustomRanking,
   onUpdateTierBoundary,
   onCancelCustomRanking,
   saveCustomRankings,
@@ -101,7 +99,7 @@ const RankingsBoard = ({
   copiedRanker,
   rankingsCachedAt,
   rankingsEditedAt,
-  loadPlayers,
+  loadCurrentRankings,
   onSelectPlayer,
   onPurgePlayer,
   setViewPlayerId,
@@ -150,9 +148,9 @@ const RankingsBoard = ({
           canEditCustomRankings={canEditCustomRankings}
           onReorderPlayer={onReorderPlayer}
           onFinishCustomRanking={onFinishCustomRanking}
-          onClearCustomRanking={onClearCustomRanking}
           onUpdateTierBoundary={onUpdateTierBoundary}
           saveCustomRankings={saveCustomRankings}
+          loadCurrentRankings={loadCurrentRankings}
         />
       )
     }
@@ -188,7 +186,7 @@ const RankingsBoard = ({
       title: "Delete Saved Rankings",
       callback: () => {
         clearSavedCustomRankings()
-        loadPlayers()
+        loadCurrentRankings()
       }
     })
                   
@@ -208,12 +206,12 @@ const RankingsBoard = ({
     if (copiedRanker) {
       dropdownOptions.push({
         title: "Load Latest Rankings",
-        callback: loadPlayers
+        callback: loadCurrentRankings
       })
     }
 
     return dropdownOptions
-  }, [hasSavedCustomRankings, canEditCustomRankings, copiedRanker, loadPlayers, clearSavedCustomRankings])
+  }, [hasSavedCustomRankings, canEditCustomRankings, copiedRanker, loadCurrentRankings, clearSavedCustomRankings])
 
   return(
     noPlayers ?

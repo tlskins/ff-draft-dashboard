@@ -238,9 +238,11 @@ export interface Player {
 }
 
 export interface Rankings {
-    cachedAt: string;
     players: Player[];
     rankingsSummaries: RankingSummary[];
+    cachedAt: string;
+    editedAt: string;
+    copiedRanker?: FantasyRanker;
     settings: FantasySettings;
 }
 

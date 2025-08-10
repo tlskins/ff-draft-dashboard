@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../types'
 import { getPlayerAdp, getPlayerMetrics, getRoundIdxForPickNum, PlayerRanks } from '../../behavior/draft'
 import { getPosStyle, getTierStyle } from '../../behavior/styles'
@@ -47,6 +47,8 @@ const ADPView: React.FC<ADPViewProps> = ({
     handleLoadFavorites,
     handleClearFavorites,
   } = useADPView({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib, addPlayerTarget, replacePlayerTargets, removePlayerTarget })
+  
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   
   const getRoundCount = useCallback((round: number) => {
     return (playersByRound[round] || []).filter( (player, playerIdx) => {
@@ -132,27 +134,48 @@ const ADPView: React.FC<ADPViewProps> = ({
           </div>
           
           <div className="flex flex-col space-y-1 p-2">
-          <div className="flex gap-1 mt-2">
+            <div className="relative mt-2">
               <button
-                onClick={handleSaveFavorites}
-                className="flex-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                disabled={playerTargets.length === 0}
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="w-full px-2 py-1 text-xs text-purple-600 border border-2 border-purple-600 rounded hover:bg-purple-600 hover:text-white transition-colors flex justify-between items-center"
               >
-                Save
+                <span>Manage Targets</span>
+                <span className={`transform transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}>▼</span>
               </button>
-              <button
-                onClick={handleLoadFavorites}
-                className="flex-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              >
-                Load
-              </button>
-              <button
-                onClick={handleClearFavorites}
-                className="flex-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                disabled={playerTargets.length === 0}
-              >
-                Clear
-              </button>
+              
+              {isDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 font-semibold">
+                  <button
+                    onClick={() => {
+                      handleSaveFavorites()
+                      setIsDropdownOpen(false)
+                    }}
+                    className="w-full px-2 py-2 text-xs text-left font-medium text-green-600 hover:bg-green-600 hover:text-white transition-colors border-b border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={playerTargets.length === 0}
+                  >
+                    Save targets
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleLoadFavorites()
+                      setIsDropdownOpen(false)
+                    }}
+                    className="w-full px-2 py-2 text-xs text-left font-medium text-blue-600 hover:bg-blue-600 hover:text-white transition-colors border-b border-gray-200"
+                  >
+                    Load targets
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleClearFavorites()
+                      setIsDropdownOpen(false)
+                    }}
+                    className="w-full px-2 py-2 text-xs text-left font-medium text-red-600 hover:bg-red-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={playerTargets.length === 0}
+                  >
+                    Clear targets
+                  </button>
+                </div>
+              )}
             </div>
 
             {organizedTargets.map((item, idx) => {

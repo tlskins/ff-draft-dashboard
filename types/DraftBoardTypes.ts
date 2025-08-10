@@ -65,7 +65,7 @@ export interface EditRankingsViewProps extends SharedViewProps {
   canEditCustomRankings: boolean
   onReorderPlayer: (playerId: string, position: keyof PlayerRanks, newIndex: number) => void
   onFinishCustomRanking: () => void
-  onClearCustomRanking: () => void
+  loadCurrentRankings: () => void
   onUpdateTierBoundary: (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => void
   saveCustomRankings: () => boolean
 }

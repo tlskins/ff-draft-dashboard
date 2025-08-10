@@ -256,6 +256,22 @@ export type PlayerRanks = {
     availPlayersByAdp: Player[]
 }
 
+export const getPlayersFromPlayerRanks = (playerRanks: PlayerRanks): Player[] => {
+    const playersMap = {} as { [id: string]: Player }
+    rankablePositions.forEach( pos => {
+        playerRanks[pos as keyof PlayerRanks].forEach( player => {
+            playersMap[player.id] = player
+        })
+    })
+    playerRanks.availPlayersByOverallRank.forEach( player => {
+        playersMap[player.id] = player
+    })
+    playerRanks.availPlayersByAdp.forEach( player => {
+        playersMap[player.id] = player
+    })
+    return Object.values(playersMap)
+}
+
 export const createPlayerRanks = (players: Player[], settings: FantasySettings, boardSettings: BoardSettings): PlayerRanks => {
     let playerRanks: PlayerRanks = {
         [FantasyPosition.QUARTERBACK]: [],
@@ -353,6 +369,15 @@ export const purgePlayerFromPlayerRanks = ( playerRanks: PlayerRanks, player: Pl
             SortPlayersByMetric.Adp,
         )
     }
+
+    return { ...playerRanks }
+}
+
+export const editPlayersInPlayerRanks = ( playerRanks: PlayerRanks, editedPlayers: Player[], settings: FantasySettings, boardSettings: BoardSettings ): PlayerRanks => {
+    editedPlayers.forEach( player => {
+        playerRanks = removePlayerFromBoard( playerRanks, player )
+        playerRanks = addAvailPlayer( playerRanks, player, settings, boardSettings )
+    })
 
     return { ...playerRanks }
 }
