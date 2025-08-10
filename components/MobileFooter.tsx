@@ -54,7 +54,7 @@ const MobileFooter: React.FC<MobileFooterProps> = ({ currentView, onViewChange }
   ]
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-300 md:hidden z-50">
+    <div className="fixed bottom-0 h-20 left-0 right-0 bg-white border-t border-gray-300 md:hidden z-40 w-full">
       <div className="flex justify-around py-2">
         {buttons.map(({ view, icon, label }) => (
           <button

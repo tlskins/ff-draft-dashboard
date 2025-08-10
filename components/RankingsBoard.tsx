@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 
 import { myCurrentRound, PlayerRanks, Roster } from '../behavior/draft'
 import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings } from "../types"
@@ -103,6 +103,27 @@ const RankingsBoard = ({
 }: RankingsBoardProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: Event) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.mobile-footer-dropdown')) {
+        setOpenDropdown(null)
+      }
+    }
+
+    if (openDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [openDropdown])
 
   const draftBoard = useMemo(() => {
     const myCurrRound = myCurrentRound(currPick, myPickNum, fantasySettings.numTeams)
@@ -212,8 +233,8 @@ const RankingsBoard = ({
     noPlayers ?
     <></>
     :
-    <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded shadow-md bg-white text-sm">
-      <div className="flex flex-col items-center justify-center content-center mb-2">
+    <div className="flex flex-col p-4 h-full overflow-y-scroll border border-4 rounded shadow-md bg-white text-sm">
+      <div className="hidden md:flex flex-col items-center justify-center content-center mb-2">
         <div className="flex flex-col items-center w-full">
           { (!activeDraftListenerTitle && !listenerActive) &&
             <p className="bg-gray-300 font-semibold shadow rounded-md text-sm my-1 px-4">
@@ -237,7 +258,7 @@ const RankingsBoard = ({
         <div className="flex flex-col text-left">
           <div className="flex flex-row">
             <select
-              className="px-3 py-1 mx-2 border rounded bg-blue-100 shadow"
+              className="hidden md:block px-3 py-1 mx-2 border rounded bg-blue-100 shadow"
               value={draftView}
               disabled={isEditingCustomRanking}
               onChange={ e => setDraftView(e.target.value as DraftView) }
@@ -246,7 +267,7 @@ const RankingsBoard = ({
             </select>
             
             { draftView === DraftView.RANKING && (
-              <div className="flex flex-row">
+              <div className="hidden md:flex flex-row">
                 <button
                   className="px-3 py-1 text-sm rounded shadow bg-red-300 hover:bg-red-600 hover:text-white mx-2"
                   onClick={() => setShowPurgedModal(true)}
@@ -418,6 +439,137 @@ const RankingsBoard = ({
           </div>
         </div>
       )}
+
+      {/* Mobile Footer */}
+      <div className="md:hidden fixed bottom-20 left-0 right-0 bg-white border-t border-gray-300 shadow-lg z-50 mobile-footer-dropdown">
+        <div className="flex flex-row">
+          {/* Draft View Dropdown */}
+          <div className="flex-1 relative">
+            {openDropdown === 'draftView' && (
+              <div className="absolute bottom-full left-0 right-0 bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto">
+                {Object.values(DraftView).map((view: DraftView) => (
+                  <button
+                    key={view}
+                    className={`w-full p-3 text-left hover:bg-blue-50 border-b border-gray-200 ${
+                      draftView === view ? 'bg-blue-100 font-semibold' : ''
+                    }`}
+                    disabled={isEditingCustomRanking}
+                    onClick={() => {
+                      setDraftView(view)
+                      setOpenDropdown(null)
+                    }}
+                  >
+                    {view}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              className={`w-full p-3 text-center border-r border-gray-300 ${
+                openDropdown === 'draftView' ? 'bg-blue-100' : 'hover:bg-gray-50'
+              } ${isEditingCustomRanking ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={isEditingCustomRanking}
+              onClick={() => setOpenDropdown(openDropdown === 'draftView' ? null : 'draftView')}
+            >
+              <div className="text-xs text-gray-600">View</div>
+            </button>
+          </div>
+
+          {/* Sort Option Dropdown - only show on RankingView */}
+          {draftView === DraftView.RANKING && (
+            <div className="flex-1 relative">
+              {openDropdown === 'sort' && (
+                <div className="absolute bottom-full left-0 right-0 bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto">
+                  {Object.values(SortOption).map((option: SortOption) => (
+                    <button
+                      key={option}
+                      className={`w-full p-3 text-left hover:bg-blue-50 border-b border-gray-200 ${
+                        sortOption === option ? 'bg-blue-100 font-semibold' : ''
+                      }`}
+                      onClick={() => {
+                        setSortOption(option)
+                        setOpenDropdown(null)
+                      }}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                className={`w-full p-3 text-center border-r border-gray-300 ${
+                  openDropdown === 'sort' ? 'bg-blue-100' : 'hover:bg-gray-50'
+                }`}
+                onClick={() => setOpenDropdown(openDropdown === 'sort' ? null : 'sort')}
+              >
+                <div className="text-xs text-gray-600">Sort</div>
+              </button>
+            </div>
+          )}
+
+          {/* Highlight Option Dropdown - only show on RankingView */}
+          {draftView === DraftView.RANKING && (
+            <div className="flex-1 relative">
+              {openDropdown === 'highlight' && (
+                <div className="absolute bottom-full left-0 right-0 bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto">
+                  {Object.values(HighlightOption).map((option: HighlightOption) => (
+                    <button
+                      key={option}
+                      className={`w-full p-3 text-left hover:bg-blue-50 border-b border-gray-200 ${
+                        highlightOption === option ? 'bg-blue-100 font-semibold' : ''
+                      }`}
+                      onClick={() => {
+                        setHighlightOption(option)
+                        setOpenDropdown(null)
+                      }}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                className={`w-full p-3 text-center border-r border-gray-300 ${
+                  openDropdown === 'highlight' ? 'bg-blue-100' : 'hover:bg-gray-50'
+                }`}
+                onClick={() => setOpenDropdown(openDropdown === 'highlight' ? null : 'highlight')}
+              >
+                <div className="text-xs text-gray-600">Highlight</div>
+              </button>
+            </div>
+          )}
+
+          {/* Saved Rankings Dropdown - only show if there are options and on ranking view */}
+          {draftView === DraftView.RANKING && savedRankingsOptions.length > 0 && (
+            <div className="flex-1 relative">
+              {openDropdown === 'savedRankings' && (
+                <div className="absolute bottom-full left-0 right-0 bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto">
+                  {savedRankingsOptions.map((option) => (
+                    <button
+                      key={option.title}
+                      className="w-full p-3 text-left hover:bg-blue-50 border-b border-gray-200"
+                      onClick={() => {
+                        option.callback()
+                        setOpenDropdown(null)
+                      }}
+                    >
+                      {option.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                className={`w-full p-3 text-center ${
+                  openDropdown === 'savedRankings' ? 'bg-blue-100' : 'hover:bg-gray-50'
+                }`}
+                onClick={() => setOpenDropdown(openDropdown === 'savedRankings' ? null : 'savedRankings')}
+              >
+                <div className="text-xs text-gray-600">Rankings</div>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

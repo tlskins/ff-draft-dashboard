@@ -83,9 +83,9 @@ const RankingView = ({
   return (
     <>
       {/* Controls for ranking view */}
-      <div className="flex flex-row mb-8 align-center">
-        <div className="flex flex-col text-left h-16 w-full">
-          <div className="grid grid-cols-2">
+      <div className="flex flex-row xl:mb-8 md:mb-2 align-center">
+        <div className="flex flex-col text-left h-16 md:h-6 w-full">
+          <div className="grid md:grid-cols-2 grid-cols-1">
             <div className="flex flex-col">
               <div className="flex flex-col mb-4">
                 <h2 className="text-2xl font-bold">Rankings By Position</h2>
@@ -104,7 +104,7 @@ const RankingView = ({
                 </div>
               </div>
 
-              <div className="flex flex-row">
+              <div className="hidden md:flex flex-row">
                 <select
                     className="p-1 m-1 border rounded bg-blue-100 shadow"
                     value={sortOption}
@@ -121,7 +121,7 @@ const RankingView = ({
                 </select>
               </div>
             </div>
-            <div className="flex flex-col h-full items-end content-end justify-end pb-2">
+            <div className="hidden md:flex flex-col h-full items-end content-end justify-end pb-2">
               { !showNextPreds &&
                 <>
                   <div className="flex flex-row justify-end">
@@ -202,14 +202,15 @@ const RankingView = ({
             </div>
           )}
           
-          <div className="flex flex-row">
+          {/* Position Ranks Player Cards*/}
+          <div className="flex flex-row overflow-x-auto overflow-y-auto max-h-685 md:max-h-none md:overflow-visible">
             { draftBoardView.filter((column: any) => column.columnTitle !== 'Purge').map( (draftBoardColumn: any, i: number) => {
               const { columnTitle, cards } = draftBoardColumn
               const posStyle = getPosStyle(columnTitle)
               return(
                 <div key={i} className="flex flex-row">
                   <div className="flex flex-col">
-                    <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500`}>
+                    <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500 sticky top-0 z-10 md:static`}>
                       <span className="font-bold underline">{ columnTitle }</span>
                       { Boolean(predNextTiers[columnTitle]) &&
                         <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[columnTitle] }</p>

@@ -9,6 +9,9 @@ module.exports = {
     extend: {
       gridTemplateColumns: {
         '14': 'repeat(14, minmax(0, 1fr))',
+      },
+      maxHeight: {
+        '685': '685px',
       }
     },
   },

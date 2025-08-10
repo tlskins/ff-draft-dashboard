@@ -246,7 +246,7 @@ const Home: FC = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen relative">
       <PageHead />
-      <main className="flex flex-col items-center justify-center w-full flex-1 px-4 md:px-20 text-center bg-gray-50">
+      <main className="flex flex-col items-center justify-center w-full flex-1 md:px-20 text-center bg-gray-50">
         {/* Desktop Header Section */}
         <div className="hidden md:block">
           <Header
@@ -262,7 +262,7 @@ const Home: FC = () => {
           />
         </div>
 
-        <div className="flex flex-col items-center mt-4 w-full">
+        <div className="flex flex-col items-center mt-4 w-full h-screen">
           {/* Desktop Layout */}
           <div className="hidden md:flex flex-row justify-center w-screen relative mb-4 grid grid-cols-12 gap-1 px-1">
             {/* Stats Column */}
@@ -356,7 +356,7 @@ const Home: FC = () => {
           </div>
 
           {/* Mobile Layout */}
-          <div className="md:hidden w-full px-2 pb-20">
+          <div className="md:hidden w-full h-full px-2">
             {mobileView === MobileView.HEADER && (
               <div className="w-full">
                 <Header
