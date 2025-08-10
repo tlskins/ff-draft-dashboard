@@ -10,6 +10,7 @@ import ADPView from "../components/views/ADPView"
 import Dropdown from "../components/dropdown"
 import OptimalRosterDisplay from "../components/OptimalRosterDisplay"
 import PickHistoryFooter from "../components/PickHistoryFooter"
+import MobileFooter, { MobileView } from "../components/MobileFooter"
 
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
@@ -137,6 +138,7 @@ const Home: FC = () => {
   const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
+  const [mobileView, setMobileView] = useState<MobileView>(MobileView.HEADER)
 
   const loadCurrentRankings = useCallback(() => {
     const currentRankings = getPlayerData()
@@ -244,23 +246,25 @@ const Home: FC = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen relative">
       <PageHead />
-      <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center bg-gray-50">
-        {/* Header Section */}
-        <Header
-          settings={settings}
-          boardSettings={boardSettings}
-          draftStarted={draftStarted}
-          myPickNum={myPickNum}
-          setNumTeams={setNumTeams}
-          setIsPpr={setIsPpr}
-          setMyPickNum={setMyPickNum}
-          onSetRanker={onSetRanker}
-          onSetAdpRanker={onSetAdpRanker}
-        />
+      <main className="flex flex-col items-center justify-center w-full flex-1 px-4 md:px-20 text-center bg-gray-50">
+        {/* Desktop Header Section */}
+        <div className="hidden md:block">
+          <Header
+            settings={settings}
+            boardSettings={boardSettings}
+            draftStarted={draftStarted}
+            myPickNum={myPickNum}
+            setNumTeams={setNumTeams}
+            setIsPpr={setIsPpr}
+            setMyPickNum={setMyPickNum}
+            onSetRanker={onSetRanker}
+            onSetAdpRanker={onSetAdpRanker}
+          />
+        </div>
 
-        <div className="flex flex-col items-center mt-4">
-          <div className="flex flex-row justify-center w-screen relative mb-4 grid grid-cols-12 gap-1 px-1">
-
+        <div className="flex flex-col items-center mt-4 w-full">
+          {/* Desktop Layout */}
+          <div className="hidden md:flex flex-row justify-center w-screen relative mb-4 grid grid-cols-12 gap-1 px-1">
             {/* Stats Column */}
             <div className="col-span-3 flex flex-col justify-start ml-2 p-1">
               <OptimalRosterDisplay
@@ -350,6 +354,102 @@ const Home: FC = () => {
               />
             </div>
           </div>
+
+          {/* Mobile Layout */}
+          <div className="md:hidden w-full px-2 pb-20">
+            {mobileView === MobileView.HEADER && (
+              <div className="w-full">
+                <Header
+                  settings={settings}
+                  boardSettings={boardSettings}
+                  draftStarted={draftStarted}
+                  myPickNum={myPickNum}
+                  setNumTeams={setNumTeams}
+                  setIsPpr={setIsPpr}
+                  setMyPickNum={setMyPickNum}
+                  onSetRanker={onSetRanker}
+                  onSetAdpRanker={onSetAdpRanker}
+                />
+              </div>
+            )}
+
+            {mobileView === MobileView.RANKINGS && (
+              <RankingsBoard
+                playerRanks={playerRanks}
+                predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
+                draftView={draftView}
+                setDraftView={setDraftView}
+                sortOption={sortOption}
+                setSortOption={setSortOption}
+                highlightOption={highlightOption}
+                setHighlightOption={setHighlightOption}
+                myPickNum={myPickNum}
+                noPlayers={noPlayers}
+                currPick={currPick}
+                predNextTiers={isEditingCustomRanking || usingCustomRanking ? {} : predNextTiers}
+                fantasySettings={settings}
+                boardSettings={boardSettings}
+                rankingSummaries={rankingSummaries}
+                onSelectPlayer={onSelectPlayer}
+                onPurgePlayer={onPurgeAvailPlayer}
+                setViewPlayerId={setViewPlayerId}
+                isEditingCustomRanking={isEditingCustomRanking}
+                hasCustomRanking={usingCustomRanking}
+                canEditCustomRankings={canEditCustomRankings()}
+                onReorderPlayer={onReorderPlayerInPosition}
+                onStartCustomRanking={handleStartCustomRanking}
+                onFinishCustomRanking={handleFinishCustomRanking}
+                onUpdateTierBoundary={onUpdateTierBoundary}
+                onCancelCustomRanking={() => {
+                  setDraftView(DraftView.RANKING)
+                }}
+                saveCustomRankings={saveCustomRankings}
+                loadCustomRankings={loadCustomRankings}
+                hasCustomRankingsSaved={hasCustomRankingsSaved}
+                clearSavedCustomRankings={clearSavedCustomRankings}
+                rosters={rosters}
+                playerLib={playerLib}
+                draftStarted={draftStarted}
+                getDraftRoundForPickNum={getDraftRoundForPickNum}
+                viewPlayerId={viewPlayerId}
+                draftHistory={draftHistory}
+                viewRosterIdx={myPickNum-1}
+                listenerActive={listenerActive}
+                activeDraftListenerTitle={activeDraftListenerTitle}
+                loadCurrentRankings={loadCurrentRankings}
+                rankings={rankings}
+              />
+            )}
+
+            {mobileView === MobileView.ADP && (
+              <ADPView
+                playerRanks={playerRanks}
+                fantasySettings={settings}
+                boardSettings={boardSettings}
+                onSelectPlayer={onSelectPlayer}
+                setViewPlayerId={setViewPlayerId}
+                viewPlayerId={viewPlayerId}
+                myPicks={myPicks}
+                playerTargets={playerTargets}
+                playerLib={playerLib}
+                addPlayerTarget={addPlayerTarget}
+                replacePlayerTargets={replacePlayerTargets}
+                removePlayerTarget={removePlayerTarget}
+              />
+            )}
+
+            {mobileView === MobileView.ROSTER && (
+              <OptimalRosterDisplay
+                currentOptimalRoster={currentOptimalRoster}
+                optimalRosters={optimalRosters}
+                selectedOptimalRosterIdx={selectedOptimalRosterIdx}
+                setSelectedOptimalRosterIdx={setSelectedOptimalRosterIdx}
+                boardSettings={boardSettings}
+                settings={settings}
+                rankingSummaries={rankingSummaries}
+              />
+            )}
+          </div>
         </div>
       </main>
 
@@ -368,6 +468,12 @@ const Home: FC = () => {
           setViewPlayerId={setViewPlayerId}
         />
       }
+
+      {/* Mobile Footer Navigation */}
+      <MobileFooter 
+        currentView={mobileView}
+        onViewChange={setMobileView}
+      />
     </div>
   )
 }
