@@ -1,6 +1,7 @@
-import { Player, FantasySettings, BoardSettings, RankingSummary, ThirdPartyRanker, Rankings } from "."
-import { PlayerRanks, Roster } from "../behavior/draft"
-import { SortOption, HighlightOption } from "../pages"
+import { PlayerRanks, Roster } from '../behavior/draft'
+import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings } from './index'
+import { SortOption, HighlightOption } from '../pages'
+import { DraftView } from '../pages'
 
 export type DraftBoardTitleCard = {
   bgColor: string

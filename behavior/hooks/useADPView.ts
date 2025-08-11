@@ -13,7 +13,7 @@ interface UseADPViewProps {
   playerLib: { [key: string]: Player }
   addPlayerTarget: (player: Player, targetBelowPick: number) => void
   replacePlayerTargets: (targets: PlayerTarget[]) => void
-  removePlayerTarget: (playerId: string) => void
+  removePlayerTargets: (playerIds: string[]) => void
 }
 
 export const useADPView = ({
@@ -24,7 +24,7 @@ export const useADPView = ({
   playerTargets,
   playerLib,
   replacePlayerTargets,
-  removePlayerTarget,
+  removePlayerTargets,
 }: UseADPViewProps) => {
   const [currentPage, setCurrentPage] = useState(0) // 0-based page index
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
@@ -184,7 +184,8 @@ export const useADPView = ({
 
   const handleClearFavorites = () => {
     if (confirm('Are you sure you want to clear all player targets?')) {
-      playerTargets.forEach(target => removePlayerTarget(target.playerId))
+      const playerIds = playerTargets.map(target => target.playerId)
+      removePlayerTargets(playerIds)
       try {
         localStorage.removeItem('ff-draft-favorites')
       } catch (error) {

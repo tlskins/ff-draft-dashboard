@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect, useRef } from "react"
 
 import { myCurrentRound, PlayerRanks, Roster } from '../behavior/draft'
 import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings } from "../types"
@@ -11,6 +11,7 @@ import BestAvailByRoundView from './views/BestAvailByRoundView'
 import EditRankingsView from './views/EditRankingsView'
 import RosterDisplay from './RosterDisplay'
 import Dropdown from './dropdown'
+import MobileViewFooter, { MobileDropdownProps, MobileFooterButton } from './MobileViewFooter'
 
 
 
@@ -56,6 +57,7 @@ interface RankingsBoardProps {
   activeDraftListenerTitle: string | null,
   loadCurrentRankings: () => void,
   rankings: Rankings,
+  removePlayerTargets: (playerIds: string[]) => void,
 }
 
 const RankingsBoard = ({
@@ -103,6 +105,22 @@ const RankingsBoard = ({
 }: RankingsBoardProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+
+  // Refs for dropdown containers (still needed for the new component)
+  const draftViewRef = useRef<HTMLDivElement>(null)
+  const sortRef = useRef<HTMLDivElement>(null)
+  const highlightRef = useRef<HTMLDivElement>(null)
+  const savedRankingsRef = useRef<HTMLDivElement>(null)
+
+  // Handle dropdown opening (simplified for new component)
+  const handleDropdownToggle = (dropdownType: string, ref: React.RefObject<HTMLDivElement | null>) => {
+    if (openDropdown === dropdownType) {
+      setOpenDropdown(null)
+    } else {
+      setOpenDropdown(dropdownType)
+    }
+  }
 
   const draftBoard = useMemo(() => {
     const myCurrRound = myCurrentRound(currPick, myPickNum, fantasySettings.numTeams)
@@ -212,8 +230,8 @@ const RankingsBoard = ({
     noPlayers ?
     <></>
     :
-    <div className="flex flex-col p-4 h-screen overflow-y-scroll border border-4 rounded shadow-md bg-white text-sm">
-      <div className="flex flex-col items-center justify-center content-center mb-2">
+    <div className="flex flex-col p-4 h-full overflow-y-scroll border border-4 rounded shadow-md bg-white text-sm">
+      <div className="hidden md:flex flex-col items-center justify-center content-center mb-2">
         <div className="flex flex-col items-center w-full">
           { (!activeDraftListenerTitle && !listenerActive) &&
             <p className="bg-gray-300 font-semibold shadow rounded-md text-sm my-1 px-4">
@@ -237,7 +255,7 @@ const RankingsBoard = ({
         <div className="flex flex-col text-left">
           <div className="flex flex-row">
             <select
-              className="px-3 py-1 mx-2 border rounded bg-blue-100 shadow"
+              className="hidden md:block px-3 py-1 mx-2 border rounded bg-blue-100 shadow"
               value={draftView}
               disabled={isEditingCustomRanking}
               onChange={ e => setDraftView(e.target.value as DraftView) }
@@ -246,7 +264,7 @@ const RankingsBoard = ({
             </select>
             
             { draftView === DraftView.RANKING && (
-              <div className="flex flex-row">
+              <div className="hidden md:flex flex-row">
                 <button
                   className="px-3 py-1 text-sm rounded shadow bg-red-300 hover:bg-red-600 hover:text-white mx-2"
                   onClick={() => setShowPurgedModal(true)}
@@ -418,6 +436,71 @@ const RankingsBoard = ({
           </div>
         </div>
       )}
+
+      {/* Mobile Footer */}
+      <MobileViewFooter
+        dropdowns={[
+          {
+            label: 'View',
+            isOpen: openDropdown === 'draftView',
+            onToggle: () => handleDropdownToggle('draftView', draftViewRef),
+            variant: 'primary',
+            items: Object.values(DraftView).map((view: DraftView) => ({
+              label: view,
+              onClick: () => {
+                setDraftView(view)
+                setOpenDropdown(null)
+              },
+              disabled: isEditingCustomRanking,
+              isSelected: draftView === view
+            }))
+          },
+          ...(draftView === DraftView.RANKING ? [
+            {
+              label: 'Sort',
+              isOpen: openDropdown === 'sort',
+              onToggle: () => handleDropdownToggle('sort', sortRef),
+              variant: 'secondary' as const,
+              items: Object.values(SortOption).map((option: SortOption) => ({
+                label: option,
+                onClick: () => {
+                  setSortOption(option)
+                  setOpenDropdown(null)
+                },
+                isSelected: sortOption === option
+              }))
+            },
+            {
+              label: 'Highlight',
+              isOpen: openDropdown === 'highlight',
+              onToggle: () => handleDropdownToggle('highlight', highlightRef),
+              variant: 'secondary' as const,
+              items: Object.values(HighlightOption).map((option: HighlightOption) => ({
+                label: option,
+                onClick: () => {
+                  setHighlightOption(option)
+                  setOpenDropdown(null)
+                },
+                isSelected: highlightOption === option
+              }))
+            },
+            ...(savedRankingsOptions.length > 0 ? [{
+              label: 'Rankings',
+              isOpen: openDropdown === 'savedRankings',
+              onToggle: () => handleDropdownToggle('savedRankings', savedRankingsRef),
+              variant: 'secondary' as const,
+              items: savedRankingsOptions.map((option) => ({
+                label: option.title,
+                onClick: () => {
+                  option.callback()
+                  setOpenDropdown(null)
+                }
+              }))
+            }] : [])
+          ] : [])
+        ]}
+        onClickOutside={() => setOpenDropdown(null)}
+      />
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../type
 import { getPlayerAdp, getPlayerMetrics, getRoundIdxForPickNum, PlayerRanks } from '../../behavior/draft'
 import { getPosStyle, getTierStyle } from '../../behavior/styles'
 import { useADPView, PositionFilter } from '../../behavior/hooks/useADPView'
+import MobileViewFooter, { MobileDropdownProps, MobileFooterButton } from '../MobileViewFooter'
 
 interface ADPViewProps {
   playerRanks: PlayerRanks
@@ -17,6 +18,7 @@ interface ADPViewProps {
   addPlayerTarget: (player: Player, targetBelowPick: number) => void
   replacePlayerTargets: (targets: PlayerTarget[]) => void
   removePlayerTarget: (playerId: string) => void
+  removePlayerTargets: (playerIds: string[]) => void
 }
 
 const ADPView: React.FC<ADPViewProps> = ({
@@ -31,6 +33,7 @@ const ADPView: React.FC<ADPViewProps> = ({
   addPlayerTarget,
   replacePlayerTargets,
   removePlayerTarget,
+  removePlayerTargets,
 }) => {
   const {
     currentPage,
@@ -46,9 +49,11 @@ const ADPView: React.FC<ADPViewProps> = ({
     handleSaveFavorites,
     handleLoadFavorites,
     handleClearFavorites,
-  } = useADPView({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib, addPlayerTarget, replacePlayerTargets, removePlayerTarget })
+  } = useADPView({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib, addPlayerTarget, replacePlayerTargets, removePlayerTargets })
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isMobileTargetsOpen, setIsMobileTargetsOpen] = useState(false)
+  const [isMobilePositionOpen, setIsMobilePositionOpen] = useState(false)
   
   const getRoundCount = useCallback((round: number) => {
     return (playersByRound[round] || []).filter( (player, playerIdx) => {
@@ -61,9 +66,13 @@ const ADPView: React.FC<ADPViewProps> = ({
     }).length
   }, [fantasySettings, boardSettings, playersByRound])
 
+  // Calculate rounds to show
+  const roundsToShow = Array.from({ length: endRound - startRound + 1 }, (_, i) => startRound + i)
+
   return (
     <div className="h-screen overflow-y-scroll bg-white p-2">
-      <div className="mb-4">
+      {/* Desktop Header - Hidden on mobile */}
+      <div className="mb-4 hidden md:block">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-semibold text-gray-800">
             Available By Round Sorted By Rank
@@ -121,12 +130,22 @@ const ADPView: React.FC<ADPViewProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Mobile Header - Simplified */}
+      <div className="mb-4 md:hidden">
+        <h2 className="text-lg font-semibold text-gray-800 text-center">
+          Rounds {startRound}-{endRound}
+          {positionFilter !== 'All' && ` - ${positionFilter}`}
+        </h2>
+      </div>
       
-      <div className="grid grid-cols-5 gap-2 min-w-full">
+      {/* Main Grid - Responsive */}
+      <div className="grid grid-cols-4 md:grid-cols-5 gap-2 min-w-full mb-20 md:mb-4">
+        {/* Player Targets Column */}
         <div className="flex flex-col min-w-0">
           <div className="sticky top-0 bg-yellow-300 border-b-2 border-purple-300 p-2 text-center">
             <h3 className="text-sm font-semibold text-purple-800">
-              Player Targets
+              Targets
             </h3>
             <p className="text-xs text-purple-600">
               ({playerTargets.length} players)
@@ -134,7 +153,8 @@ const ADPView: React.FC<ADPViewProps> = ({
           </div>
           
           <div className="flex flex-col space-y-1 p-2">
-            <div className="relative mt-2">
+            {/* Desktop Manage Targets Dropdown */}
+            <div className="relative mt-2 hidden md:block">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="w-full px-2 py-1 text-xs text-purple-600 border border-2 border-purple-600 rounded hover:bg-purple-600 hover:text-white transition-colors flex justify-between items-center"
@@ -233,8 +253,9 @@ const ADPView: React.FC<ADPViewProps> = ({
           </div>
         </div>
 
-        {Array.from({ length: endRound - startRound + 1 }, (_, i) => startRound + i).map(round => (
-          <div key={round} className="flex flex-col min-w-0">
+        {/* Round Columns - Show first 3 rounds on mobile, first 4 on desktop */}
+        {roundsToShow.slice(0, 4).map((round, index) => (
+          <div key={round} className={`flex flex-col min-w-0 ${index === 3 ? 'hidden md:flex' : ''}`}>
             <div className="sticky top-0 bg-blue-100 border-b-2 border-blue-300 p-2 text-center">
               <h3 className="text-sm font-semibold text-blue-800">
                 Round {round}
@@ -330,6 +351,99 @@ const ADPView: React.FC<ADPViewProps> = ({
           </div>
         ))}
       </div>
+
+      {/* Mobile Footer */}
+      <MobileViewFooter
+        dropdowns={[
+          {
+            label: 'Targets',
+            isOpen: isMobileTargetsOpen,
+            onToggle: () => {
+              setIsMobileTargetsOpen(!isMobileTargetsOpen)
+              setIsMobilePositionOpen(false)
+            },
+            variant: 'purple',
+            items: [
+              {
+                label: 'Save targets',
+                onClick: () => {
+                  handleSaveFavorites()
+                  setIsMobileTargetsOpen(false)
+                },
+                disabled: playerTargets.length === 0
+              },
+              {
+                label: 'Load targets',
+                onClick: () => {
+                  handleLoadFavorites()
+                  setIsMobileTargetsOpen(false)
+                }
+              },
+              {
+                label: 'Clear targets',
+                onClick: () => {
+                  handleClearFavorites()
+                  setIsMobileTargetsOpen(false)
+                },
+                disabled: playerTargets.length === 0
+              }
+            ]
+          },
+          {
+            label: positionFilter === 'All' ? 'All' : positionFilter,
+            isOpen: isMobilePositionOpen,
+            onToggle: () => {
+              setIsMobilePositionOpen(!isMobilePositionOpen)
+              setIsMobileTargetsOpen(false)
+            },
+            variant: 'primary',
+            items: [
+              {
+                label: 'All Positions',
+                onClick: () => {
+                  setPositionFilter('All')
+                  setIsMobilePositionOpen(false)
+                },
+                isSelected: positionFilter === 'All'
+              },
+              ...(['QB', 'RB', 'WR', 'TE'] as PositionFilter[]).map(pos => ({
+                label: `${pos} Only`,
+                onClick: () => {
+                  setPositionFilter(pos)
+                  setIsMobilePositionOpen(false)
+                },
+                isSelected: positionFilter === pos
+              }))
+            ]
+          }
+        ]}
+        buttons={[
+          {
+            label: '←',
+            onClick: () => {
+              handlePrevPage()
+              setIsMobileTargetsOpen(false)
+              setIsMobilePositionOpen(false)
+            },
+            disabled: currentPage === 0,
+            variant: 'secondary'
+          },
+          {
+            label: '→',
+            onClick: () => {
+              handleNextPage()
+              setIsMobileTargetsOpen(false)
+              setIsMobilePositionOpen(false)
+            },
+            disabled: currentPage === totalPages - 1,
+            variant: 'secondary'
+          }
+        ]}
+        onClickOutside={() => {
+          setIsMobileTargetsOpen(false)
+          setIsMobilePositionOpen(false)
+        }}
+      />
     </div>
   )
 }

@@ -38,18 +38,6 @@ interface UseRanksProps {
   myPickNum?: number,
 }
 
-const getDefaultRankings = (settings: FantasySettings) => {
-  console.log('getDefaultRankings', settings)
-  return {
-    players: [],
-    rankingsSummaries: [],
-    cachedAt: '',
-    editedAt: '',
-    settings,
-    copiedRanker: undefined,
-  } as Rankings
-}
-
 export const useRanks = ({
   settings,
   defaultMyPickNum = 6,
@@ -59,7 +47,14 @@ export const useRanks = ({
     ranker: ThirdPartyRanker.HARRIS,
     adpRanker: ThirdPartyADPRanker.ESPN,
   })
-  const [rankings, setRankings] = useState<Rankings>(getDefaultRankings(settings))
+  const [rankings, setRankings] = useState<Rankings>({
+    players: [],
+    rankingsSummaries: [],
+    cachedAt: '',
+    editedAt: '',
+    settings,
+    copiedRanker: undefined,
+  } as Rankings)
 
   const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
   const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})
@@ -434,6 +429,9 @@ export const useRanks = ({
   const removePlayerTarget = useCallback((playerId: string) => {
     setPlayerTargets(playerTargets.filter(target => target.playerId !== playerId))
   }, [playerTargets])
+  const removePlayerTargets = useCallback((playerIds: string[]) => {
+    setPlayerTargets(playerTargets.filter(target => !playerIds.includes(target.playerId)))
+  }, [playerTargets])
 
   // Save/Load custom rankings functionality
   const saveCustomRankings = useCallback(() => {
@@ -587,6 +585,7 @@ export const useRanks = ({
     addPlayerTarget,
     replacePlayerTargets,
     removePlayerTarget,
+    removePlayerTargets,
     // save/load custom rankings funcs
     saveCustomRankings,
     loadCustomRankings,

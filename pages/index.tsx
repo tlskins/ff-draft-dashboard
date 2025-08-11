@@ -2,11 +2,16 @@
 import React, { useEffect, useState, useCallback, FC } from "react"
 
 import PageHead from "../components/pageHead"
+import Header from "../components/Header"
 import RankingsBoard from "../components/RankingsBoard"
 import HistoricalStats from "../components/HistoricalStats"
 import RankingSummaryDisplay from "../components/RankingSummary"
 import ADPView from "../components/views/ADPView"
 import Dropdown from "../components/dropdown"
+import OptimalRosterDisplay from "../components/OptimalRosterDisplay"
+import PickHistoryFooter from "../components/PickHistoryFooter"
+import MobileFooter, { MobileView } from "../components/MobileFooter"
+import MobileTiersView from "../components/MobileTiersView"
 
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
@@ -88,6 +93,7 @@ const Home: FC = () => {
     addPlayerTarget,
     removePlayerTarget,
     replacePlayerTargets,
+    removePlayerTargets,
     // save/load custom rankings funcs
     saveCustomRankings,
     loadCustomRankings,
@@ -134,11 +140,7 @@ const Home: FC = () => {
   const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
-  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
-
-  const toggleHeaderCollapse = () => {
-    setIsHeaderCollapsed(!isHeaderCollapsed)
-  }
+  const [mobileView, setMobileView] = useState<MobileView>(MobileView.HEADER)
 
   const loadCurrentRankings = useCallback(() => {
     const currentRankings = getPlayerData()
@@ -171,13 +173,13 @@ const Home: FC = () => {
 
   // key press / up commands
   const onKeyUp = useCallback( (e: KeyboardEvent) => {
-    if (['MetaRight', 'MetaLeft'].includes(e.code)) {
+    if (['MetaRight', 'MetaLeft'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       setHighlightOption(HighlightOption.PREDICTED_TAKEN)
-    } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
+    } else if (['ShiftLeft', 'ShiftRight'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       // sort by harris
       onApplyRankingSortBy( false )
       setSortOption(SortOption.RANKS)
-    } else if (['KeyZ'].includes(e.code)) {
+    } else if (['KeyZ'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       // show predicted avail by round
       setDraftView(DraftView.RANKING)
     }
@@ -192,18 +194,18 @@ const Home: FC = () => {
       onNavRoundDown(draftHistory)
     // arrow left
     } else if ( e.code === 'ArrowLeft' ) {
-      onNavLeft()
+      // onNavLeft()
     // arrow right
     } else if ( e.code === 'ArrowRight' ) {
-      onNavRight(draftHistory)
+      // onNavRight(draftHistory)
       // alt 
-    } else if (['MetaRight', 'MetaLeft'].includes(e.code)) {
+    } else if (['MetaRight', 'MetaLeft'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       setHighlightOption(HighlightOption.PREDICTED_TAKEN_NEXT_TURN)
     // shift 
-    } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
+    } else if (['ShiftLeft', 'ShiftRight'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       onApplyRankingSortBy( true )
       setSortOption(SortOption.ADP)
-    } else if (['KeyZ'].includes(e.code)) {
+    } else if (['KeyZ'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       // show predicted avail by round
       setDraftView(DraftView.BEST_AVAILABLE)
     }
@@ -243,229 +245,39 @@ const Home: FC = () => {
     setDraftView(DraftView.RANKING)
   }
 
-  const handleClearCustomRanking = () => {
-    loadCurrentRankings()
-    setDraftView(DraftView.RANKING)
-  }
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen relative">
       <PageHead />
-      <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center bg-gray-50">
-        {/* Draft Settings */}
-        <div 
-          className={`w-screen z-10 shadow-md transition-all duration-500 ease-in-out overflow-hidden ${
-            isHeaderCollapsed ? 'h-6' : 'h-auto'
-          }`} 
-          style={{backgroundColor: '#FFF7E3'}}
-        >
-          {/* Toggle Button */}
-          <div className="w-full flex justify-center">
-            <button
-              onClick={toggleHeaderCollapse}
-              className="px-4 text-sm font-medium text-gray-700 hover:text-gray-900 focus:outline-none transition-colors duration-200"
-              aria-label={isHeaderCollapsed ? "Expand settings" : "Collapse settings"}
-            >
-              <svg
-                className={`w-5 h-5 transform transition-transform duration-300 ${
-                  isHeaderCollapsed ? 'rotate-180' : 'rotate-0'
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Settings Content */}
-          <div className={`flex-1 flex flex-col items-center px-4 transition-opacity duration-700 ease-in-out ${
-            isHeaderCollapsed ? 'opacity-0' : 'opacity-100'
-          }`}>
-            {/* Logo */}
-            <div className="flex-shrink-0">
-              <img 
-                src="/friedchickentechlogo.png" 
-                alt="Drafty Logo" 
-                className="h-32 w-auto"
-              />
-            </div>
-
-            <h2 className="text-2xl font-bold">
-              Drafty
-            </h2>
-
-            <div className="flex flex-row mb-4 mt-2 justify-center">
-              <div className={`flex flex-row text-sm text-center mr-4 rounded shadow-md ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>
-                <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
-                  # Teams
-                </p>
-                <select
-                  className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
-                  value={settings.numTeams}
-                  onChange={ e => {
-                    const newNumTeams = parseFloat(e.target.value)
-                    setNumTeams(newNumTeams)
-                    setMyPickNum(1)
-                  }}
-                  disabled={draftStarted}
-                >
-                  { [10, 12, 14].map( num => <option key={num} value={ num }> { num } </option>) }
-                </select>
-              </div>
-
-              <div className={`flex flex-row text-sm text-center mr-4 rounded shadow-md ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>
-                <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
-                  Your Pick #
-                </p>
-                <select
-                  className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
-                  value={myPickNum}
-                  onChange={ e =>  setMyPickNum(parseInt(e.target.value))}
-                  disabled={draftStarted}
-                >
-                  { Array.from(Array(settings.numTeams)).map( (_, i) => <option key={i+1} value={ i+1 }> { i+1 } </option>) }
-                </select>
-              </div>
-
-              <div className={`flex flex-row text-sm text-center mr-4 rounded shadow-md ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>
-                <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
-                  STD / PPR
-                </p>
-                <select
-                  className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
-                  value={settings.ppr ? "PPR" : "Standard"}
-                  onChange={ e => {
-                    const isPpr = e.target.value === "PPR"
-                    setIsPpr(isPpr)
-                  }}
-                  disabled={draftStarted}
-                >
-                  { ["Standard", "PPR"].map( opt => <option key={opt} value={ opt }> { opt } </option>) }
-                </select>
-              </div>
-
-              <div className={`flex flex-row text-sm text-center mr-4 rounded shadow-md ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>
-                <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
-                  Ranker
-                </p>
-                <select
-                  className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
-                  value={boardSettings.ranker}
-                  onChange={ e => {
-                    onSetRanker(e.target.value as ThirdPartyRanker)
-                  }}
-                  disabled={draftStarted}
-                >
-                  { Object.values(ThirdPartyRanker).map( ranker => <option key={ranker} value={ ranker }> { ranker } </option>) }
-                </select>
-              </div>
-
-              <div className={`flex flex-row text-sm text-center mr-4 rounded shadow-md ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>
-                <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
-                  ADP Source
-                </p>
-                <select
-                  className={`p-1 m-1 border rounded ${draftStarted ? 'bg-gray-300' : ''}`}
-                  value={boardSettings.adpRanker}
-                  onChange={ e => {
-                    onSetAdpRanker(e.target.value as ThirdPartyADPRanker)
-                  }}
-                  disabled={draftStarted}
-                >
-                  { Object.values(ThirdPartyADPRanker).map( ranker => <option key={ranker} value={ ranker }> { ranker } </option>) }
-                </select>
-              </div>
-            </div>
-
-            <div className="flex flex-col w-full h-14 relative mb-4">
-              <div className="flex w-full justify-center items-center">
-                <div>
-                  <Dropdown
-                    title="Download Extension"
-                    options={[
-                      { title: "Download", callback: () => window.open('https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US') },
-                    ]}
-                    className="m-2 px-3 py-2 hover:text-white hover:bg-blue-800 cursor-pointer bg-gray-100 shadow-md"
-                    buttonClassName="font-semibold tracking-wide uppercase"
-                  />
-                </div>
-
-                <Dropdown
-                  title="Find Mock Draft"
-                  options={[
-                    { title: "ESPN Mock Draft", callback: () => window.open(`https://fantasy.espn.com/football/mockdraftlobby?addata=right_rail_mock_ffl2023`) },
-                    { title: "NFL.com Mock Draft", callback: () => window.open('https://fantasy.nfl.com/draftcenter/mockdrafts') },
-                  ]}
-                  className="m-2 px-3 py-2 hover:text-white hover:bg-blue-800 cursor-pointer bg-gray-100 shadow-md"
-                  buttonClassName="font-semibold tracking-wide uppercase"
-                />
-              </div>
-            </div>
-          </div>
+      <main className="flex flex-col items-center justify-center w-full flex-1 md:px-20 text-center bg-gray-50">
+        {/* Desktop Header Section */}
+        <div className="hidden md:block">
+          <Header
+            settings={settings}
+            boardSettings={boardSettings}
+            draftStarted={draftStarted}
+            myPickNum={myPickNum}
+            setNumTeams={setNumTeams}
+            setIsPpr={setIsPpr}
+            setMyPickNum={setMyPickNum}
+            onSetRanker={onSetRanker}
+            onSetAdpRanker={onSetAdpRanker}
+          />
         </div>
 
-        <div className="flex flex-col items-center mt-4">
-          {/* Stats and Positional Breakdowns */}
-          <div className="flex flex-row justify-center w-screen relative mb-4 grid grid-cols-12 gap-1 px-1">
-
-            <div className="col-span-3 flex flex-col justify-start ml-2 p-1">
-              {currentOptimalRoster && Object.keys(currentOptimalRoster.roster).length > 0 && (
-                <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-2 shadow-md border border-blue-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-semibold underline">
-                      Optimal Total {currentOptimalRoster.metric} Roster Using Ranking Tiers vs ADP ({currentOptimalRoster.value.toFixed(1)} {currentOptimalRoster.metric})
-                    </p>
-                    {optimalRosters.length > 1 && (
-                      <select
-                        className="ml-2 px-2 py-1 text-xs border border-blue-300 rounded bg-white"
-                        value={selectedOptimalRosterIdx}
-                        onChange={(e) => setSelectedOptimalRosterIdx(parseInt(e.target.value))}
-                      >
-                        {optimalRosters.map((roster, idx) => (
-                          <option key={idx} value={idx}>
-                            #{idx + 1} ({roster.value.toFixed(1)} {roster.metric})
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                  <div className="overflow-x-auto text-left">
-                    <table className="w-full text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-blue-300">
-                          <th className="text-left py-1 px-2 font-medium text-blue-700">Pick</th>
-                          <th className="text-left py-1 px-2 font-medium text-blue-700">Pos</th>
-                          <th className="text-left py-1 px-2 font-medium text-blue-700">Player</th>
-                          <th className="text-left py-1 px-2 font-medium text-blue-700">Team</th>
-                          <th className="text-left py-1 px-2 font-medium text-blue-700">Tier</th>
-                          <th className="text-left py-1 px-2 font-medium text-blue-700">{currentOptimalRoster.metric}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(currentOptimalRoster.roster)
-                          .sort(([pickA], [pickB]) => parseInt(pickA) - parseInt(pickB))
-                          .map(([pick, optimalPick]) => {
-                            const player = optimalPick.player
-                            const tier = getProjectedTier(player, boardSettings.ranker, DataRanker.LAST_SSN_PPG, settings, rankingSummaries);
-                            const tierValue = tier ? (tier.lowerLimitValue + tier.upperLimitValue) / 2 : 0;
-                            return (
-                              <tr key={pick} className="border-b border-blue-200 hover:bg-blue-100">
-                                <td className="py-1 px-2 font-medium">R{optimalPick.round} (P{pick})</td>
-                                <td className={`py-1 px-2 rounded-md ${getPosStyle(player.position)}`}>{player.position}</td>
-                                <td className="py-1 px-2 font-medium">{player.fullName}</td>
-                                <td className="py-1 px-2">{player.team}</td>
-                                <td className={`py-1 px-2 ${getTierStyle(tier?.tierNumber || 0)}`}>{tier?.tierNumber || "N/A"}</td>
-                                <td className="py-1 px-2">{tierValue.toFixed(1)}</td>
-                              </tr>
-                            )
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+        <div className="flex flex-col items-center mt-4 w-full h-screen">
+          {/* Desktop Layout */}
+          <div className="hidden md:flex flex-row justify-center w-screen relative mb-4 grid grid-cols-12 gap-1 px-1">
+            {/* Stats Column */}
+            <div className="col-span-3 flex flex-col justify-start ml-2 p-1 w-full">
+              <OptimalRosterDisplay
+                currentOptimalRoster={currentOptimalRoster}
+                optimalRosters={optimalRosters}
+                selectedOptimalRosterIdx={selectedOptimalRosterIdx}
+                setSelectedOptimalRosterIdx={setSelectedOptimalRosterIdx}
+                boardSettings={boardSettings}
+                settings={settings}
+                rankingSummaries={rankingSummaries}
+              />
               <RankingSummaryDisplay
                 activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
                 rankingSummaries={rankingSummaries}
@@ -478,7 +290,8 @@ const Home: FC = () => {
               />
             </div>
 
-            <div className="col-span-5">
+            {/* Rankings Board Column */}
+            <div className="col-span-5 w-full">
               <RankingsBoard
                 playerRanks={playerRanks}
                 predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
@@ -523,10 +336,11 @@ const Home: FC = () => {
                 activeDraftListenerTitle={activeDraftListenerTitle}
                 loadCurrentRankings={loadCurrentRankings}
                 rankings={rankings}
+                removePlayerTargets={removePlayerTargets}
               />
             </div>
 
-            <div className="col-span-4">
+            <div className="col-span-4 w-full">
               <ADPView
                 playerRanks={playerRanks}
                 fantasySettings={settings}
@@ -540,60 +354,133 @@ const Home: FC = () => {
                 addPlayerTarget={addPlayerTarget}
                 replacePlayerTargets={replacePlayerTargets}
                 removePlayerTarget={removePlayerTarget}
+                removePlayerTargets={removePlayerTargets}
               />
             </div>
+          </div>
+
+          {/* Mobile Layout */}
+          <div className="md:hidden w-full h-full px-2">
+            {mobileView === MobileView.HEADER && (
+              <div className="w-full">
+                <Header
+                  settings={settings}
+                  boardSettings={boardSettings}
+                  draftStarted={draftStarted}
+                  myPickNum={myPickNum}
+                  setNumTeams={setNumTeams}
+                  setIsPpr={setIsPpr}
+                  setMyPickNum={setMyPickNum}
+                  onSetRanker={onSetRanker}
+                  onSetAdpRanker={onSetAdpRanker}
+                />
+              </div>
+            )}
+
+            {mobileView === MobileView.RANKINGS && (
+              <RankingsBoard
+                playerRanks={playerRanks}
+                predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
+                draftView={draftView}
+                setDraftView={setDraftView}
+                sortOption={sortOption}
+                setSortOption={setSortOption}
+                highlightOption={highlightOption}
+                setHighlightOption={setHighlightOption}
+                myPickNum={myPickNum}
+                noPlayers={noPlayers}
+                currPick={currPick}
+                predNextTiers={isEditingCustomRanking || usingCustomRanking ? {} : predNextTiers}
+                fantasySettings={settings}
+                boardSettings={boardSettings}
+                rankingSummaries={rankingSummaries}
+                onSelectPlayer={onSelectPlayer}
+                onPurgePlayer={onPurgeAvailPlayer}
+                setViewPlayerId={setViewPlayerId}
+                isEditingCustomRanking={isEditingCustomRanking}
+                hasCustomRanking={usingCustomRanking}
+                canEditCustomRankings={canEditCustomRankings()}
+                onReorderPlayer={onReorderPlayerInPosition}
+                onStartCustomRanking={handleStartCustomRanking}
+                onFinishCustomRanking={handleFinishCustomRanking}
+                onUpdateTierBoundary={onUpdateTierBoundary}
+                onCancelCustomRanking={() => {
+                  setDraftView(DraftView.RANKING)
+                }}
+                saveCustomRankings={saveCustomRankings}
+                loadCustomRankings={loadCustomRankings}
+                hasCustomRankingsSaved={hasCustomRankingsSaved}
+                clearSavedCustomRankings={clearSavedCustomRankings}
+                rosters={rosters}
+                playerLib={playerLib}
+                draftStarted={draftStarted}
+                getDraftRoundForPickNum={getDraftRoundForPickNum}
+                viewPlayerId={viewPlayerId}
+                draftHistory={draftHistory}
+                viewRosterIdx={myPickNum-1}
+                listenerActive={listenerActive}
+                activeDraftListenerTitle={activeDraftListenerTitle}
+                loadCurrentRankings={loadCurrentRankings}
+                rankings={rankings}
+                removePlayerTargets={removePlayerTargets}
+              />
+            )}
+
+            {mobileView === MobileView.ADP && (
+              <ADPView
+                playerRanks={playerRanks}
+                fantasySettings={settings}
+                boardSettings={boardSettings}
+                onSelectPlayer={onSelectPlayer}
+                setViewPlayerId={setViewPlayerId}
+                viewPlayerId={viewPlayerId}
+                myPicks={myPicks}
+                playerTargets={playerTargets}
+                playerLib={playerLib}
+                addPlayerTarget={addPlayerTarget}
+                replacePlayerTargets={replacePlayerTargets}
+                removePlayerTarget={removePlayerTarget}
+                removePlayerTargets={removePlayerTargets}
+              />
+            )}
+
+            {mobileView === MobileView.TIERS && (
+              <MobileTiersView
+                currentOptimalRoster={currentOptimalRoster}
+                optimalRosters={optimalRosters}
+                selectedOptimalRosterIdx={selectedOptimalRosterIdx}
+                setSelectedOptimalRosterIdx={setSelectedOptimalRosterIdx}
+                boardSettings={boardSettings}
+                settings={settings}
+                rankingSummaries={rankingSummaries}
+                ranker={boardSettings.ranker}
+              />
+            )}
           </div>
         </div>
       </main>
 
       { draftStarted &&
-        <div className="flex items-center justify-center w-full h-24 border-t border-gray-300 fixed bottom-0 z-10 bg-gray-200">
-          <div className="flex flex-col items-center">
-            <p className="font-semibold underline text-center rounded py-1">
-              Round { roundIdx+1 } Pick { currRoundPick } (#{ currPick } Overall)
-            </p>
-            <table className="table-auto">
-              <tbody>
-                <tr className={`flex justify-between ${isEvenRound ? 'flex-row-reverse' : ''}`}>
-                  { currRound.map( (pickedPlayerId: string | null, i: number) => {
-                    let bgColor = ""
-                    let hover = ""
-                    const player = pickedPlayerId ? playerLib[pickedPlayerId] : null
-                    if ( i+1 === currRoundPick ) {
-                      bgColor = "bg-yellow-400"
-                      hover = "hover:bg-yellow-300"
-                    } else if ( !!player ) {
-                      bgColor = getPosStyle( player.position )
-                      hover = "hover:bg-red-300"
-                    } else {
-                      bgColor = "bg-gray-100"
-                      hover = "hover:bg-yellow-200"
-                    }
-                    const myPickStyle = i+1 === currMyPickNum ? "border-4 border-green-400" : "border"
-                    const pickNum = roundIdx*settings.numTeams+(i+1)
-                    return(
-                      <td className={`flex flex-col p-1 m-1 rounded ${myPickStyle} ${hover} cursor-pointer text-sm ${bgColor} items-center`}
-                        onClick={ pickedPlayerId ? () => onRemovePick(pickNum) : () => setCurrPick( pickNum ) }
-                        key={i}
-                        onMouseEnter={() => {
-                          if ( pickedPlayerId ) {
-                            setViewPlayerId(pickedPlayerId)
-                          }
-                        }}
-                      >
-                        <p className="font-semibold">
-                          { `#${pickNum}` } { pickedPlayerId ? ` | Rd ${roundIdx+1} Pick ${i+1}` : "" }
-                        </p>
-                        { player && <p> { player.fullName } </p> }
-                      </td>
-                    )
-                  })}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <PickHistoryFooter
+          roundIdx={roundIdx}
+          currRoundPick={currRoundPick}
+          currPick={currPick}
+          isEvenRound={isEvenRound}
+          currRound={currRound}
+          playerLib={playerLib}
+          settings={settings}
+          currMyPickNum={currMyPickNum}
+          onRemovePick={onRemovePick}
+          setCurrPick={setCurrPick}
+          setViewPlayerId={setViewPlayerId}
+        />
       }
+
+      {/* Mobile Footer Navigation */}
+      <MobileFooter 
+        currentView={mobileView}
+        onViewChange={setMobileView}
+      />
     </div>
   )
 }
