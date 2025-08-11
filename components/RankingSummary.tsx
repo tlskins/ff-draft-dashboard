@@ -84,10 +84,10 @@ const RankingSummaryDisplay: React.FC<RankingSummaryProps> = ({ settings, active
                 Tier
               </th>
               <th className="border-2 border-slate-700 bg-blue-100 p-2">
-                Players In Tier Last Yr
+                Num Players
               </th>
               <th className="border-2 border-slate-700 bg-blue-100 p-2">
-                PPG Range
+                Range
               </th>
               <th className="border-2 border-slate-700 bg-blue-100 p-2">
                 Avg. PPG

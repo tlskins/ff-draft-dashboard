@@ -164,7 +164,7 @@ const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col w-full md:h-14 h-auto relative md:mb-4 mb-0">
+        <div className="hidden md:flex flex-col w-full md:h-14 h-auto relative md:mb-4 mb-0">
           <div className="flex md:flex-row flex-col w-full justify-center items-center md:gap-0 gap-4">
             <div className="md:w-auto w-full">
               <Dropdown

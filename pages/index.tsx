@@ -11,6 +11,7 @@ import Dropdown from "../components/dropdown"
 import OptimalRosterDisplay from "../components/OptimalRosterDisplay"
 import PickHistoryFooter from "../components/PickHistoryFooter"
 import MobileFooter, { MobileView } from "../components/MobileFooter"
+import MobileTiersView from "../components/MobileTiersView"
 
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
@@ -92,6 +93,7 @@ const Home: FC = () => {
     addPlayerTarget,
     removePlayerTarget,
     replacePlayerTargets,
+    removePlayerTargets,
     // save/load custom rankings funcs
     saveCustomRankings,
     loadCustomRankings,
@@ -334,6 +336,7 @@ const Home: FC = () => {
                 activeDraftListenerTitle={activeDraftListenerTitle}
                 loadCurrentRankings={loadCurrentRankings}
                 rankings={rankings}
+                removePlayerTargets={removePlayerTargets}
               />
             </div>
 
@@ -351,6 +354,7 @@ const Home: FC = () => {
                 addPlayerTarget={addPlayerTarget}
                 replacePlayerTargets={replacePlayerTargets}
                 removePlayerTarget={removePlayerTarget}
+                removePlayerTargets={removePlayerTargets}
               />
             </div>
           </div>
@@ -418,6 +422,7 @@ const Home: FC = () => {
                 activeDraftListenerTitle={activeDraftListenerTitle}
                 loadCurrentRankings={loadCurrentRankings}
                 rankings={rankings}
+                removePlayerTargets={removePlayerTargets}
               />
             )}
 
@@ -435,11 +440,12 @@ const Home: FC = () => {
                 addPlayerTarget={addPlayerTarget}
                 replacePlayerTargets={replacePlayerTargets}
                 removePlayerTarget={removePlayerTarget}
+                removePlayerTargets={removePlayerTargets}
               />
             )}
 
-            {mobileView === MobileView.ROSTER && (
-              <OptimalRosterDisplay
+            {mobileView === MobileView.TIERS && (
+              <MobileTiersView
                 currentOptimalRoster={currentOptimalRoster}
                 optimalRosters={optimalRosters}
                 selectedOptimalRosterIdx={selectedOptimalRosterIdx}
@@ -447,6 +453,7 @@ const Home: FC = () => {
                 boardSettings={boardSettings}
                 settings={settings}
                 rankingSummaries={rankingSummaries}
+                ranker={boardSettings.ranker}
               />
             )}
           </div>

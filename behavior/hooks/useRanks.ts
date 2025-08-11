@@ -429,6 +429,9 @@ export const useRanks = ({
   const removePlayerTarget = useCallback((playerId: string) => {
     setPlayerTargets(playerTargets.filter(target => target.playerId !== playerId))
   }, [playerTargets])
+  const removePlayerTargets = useCallback((playerIds: string[]) => {
+    setPlayerTargets(playerTargets.filter(target => !playerIds.includes(target.playerId)))
+  }, [playerTargets])
 
   // Save/Load custom rankings functionality
   const saveCustomRankings = useCallback(() => {
@@ -582,6 +585,7 @@ export const useRanks = ({
     addPlayerTarget,
     replacePlayerTargets,
     removePlayerTarget,
+    removePlayerTargets,
     // save/load custom rankings funcs
     saveCustomRankings,
     loadCustomRankings,
