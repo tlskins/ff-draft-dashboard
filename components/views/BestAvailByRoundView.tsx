@@ -99,7 +99,7 @@ const BestAvailByRoundView = ({
             </div>
           )}
           
-          <div className="flex flex-row overflow-x-auto overflow-y-auto max-h-760 md:max-h-none md:overflow-visible min-w-900 md:min-w-0">
+          <div className="flex flex-row overflow-x-auto overflow-y-auto max-h-760 md:max-h-none md:overflow-visible min-w-1000 md:min-w-0">
             { draftBoardView.filter(column => column.columnTitle !== 'Purge').map( (draftBoardColumn, i) => {
               const { columnTitle, cards } = draftBoardColumn
 
