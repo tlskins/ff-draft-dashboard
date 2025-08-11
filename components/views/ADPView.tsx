@@ -3,7 +3,8 @@ import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../type
 import { getPlayerAdp, getPlayerMetrics, getRoundIdxForPickNum, PlayerRanks } from '../../behavior/draft'
 import { getPosStyle, getTierStyle } from '../../behavior/styles'
 import { useADPView, PositionFilter } from '../../behavior/hooks/useADPView'
-import MobileViewFooter, { MobileDropdownProps, MobileFooterButton } from '../MobileViewFooter'
+import MobileViewFooter from '../MobileViewFooter'
+import { playerShortName } from '../../behavior/presenters'
 
 interface ADPViewProps {
   playerRanks: PlayerRanks
@@ -42,6 +43,7 @@ const ADPView: React.FC<ADPViewProps> = ({
     totalPages,
     startRound,
     endRound,
+    roundsToShow,
     playersByRound,
     organizedTargets,
     handlePrevPage,
@@ -66,8 +68,7 @@ const ADPView: React.FC<ADPViewProps> = ({
     }).length
   }, [fantasySettings, boardSettings, playersByRound])
 
-  // Calculate rounds to show
-  const roundsToShow = Array.from({ length: endRound - startRound + 1 }, (_, i) => startRound + i)
+
 
   return (
     <div className="h-screen overflow-y-scroll bg-white p-2">
@@ -139,8 +140,8 @@ const ADPView: React.FC<ADPViewProps> = ({
         </h2>
       </div>
       
-      {/* Main Grid - Responsive */}
-      <div className="grid grid-cols-4 md:grid-cols-5 gap-2 min-w-full mb-20 md:mb-4">
+      {/* Main Grid - Dynamic based on rounds */}
+      <div className={`grid gap-2 min-w-full mb-20 md:mb-4 ${roundsToShow.length === 3 ? 'grid-cols-4' : 'grid-cols-5'}`}>
         {/* Player Targets Column */}
         <div className="flex flex-col min-w-0">
           <div className="sticky top-0 bg-yellow-300 border-b-2 border-purple-300 p-2 text-center">
@@ -204,8 +205,9 @@ const ADPView: React.FC<ADPViewProps> = ({
                   <div key={`divider-${item.round}-${item.pick}`}
                     className="pt-2 mt-2"
                   >
-                    <p className="text-xs rounded bg-blue-500 text-white text-center font-semibold py-1 px-2">
-                      Round {item.round} - Pick {item.pick}
+                    <p className="text-xs text-white text-center py-1 px-2 bg-blue-500 rounded-xl">
+                      <p className="font-semibold underline">RD {item.round}</p>
+                      <p className="font-light">Pick {item.pick}</p>
                     </p>
                   </div>
                 )
@@ -253,9 +255,9 @@ const ADPView: React.FC<ADPViewProps> = ({
           </div>
         </div>
 
-        {/* Round Columns - Show first 3 rounds on mobile, first 4 on desktop */}
-        {roundsToShow.slice(0, 4).map((round, index) => (
-          <div key={round} className={`flex flex-col min-w-0 ${index === 3 ? 'hidden md:flex' : ''}`}>
+        {/* Round Columns - Dynamic based on viewport */}
+        {roundsToShow.map((round, index) => (
+          <div key={round} className="flex flex-col min-w-0">
             <div className="sticky top-0 bg-blue-100 border-b-2 border-blue-300 p-2 text-center">
               <h3 className="text-sm font-semibold text-blue-800">
                 Round {round}
@@ -302,10 +304,16 @@ const ADPView: React.FC<ADPViewProps> = ({
                     >
                       <div className="flex flex-col text-center items-center py-0.5">
                         <p className="text-xs font-semibold truncate w-full">
-                          {player.fullName}
+                          {playerShortName(player.fullName)}
                         </p>
-                        <p className="text-xs font-medium text-gray-600">
+                        <p className="text-xs font-medium text-gray-600 hidden md:flex">
                           {player.position} | {player.team} | ADP RD {adpRound}
+                        </p>
+                        <p className="text-xs font-medium text-gray-600 flex md:hidden">
+                          {player.position} | {player.team}
+                        </p>
+                        <p className="text-xs font-medium text-gray-600 flex md:hidden">
+                          ADP RD {adpRound}
                         </p>
                         <div className="flex gap-1 mt-1">
                           {!isPlayerTargeted && userPickForRound && (

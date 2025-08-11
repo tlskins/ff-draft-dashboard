@@ -28,11 +28,29 @@ export const useADPView = ({
 }: UseADPViewProps) => {
   const [currentPage, setCurrentPage] = useState(0) // 0-based page index
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
+  const [isMobile, setIsMobile] = useState(false)
   
-  const roundsPerPage = 4
-  const totalPages = 14 - roundsPerPage + 1 // 12 pages (rounds 1-3, 2-4, ..., 12-14)
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768) // Tailwind's md breakpoint
+    }
+    
+    checkMobile() // Initial check
+    window.addEventListener('resize', checkMobile)
+    
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+  
+  const roundsPerPage = isMobile ? 3 : 4
+  const totalPages = 14 - roundsPerPage + 1 // Dynamic based on mobile/desktop
   const startRound = currentPage + 1
   const endRound = Math.min(startRound + roundsPerPage - 1, 14)
+  
+  // Calculate rounds to show
+  const roundsToShow = useMemo(() => {
+    return Array.from({ length: endRound - startRound + 1 }, (_, i) => startRound + i)
+  }, [startRound, endRound])
   
   // Organize player targets by round with dividers
   const organizedTargets = useMemo(() => {
@@ -205,6 +223,7 @@ export const useADPView = ({
     totalPages,
     startRound,
     endRound,
+    roundsToShow,
     playersByRound,
     organizedTargets,
     
