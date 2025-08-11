@@ -7,6 +7,8 @@ import { SortOption, HighlightOption } from "../../pages"
 import { RankingViewProps } from "../../types/DraftBoardTypes"
 import { getDraftBoard, getIconTypes } from "../../behavior/DraftBoardUtils"
 import { isTitleCard } from "../../types/DraftBoardTypes"
+import HistoricalStats from "../HistoricalStats"
+import { playerShortName } from "@/behavior/presenters"
 
 const RankingView = ({
   playerRanks,
@@ -33,6 +35,8 @@ const RankingView = ({
   const [shownPlayerBg, setShownPlayerBg] = useState("")
   const [animatingOutPlayers, setAnimatingOutPlayers] = useState<Set<string>>(new Set())
   const [isRosterVisible, setIsRosterVisible] = useState(true)
+  const [isStatsModalVisible, setIsStatsModalVisible] = useState(false)
+  const [modalPlayer, setModalPlayer] = useState<Player | null>(null)
 
   const { AnyTiDelete, AnyAiFillCheckCircle, AnyBsLink } = getIconTypes()
 
@@ -51,6 +55,18 @@ const RankingView = ({
         return newSet
       })
     }, 600) // 600ms total animation time
+  }
+
+  // Handler for opening stats modal
+  const handleOpenStatsModal = (player: Player) => {
+    setModalPlayer(player)
+    setIsStatsModalVisible(true)
+  }
+
+  // Handler for closing stats modal
+  const handleCloseStatsModal = () => {
+    setIsStatsModalVisible(false)
+    setModalPlayer(null)
   }
 
   const draftBoard = useMemo(() => {
@@ -296,7 +312,19 @@ const RankingView = ({
                             }}
                           >
                             <div className="flex flex-col text-center items-center">
-                              <p className="text-sm font-semibold flex text-center">
+                              <div className="flex text-center items-center justify-center w-full md:hidden">
+                                <p className="text-sm font-semibold">
+                                  { playerShortName(fullName) } ({team})
+                                </p>
+                                {/* Mobile-only stats button */}
+                                <button 
+                                  className="block md:hidden p-1 text-blue-500 hover:text-blue-700 transition-colors"
+                                  onClick={() => handleOpenStatsModal(player)}
+                                >
+                                  📊
+                                </button>
+                              </div>
+                              <p className="text-sm font-semibold flex text-center hidden md:block">
                                 { fullName } ({team})
                               </p>
                               <p className="text-xs">
@@ -355,6 +383,21 @@ const RankingView = ({
           </div>
         </div>
       </div>
+
+      {/* Mobile Stats Modal */}
+      {isStatsModalVisible && modalPlayer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto relative">
+            <button
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold z-10"
+              onClick={handleCloseStatsModal}
+            >
+              ×
+            </button>
+            <HistoricalStats player={modalPlayer} settings={fantasySettings} />
+          </div>
+        </div>
+      )}
     </>
   )
 }
