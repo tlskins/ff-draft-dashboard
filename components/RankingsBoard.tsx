@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react"
+import React, { useState, useMemo, useRef } from "react"
 
 import { myCurrentRound, PlayerRanks, Roster } from '../behavior/draft'
 import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings } from "../types"
@@ -11,7 +11,7 @@ import BestAvailByRoundView from './views/BestAvailByRoundView'
 import EditRankingsView from './views/EditRankingsView'
 import RosterDisplay from './RosterDisplay'
 import Dropdown from './dropdown'
-import MobileViewFooter, { MobileDropdownProps, MobileFooterButton } from './MobileViewFooter'
+import MobileViewFooter from './MobileViewFooter'
 
 
 
@@ -230,7 +230,7 @@ const RankingsBoard = ({
     noPlayers ?
     <></>
     :
-    <div className="flex flex-col p-4 h-full overflow-y-scroll border border-4 rounded shadow-md bg-white text-sm">
+    <div className="flex flex-col md:p-4 p-1 h-full overflow-y-scroll border border-4 rounded shadow-md bg-white text-sm">
       <div className="hidden md:flex flex-col items-center justify-center content-center mb-2">
         <div className="flex flex-col items-center w-full">
           { (!activeDraftListenerTitle && !listenerActive) &&
@@ -251,7 +251,7 @@ const RankingsBoard = ({
         </div>
       </div>  
     
-      <div className="flex flex-row mb-4 align-center justify-center items-center content-center w-full">
+      <div className="flex flex-row md:mb-4 align-center justify-center items-center content-center w-full">
         <div className="flex flex-col text-left">
           <div className="flex flex-row">
             <select

@@ -11,7 +11,7 @@ module.exports = {
         '14': 'repeat(14, minmax(0, 1fr))',
       },
       maxHeight: {
-        '685': '685px',
+        '760': '760px',
       },
       minWidth: {
         '900': '900px',

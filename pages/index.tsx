@@ -7,7 +7,6 @@ import RankingsBoard from "../components/RankingsBoard"
 import HistoricalStats from "../components/HistoricalStats"
 import RankingSummaryDisplay from "../components/RankingSummary"
 import ADPView from "../components/views/ADPView"
-import Dropdown from "../components/dropdown"
 import OptimalRosterDisplay from "../components/OptimalRosterDisplay"
 import PickHistoryFooter from "../components/PickHistoryFooter"
 import MobileFooter, { MobileView } from "../components/MobileFooter"
@@ -17,9 +16,7 @@ import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
 import { useDraftListener } from '../behavior/hooks/useDraftListener'
 import { usePredictions } from "../behavior/hooks/usePredictions"
-import { getPosStyle, getTierStyle } from "../behavior/styles"
-import { getProjectedTier } from "../behavior/draft"
-import { Player, ThirdPartyRanker, DataRanker, ThirdPartyADPRanker } from "types"
+import { Player, ThirdPartyRanker } from "types"
 import { getPlayerData } from "@/behavior/playerData"
 
 export enum DraftView {
@@ -52,8 +49,6 @@ const Home: FC = () => {
     currMyPickNum,
     myPicks,
     // funcs
-    onNavLeft,
-    onNavRight,
     onNavRoundUp,
     onNavRoundDown,
   } = useDraftBoard({
@@ -264,7 +259,7 @@ const Home: FC = () => {
           />
         </div>
 
-        <div className="flex flex-col items-center mt-4 w-full h-screen">
+        <div className="flex flex-col items-center md:mt-4 mt-1 w-full h-screen">
           {/* Desktop Layout */}
           <div className="hidden md:flex flex-row justify-center w-screen relative mb-4 grid grid-cols-12 gap-1 px-1">
             {/* Stats Column */}

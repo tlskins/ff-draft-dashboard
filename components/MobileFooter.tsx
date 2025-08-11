@@ -54,20 +54,22 @@ const MobileFooter: React.FC<MobileFooterProps> = ({ currentView, onViewChange }
   ]
 
   return (
-    <div className="fixed bottom-0 h-20 left-0 right-0 bg-white border-t border-gray-300 md:hidden z-40 w-full">
-      <div className="flex justify-around py-2">
+    <div className="fixed bottom-0 h-12 left-0 right-0 bg-white border-t border-gray-300 md:hidden z-40 w-full">
+      <div className="flex justify-around py-1 mb-2">
         {buttons.map(({ view, icon, label }) => (
           <button
             key={view}
             onClick={() => onViewChange(view)}
-            className={`flex flex-col items-center py-2 px-3 transition-colors ${
+            className={`flex flex-col items-center py-1 px-2 transition-colors ${
               currentView === view
                 ? 'text-blue-600 bg-blue-50'
                 : 'text-gray-600 hover:text-blue-600'
             }`}
           >
-            {icon}
-            <span className="text-xs mt-1">{label}</span>
+            <div className="w-4 h-4">
+              {React.cloneElement(icon, { className: 'w-4 h-4' })}
+            </div>
+            <span className="text-xs mt-0.5">{label}</span>
           </button>
         ))}
       </div>

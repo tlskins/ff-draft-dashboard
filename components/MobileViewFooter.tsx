@@ -35,7 +35,7 @@ const MobileViewFooter: React.FC<MobileViewFooterProps> = ({
   onClickOutside
 }) => {
   const getDropdownButtonStyles = (variant: string = 'primary', isOpen: boolean) => {
-    const baseStyles = 'w-full px-3 py-2 text-sm rounded hover:opacity-90 transition-colors flex justify-between items-center'
+    const baseStyles = 'w-full px-3 py-1 text-sm rounded hover:opacity-90 transition-colors flex justify-between items-center'
     
     switch (variant) {
       case 'purple':
@@ -48,7 +48,7 @@ const MobileViewFooter: React.FC<MobileViewFooterProps> = ({
   }
 
   const getButtonStyles = (variant: string = 'primary', disabled: boolean = false) => {
-    const baseStyles = 'px-4 py-2 text-sm rounded transition-colors'
+    const baseStyles = 'px-4 py-0.5 text-xs rounded transition-colors'
     
     if (disabled) {
       return `${baseStyles} bg-gray-200 text-gray-400 cursor-not-allowed`
@@ -66,7 +66,7 @@ const MobileViewFooter: React.FC<MobileViewFooterProps> = ({
 
   return (
     <div 
-      className="fixed bottom-20 left-0 right-0 bg-white border-t border-gray-300 p-4 md:hidden z-50"
+      className="fixed bottom-12 left-0 right-0 h-10 bg-white border-t border-gray-300 p-2 md:hidden z-50"
       onClick={onClickOutside ? (e) => e.stopPropagation() : undefined}
     >
       <div className="flex justify-between items-center space-x-2">
