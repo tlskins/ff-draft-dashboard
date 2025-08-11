@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, useRef } from "react"
 
 import { myCurrentRound, PlayerRanks, Roster } from '../behavior/draft'
 import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings } from "../types"
@@ -104,6 +104,41 @@ const RankingsBoard = ({
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [dropdownAlignment, setDropdownAlignment] = useState<{[key: string]: 'left' | 'right'}>({})
+
+  // Refs for dropdown containers
+  const draftViewRef = useRef<HTMLDivElement>(null)
+  const sortRef = useRef<HTMLDivElement>(null)
+  const highlightRef = useRef<HTMLDivElement>(null)
+  const savedRankingsRef = useRef<HTMLDivElement>(null)
+
+  // Calculate optimal dropdown alignment to prevent cutoff
+  const calculateDropdownAlignment = (ref: React.RefObject<HTMLDivElement | null>): 'left' | 'right' => {
+    if (!ref.current) return 'left'
+    
+    const rect = ref.current.getBoundingClientRect()
+    const viewportWidth = window.innerWidth
+    const dropdownWidth = 192 // min-w-48 = 12rem = 192px
+    const padding = 16 // Some padding from edge
+    
+    // If there's not enough space on the right, align to the right
+    if (rect.left + dropdownWidth + padding > viewportWidth) {
+      return 'right'
+    }
+    
+    return 'left'
+  }
+
+  // Handle dropdown opening with dynamic positioning
+  const handleDropdownToggle = (dropdownType: string, ref: React.RefObject<HTMLDivElement | null>) => {
+    if (openDropdown === dropdownType) {
+      setOpenDropdown(null)
+    } else {
+      const alignment = calculateDropdownAlignment(ref)
+      setDropdownAlignment(prev => ({ ...prev, [dropdownType]: alignment }))
+      setOpenDropdown(dropdownType)
+    }
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -441,16 +476,20 @@ const RankingsBoard = ({
       )}
 
       {/* Mobile Footer */}
-      <div className="md:hidden fixed bottom-20 left-0 right-0 bg-white border-t border-gray-300 shadow-lg z-50 mobile-footer-dropdown">
+      <div className="md:hidden fixed bottom-20 left-0 right-0 bg-white border border-gray-300 z-50 mobile-footer-dropdown">
         <div className="flex flex-row">
           {/* Draft View Dropdown */}
-          <div className="flex-1 relative">
+          <div className="flex-1 relative" ref={draftViewRef}>
             {openDropdown === 'draftView' && (
-              <div className="absolute bottom-full left-0 right-0 bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto">
+              <div className={`absolute bottom-full bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto min-w-48 z-10 ${
+                dropdownAlignment.draftView === 'right' 
+                  ? 'right-0' 
+                  : 'left-0'
+              }`}>
                 {Object.values(DraftView).map((view: DraftView) => (
                   <button
                     key={view}
-                    className={`w-full p-3 text-left hover:bg-blue-50 border-b border-gray-200 ${
+                    className={`w-full p-3 text-left hover:bg-blue-50 border-b border-gray-200 whitespace-nowrap ${
                       draftView === view ? 'bg-blue-100 font-semibold' : ''
                     }`}
                     disabled={isEditingCustomRanking}
@@ -465,11 +504,11 @@ const RankingsBoard = ({
               </div>
             )}
             <button
-              className={`w-full p-3 text-center border-r border-gray-300 ${
+              className={`w-full p-3 text-center border-r border-gray-300 shadow-lg ${
                 openDropdown === 'draftView' ? 'bg-blue-100' : 'hover:bg-gray-50'
               } ${isEditingCustomRanking ? 'opacity-50 cursor-not-allowed' : ''}`}
               disabled={isEditingCustomRanking}
-              onClick={() => setOpenDropdown(openDropdown === 'draftView' ? null : 'draftView')}
+              onClick={() => handleDropdownToggle('draftView', draftViewRef)}
             >
               <div className="text-xs text-gray-600">View</div>
             </button>
@@ -477,13 +516,17 @@ const RankingsBoard = ({
 
           {/* Sort Option Dropdown - only show on RankingView */}
           {draftView === DraftView.RANKING && (
-            <div className="flex-1 relative">
+            <div className="flex-1 relative" ref={sortRef}>
               {openDropdown === 'sort' && (
-                <div className="absolute bottom-full left-0 right-0 bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto">
+                <div className={`absolute bottom-full bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto min-w-48 z-10 ${
+                  dropdownAlignment.sort === 'right' 
+                    ? 'right-0' 
+                    : 'left-0'
+                }`}>
                   {Object.values(SortOption).map((option: SortOption) => (
                     <button
                       key={option}
-                      className={`w-full p-3 text-left hover:bg-blue-50 border-b border-gray-200 ${
+                      className={`w-full p-3 text-left hover:bg-blue-50 border-b border-gray-200 whitespace-nowrap ${
                         sortOption === option ? 'bg-blue-100 font-semibold' : ''
                       }`}
                       onClick={() => {
@@ -497,10 +540,10 @@ const RankingsBoard = ({
                 </div>
               )}
               <button
-                className={`w-full p-3 text-center border-r border-gray-300 ${
+                className={`w-full p-3 text-center border-r border-gray-300 shadow-lg ${
                   openDropdown === 'sort' ? 'bg-blue-100' : 'hover:bg-gray-50'
                 }`}
-                onClick={() => setOpenDropdown(openDropdown === 'sort' ? null : 'sort')}
+                onClick={() => handleDropdownToggle('sort', sortRef)}
               >
                 <div className="text-xs text-gray-600">Sort</div>
               </button>
@@ -509,13 +552,17 @@ const RankingsBoard = ({
 
           {/* Highlight Option Dropdown - only show on RankingView */}
           {draftView === DraftView.RANKING && (
-            <div className="flex-1 relative">
+            <div className="flex-1 relative" ref={highlightRef}>
               {openDropdown === 'highlight' && (
-                <div className="absolute bottom-full left-0 right-0 bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto">
+                <div className={`absolute bottom-full bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto min-w-48 z-10 ${
+                  dropdownAlignment.highlight === 'right' 
+                    ? 'right-0' 
+                    : 'left-0'
+                }`}>
                   {Object.values(HighlightOption).map((option: HighlightOption) => (
                     <button
                       key={option}
-                      className={`w-full p-3 text-left hover:bg-blue-50 border-b border-gray-200 ${
+                      className={`w-full p-3 text-left hover:bg-blue-50 border-b border-gray-200 whitespace-nowrap ${
                         highlightOption === option ? 'bg-blue-100 font-semibold' : ''
                       }`}
                       onClick={() => {
@@ -529,10 +576,10 @@ const RankingsBoard = ({
                 </div>
               )}
               <button
-                className={`w-full p-3 text-center border-r border-gray-300 ${
+                className={`w-full p-3 text-center border-r border-gray-300 shadow-lg ${
                   openDropdown === 'highlight' ? 'bg-blue-100' : 'hover:bg-gray-50'
                 }`}
-                onClick={() => setOpenDropdown(openDropdown === 'highlight' ? null : 'highlight')}
+                onClick={() => handleDropdownToggle('highlight', highlightRef)}
               >
                 <div className="text-xs text-gray-600">Highlight</div>
               </button>
@@ -541,13 +588,17 @@ const RankingsBoard = ({
 
           {/* Saved Rankings Dropdown - only show if there are options and on ranking view */}
           {draftView === DraftView.RANKING && savedRankingsOptions.length > 0 && (
-            <div className="flex-1 relative">
+            <div className="flex-1 relative" ref={savedRankingsRef}>
               {openDropdown === 'savedRankings' && (
-                <div className="absolute bottom-full left-0 right-0 bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto">
+                <div className={`absolute bottom-full bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto min-w-48 z-10 ${
+                  dropdownAlignment.savedRankings === 'right' 
+                    ? 'right-0' 
+                    : 'left-0'
+                }`}>
                   {savedRankingsOptions.map((option) => (
                     <button
                       key={option.title}
-                      className="w-full p-3 text-left hover:bg-blue-50 border-b border-gray-200"
+                      className="w-full p-3 text-left hover:bg-blue-50 border-b border-gray-200 whitespace-nowrap"
                       onClick={() => {
                         option.callback()
                         setOpenDropdown(null)
@@ -559,10 +610,10 @@ const RankingsBoard = ({
                 </div>
               )}
               <button
-                className={`w-full p-3 text-center ${
+                className={`w-full p-3 text-center shadow-lg ${
                   openDropdown === 'savedRankings' ? 'bg-blue-100' : 'hover:bg-gray-50'
                 }`}
-                onClick={() => setOpenDropdown(openDropdown === 'savedRankings' ? null : 'savedRankings')}
+                onClick={() => handleDropdownToggle('savedRankings', savedRankingsRef)}
               >
                 <div className="text-xs text-gray-600">Rankings</div>
               </button>
