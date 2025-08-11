@@ -38,18 +38,6 @@ interface UseRanksProps {
   myPickNum?: number,
 }
 
-const getDefaultRankings = (settings: FantasySettings) => {
-  console.log('getDefaultRankings', settings)
-  return {
-    players: [],
-    rankingsSummaries: [],
-    cachedAt: '',
-    editedAt: '',
-    settings,
-    copiedRanker: undefined,
-  } as Rankings
-}
-
 export const useRanks = ({
   settings,
   defaultMyPickNum = 6,
@@ -59,7 +47,14 @@ export const useRanks = ({
     ranker: ThirdPartyRanker.HARRIS,
     adpRanker: ThirdPartyADPRanker.ESPN,
   })
-  const [rankings, setRankings] = useState<Rankings>(getDefaultRankings(settings))
+  const [rankings, setRankings] = useState<Rankings>({
+    players: [],
+    rankingsSummaries: [],
+    cachedAt: '',
+    editedAt: '',
+    settings,
+    copiedRanker: undefined,
+  } as Rankings)
 
   const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
   const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})

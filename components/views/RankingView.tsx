@@ -83,7 +83,7 @@ const RankingView = ({
   return (
     <>
       {/* Controls for ranking view */}
-      <div className="flex flex-row xl:mb-8 md:mb-2 align-center">
+      <div className="flex flex-row md:mb-16 align-center">
         <div className="flex flex-col text-left h-16 md:h-6 w-full">
           <div className="grid md:grid-cols-2 grid-cols-1">
             <div className="flex flex-col">
@@ -202,7 +202,7 @@ const RankingView = ({
             </div>
           )}
           
-          {/* Position Ranks Player Cards*/}
+          {/* Position Ranks Player Cards */}
           <div className="flex flex-row overflow-x-auto overflow-y-auto max-h-685 md:max-h-none md:overflow-visible min-w-900 md:min-w-0">
             { draftBoardView.filter((column: any) => column.columnTitle !== 'Purge').map( (draftBoardColumn: any, i: number) => {
               const { columnTitle, cards } = draftBoardColumn
@@ -250,7 +250,7 @@ const RankingView = ({
                         let tierStyle
                         if ( isAnimatingOut ) {
                           // Apply gray-out animation styling
-                          tierStyle = 'bg-purple-800 text-white opacity-50 scale-95'
+                          tierStyle = 'bg-white text-black opacity-50 scale-50'
                         } else if ( viewPlayerId === id && !!shownPlayerBg ) {
                           tierStyle = shownPlayerBg
                         } else if ( showNextPreds && predictedPicks[id] && predictedPicks[id] < 3 ) {
@@ -288,7 +288,7 @@ const RankingView = ({
 
                         return(
                           <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
-                            className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle} transition-all duration-500 ease-in-out transform`}
+                            className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle} transition-all duration-700 ease-in-out transform`}
                             onMouseEnter={ () => {
                               if (!isAnimatingOut) {
                                 setViewPlayerId(id)

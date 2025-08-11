@@ -171,13 +171,13 @@ const Home: FC = () => {
 
   // key press / up commands
   const onKeyUp = useCallback( (e: KeyboardEvent) => {
-    if (['MetaRight', 'MetaLeft'].includes(e.code)) {
+    if (['MetaRight', 'MetaLeft'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       setHighlightOption(HighlightOption.PREDICTED_TAKEN)
-    } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
+    } else if (['ShiftLeft', 'ShiftRight'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       // sort by harris
       onApplyRankingSortBy( false )
       setSortOption(SortOption.RANKS)
-    } else if (['KeyZ'].includes(e.code)) {
+    } else if (['KeyZ'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       // show predicted avail by round
       setDraftView(DraftView.RANKING)
     }
@@ -192,18 +192,18 @@ const Home: FC = () => {
       onNavRoundDown(draftHistory)
     // arrow left
     } else if ( e.code === 'ArrowLeft' ) {
-      onNavLeft()
+      // onNavLeft()
     // arrow right
     } else if ( e.code === 'ArrowRight' ) {
-      onNavRight(draftHistory)
+      // onNavRight(draftHistory)
       // alt 
-    } else if (['MetaRight', 'MetaLeft'].includes(e.code)) {
+    } else if (['MetaRight', 'MetaLeft'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       setHighlightOption(HighlightOption.PREDICTED_TAKEN_NEXT_TURN)
     // shift 
-    } else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) {
+    } else if (['ShiftLeft', 'ShiftRight'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       onApplyRankingSortBy( true )
       setSortOption(SortOption.ADP)
-    } else if (['KeyZ'].includes(e.code)) {
+    } else if (['KeyZ'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       // show predicted avail by round
       setDraftView(DraftView.BEST_AVAILABLE)
     }
@@ -266,7 +266,7 @@ const Home: FC = () => {
           {/* Desktop Layout */}
           <div className="hidden md:flex flex-row justify-center w-screen relative mb-4 grid grid-cols-12 gap-1 px-1">
             {/* Stats Column */}
-            <div className="col-span-3 flex flex-col justify-start ml-2 p-1">
+            <div className="col-span-3 flex flex-col justify-start ml-2 p-1 w-full">
               <OptimalRosterDisplay
                 currentOptimalRoster={currentOptimalRoster}
                 optimalRosters={optimalRosters}
@@ -289,7 +289,7 @@ const Home: FC = () => {
             </div>
 
             {/* Rankings Board Column */}
-            <div className="col-span-5">
+            <div className="col-span-5 w-full">
               <RankingsBoard
                 playerRanks={playerRanks}
                 predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
@@ -337,7 +337,7 @@ const Home: FC = () => {
               />
             </div>
 
-            <div className="col-span-4">
+            <div className="col-span-4 w-full">
               <ADPView
                 playerRanks={playerRanks}
                 fantasySettings={settings}
