@@ -12,7 +12,10 @@ module.exports = {
       },
       maxHeight: {
         '685': '685px',
-      }
+      },
+      minWidth: {
+        '900': '900px',
+      },
     },
   },
   plugins: [],

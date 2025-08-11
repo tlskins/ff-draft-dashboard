@@ -1,8 +1,16 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react'
-import { Player, FantasySettings, ThirdPartyRanker } from '../types'
+import React, { useState, useMemo, useEffect } from 'react'
+import { Player, FantasySettings } from '../types'
 import { getPlayerMetrics, PlayerRanks } from '../behavior/draft'
 
-interface TierSliderProps {
+// Helper function to detect mobile/touch devices
+const isMobileDevice = () => {
+  return (('ontouchstart' in window) ||
+    (navigator.maxTouchPoints > 0) ||
+    // @ts-ignore
+    (navigator.msMaxTouchPoints > 0))
+}
+
+interface TierDividersHookProps {
   position: keyof PlayerRanks
   fantasySettings: FantasySettings
   boardSettings: any
@@ -10,235 +18,169 @@ interface TierSliderProps {
   allCards: any[] // The full cards array to get correct DOM indices
 }
 
-const TierSlider: React.FC<TierSliderProps> = ({
+interface TierDividerData {
+  tierNumber: number
+  boundaryIndex: number
+  position: 'before' | 'after'
+  playerIndex: number
+}
+
+const useTierDividers = ({
   position,
   fantasySettings,
   boardSettings,
   onUpdateTierBoundary,
   allCards
-}) => {
-  const [draggedHandle, setDraggedHandle] = useState<number | null>(null)
-  const [dragOffset, setDragOffset] = useState(0)
-  const [playerCardPositions, setPlayerCardPositions] = useState<number[]>([])
-  const [containerTop, setContainerTop] = useState(0)
+}: TierDividersHookProps) => {
+  const [draggedDivider, setDraggedDivider] = useState<TierDividerData | null>(null)
+  const [touchDragActive, setTouchDragActive] = useState(false)
 
-  // Calculate tier boundaries from actually rendered cards
-  const { tierBoundaries, renderedPlayers } = useMemo(() => {
+  // Calculate tier boundaries and divider data
+  const { tierDividers, renderedPlayers } = useMemo(() => {
     // Get only the player cards that are actually being rendered (respecting slice limits)
-    const actuallyRenderedCards = allCards.slice(0, 30) // Match the slice(0,30) in positionRankings
+    const actuallyRenderedCards = allCards.slice(0, 50) // Match the slice(0,50) in EditRankingsView
     const renderedPlayerCards = actuallyRenderedCards.filter(card => !('title' in card)) as Player[]
     
-    const boundaries: number[] = []
+    const dividers: TierDividerData[] = []
     let currentTier: number | undefined = undefined
+    let tierCount = 0
     
     renderedPlayerCards.forEach((player, index) => {
       const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
       const tierNumber = metrics.tier?.tierNumber
       
       if (tierNumber !== currentTier && currentTier !== undefined) {
-        boundaries.push(index)
+        tierCount++
+        dividers.push({
+          tierNumber: tierCount,
+          boundaryIndex: index,
+          position: 'before',
+          playerIndex: index
+        })
       }
       currentTier = tierNumber
     })
     
     return { 
-      tierBoundaries: boundaries, 
+      tierDividers: dividers, 
       renderedPlayers: renderedPlayerCards 
     }
   }, [allCards, fantasySettings, boardSettings])
 
-  // Measure actual positions of player cards from DOM
-  const measurePlayerCardPositions = useCallback(() => {
-    const positions: number[] = []
-    let containerTopPos = 0
-    
-    renderedPlayers.forEach((player, playerIndex) => {
-      // Find the actual DOM index by looking in the allCards array (limited to first 30)
-      const limitedCards = allCards.slice(0, 30)
-      const domIndex = limitedCards.findIndex(card => !('title' in card) && card.id === player.id)
-      
-
-      
-      if (domIndex !== -1) {
-        const cardElement = document.getElementById(`${player.id}-${domIndex}`)
-        if (cardElement) {
-          const rect = cardElement.getBoundingClientRect()
-          const parentColumn = cardElement.closest('.flex.flex-col')
-          if (parentColumn && playerIndex === 0) {
-            // Get the container's top position for relative positioning
-            containerTopPos = parentColumn.getBoundingClientRect().top
-          }
-          // Store the center position of each card relative to the container
-          positions.push(rect.top + rect.height / 2 - containerTopPos)
-        } else {
-          // Fallback to estimated position if element not found
-          positions.push(playerIndex * 84 + 42)
-        }
-      } else {
-        // Fallback if player not found in allCards
-        positions.push(playerIndex * 84 + 42)
+  // Prevent scrolling when touch dragging on mobile
+  useEffect(() => {
+    if (touchDragActive && isMobileDevice()) {
+      const preventScroll = (e: TouchEvent) => {
+        e.preventDefault()
       }
-    })
-    
-    setPlayerCardPositions(positions)
-    setContainerTop(containerTopPos)
-  }, [renderedPlayers, allCards])
-
-  // Measure positions when component mounts or players change
-  useEffect(() => {
-    // Use multiple timeouts to ensure DOM is fully rendered
-    const timeoutId1 = setTimeout(measurePlayerCardPositions, 50)
-    const timeoutId2 = setTimeout(measurePlayerCardPositions, 200) // Backup measurement
-    const timeoutId3 = setTimeout(measurePlayerCardPositions, 500) // Final measurement
-    
-    return () => {
-      clearTimeout(timeoutId1)
-      clearTimeout(timeoutId2)
-      clearTimeout(timeoutId3)
+      
+      document.body.addEventListener('touchmove', preventScroll, { passive: false })
+      
+      return () => {
+        document.body.removeEventListener('touchmove', preventScroll)
+      }
     }
-  }, [measurePlayerCardPositions])
+  }, [touchDragActive])
 
-  // Re-measure on window resize
-  useEffect(() => {
-    const handleResize = () => {
-      setTimeout(measurePlayerCardPositions, 50) // Small delay after resize
-    }
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [measurePlayerCardPositions])
+  // Drag handlers for tier dividers
+  const handleDividerDragStart = (e: React.DragEvent, divider: TierDividerData) => {
+    if (isMobileDevice()) return
+    setDraggedDivider(divider)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', `tier-divider-${divider.tierNumber}`)
+    e.dataTransfer.setData('application/json', JSON.stringify(divider))
+  }
 
-  // Observer to re-measure when DOM changes
-  useEffect(() => {
-    if (renderedPlayers.length === 0) return
+  const handleDividerTouchStart = (e: React.TouchEvent, divider: TierDividerData) => {
+    if (!isMobileDevice()) return
+    e.preventDefault()
+    setDraggedDivider(divider)
+    setTouchDragActive(true)
+  }
 
-    const observer = new MutationObserver(() => {
-      setTimeout(measurePlayerCardPositions, 100)
-    })
-
-    // Observe the first player's parent container for changes
-    const firstPlayer = renderedPlayers[0]
-    if (firstPlayer) {
-      const limitedCards = allCards.slice(0, 30)
-      const domIndex = limitedCards.findIndex(card => !('title' in card) && card.id === firstPlayer.id)
-      if (domIndex !== -1) {
-        const firstPlayerElement = document.getElementById(`${firstPlayer.id}-${domIndex}`)
-        const container = firstPlayerElement?.closest('.flex.flex-col')
-        if (container) {
-          observer.observe(container, { 
-            childList: true, 
-            subtree: true, 
-            attributes: true,
-            attributeFilter: ['class', 'style']
-          })
+  const handleDividerTouchEnd = (e: React.TouchEvent) => {
+    if (!isMobileDevice() || !touchDragActive || !draggedDivider) return
+    
+    e.preventDefault()
+    const touch = e.changedTouches[0]
+    const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY)
+    
+    if (elementBelow) {
+      const cardElement = elementBelow.closest('[data-player-card]')
+      if (cardElement) {
+        const indexAttr = cardElement.getAttribute('data-player-index')
+        if (indexAttr) {
+          const targetIndex = parseInt(indexAttr, 10)
+          onUpdateTierBoundary(position, draggedDivider.tierNumber, targetIndex)
         }
       }
     }
-
-    return () => observer.disconnect()
-  }, [renderedPlayers, allCards, measurePlayerCardPositions])
-
-  const getPlayerCardPosition = (index: number) => {
-    return playerCardPositions[index] || (index * 84 + 42) // Fallback to estimate if not measured
+    
+    setDraggedDivider(null)
+    setTouchDragActive(false)
   }
 
-  const handleMouseDown = (e: React.MouseEvent, tierIndex: number) => {
-    setDraggedHandle(tierIndex)
-    const currentPos = getPlayerCardPosition(tierBoundaries[tierIndex])
-    setDragOffset(e.clientY - containerTop - currentPos)
+  // Check if a tier divider should be rendered before this player index
+  const shouldRenderDividerBefore = (playerIndex: number): TierDividerData | null => {
+    return tierDividers.find(divider => divider.playerIndex === playerIndex) || null
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (draggedHandle === null || playerCardPositions.length === 0) return
-
-    const newY = e.clientY - containerTop - dragOffset
+  // Handle tier divider drops on player cards
+  const handleTierDividerDropOnPlayer = (e: React.DragEvent, targetPlayerIndex: number) => {
+    e.preventDefault()
+    const dragData = e.dataTransfer.getData('application/json')
     
-    // Find the closest player index based on actual card positions
-    let closestIndex = 0
-    let minDistance = Math.abs(newY - playerCardPositions[0])
-    
-    for (let i = 1; i < playerCardPositions.length; i++) {
-      const distance = Math.abs(newY - playerCardPositions[i])
-      if (distance < minDistance) {
-        minDistance = distance
-        closestIndex = i
+    if (dragData && draggedDivider) {
+      try {
+        const divider = JSON.parse(dragData) as TierDividerData
+        onUpdateTierBoundary(position, divider.tierNumber, targetPlayerIndex)
+      } catch (error) {
+        console.error('Error parsing tier divider drag data:', error)
       }
     }
     
-    // Constrain to valid positions (between adjacent tier boundaries)
-    const minIndex = draggedHandle > 0 ? tierBoundaries[draggedHandle - 1] + 1 : 0
-    const maxIndex = draggedHandle < tierBoundaries.length - 1 ? tierBoundaries[draggedHandle + 1] - 1 : renderedPlayers.length - 1
-    
-    const constrainedIndex = Math.max(minIndex, Math.min(maxIndex, closestIndex))
-    
-    if (constrainedIndex !== tierBoundaries[draggedHandle]) {
-      onUpdateTierBoundary(position, draggedHandle + 1, constrainedIndex)
-    }
+    setDraggedDivider(null)
   }
 
-  const handleMouseUp = () => {
-    setDraggedHandle(null)
-    setDragOffset(0)
+  // Check if the drag event contains tier divider data
+  const isDragDataTierDivider = (e: React.DragEvent): boolean => {
+    const types = Array.from(e.dataTransfer.types)
+    return types.some(type => e.dataTransfer.getData(type).startsWith('tier-divider-'))
   }
 
-  const containerHeight = playerCardPositions.length > 0 
-    ? Math.max(...playerCardPositions) + 50 // Add some padding at the bottom
-    : renderedPlayers.length * 84 // Fallback estimate
+  // Render function for tier dividers
+  const renderTierDivider = (divider: TierDividerData, key?: string) => {
+    const isDragged = draggedDivider?.tierNumber === divider.tierNumber
+    const draggedStyle = isDragged ? 'opacity-50 transform scale-105' : ''
+    const touchDraggedStyle = touchDragActive && isDragged ? 'z-50 shadow-2xl' : ''
 
-  return (
-    <div 
-      className="relative w-8 ml-2"
-      style={{ height: containerHeight }}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-    >
-      {/* Vertical line */}
-      <div className="absolute left-3 top-0 w-0.5 bg-gray-400 h-full" />
-      
-      {/* Player notches - only show if we have measured positions */}
-      {playerCardPositions.length > 0 && renderedPlayers.map((_, index) => (
-        <div
-          key={index}
-          className="absolute left-2 w-3 h-0.5 bg-gray-300"
-          style={{ top: getPlayerCardPosition(index) }}
-        />
-      ))}
-      
-      {/* Tier boundary handles - only show if we have measured positions */}
-      {playerCardPositions.length > 0 && tierBoundaries.map((boundaryIndex, tierIndex) => (
-        <div
-          key={tierIndex}
-          className={`absolute left-0 w-7 h-5 bg-blue-500 border border-blue-600 rounded cursor-ns-resize hover:bg-blue-600 ${
-            draggedHandle === tierIndex ? 'bg-blue-700' : ''
-          }`}
-          style={{ top: Math.max(0, getPlayerCardPosition(boundaryIndex) - 10) }}
-          onMouseDown={(e) => handleMouseDown(e, tierIndex)}
-          title={`Tier ${tierIndex + 1} boundary`}
-        >
-          <div className="flex flex-col justify-center items-center h-full text-xs text-white font-bold">
-            <div>{tierIndex + 1}</div>
-            <div className="w-4 h-0.5 bg-white rounded" />
-          </div>
+    return (
+      <div
+        key={key || `tier-divider-${divider.tierNumber}`}
+        className={`w-full h-3 bg-gradient-to-r from-blue-400 to-blue-600 rounded-sm cursor-move flex items-center justify-center my-1 hover:from-blue-500 hover:to-blue-700 transition-all duration-200 ${draggedStyle} ${touchDraggedStyle}`}
+        draggable={!isMobileDevice()}
+        onDragStart={(e) => !isMobileDevice() && handleDividerDragStart(e, divider)}
+        onTouchStart={(e) => isMobileDevice() && handleDividerTouchStart(e, divider)}
+        onTouchEnd={(e) => isMobileDevice() && handleDividerTouchEnd(e)}
+        title={`Tier ${divider.tierNumber} boundary - drag to reorder`}
+      >
+        <div className="flex items-center gap-1 text-white text-xs font-bold">
+          <div className="w-1 h-1 bg-white rounded-full"></div>
+          <span>T{divider.tierNumber}</span>
+          <div className="w-1 h-1 bg-white rounded-full"></div>
         </div>
-      ))}
-      
-      {/* Loading indicator when positions aren't measured yet */}
-      {playerCardPositions.length === 0 && (
-        <div className="absolute left-1 top-4 text-xs text-gray-500">
-          <div>Measuring positions...</div>
-          <button 
-            onClick={measurePlayerCardPositions}
-            className="mt-1 px-1 py-0.5 bg-blue-400 text-white rounded text-xs hover:bg-blue-500"
-            title="Manually refresh position measurements"
-          >
-            Refresh
-          </button>
-        </div>
-      )}
-      
+      </div>
+    )
+  }
 
-    </div>
-  )
+  return {
+    tierDividers,
+    shouldRenderDividerBefore,
+    renderTierDivider,
+    handleTierDividerDropOnPlayer,
+    isDragDataTierDivider,
+    isDragActive: touchDragActive || draggedDivider !== null
+  }
 }
 
-export default TierSlider 
+export default useTierDividers 
