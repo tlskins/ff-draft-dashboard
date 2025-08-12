@@ -71,9 +71,9 @@ const ADPView: React.FC<ADPViewProps> = ({
 
 
   return (
-    <div className="h-screen overflow-y-scroll bg-white p-2 w-full">
+    <div className="h-screen bg-white p-2 w-full flex flex-col">
       {/* Desktop Header - Hidden on mobile */}
-      <div className="mb-4 hidden md:block">
+      <div className="mb-4 hidden md:block flex-shrink-0">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-semibold text-gray-800">
             Available By Round Sorted By Rank
@@ -133,7 +133,7 @@ const ADPView: React.FC<ADPViewProps> = ({
       </div>
 
       {/* Mobile Header - Simplified */}
-      <div className="mb-4 md:hidden">
+      <div className="mb-4 md:hidden flex-shrink-0">
         <h2 className="text-lg font-semibold text-gray-800 text-center">
           Rounds {startRound}-{endRound}
           {positionFilter !== 'All' && ` - ${positionFilter}`}
@@ -141,10 +141,10 @@ const ADPView: React.FC<ADPViewProps> = ({
       </div>
       
       {/* Main Grid - Dynamic based on rounds */}
-      <div className={`grid gap-2 min-w-full mb-20 md:mb-4 ${roundsToShow.length === 3 ? 'grid-cols-4' : 'grid-cols-5'}`}>
+      <div className={`grid gap-2 min-w-full flex-1 mb-20 md:mb-4 ${roundsToShow.length === 3 ? 'grid-cols-4' : 'grid-cols-5'} overflow-hidden`}>
         {/* Player Targets Column */}
-        <div className="flex flex-col min-w-0">
-          <div className="sticky top-0 bg-yellow-300 border-b-2 border-purple-300 p-2 text-center">
+        <div className="flex flex-col min-w-0 overflow-hidden">
+          <div className="sticky top-0 bg-yellow-300 border-b-2 border-purple-300 p-2 text-center flex-shrink-0">
             <h3 className="text-sm font-semibold text-purple-800">
               Targets
             </h3>
@@ -153,7 +153,7 @@ const ADPView: React.FC<ADPViewProps> = ({
             </p>
           </div>
           
-          <div className="flex flex-col space-y-1 p-2">
+          <div className="flex flex-col space-y-1 p-2 overflow-y-auto flex-1">
             {/* Desktop Manage Targets Dropdown */}
             <div className="relative mt-2 hidden md:block">
               <button
@@ -256,9 +256,9 @@ const ADPView: React.FC<ADPViewProps> = ({
         </div>
 
         {/* Round Columns - Dynamic based on viewport */}
-        {roundsToShow.map((round, index) => (
-          <div key={round} className="flex flex-col min-w-0">
-            <div className="sticky top-0 bg-blue-100 border-b-2 border-blue-300 p-2 text-center">
+        {roundsToShow.map((round) => (
+          <div key={round} className="flex flex-col min-w-0 overflow-hidden">
+            <div className="sticky top-0 bg-blue-100 border-b-2 border-blue-300 p-2 text-center flex-shrink-0">
               <h3 className="text-sm font-semibold text-blue-800">
                 Round {round}
               </h3>
@@ -267,7 +267,7 @@ const ADPView: React.FC<ADPViewProps> = ({
               </p>
             </div>
             
-            <div className="flex flex-col space-y-1 p-0.5">
+            <div className="flex flex-col space-y-1 p-0.5 overflow-y-auto flex-1">
               {(() => {
                 const roundPlayers = playersByRound[round] || []
                 const firstTeamPlayers = roundPlayers.slice(0, fantasySettings.numTeams)
