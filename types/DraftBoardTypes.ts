@@ -67,6 +67,8 @@ export interface EditRankingsViewProps extends SharedViewProps {
   loadCurrentRankings: () => void
   onUpdateTierBoundary: (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => void
   saveCustomRankings: () => boolean
+  selectedPosition: keyof PlayerRanks
+  setSelectedPosition: (position: keyof PlayerRanks) => void
 }
 
 // Props for best available by round view

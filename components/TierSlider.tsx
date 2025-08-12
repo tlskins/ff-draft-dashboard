@@ -1,14 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Player, FantasySettings } from '../types'
 import { getPlayerMetrics, PlayerRanks } from '../behavior/draft'
-
-// Helper function to detect mobile/touch devices
-const isMobileDevice = () => {
-  return (('ontouchstart' in window) ||
-    (navigator.maxTouchPoints > 0) ||
-    // @ts-ignore
-    (navigator.msMaxTouchPoints > 0))
-}
 
 interface TierDividersHookProps {
   position: keyof PlayerRanks
@@ -32,8 +24,7 @@ const useTierDividers = ({
   onUpdateTierBoundary,
   allCards
 }: TierDividersHookProps) => {
-  const [draggedDivider, setDraggedDivider] = useState<TierDividerData | null>(null)
-  const [touchDragActive, setTouchDragActive] = useState(false)
+  const [activeTier, setActiveTier] = useState<number | null>(null)
 
   // Calculate tier boundaries and divider data
   const { tierDividers, renderedPlayers } = useMemo(() => {
@@ -67,57 +58,23 @@ const useTierDividers = ({
     }
   }, [allCards, fantasySettings, boardSettings])
 
-  // Prevent scrolling when touch dragging on mobile
-  useEffect(() => {
-    if (touchDragActive && isMobileDevice()) {
-      const preventScroll = (e: TouchEvent) => {
-        e.preventDefault()
-      }
-      
-      document.body.addEventListener('touchmove', preventScroll, { passive: false })
-      
-      return () => {
-        document.body.removeEventListener('touchmove', preventScroll)
-      }
+  // Handle tier divider click to activate/deactivate tier
+  const handleTierDividerClick = (divider: TierDividerData) => {
+    if (activeTier === divider.tierNumber) {
+      // Clicking the same tier deactivates it
+      setActiveTier(null)
+    } else {
+      // Clicking a different tier activates it
+      setActiveTier(divider.tierNumber)
     }
-  }, [touchDragActive])
-
-  // Drag handlers for tier dividers
-  const handleDividerDragStart = (e: React.DragEvent, divider: TierDividerData) => {
-    if (isMobileDevice()) return
-    setDraggedDivider(divider)
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', `tier-divider-${divider.tierNumber}`)
-    e.dataTransfer.setData('application/json', JSON.stringify(divider))
   }
 
-  const handleDividerTouchStart = (e: React.TouchEvent, divider: TierDividerData) => {
-    if (!isMobileDevice()) return
-    e.preventDefault()
-    setDraggedDivider(divider)
-    setTouchDragActive(true)
-  }
-
-  const handleDividerTouchEnd = (e: React.TouchEvent) => {
-    if (!isMobileDevice() || !touchDragActive || !draggedDivider) return
-    
-    e.preventDefault()
-    const touch = e.changedTouches[0]
-    const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY)
-    
-    if (elementBelow) {
-      const cardElement = elementBelow.closest('[data-player-card]')
-      if (cardElement) {
-        const indexAttr = cardElement.getAttribute('data-player-index')
-        if (indexAttr) {
-          const targetIndex = parseInt(indexAttr, 10)
-          onUpdateTierBoundary(position, draggedDivider.tierNumber, targetIndex)
-        }
-      }
+  // Handle clicking on a placement location
+  const handlePlacementClick = (targetPlayerIndex: number) => {
+    if (activeTier !== null) {
+      onUpdateTierBoundary(position, activeTier, targetPlayerIndex)
+      setActiveTier(null) // Deactivate after placement
     }
-    
-    setDraggedDivider(null)
-    setTouchDragActive(false)
   }
 
   // Check if a tier divider should be rendered before this player index
@@ -125,44 +82,28 @@ const useTierDividers = ({
     return tierDividers.find(divider => divider.playerIndex === playerIndex) || null
   }
 
-  // Handle tier divider drops on player cards
-  const handleTierDividerDropOnPlayer = (e: React.DragEvent, targetPlayerIndex: number) => {
-    e.preventDefault()
-    const dragData = e.dataTransfer.getData('application/json')
+  // Check if a placement indicator should be shown before this player index
+  const shouldShowPlacementIndicator = (playerIndex: number): boolean => {
+    if (activeTier === null) return false
     
-    if (dragData && draggedDivider) {
-      try {
-        const divider = JSON.parse(dragData) as TierDividerData
-        onUpdateTierBoundary(position, divider.tierNumber, targetPlayerIndex)
-      } catch (error) {
-        console.error('Error parsing tier divider drag data:', error)
-      }
-    }
+    // Don't show placement indicator at the current tier position
+    const activeTierDivider = tierDividers.find(divider => divider.tierNumber === activeTier)
+    if (activeTierDivider && activeTierDivider.playerIndex === playerIndex) return false
     
-    setDraggedDivider(null)
-  }
-
-  // Check if the drag event contains tier divider data
-  const isDragDataTierDivider = (e: React.DragEvent): boolean => {
-    const types = Array.from(e.dataTransfer.types)
-    return types.some(type => e.dataTransfer.getData(type).startsWith('tier-divider-'))
+    return true
   }
 
   // Render function for tier dividers
   const renderTierDivider = (divider: TierDividerData, key?: string) => {
-    const isDragged = draggedDivider?.tierNumber === divider.tierNumber
-    const draggedStyle = isDragged ? 'opacity-50 transform scale-105' : ''
-    const touchDraggedStyle = touchDragActive && isDragged ? 'z-50 shadow-2xl' : ''
+    const isActive = activeTier === divider.tierNumber
+    const activeStyle = isActive ? 'from-yellow-400 to-yellow-600 ring-2 ring-yellow-300' : 'from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700'
 
     return (
       <div
         key={key || `tier-divider-${divider.tierNumber}`}
-        className={`w-full h-3 bg-gradient-to-r from-blue-400 to-blue-600 rounded-sm cursor-move flex items-center justify-center my-1 hover:from-blue-500 hover:to-blue-700 transition-all duration-200 ${draggedStyle} ${touchDraggedStyle}`}
-        draggable={!isMobileDevice()}
-        onDragStart={(e) => !isMobileDevice() && handleDividerDragStart(e, divider)}
-        onTouchStart={(e) => isMobileDevice() && handleDividerTouchStart(e, divider)}
-        onTouchEnd={(e) => isMobileDevice() && handleDividerTouchEnd(e)}
-        title={`Tier ${divider.tierNumber} boundary - drag to reorder`}
+        className={`w-full h-3 bg-gradient-to-r ${activeStyle} rounded-sm cursor-pointer flex items-center justify-center my-1 transition-all duration-200`}
+        onClick={() => handleTierDividerClick(divider)}
+        title={isActive ? `Click to deactivate Tier ${divider.tierNumber}` : `Click to move Tier ${divider.tierNumber}`}
       >
         <div className="flex items-center gap-1 text-white text-xs font-bold">
           <div className="w-1 h-1 bg-white rounded-full"></div>
@@ -173,13 +114,45 @@ const useTierDividers = ({
     )
   }
 
+  // Render function for placement indicators
+  const renderPlacementIndicator = (playerIndex: number, key?: string) => {
+    return (
+      <div
+        key={key || `placement-indicator-${playerIndex}`}
+        className="w-full h-2 bg-gray-300 opacity-50 rounded-sm cursor-pointer flex items-center justify-center my-1 hover:bg-gray-400 hover:opacity-75 transition-all duration-200"
+        onClick={() => handlePlacementClick(playerIndex)}
+        title={`Place Tier ${activeTier} here`}
+      >
+        <div className="flex items-center gap-1 text-gray-600 text-xs font-bold">
+          <span>↓</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Legacy function for compatibility - no longer handles tier divider drops
+  const handleTierDividerDropOnPlayer = (e: React.DragEvent, targetPlayerIndex: number) => {
+    // This function is kept for compatibility but does nothing now
+    e.preventDefault()
+  }
+
+  // Legacy function for compatibility - no longer checks for tier divider drag data
+  const isDragDataTierDivider = (e: React.DragEvent): boolean => {
+    // This function is kept for compatibility but always returns false
+    return false
+  }
+
   return {
     tierDividers,
     shouldRenderDividerBefore,
+    shouldShowPlacementIndicator,
     renderTierDivider,
-    handleTierDividerDropOnPlayer,
-    isDragDataTierDivider,
-    isDragActive: touchDragActive || draggedDivider !== null
+    renderPlacementIndicator,
+    handleTierDividerDropOnPlayer, // Legacy compatibility
+    isDragDataTierDivider, // Legacy compatibility
+    isDragActive: false, // Always false now since we don't use drag
+    activeTier,
+    handlePlacementClick
   }
 }
 

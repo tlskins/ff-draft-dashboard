@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from "react"
 
 import { myCurrentRound, PlayerRanks, Roster } from '../behavior/draft'
-import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings } from "../types"
+import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, FantasyPosition } from "../types"
 import { DraftView, SortOption, HighlightOption } from "../pages"
 import { getDraftBoard } from '../behavior/DraftBoardUtils'
 import { isTitleCard, PredictedPicks } from '../types/DraftBoardTypes'
@@ -106,6 +106,10 @@ const RankingsBoard = ({
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  
+  // Mobile state for EditRankingsView
+  const [selectedPosition, setSelectedPosition] = useState<keyof PlayerRanks>(FantasyPosition.QUARTERBACK)
+  const [isPositionDropdownOpen, setIsPositionDropdownOpen] = useState(false)
 
   // Refs for dropdown containers (still needed for the new component)
   const draftViewRef = useRef<HTMLDivElement>(null)
@@ -165,6 +169,8 @@ const RankingsBoard = ({
           onUpdateTierBoundary={onUpdateTierBoundary}
           saveCustomRankings={saveCustomRankings}
           loadCurrentRankings={loadCurrentRankings}
+          selectedPosition={selectedPosition}
+          setSelectedPosition={setSelectedPosition}
         />
       )
     }
@@ -439,67 +445,143 @@ const RankingsBoard = ({
 
       {/* Mobile Footer */}
       <MobileViewFooter
-        dropdowns={[
-          {
-            label: 'View',
-            isOpen: openDropdown === 'draftView',
-            onToggle: () => handleDropdownToggle('draftView', draftViewRef),
-            variant: 'primary',
-            items: Object.values(DraftView).map((view: DraftView) => ({
-              label: view,
-              onClick: () => {
-                setDraftView(view)
-                setOpenDropdown(null)
-              },
-              disabled: isEditingCustomRanking,
-              isSelected: draftView === view
-            }))
-          },
-          ...(draftView === DraftView.RANKING ? [
+        dropdowns={
+          isEditingCustomRanking ? [
             {
-              label: 'Sort',
-              isOpen: openDropdown === 'sort',
-              onToggle: () => handleDropdownToggle('sort', sortRef),
-              variant: 'secondary' as const,
-              items: Object.values(SortOption).map((option: SortOption) => ({
-                label: option,
-                onClick: () => {
-                  setSortOption(option)
-                  setOpenDropdown(null)
+              label: `Position: ${selectedPosition === FantasyPosition.QUARTERBACK ? 'QB' : 
+                               selectedPosition === FantasyPosition.RUNNING_BACK ? 'RB' :
+                               selectedPosition === FantasyPosition.WIDE_RECEIVER ? 'WR' : 'TE'}`,
+              isOpen: isPositionDropdownOpen,
+              onToggle: () => setIsPositionDropdownOpen(!isPositionDropdownOpen),
+              variant: 'purple',
+              items: [
+                {
+                  label: 'QB',
+                  onClick: () => {
+                    setSelectedPosition(FantasyPosition.QUARTERBACK)
+                    setIsPositionDropdownOpen(false)
+                  },
+                  isSelected: selectedPosition === FantasyPosition.QUARTERBACK
                 },
-                isSelected: sortOption === option
-              }))
-            },
-            {
-              label: 'Highlight',
-              isOpen: openDropdown === 'highlight',
-              onToggle: () => handleDropdownToggle('highlight', highlightRef),
-              variant: 'secondary' as const,
-              items: Object.values(HighlightOption).map((option: HighlightOption) => ({
-                label: option,
-                onClick: () => {
-                  setHighlightOption(option)
-                  setOpenDropdown(null)
+                {
+                  label: 'RB',
+                  onClick: () => {
+                    setSelectedPosition(FantasyPosition.RUNNING_BACK)
+                    setIsPositionDropdownOpen(false)
+                  },
+                  isSelected: selectedPosition === FantasyPosition.RUNNING_BACK
                 },
-                isSelected: highlightOption === option
-              }))
-            },
-            ...(savedRankingsOptions.length > 0 ? [{
-              label: 'Rankings',
-              isOpen: openDropdown === 'savedRankings',
-              onToggle: () => handleDropdownToggle('savedRankings', savedRankingsRef),
-              variant: 'secondary' as const,
-              items: savedRankingsOptions.map((option) => ({
-                label: option.title,
-                onClick: () => {
-                  option.callback()
-                  setOpenDropdown(null)
+                {
+                  label: 'WR',
+                  onClick: () => {
+                    setSelectedPosition(FantasyPosition.WIDE_RECEIVER)
+                    setIsPositionDropdownOpen(false)
+                  },
+                  isSelected: selectedPosition === FantasyPosition.WIDE_RECEIVER
+                },
+                {
+                  label: 'TE',
+                  onClick: () => {
+                    setSelectedPosition(FantasyPosition.TIGHT_END)
+                    setIsPositionDropdownOpen(false)
+                  },
+                  isSelected: selectedPosition === FantasyPosition.TIGHT_END
                 }
+              ]
+            }
+          ] : [
+            {
+              label: 'View',
+              isOpen: openDropdown === 'draftView',
+              onToggle: () => handleDropdownToggle('draftView', draftViewRef),
+              variant: 'primary',
+              items: Object.values(DraftView).map((view: DraftView) => ({
+                label: view,
+                onClick: () => {
+                  setDraftView(view)
+                  setOpenDropdown(null)
+                },
+                disabled: isEditingCustomRanking,
+                isSelected: draftView === view
               }))
+            },
+            ...(draftView === DraftView.RANKING ? [
+              {
+                label: 'Sort',
+                isOpen: openDropdown === 'sort',
+                onToggle: () => handleDropdownToggle('sort', sortRef),
+                variant: 'secondary' as const,
+                items: Object.values(SortOption).map((option: SortOption) => ({
+                  label: option,
+                  onClick: () => {
+                    setSortOption(option)
+                    setOpenDropdown(null)
+                  },
+                  isSelected: sortOption === option
+                }))
+              },
+              {
+                label: 'Highlight',
+                isOpen: openDropdown === 'highlight',
+                onToggle: () => handleDropdownToggle('highlight', highlightRef),
+                variant: 'secondary' as const,
+                items: Object.values(HighlightOption).map((option: HighlightOption) => ({
+                  label: option,
+                  onClick: () => {
+                    setHighlightOption(option)
+                    setOpenDropdown(null)
+                  },
+                  isSelected: highlightOption === option
+                }))
+              },
+              ...(savedRankingsOptions.length > 0 ? [{
+                label: 'Rankings',
+                isOpen: openDropdown === 'savedRankings',
+                onToggle: () => handleDropdownToggle('savedRankings', savedRankingsRef),
+                variant: 'secondary' as const,
+                items: savedRankingsOptions.map((option) => ({
+                  label: option.title,
+                  onClick: () => {
+                    option.callback()
+                    setOpenDropdown(null)
+                  }
+                }))
+              }] : [])
+            ] : [])
+          ]
+        }
+        buttons={
+          isEditingCustomRanking ? [
+            {
+              label: 'Finish',
+              onClick: onFinishCustomRanking,
+              variant: 'primary'
+            },
+            {
+              label: 'Save',
+              onClick: () => {
+                const success = saveCustomRankings()
+                if (success) {
+                  alert('Custom rankings saved successfully!')
+                } else {
+                  alert('Failed to save custom rankings')
+                }
+              },
+              variant: 'secondary'
+            },
+            ...(hasCustomRanking ? [{
+              label: 'Clear',
+              onClick: loadCurrentRankings,
+              variant: 'danger' as const
             }] : [])
-          ] : [])
-        ]}
-        onClickOutside={() => setOpenDropdown(null)}
+          ] : []
+        }
+        onClickOutside={() => {
+          setOpenDropdown(null)
+          if (isEditingCustomRanking) {
+            setIsPositionDropdownOpen(false)
+          }
+        }}
       />
     </div>
   )

@@ -37,6 +37,8 @@ const EditRankingsView = ({
   onUpdateTierBoundary,
   saveCustomRankings,
   loadCurrentRankings,
+  selectedPosition,
+  setSelectedPosition,
 }: EditRankingsViewProps) => {
   const [shownPlayerId, setShownPlayerId] = useState<string | null>(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
@@ -50,6 +52,8 @@ const EditRankingsView = ({
     const myCurrRound = myCurrentRound(currPick, myPickNum, fantasySettings.numTeams)
     return getDraftBoard(playerRanks, predictedPicks, myCurrRound)
   }, [playerRanks, predictedPicks, myPickNum, fantasySettings.numTeams, currPick])
+
+
 
   // Get user's roster
   const myRosterIdx = myPickNum - 1
@@ -191,7 +195,8 @@ const EditRankingsView = ({
               : "Drag players to reorder rankings • Drag tier dividers to adjust tier boundaries"
             }
           </p>
-          <div className="flex flex-col">
+          {/* Desktop buttons - hidden on mobile */}
+          <div className="hidden md:flex flex-col">
             <span className="p-1 m-1 text-sm font-semibold text-green-600">
               {isMobileDevice() 
                 ? "Touch and drag players to reorder rankings • Drag tier dividers to adjust tier boundaries"
@@ -231,185 +236,210 @@ const EditRankingsView = ({
         </div>
       </div>
 
-      <div className="flex flex-row h-full mb-32">
-        <div className="flex flex-col">
-          { draftStarted && (
-            <div className="flex flex-row justify-center grid grid-cols-4 gap-1">
-              { draftBoardView.filter(column => column.columnTitle !== 'Purge').map( (draftBoardColumn, i) => {
-                const { columnTitle } = draftBoardColumn
-                const position = columnTitle as FantasyPosition
-                const rosterPlayers = (myRoster as any)[position] || []
-
-                return(
-                  <div key={i} className="flex flex-col">
-                    { rosterPlayers.map( (playerId: string) => {
-                      const player = playerLib[playerId]
-                      if (!player) return null
-                      const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
-                      const { tier } = metrics
-                      const { tierNumber } = tier || {}
-                      const { fullName, team } = player
-                      const roundDrafted = getPlayerDraftRound(playerId)
-                      const tierStyle = getTierStyle(tierNumber)
-
-                      return(
-                        <div key={playerId}
-                          className={`px-2 py-1 m-1 text-center rounded shadow-md w-full ${tierStyle}`}
-                        >
-                          <p className="font-semibold">{fullName} ({team})</p>
-                          <p className="text-xs">R{roundDrafted} | Tier {tierNumber}</p>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-          
-          <div className="flex flex-row overflow-x-auto overflow-y-auto max-h-760 md:max-h-none md:overflow-visible min-w-1000 md:min-w-0">
+      <div className="flex flex-col h-full mb-32 md:mb-4">
+        {/* Drafted players section - responsive grid */}
+        { draftStarted && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-1 mb-4">
             { draftBoardView.filter(column => column.columnTitle !== 'Purge').map( (draftBoardColumn, i) => {
-              const { columnTitle, cards } = draftBoardColumn
+              const { columnTitle } = draftBoardColumn
+              const position = columnTitle as FantasyPosition
+              const rosterPlayers = (myRoster as any)[position] || []
 
-              const posStyle = getPosStyle(columnTitle)
-              const playerCards = cards.filter(card => !isTitleCard(card)) as Player[]
-              
-              // Use the tier dividers hook for this position
-              const tierDividers = useTierDividers({
-                position: columnTitle as keyof PlayerRanks,
-                fantasySettings,
-                boardSettings,
-                onUpdateTierBoundary,
-                allCards: cards
-              })
-              
+              // On mobile, only show the selected position's roster
+              if (isMobileDevice() && position !== selectedPosition) {
+                return null
+              }
+
               return(
-                <div key={i} className="flex flex-row">
-                  <div className="flex flex-col">
-                    <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500`}>
-                      <span className="font-bold underline">{ columnTitle }</span>
-                      { Boolean(predNextTiers[columnTitle]) &&
-                        <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[columnTitle] }</p>
-                      }
-                    </div>
+                <div key={i} className="flex flex-col">
+                  <div className="text-center font-bold mb-1 md:hidden">{columnTitle} Roster</div>
+                  { rosterPlayers.map( (playerId: string) => {
+                    const player = playerLib[playerId]
+                    if (!player) return null
+                    const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
+                    const { tier } = metrics
+                    const { tierNumber } = tier || {}
+                    const { fullName, team } = player
+                    const roundDrafted = getPlayerDraftRound(playerId)
+                    const tierStyle = getTierStyle(tierNumber)
 
-                    { cards.slice(0, 50).map( (card, playerPosIdx) => {
-                      // Check if we should render a tier divider before this card
-                      const dividerBefore = tierDividers.shouldRenderDividerBefore(playerPosIdx)
-                      
-                      return (
-                        <React.Fragment key={`card-fragment-${playerPosIdx}`}>
-                          {/* Render tier divider if needed */}
-                          {dividerBefore && tierDividers.renderTierDivider(dividerBefore, `divider-before-${playerPosIdx}`)}
-                          
-                          {/* Render the card */}
-                          {isTitleCard(card) ? (
-                            <div key={`${card.title}-${playerPosIdx}`} id={`${card.title}-${playerPosIdx}`}
-                              className={`px-2 m-1 text-center border rounded shadow-md relative ${card.bgColor}`}
-                            >
-                              <div className="flex flex-col text-center items-center">
-                                <p className="text-xs font-semibold flex text-center text-white">
-                                  { card.title }
-                                </p>
-                              </div>
-                            </div>
-                          ) : (
-                            (() => {
-                              const player = card as Player
-                              const {
-                                firstName,
-                                lastName,
-                                fullName,
-                                id,
-                                team,
-                                position,
-                              } = player
-
-                              const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
-                              const { tier, adp, posRank } = metrics
-                              const { tierNumber } = tier || {}
-                              
-                              let tierStyle
-                              if ( shownPlayerId === id && !!shownPlayerBg ) {
-                                tierStyle = shownPlayerBg
-                              } else {
-                                tierStyle = getTierStyle(tierNumber)
-                              }
-
-                              const projPlayerTier = getProjectedTier(
-                                player,
-                                boardSettings.ranker,
-                                DataRanker.LAST_SSN_PPG,
-                                fantasySettings,
-                                rankingSummaries,
-                              )
-                              const projTierText = projPlayerTier ? ` (${((projPlayerTier.upperLimitValue + projPlayerTier.lowerLimitValue) / 2).toFixed(1)} PPG)` : ''
-                              
-                              const rankText = posRank === undefined ? 'Unranked' : `${position}${posRank}`
-                              const adpRound = getRoundIdxForPickNum(adp === undefined ? 999 : Math.floor(adp), fantasySettings.numTeams) + 1
-                              const isHoveringPlayer = shownPlayerId === id
-                              const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
-
-                              const isDraggedOver = dragOverIndex === playerPosIdx
-                              const isDragged = draggedPlayer?.id === id
-                              const dragOverStyle = isDraggedOver ? 'border-2 border-dashed border-blue-500 bg-blue-50' : ''
-                              const draggedStyle = isDragged ? 'opacity-50' : ''
-                              const touchDraggedStyle = touchDragActive && isDragged ? 'z-50 transform scale-105 shadow-2xl' : ''
-
-                              return(
-                                <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
-                                  className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-move ${cardBorderStyle} ${dragOverStyle} ${draggedStyle} ${touchDraggedStyle}`}
-                                  draggable={!isMobileDevice()}
-                                  data-player-card="true"
-                                  data-player-index={playerPosIdx}
-                                  data-column-title={columnTitle}
-                                  onDragStart={(e) => !isMobileDevice() && handleDragStart(e, player)}
-                                  onDragOver={(e) => !isMobileDevice() && handleDragOver(e, playerPosIdx)}
-                                  onDragLeave={() => !isMobileDevice() && handleDragLeave()}
-                                  onDrop={(e) => !isMobileDevice() && handleDrop(e, columnTitle, playerPosIdx, tierDividers)}
-                                  onTouchStart={(e) => isMobileDevice() && handleTouchStart(e, player)}
-                                  onTouchMove={(e) => isMobileDevice() && handleTouchMove(e)}
-                                  onTouchEnd={(e) => isMobileDevice() && handleTouchEnd(e, columnTitle)}
-                                  onMouseEnter={ () => {
-                                    if ( viewPlayerIdTimer ) {
-                                      clearTimeout( viewPlayerIdTimer )
-                                    }
-                                    viewPlayerIdTimer = setTimeout(() => {
-                                      setShownPlayerId(id) 
-                                      setViewPlayerId(id)
-                                    }, 250)
-                                  }}
-                                  onMouseLeave={ () => {
-                                    if ( viewPlayerIdTimer ) {
-                                      clearTimeout( viewPlayerIdTimer )
-                                    }
-                                  }}
-                                >
-                                  <div className="flex flex-col text-center items-center">
-                                    <p className="text-sm font-semibold flex text-center">
-                                      { fullName } ({team})
-                                    </p>
-                                    <p className="text-xs">
-                                      { rankText } { tier ? ` - Tier ${tierNumber}${projTierText}` : "" }
-                                    </p>
-                                    <p className="text-xs text-gray-600">
-                                      ADP: R{adpRound} P{adp?.toFixed(1)}
-                                    </p>
-                                  </div>
-                                </div>
-                              )
-                            })()
-                          )}
-                        </React.Fragment>
-                      )
-                    })}
-                  </div>
+                    return(
+                      <div key={playerId}
+                        className={`px-2 py-1 m-1 text-center rounded shadow-md w-full ${tierStyle}`}
+                      >
+                        <p className="font-semibold">{fullName} ({team})</p>
+                        <p className="text-xs">R{roundDrafted} | Tier {tierNumber}</p>
+                      </div>
+                    )
+                  })}
                 </div>
               )
             })}
           </div>
+        )}
+        
+        {/* Draft board section with horizontal scroll */}
+        <div className="flex-1 overflow-hidden">
+          <div className="overflow-x-auto overflow-y-auto h-full max-h-[calc(100vh-200px)] md:max-h-none">
+            <div className="flex flex-row min-w-full md:min-w-0 w-full">
+              { draftBoardView.filter(column => column.columnTitle !== 'Purge').map( (draftBoardColumn, i) => {
+                const { columnTitle, cards } = draftBoardColumn
+
+                // On mobile, only show the selected position column
+                if (isMobileDevice() && columnTitle !== selectedPosition) {
+                  return null
+                }
+
+                const posStyle = getPosStyle(columnTitle)
+                const playerCards = cards.filter(card => !isTitleCard(card)) as Player[]
+                
+                // Use the tier dividers hook for this position
+                const tierDividers = useTierDividers({
+                  position: columnTitle as keyof PlayerRanks,
+                  fantasySettings,
+                  boardSettings,
+                  onUpdateTierBoundary,
+                  allCards: cards
+                })
+                
+                return(
+                  <div key={i} className="flex flex-row w-full md:w-auto">
+                    <div className="flex flex-col w-full md:w-auto">
+                      <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500`}>
+                        <span className="font-bold underline">{ columnTitle }</span>
+                        { Boolean(predNextTiers[columnTitle]) &&
+                          <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[columnTitle] }</p>
+                        }
+                      </div>
+
+                      { cards.slice(0, 50).map( (card, playerPosIdx) => {
+                        // Check if we should render a tier divider before this card
+                        const dividerBefore = tierDividers.shouldRenderDividerBefore(playerPosIdx)
+                        // Check if we should render a placement indicator before this card
+                        const shouldShowPlacement = tierDividers.shouldShowPlacementIndicator(playerPosIdx)
+                        
+                        return (
+                          <React.Fragment key={`card-fragment-${playerPosIdx}`}>
+                            {/* Render tier divider if needed */}
+                            {dividerBefore && tierDividers.renderTierDivider(dividerBefore, `divider-before-${playerPosIdx}`)}
+                            
+                            {/* Render placement indicator if tier is active and no divider */}
+                            {!dividerBefore && shouldShowPlacement && tierDividers.renderPlacementIndicator(playerPosIdx, `placement-before-${playerPosIdx}`)}
+                            
+                            {/* Render the card */}
+                            {isTitleCard(card) ? (
+                              <div key={`${card.title}-${playerPosIdx}`} id={`${card.title}-${playerPosIdx}`}
+                                className={`px-2 m-1 text-center border rounded shadow-md relative ${card.bgColor}`}
+                              >
+                                <div className="flex flex-col text-center items-center">
+                                  <p className="text-xs font-semibold flex text-center text-white">
+                                    { card.title }
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              (() => {
+                                const player = card as Player
+                                const {
+                                  firstName,
+                                  lastName,
+                                  fullName,
+                                  id,
+                                  team,
+                                  position,
+                                } = player
+
+                                const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
+                                const { tier, adp, posRank } = metrics
+                                const { tierNumber } = tier || {}
+                                
+                                let tierStyle
+                                if ( shownPlayerId === id && !!shownPlayerBg ) {
+                                  tierStyle = shownPlayerBg
+                                } else {
+                                  tierStyle = getTierStyle(tierNumber)
+                                }
+
+                                const projPlayerTier = getProjectedTier(
+                                  player,
+                                  boardSettings.ranker,
+                                  DataRanker.LAST_SSN_PPG,
+                                  fantasySettings,
+                                  rankingSummaries,
+                                )
+                                const projTierText = projPlayerTier ? ` (${((projPlayerTier.upperLimitValue + projPlayerTier.lowerLimitValue) / 2).toFixed(1)} PPG)` : ''
+                                
+                                const rankText = posRank === undefined ? 'Unranked' : `${position}${posRank}`
+                                const adpRound = getRoundIdxForPickNum(adp === undefined ? 999 : Math.floor(adp), fantasySettings.numTeams) + 1
+                                const isHoveringPlayer = shownPlayerId === id
+                                const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
+
+                                const isDraggedOver = dragOverIndex === playerPosIdx
+                                const isDragged = draggedPlayer?.id === id
+                                const dragOverStyle = isDraggedOver ? 'border-2 border-dashed border-blue-500 bg-blue-50' : ''
+                                const draggedStyle = isDragged ? 'opacity-50' : ''
+                                const touchDraggedStyle = touchDragActive && isDragged ? 'z-50 transform scale-105 shadow-2xl' : ''
+
+                                return(
+                                  <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
+                                    className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-move ${cardBorderStyle} ${dragOverStyle} ${draggedStyle} ${touchDraggedStyle}`}
+                                    draggable={!isMobileDevice()}
+                                    data-player-card="true"
+                                    data-player-index={playerPosIdx}
+                                    data-column-title={columnTitle}
+                                    onDragStart={(e) => !isMobileDevice() && handleDragStart(e, player)}
+                                    onDragOver={(e) => !isMobileDevice() && handleDragOver(e, playerPosIdx)}
+                                    onDragLeave={() => !isMobileDevice() && handleDragLeave()}
+                                    onDrop={(e) => !isMobileDevice() && handleDrop(e, columnTitle, playerPosIdx, tierDividers)}
+                                    onTouchStart={(e) => isMobileDevice() && handleTouchStart(e, player)}
+                                    onTouchMove={(e) => isMobileDevice() && handleTouchMove(e)}
+                                    onTouchEnd={(e) => isMobileDevice() && handleTouchEnd(e, columnTitle)}
+                                    onMouseEnter={ () => {
+                                      if ( viewPlayerIdTimer ) {
+                                        clearTimeout( viewPlayerIdTimer )
+                                      }
+                                      viewPlayerIdTimer = setTimeout(() => {
+                                        setShownPlayerId(id) 
+                                        setViewPlayerId(id)
+                                      }, 250)
+                                    }}
+                                    onMouseLeave={ () => {
+                                      if ( viewPlayerIdTimer ) {
+                                        clearTimeout( viewPlayerIdTimer )
+                                      }
+                                    }}
+                                  >
+                                    <div className="flex flex-col text-center items-center">
+                                      <p className="text-sm font-semibold flex text-center">
+                                        { fullName } ({team})
+                                      </p>
+                                      <p className="text-xs">
+                                        { rankText } { tier ? ` - Tier ${tierNumber}${projTierText}` : "" }
+                                      </p>
+                                      <p className="text-xs text-gray-600">
+                                        ADP: R{adpRound} P{adp?.toFixed(1)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )
+                              })()
+                            )}
+                          </React.Fragment>
+                        )
+                      })}
+                      
+                      {/* Render placement indicator at the end if tier is active */}
+                      {tierDividers.shouldShowPlacementIndicator(50) && tierDividers.renderPlacementIndicator(50, `placement-end`)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
+      
+
     </>
   )
 }
