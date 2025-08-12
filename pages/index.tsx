@@ -261,32 +261,34 @@ const Home: FC = () => {
 
         <div className="flex flex-col items-center md:mt-4 mt-1 w-full h-screen">
           {/* Desktop Layout */}
-          <div className="hidden md:flex flex-row justify-center w-screen relative mb-4 grid grid-cols-12 gap-1 px-1">
+          <div className="hidden md:grid justify-center w-screen relative mb-4 grid grid-cols-12 gap-1 px-1">
             {/* Stats Column */}
-            <div className="col-span-3 flex flex-col justify-start ml-2 p-1 w-full">
-              <OptimalRosterDisplay
-                currentOptimalRoster={currentOptimalRoster}
-                optimalRosters={optimalRosters}
-                selectedOptimalRosterIdx={selectedOptimalRosterIdx}
-                setSelectedOptimalRosterIdx={setSelectedOptimalRosterIdx}
-                boardSettings={boardSettings}
-                settings={settings}
-                rankingSummaries={rankingSummaries}
-              />
-              <RankingSummaryDisplay
-                activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
-                rankingSummaries={rankingSummaries}
-                settings={settings}
-                ranker={boardSettings.ranker}
-              />
-              <HistoricalStats
-                settings={settings}
-                player={viewPlayerId ? playerLib[viewPlayerId] : null}
-              />
+            <div className="md:col-span-3">
+              <div className="justify-start ml-2 p-1 w-full">
+                <OptimalRosterDisplay
+                  currentOptimalRoster={currentOptimalRoster}
+                  optimalRosters={optimalRosters}
+                  selectedOptimalRosterIdx={selectedOptimalRosterIdx}
+                  setSelectedOptimalRosterIdx={setSelectedOptimalRosterIdx}
+                  boardSettings={boardSettings}
+                  settings={settings}
+                  rankingSummaries={rankingSummaries}
+                />
+                <RankingSummaryDisplay
+                  activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
+                  rankingSummaries={rankingSummaries}
+                  settings={settings}
+                  ranker={boardSettings.ranker}
+                />
+                <HistoricalStats
+                  settings={settings}
+                  player={viewPlayerId ? playerLib[viewPlayerId] : null}
+                />
+              </div>
             </div>
 
             {/* Rankings Board Column */}
-            <div className="col-span-5 w-full">
+            <div className="col-span-5">
               <RankingsBoard
                 playerRanks={playerRanks}
                 predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
@@ -335,7 +337,7 @@ const Home: FC = () => {
               />
             </div>
 
-            <div className="col-span-4 w-full">
+            <div className="col-span-4">
               <ADPView
                 playerRanks={playerRanks}
                 fantasySettings={settings}

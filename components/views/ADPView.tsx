@@ -71,7 +71,7 @@ const ADPView: React.FC<ADPViewProps> = ({
 
 
   return (
-    <div className="h-screen overflow-y-scroll bg-white p-2">
+    <div className="h-screen overflow-y-scroll bg-white p-2 w-full">
       {/* Desktop Header - Hidden on mobile */}
       <div className="mb-4 hidden md:block">
         <div className="flex justify-between items-center mb-2">
