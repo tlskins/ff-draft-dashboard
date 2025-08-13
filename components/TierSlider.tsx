@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { Player, FantasySettings } from '../types'
 import { getPlayerMetrics, PlayerRanks } from '../behavior/draft'
 
@@ -26,27 +26,50 @@ const useTierDividers = ({
 }: TierDividersHookProps) => {
   const [activeTier, setActiveTier] = useState<number | null>(null)
 
+  // Reset active tier when position changes (important for mobile when switching positions)
+  useEffect(() => {
+    setActiveTier(null)
+  }, [position])
+
   // Calculate tier boundaries and divider data
   const { tierDividers, renderedPlayers } = useMemo(() => {
-    // Get only the player cards that are actually being rendered (respecting slice limits)
-    const actuallyRenderedCards = allCards.slice(0, 50) // Match the slice(0,50) in EditRankingsView
-    const renderedPlayerCards = actuallyRenderedCards.filter(card => !('title' in card)) as Player[]
+    // Get all player cards from the position (no slicing for boundary calculation)
+    const allPlayerCards = allCards.filter(card => !('title' in card)) as Player[]
     
-    const dividers: TierDividerData[] = []
+    // Calculate tier boundaries based on the full position array
+    const fullTierBoundaries: number[] = []
     let currentTier: number | undefined = undefined
-    let tierCount = 0
     
-    renderedPlayerCards.forEach((player, index) => {
+    allPlayerCards.forEach((player, index) => {
       const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
       const tierNumber = metrics.tier?.tierNumber
       
       if (tierNumber !== currentTier && currentTier !== undefined) {
-        tierCount++
+        fullTierBoundaries.push(index)
+      }
+      currentTier = tierNumber
+    })
+    
+    // Now get only the rendered cards for display
+    const actuallyRenderedCards = allCards.slice(0, 50)
+    const renderedPlayerCards = actuallyRenderedCards.filter(card => !('title' in card)) as Player[]
+    
+    // Create dividers only for boundaries that are visible in the rendered slice
+    const dividers: TierDividerData[] = []
+    currentTier = undefined
+    let boundaryIndex = 0
+    
+    renderedPlayerCards.forEach((player, renderedIndex) => {
+      const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
+      const tierNumber = metrics.tier?.tierNumber
+      
+      if (tierNumber !== currentTier && currentTier !== undefined) {
+        boundaryIndex++
         dividers.push({
-          tierNumber: tierCount,
-          boundaryIndex: index,
+          tierNumber: boundaryIndex,
+          boundaryIndex: renderedIndex, // Index relative to rendered cards
           position: 'before',
-          playerIndex: index
+          playerIndex: renderedIndex
         })
       }
       currentTier = tierNumber
@@ -72,7 +95,23 @@ const useTierDividers = ({
   // Handle clicking on a placement location
   const handlePlacementClick = (targetPlayerIndex: number) => {
     if (activeTier !== null) {
-      onUpdateTierBoundary(position, activeTier, targetPlayerIndex)
+      // Convert the rendered index back to the full position array index
+      // The targetPlayerIndex is relative to the rendered cards (slice 0-50)
+      // but onUpdateTierBoundary expects an index relative to the full position array
+      const actuallyRenderedCards = allCards.slice(0, 50)
+      const renderedPlayerCards = actuallyRenderedCards.filter(card => !('title' in card)) as Player[]
+      
+      if (targetPlayerIndex < renderedPlayerCards.length) {
+        const targetPlayer = renderedPlayerCards[targetPlayerIndex]
+        // Find this player's index in the original allCards array
+        const fullIndex = allCards.findIndex(card => 
+          !('title' in card) && (card as Player).id === targetPlayer.id
+        )
+        
+        if (fullIndex !== -1) {
+          onUpdateTierBoundary(position, activeTier, fullIndex)
+        }
+      }
       setActiveTier(null) // Deactivate after placement
     }
   }

@@ -362,19 +362,9 @@ const EditRankingsView = ({
         <div className="flex flex-col text-left">
           <h2 className="text-2xl font-bold">Edit Rankings</h2>
           <p className="text-sm text-gray-600">
-            {isMobileDevice() 
-              ? "Touch and drag players to reorder rankings • Drag tier dividers to adjust tier boundaries"
-              : "Drag players to reorder rankings • Drag tier dividers to adjust tier boundaries"
-            }
+            Drag players to reorder rankings • Click tier to edit and click new placement to move
           </p>
-          {/* Desktop buttons - hidden on mobile */}
           <div className="hidden md:flex flex-col">
-            <span className="p-1 m-1 text-sm font-semibold text-green-600">
-              {isMobileDevice() 
-                ? "Touch and drag players to reorder rankings • Drag tier dividers to adjust tier boundaries"
-                : "Drag players to reorder rankings • Drag tier dividers to adjust tier boundaries"
-              }
-            </span>
             <div className="flex flex-row">
               <button
                   className="p-2 m-1 border rounded-md bg-green-500 text-white hover:bg-green-600"
