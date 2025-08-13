@@ -135,7 +135,7 @@ const Home: FC = () => {
   const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
-  const [mobileView, setMobileView] = useState<MobileView>(MobileView.HEADER)
+  const [mobileView, setMobileView] = useState<MobileView>(MobileView.OVERVIEW)
 
   const loadCurrentRankings = useCallback(() => {
     const currentRankings = getPlayerData()
@@ -358,9 +358,9 @@ const Home: FC = () => {
 
           {/* Mobile Layout */}
           <div className="md:hidden w-full h-full px-2">
-            {mobileView === MobileView.HEADER && (
-              <div className="w-full">
-                <Header
+            {mobileView === MobileView.OVERVIEW && (
+              <div className="w-full h-full">
+                <MobileTiersView
                   settings={settings}
                   boardSettings={boardSettings}
                   draftStarted={draftStarted}
@@ -370,6 +370,12 @@ const Home: FC = () => {
                   setMyPickNum={setMyPickNum}
                   onSetRanker={onSetRanker}
                   onSetAdpRanker={onSetAdpRanker}
+                  rankingSummaries={rankingSummaries}
+                  ranker={boardSettings.ranker}
+                  currentOptimalRoster={currentOptimalRoster}
+                  optimalRosters={optimalRosters}
+                  selectedOptimalRosterIdx={selectedOptimalRosterIdx}
+                  setSelectedOptimalRosterIdx={setSelectedOptimalRosterIdx}
                 />
               </div>
             )}
@@ -441,18 +447,7 @@ const Home: FC = () => {
               />
             )}
 
-            {mobileView === MobileView.TIERS && (
-              <MobileTiersView
-                currentOptimalRoster={currentOptimalRoster}
-                optimalRosters={optimalRosters}
-                selectedOptimalRosterIdx={selectedOptimalRosterIdx}
-                setSelectedOptimalRosterIdx={setSelectedOptimalRosterIdx}
-                boardSettings={boardSettings}
-                settings={settings}
-                rankingSummaries={rankingSummaries}
-                ranker={boardSettings.ranker}
-              />
-            )}
+
           </div>
         </div>
       </main>

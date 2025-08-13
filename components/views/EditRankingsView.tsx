@@ -7,6 +7,8 @@ import { EditRankingsViewProps } from "../../types/DraftBoardTypes"
 import { getDraftBoard } from "../../behavior/DraftBoardUtils"
 import { isTitleCard } from "../../types/DraftBoardTypes"
 import useTierDividers from '../TierSlider'
+import HistoricalStats from "../HistoricalStats"
+import { playerShortName } from "@/behavior/presenters"
 
 let viewPlayerIdTimer: NodeJS.Timeout
 
@@ -47,6 +49,128 @@ const EditRankingsView = ({
   // Touch state for mobile
   const [touchDragActive, setTouchDragActive] = useState(false)
   const [touchStartY, setTouchStartY] = useState(0)
+  // Stats modal state
+  const [isStatsModalVisible, setIsStatsModalVisible] = useState(false)
+  const [modalPlayer, setModalPlayer] = useState<Player | null>(null)
+  // Mobile scrollbar state
+  const [scrollContainerRef, setScrollContainerRef] = useState<HTMLDivElement | null>(null)
+  const [scrollbarRef, setScrollbarRef] = useState<HTMLDivElement | null>(null)
+  const [isDraggingScrollbar, setIsDraggingScrollbar] = useState(false)
+
+  // Handler for opening stats modal
+  const handleOpenStatsModal = (player: Player) => {
+    setModalPlayer(player)
+    setIsStatsModalVisible(true)
+  }
+
+  // Handler for closing stats modal
+  const handleCloseStatsModal = () => {
+    setIsStatsModalVisible(false)
+    setModalPlayer(null)
+  }
+
+  // Calculate scrollbar thumb height and visibility
+  const getScrollbarMetrics = () => {
+    if (!scrollContainerRef) return { thumbHeight: 60, isScrollable: false }
+    
+    const container = scrollContainerRef
+    const containerHeight = container.clientHeight
+    const contentHeight = container.scrollHeight
+    
+    const isScrollable = contentHeight > containerHeight
+    if (!isScrollable) return { thumbHeight: 60, isScrollable: false }
+    
+    // Calculate thumb height as a ratio of visible content to total content
+    const ratio = containerHeight / contentHeight
+    const minThumbHeight = 40
+    const maxThumbHeight = containerHeight * 0.8
+    const thumbHeight = Math.max(minThumbHeight, Math.min(maxThumbHeight, containerHeight * ratio))
+    
+    return { thumbHeight, isScrollable }
+  }
+
+  // Mobile scrollbar handlers
+  const updateScrollbarPosition = () => {
+    if (!scrollContainerRef || !scrollbarRef || !isMobileDevice()) {
+      return
+    }
+    
+    const container = scrollContainerRef
+    const scrollbar = scrollbarRef
+    const scrollbarThumb = scrollbar.querySelector('.scrollbar-thumb') as HTMLElement
+    
+    if (!scrollbarThumb) {
+      return
+    }
+    
+    const { thumbHeight, isScrollable } = getScrollbarMetrics()
+    
+    if (!isScrollable) {
+      scrollbar.style.display = 'none'
+      return
+    }
+    
+    scrollbar.style.display = 'block'
+    scrollbarThumb.style.height = `${thumbHeight}px`
+    
+    const maxScrollTop = container.scrollHeight - container.clientHeight
+    if (maxScrollTop <= 0) return
+    
+    const scrollPercentage = container.scrollTop / maxScrollTop
+    const maxThumbTop = scrollbar.clientHeight - thumbHeight
+    const thumbTop = scrollPercentage * maxThumbTop
+    
+    scrollbarThumb.style.transform = `translateY(${Math.max(0, Math.min(maxThumbTop, thumbTop))}px)`
+  }
+
+  const handleScrollbarMouseDown = (e: React.MouseEvent) => {
+    if (!isMobileDevice()) return
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingScrollbar(true)
+  }
+
+  const handleScrollbarTouchStart = (e: React.TouchEvent) => {
+    if (!isMobileDevice()) return
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingScrollbar(true)
+  }
+
+  const handleScrollbarMove = (clientY: number) => {
+    if (!isDraggingScrollbar || !scrollContainerRef || !scrollbarRef) return
+    
+    const scrollbar = scrollbarRef
+    const container = scrollContainerRef
+    const scrollbarThumb = scrollbar.querySelector('.scrollbar-thumb') as HTMLElement
+    
+    if (!scrollbarThumb) return
+    
+    const { thumbHeight } = getScrollbarMetrics()
+    const scrollbarRect = scrollbar.getBoundingClientRect()
+    const relativeY = clientY - scrollbarRect.top
+    
+    // Calculate scroll percentage based on thumb position
+    const maxThumbTop = scrollbar.clientHeight - thumbHeight
+    const thumbTop = Math.max(0, Math.min(maxThumbTop, relativeY - thumbHeight / 2))
+    const scrollPercentage = maxThumbTop > 0 ? thumbTop / maxThumbTop : 0
+    
+    const maxScrollTop = container.scrollHeight - container.clientHeight
+    container.scrollTop = scrollPercentage * maxScrollTop
+  }
+
+  const handleScrollbarMouseMove = (e: MouseEvent) => {
+    handleScrollbarMove(e.clientY)
+  }
+
+  const handleScrollbarTouchMove = (e: TouchEvent) => {
+    e.preventDefault()
+    handleScrollbarMove(e.touches[0].clientY)
+  }
+
+  const handleScrollbarEnd = () => {
+    setIsDraggingScrollbar(false)
+  }
 
   const draftBoard = useMemo(() => {
     const myCurrRound = myCurrentRound(currPick, myPickNum, fantasySettings.numTeams)
@@ -85,6 +209,52 @@ const EditRankingsView = ({
       }
     }
   }, [touchDragActive])
+
+  // Handle scrollbar dragging events
+  useEffect(() => {
+    if (!isDraggingScrollbar) return
+
+    document.addEventListener('mousemove', handleScrollbarMouseMove)
+    document.addEventListener('mouseup', handleScrollbarEnd)
+    document.addEventListener('touchmove', handleScrollbarTouchMove, { passive: false })
+    document.addEventListener('touchend', handleScrollbarEnd)
+
+    return () => {
+      document.removeEventListener('mousemove', handleScrollbarMouseMove)
+      document.removeEventListener('mouseup', handleScrollbarEnd)
+      document.removeEventListener('touchmove', handleScrollbarTouchMove)
+      document.removeEventListener('touchend', handleScrollbarEnd)
+    }
+  }, [isDraggingScrollbar])
+
+  // Update scrollbar position when content scrolls
+  useEffect(() => {
+    if (!scrollContainerRef || !isMobileDevice()) return
+
+    const container = scrollContainerRef
+    container.addEventListener('scroll', updateScrollbarPosition)
+    
+    // Also listen for resize events to update scrollbar when content changes
+    const resizeObserver = new ResizeObserver(updateScrollbarPosition)
+    resizeObserver.observe(container)
+    
+    // Initial position update with a slight delay to ensure content is rendered
+    const timeoutId = setTimeout(updateScrollbarPosition, 100)
+
+    return () => {
+      container.removeEventListener('scroll', updateScrollbarPosition)
+      resizeObserver.disconnect()
+      clearTimeout(timeoutId)
+    }
+  }, [scrollContainerRef])
+
+  // Update scrollbar when content changes (e.g., filtering)
+  useEffect(() => {
+    if (isMobileDevice()) {
+      const timeoutId = setTimeout(updateScrollbarPosition, 50)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [draftBoardView, selectedPosition])
 
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, player: Player) => {
@@ -183,10 +353,12 @@ const EditRankingsView = ({
     setTouchStartY(0)
   }
 
+
+
   return (
-    <>
+    <div className="h-full flex flex-col">
       {/* Controls for edit rankings view */}
-      <div className="flex flex-row mb-4 align-center">
+      <div className="flex flex-row mb-4 align-center flex-shrink-0">
         <div className="flex flex-col text-left">
           <h2 className="text-2xl font-bold">Edit Rankings</h2>
           <p className="text-sm text-gray-600">
@@ -236,10 +408,10 @@ const EditRankingsView = ({
         </div>
       </div>
 
-      <div className="flex flex-col h-full mb-32 md:mb-4">
+      <div className="flex flex-col h-full mb-32 md:mb-4 overflow-hidden">
         {/* Drafted players section - responsive grid */}
         { draftStarted && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-1 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-1 mb-4 flex-shrink-0">
             { draftBoardView.filter(column => column.columnTitle !== 'Purge').map( (draftBoardColumn, i) => {
               const { columnTitle } = draftBoardColumn
               const position = columnTitle as FantasyPosition
@@ -279,9 +451,38 @@ const EditRankingsView = ({
         )}
         
         {/* Draft board section with horizontal scroll */}
-        <div className="flex-1 overflow-hidden">
-          <div className="overflow-x-auto overflow-y-auto h-full max-h-[calc(100vh-200px)] md:max-h-none">
-            <div className="flex flex-row min-w-full md:min-w-0 w-full">
+        <div className="flex-1 overflow-hidden min-h-0">
+          <div className="flex flex-row h-full">
+            {/* Mobile scrollbar - left side */}
+            {isMobileDevice() && (
+              <div 
+                ref={setScrollbarRef}
+                className="w-4 bg-gray-300 rounded-sm mr-2 relative flex-shrink-0 cursor-pointer select-none shadow-inner"
+                style={{ 
+                  height: '100%',
+                  minHeight: '300px',
+                  zIndex: 10
+                }}
+                onMouseDown={handleScrollbarMouseDown}
+                onTouchStart={handleScrollbarTouchStart}
+              >
+                <div 
+                  className="scrollbar-thumb absolute w-full bg-blue-500 rounded-sm transition-all duration-200 hover:bg-blue-600 active:bg-blue-700 shadow-sm"
+                  style={{ 
+                    height: '60px',
+                    minHeight: '40px',
+                    top: '0px'
+                  }}
+                />
+              </div>
+            )}
+            
+            {/* Main content area */}
+            <div 
+              ref={setScrollContainerRef}
+              className="overflow-x-auto overflow-y-auto h-full flex-1"
+            >
+              <div className="flex flex-row min-w-full md:min-w-0 w-full">
               { draftBoardView.filter(column => column.columnTitle !== 'Purge').map( (draftBoardColumn, i) => {
                 const { columnTitle, cards } = draftBoardColumn
 
@@ -410,7 +611,25 @@ const EditRankingsView = ({
                                     }}
                                   >
                                     <div className="flex flex-col text-center items-center">
-                                      <p className="text-sm font-semibold flex text-center">
+                                      <div className="flex text-center items-center justify-center w-full md:hidden">
+                                        <p className="text-sm font-semibold">
+                                          { playerShortName(fullName) } ({team})
+                                        </p>
+                                        {/* Mobile-only stats button */}
+                                        <button 
+                                          className="block md:hidden p-1 text-blue-500 hover:text-blue-700 transition-colors"
+                                          onClick={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            handleOpenStatsModal(player)
+                                          }}
+                                          onTouchStart={(e) => e.stopPropagation()}
+                                          onTouchEnd={(e) => e.stopPropagation()}
+                                        >
+                                          📊
+                                        </button>
+                                      </div>
+                                      <p className="text-sm font-semibold flex text-center hidden md:block">
                                         { fullName } ({team})
                                       </p>
                                       <p className="text-xs">
@@ -434,13 +653,27 @@ const EditRankingsView = ({
                   </div>
                 )
               })}
+              </div>
             </div>
           </div>
         </div>
       </div>
-      
 
-    </>
+      {/* Mobile Stats Modal */}
+      {isStatsModalVisible && modalPlayer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto relative">
+            <button
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold z-10"
+              onClick={handleCloseStatsModal}
+            >
+              ×
+            </button>
+            <HistoricalStats player={modalPlayer} settings={fantasySettings} />
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 

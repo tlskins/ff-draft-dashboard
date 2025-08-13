@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import OptimalRosterDisplay from './OptimalRosterDisplay'
 import RankingSummaryDisplay from './RankingSummary'
+import Header from "./Header"
 import { FantasyPosition, NFLTeam } from '../types'
-import type { FantasySettings, BoardSettings, RankingSummary, Player } from '../types'
+import type { FantasySettings, BoardSettings, RankingSummary, Player, ThirdPartyADPRanker, ThirdPartyRanker } from '../types'
 
 interface OptimalPick {
   player: any
@@ -26,6 +27,13 @@ interface MobileTiersViewProps {
   settings: FantasySettings
   rankingSummaries: RankingSummary[]
   ranker: any
+  draftStarted: boolean
+  myPickNum: number
+  setNumTeams: (numTeams: number) => void
+  setIsPpr: (isPpr: boolean) => void
+  setMyPickNum: (pickNum: number) => void
+  onSetRanker: (ranker: ThirdPartyRanker) => void
+  onSetAdpRanker: (ranker: ThirdPartyADPRanker) => void
 }
 
 const MobileTiersView: React.FC<MobileTiersViewProps> = ({
@@ -37,6 +45,13 @@ const MobileTiersView: React.FC<MobileTiersViewProps> = ({
   settings,
   rankingSummaries,
   ranker,
+  draftStarted,
+  myPickNum,
+  setNumTeams,
+  setIsPpr,
+  setMyPickNum,
+  onSetRanker,
+  onSetAdpRanker,
 }) => {
   const [selectedPosition, setSelectedPosition] = useState<Position>(FantasyPosition.QUARTERBACK)
 
@@ -51,13 +66,28 @@ const MobileTiersView: React.FC<MobileTiersViewProps> = ({
     position: selectedPosition,
     team: NFLTeam.FA,
     ranks: {},
-
   }
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-screen flex flex-col pt-20 mb-20"
+      style={{backgroundColor: '#FFF7E3'}}
+    >
+      <div className="h-full">
+        <Header
+          settings={settings}
+          boardSettings={boardSettings}
+          draftStarted={draftStarted}
+          myPickNum={myPickNum}
+          setNumTeams={setNumTeams}
+          setIsPpr={setIsPpr}
+          setMyPickNum={setMyPickNum}
+          onSetRanker={onSetRanker}
+          onSetAdpRanker={onSetAdpRanker}
+        />
+      </div> 
+
       {/* Optimal Roster Display */}
-      <div className="mb-4">
+      <div className="mb-12">
         <OptimalRosterDisplay
           currentOptimalRoster={currentOptimalRoster}
           optimalRosters={optimalRosters}
@@ -88,7 +118,7 @@ const MobileTiersView: React.FC<MobileTiersViewProps> = ({
       </div>
 
       {/* Rankings Summary Display */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="h-full mb-64">
         <RankingSummaryDisplay
           activePlayer={mockPlayer}
           rankingSummaries={rankingSummaries}

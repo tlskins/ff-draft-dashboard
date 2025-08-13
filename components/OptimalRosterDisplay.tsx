@@ -39,7 +39,7 @@ const OptimalRosterDisplay: React.FC<OptimalRosterDisplayProps> = ({
   }
 
   return (
-    <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-2 shadow-md border border-blue-200">
+    <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-2 shadow-md border border-blue-200 bg-white">
       <div className="flex items-center justify-between mb-2">
         <p className="font-semibold underline">
           Optimal Total {currentOptimalRoster.metric} Roster Using Ranking Tiers vs ADP ({currentOptimalRoster.value.toFixed(1)} {currentOptimalRoster.metric})

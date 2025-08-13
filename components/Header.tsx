@@ -41,7 +41,7 @@ const Header: React.FC<HeaderProps> = ({
     <div 
       className={`w-full z-10 shadow-md transition-all duration-500 ease-in-out overflow-hidden md:w-screen ${
         isHeaderCollapsed ? 'md:h-6 h-auto' : 'h-auto'
-      } md:min-h-0 min-h-screen`} 
+      } md:min-h-0`} 
       style={{backgroundColor: '#FFF7E3'}}
     >
       {/* Toggle Button - Hidden on Mobile */}

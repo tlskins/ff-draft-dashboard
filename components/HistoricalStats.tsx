@@ -120,12 +120,13 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player, settings }) =
   );
 
   return (
-    <div className="py-2 px-4 justify-center text-sm w-full">
+    <div className="py-2 px-4 text-sm w-full">
       <p className="font-semibold underline py-2">
         {player.fullName} ({player.position}) Historical Stats
       </p>
-      <div className="flex flex-row justify-center">
-        <table className="table-fixed text-xs border-separate border-spacing-0 border border-slate-500 shadow-md">
+      <div className="overflow-x-auto w-full">
+        <div className="flex flex-row md:justify-center">
+          <table className="table-fixed text-xs border-separate border-spacing-0 border border-slate-500 shadow-md min-w-full md:min-w-0">
           <thead>
             <tr className="text-left">
               <th className="border-2 border-slate-700">Year</th>
@@ -146,7 +147,8 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player, settings }) =
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   );

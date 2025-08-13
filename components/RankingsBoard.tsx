@@ -236,7 +236,7 @@ const RankingsBoard = ({
     noPlayers ?
     <></>
     :
-    <div className="flex flex-col md:p-4 p-1 h-full overflow-y-scroll border border-4 rounded shadow-md bg-white text-sm">
+    <div className={`flex flex-col md:p-4 p-1 h-full border border-4 rounded shadow-md bg-white text-sm ${isEditingCustomRanking ? 'overflow-hidden' : 'overflow-y-scroll'}`}>
       <div className="hidden md:flex flex-col items-center justify-center content-center mb-2">
         <div className="flex flex-col items-center w-full">
           { (!activeDraftListenerTitle && !listenerActive) &&
