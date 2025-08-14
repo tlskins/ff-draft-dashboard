@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../types'
-import { getPlayerAdp, getPlayerMetrics, getRoundIdxForPickNum, PlayerRanks } from '../../behavior/draft'
+import { getPlayerAdp, getPlayerMetrics, getRoundIdxForPickNum, getRoundNumForPickNum, getPickInRoundForPickNum, PlayerRanks, getRoundAndPickShortText } from '../../behavior/draft'
 import { getPosStyle, getTierStyle } from '../../behavior/styles'
 import { useADPView, PositionFilter } from '../../behavior/hooks/useADPView'
 import MobileViewFooter from '../MobileViewFooter'
@@ -16,7 +16,7 @@ interface ADPViewProps {
   setViewPlayerId: (id: string) => void
   playerTargets: PlayerTarget[]
   playerLib: { [key: string]: Player }
-  addPlayerTarget: (player: Player, targetBelowPick: number) => void
+  addPlayerTarget: (player: Player, targetAsEarlyAs: number) => void
   replacePlayerTargets: (targets: PlayerTarget[]) => void
   removePlayerTarget: (playerId: string) => void
   removePlayerTargets: (playerIds: string[]) => void
@@ -51,11 +51,12 @@ const ADPView: React.FC<ADPViewProps> = ({
     handleSaveFavorites,
     handleLoadFavorites,
     handleClearFavorites,
-  } = useADPView({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib, addPlayerTarget, replacePlayerTargets, removePlayerTargets })
+  } = useADPView({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib, replacePlayerTargets, removePlayerTargets })
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isMobileTargetsOpen, setIsMobileTargetsOpen] = useState(false)
   const [isMobilePositionOpen, setIsMobilePositionOpen] = useState(false)
+  const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null)
   
   const getRoundCount = useCallback((round: number) => {
     return (playersByRound[round] || []).filter( (player, playerIdx) => {
@@ -63,10 +64,23 @@ const ADPView: React.FC<ADPViewProps> = ({
         return false
       }
       const adp = getPlayerAdp(player, fantasySettings, boardSettings)
-      const adpRound = getRoundIdxForPickNum(adp, fantasySettings.numTeams) + 1
+      const adpRound = getRoundNumForPickNum(adp, fantasySettings.numTeams)
       return adpRound === round
     }).length
   }, [fantasySettings, boardSettings, playersByRound])
+
+  const handleMovePlayerToRound = useCallback((playerId: string, round: number) => {
+    const newPickNumber = myPicks[round - 1] // round is 1-based, myPicks is 0-based
+    if (newPickNumber) {
+      const updatedTargets = playerTargets.map(target => 
+        target.playerId === playerId 
+          ? { ...target, targetAsEarlyAs: newPickNumber }
+          : target
+      )
+      replacePlayerTargets(updatedTargets)
+    }
+    setMovingPlayerId(null) // Exit move mode
+  }, [playerTargets, myPicks, replacePlayerTargets])
 
 
 
@@ -201,14 +215,28 @@ const ADPView: React.FC<ADPViewProps> = ({
 
             {organizedTargets.map((item, idx) => {
               if (item.type === 'divider') {
+                const isInMoveMode = movingPlayerId !== null
                 return (
                   <div key={`divider-${item.round}-${item.pick}`}
                     className="pt-2 mt-2"
                   >
-                    <p className="text-xs text-white text-center py-1 px-2 bg-blue-500 rounded-xl">
-                      <p className="font-semibold underline">RD {item.round}</p>
-                      <p className="font-light">Pick {item.pick}</p>
-                    </p>
+                    <div 
+                      className={`text-xs text-white text-center py-1 px-2 rounded-xl ${
+                        isInMoveMode 
+                          ? 'bg-green-500 hover:bg-green-600 cursor-pointer border-2 border-green-300' 
+                          : 'bg-blue-500'
+                      } transition-colors`}
+                      onClick={isInMoveMode && movingPlayerId ? () => handleMovePlayerToRound(movingPlayerId, item.round) : undefined}
+                    >
+                      {isInMoveMode ? (
+                        <p className="font-semibold">Move to Round {item.round}</p>
+                      ) : (
+                        <>
+                          <p className="font-semibold underline">RD {item.round}</p>
+                          <p className="font-light">Pick {item.pick}</p>
+                        </>
+                      )}
+                    </div>
                   </div>
                 )
               } else {
@@ -228,8 +256,7 @@ const ADPView: React.FC<ADPViewProps> = ({
                 return (
                   <div
                     key={`target-${player.id}-${idx}`}
-                    className={`p-2 rounded shadow-sm cursor-pointer transition-colors ${bgColor} ${cardBorderStyle}`}
-                    onClick={() => removePlayerTarget(player.id)}
+                    className={`p-2 rounded shadow-sm transition-colors ${bgColor} ${cardBorderStyle}`}
                     onMouseEnter={() => {
                       setViewPlayerId(player.id)
                     }}
@@ -242,11 +269,38 @@ const ADPView: React.FC<ADPViewProps> = ({
                         {player.fullName}
                       </p>
                       <p className="text-xs font-medium text-gray-600">
-                        {player.position} | {player.team} | ADP {adp.toFixed(0)}
+                        {player.position} | {player.team}
                       </p>
-                      <p className="text-xs text-red-600 font-medium">
-                        Click to remove
+                      <p className="text-xs font-medium text-gray-600">
+                        Early as {getRoundAndPickShortText(item.target.targetAsEarlyAs, fantasySettings.numTeams)}
                       </p>
+                      <p className="text-xs font-medium text-gray-600">
+                        ADP {getRoundAndPickShortText(parseInt(adp.toFixed(0)), fantasySettings.numTeams)}
+                      </p>
+                      <div className="flex gap-1 mt-2">
+                        <button
+                          className="px-1 py-0.5 text-xs bg-red-500 text-white rounded shadow hover:bg-red-600 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removePlayerTarget(player.id)
+                          }}
+                        >
+                          Remove
+                        </button>
+                        <button
+                          className={`px-1 py-0.5 text-xs rounded shadow transition-colors ${
+                            movingPlayerId === player.id 
+                              ? 'bg-yellow-500 text-white hover:bg-yellow-600' 
+                              : 'bg-blue-500 text-white hover:bg-blue-600'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setMovingPlayerId(movingPlayerId === player.id ? null : player.id)
+                          }}
+                        >
+                          {movingPlayerId === player.id ? 'Cancel' : 'Move'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )
@@ -276,7 +330,8 @@ const ADPView: React.FC<ADPViewProps> = ({
                 const renderPlayer = (player: any, idx: number) => {
                   const adp = getPlayerAdp(player, fantasySettings, boardSettings)
                   const posStyle = getPosStyle(player.position)
-                  const adpRound = getRoundIdxForPickNum(adp, fantasySettings.numTeams) + 1
+                  const adpRound = getRoundNumForPickNum(adp, fantasySettings.numTeams)
+                  const adpRoundAndPick = getRoundAndPickShortText(adp, fantasySettings.numTeams)
                   const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
                   const { tier } = metrics
                   const { tierNumber } = tier || {}
@@ -307,13 +362,16 @@ const ADPView: React.FC<ADPViewProps> = ({
                           {playerShortName(player.fullName)}
                         </p>
                         <p className="text-xs font-medium text-gray-600 hidden md:flex">
-                          {player.position} | {player.team} | ADP RD {adpRound}
+                          {player.position} | {player.team}
+                        </p>
+                        <p className="text-xs font-medium text-gray-600 hidden md:flex">
+                          ADP {adpRoundAndPick}
                         </p>
                         <p className="text-xs font-medium text-gray-600 flex md:hidden">
                           {player.position} | {player.team}
                         </p>
                         <p className="text-xs font-medium text-gray-600 flex md:hidden">
-                          ADP RD {adpRound}
+                          ADP {adpRoundAndPick}
                         </p>
                         <div className="flex gap-1 mt-1">
                           {!isPlayerTargeted && userPickForRound && (

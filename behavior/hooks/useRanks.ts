@@ -410,14 +410,14 @@ export const useRanks = ({
   }
 
   // Player targeting functions
-  const addPlayerTarget = useCallback((player: Player, targetBelowPick: number) => {
+  const addPlayerTarget = useCallback((player: Player, targetAsEarlyAs: number) => {
     // Check if player is already targeted
     const isAlreadyTargeted = playerTargets.some(target => target.playerId === player.id)
     if (isAlreadyTargeted) return
 
     const newTarget: PlayerTarget = {
       playerId: player.id,
-      targetBelowPick
+      targetAsEarlyAs
     }
     setPlayerTargets([...playerTargets, newTarget])
   }, [playerTargets])

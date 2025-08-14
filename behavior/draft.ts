@@ -244,6 +244,16 @@ export const calcCurrRoundPick = ( pickNum: number, numTeams: number ): number =
 
 export const getRoundIdxForPickNum = (pickNum: number, numTeams: number): number => Math.floor((pickNum-1) / numTeams)
 
+export const getRoundNumForPickNum = (pickNum: number, numTeams: number): number => getRoundIdxForPickNum(pickNum, numTeams) + 1
+
+export const getPickInRoundForPickNum = (pickNum: number, numTeams: number): number => pickNum % numTeams
+
+export const getRoundAndPickShortText = (pickNum: number, numTeams: number): string => {
+    const roundNum = getRoundNumForPickNum(pickNum, numTeams)
+    const pickInRound = getPickInRoundForPickNum(pickNum, numTeams)
+    return `${roundNum}.${pickInRound.toFixed(0)}`
+}
+
 // ranks
 
 export type PlayerRanks = {

@@ -11,7 +11,6 @@ interface UseADPViewProps {
   myPicks: number[]
   playerTargets: PlayerTarget[]
   playerLib: { [key: string]: Player }
-  addPlayerTarget: (player: Player, targetBelowPick: number) => void
   replacePlayerTargets: (targets: PlayerTarget[]) => void
   removePlayerTargets: (playerIds: string[]) => void
 }
@@ -54,6 +53,11 @@ export const useADPView = ({
   
   // Organize player targets by round with dividers
   const organizedTargets = useMemo(() => {
+    const targetPlayersMap = playerTargets.reduce((acc, target) => {
+      acc[target.playerId] = target
+      return acc
+    }, {} as { [key: string]: PlayerTarget })
+
     // Get target players and sort by ADP
     const targetPlayers = playerTargets
       .map(target => playerLib[target.playerId])
@@ -70,11 +74,11 @@ export const useADPView = ({
     let currentPickIndex = 0
     
     targetPlayers.forEach(player => {
-      const adp = getPlayerAdp(player, fantasySettings, boardSettings)
+      const earlyAs = targetPlayersMap[player.id].targetAsEarlyAs
       const target = playerTargets.find(t => t.playerId === player.id)!
       
       // Add dividers for any picks that come before this player's ADP
-      while (currentPickIndex < myPicks.length && myPicks[currentPickIndex] <= adp) {
+      while (currentPickIndex < myPicks.length && myPicks[currentPickIndex] <= earlyAs) {
         const pick = myPicks[currentPickIndex]
         const round = getRoundIdxForPickNum(pick, fantasySettings.numTeams) + 1
         sections.push({ type: 'divider', round, pick })
