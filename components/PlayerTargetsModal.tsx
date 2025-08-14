@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../types'
 import { getPlayerAdp, getRoundNumForPickNum, getRoundIdxForPickNum, getRoundAndPickShortText } from '../behavior/draft'
 import { playerShortName } from '../behavior/presenters'
@@ -30,6 +30,20 @@ const PlayerTargetsModal: React.FC<PlayerTargetsModalProps> = ({
   fantasySettings,
   boardSettings,
 }) => {
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    checkMobile() // Initial check
+    window.addEventListener('resize', checkMobile)
+    
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   // Calculate chart data for each player target
   const chartData = useMemo(() => {
     if (!playerTargets.length) return []
@@ -92,8 +106,8 @@ const PlayerTargetsModal: React.FC<PlayerTargetsModalProps> = ({
   }, [fantasySettings.numTeams])
 
   const maxPick = 10 * fantasySettings.numTeams // Round 10 end
-  const chartHeight = 600 // Fixed height for the chart
-  const chartWidth = Math.max(chartData.length * 80, 600) // Dynamic width based on number of targets
+  const chartHeight = isMobile ? 600 : 700 // Increased height for better visibility
+  const chartWidth = Math.max(chartData.length * (isMobile ? 60 : 80), isMobile ? 250 : 600) // Dynamic width based on number of targets
 
   const getPickPosition = (pick: number) => {
     // Clamp pick to valid range
@@ -105,30 +119,30 @@ const PlayerTargetsModal: React.FC<PlayerTargetsModalProps> = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-auto relative">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 md:p-4">
+      <div className="bg-white rounded-lg w-full h-full md:max-w-6xl md:w-full md:max-h-[90vh] md:h-auto overflow-hidden relative flex flex-col">
         <button
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold z-10"
+          className="absolute top-2 right-2 md:top-4 md:right-4 text-gray-500 hover:text-gray-700 text-xl md:text-2xl font-bold z-10 bg-white rounded-full w-6 h-6 md:w-8 md:h-8 flex items-center justify-center shadow-lg"
           onClick={onClose}
         >
           ×
         </button>
         
-        <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-            Player Targets Visualization
-          </h2>
-          
-          {chartData.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
-              No player targets to display
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {/* Chart container */}
-              <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+                 <div className="p-3 md:p-6 overflow-auto flex-1 flex flex-col">
+           <h2 className="text-lg md:text-2xl font-bold text-gray-800 mb-2 md:mb-4 text-center flex-shrink-0">
+             Player Targets Visualization
+           </h2>
+           
+           {chartData.length === 0 ? (
+             <div className="text-center text-gray-500 py-8">
+               No player targets to display
+             </div>
+           ) : (
+                            <div className="flex flex-col flex-1 min-h-0">
+                {/* Chart container */}
+                <div className="flex border border-gray-300 rounded-lg overflow-hidden flex-shrink-0">
                                  {/* Y-axis (rounds/picks) */}
-                 <div className="w-20 flex flex-col relative" style={{ height: chartHeight }}>
+                 <div className={`${isMobile ? 'w-12' : 'w-20'} flex flex-col relative`} style={{ height: chartHeight }}>
                    {roundLabels.map(round => (
                      <div
                        key={round.round}
@@ -170,8 +184,9 @@ const PlayerTargetsModal: React.FC<PlayerTargetsModalProps> = ({
 
                      {/* Player target bars */}
                                          {chartData.map((data, idx) => {
-                       const x = idx * 80 + 40 // Center each bar in its column
-                       const barWidth = 60
+                       const barSpacing = isMobile ? 60 : 80
+                       const x = idx * barSpacing + barSpacing/2 // Center each bar in its column
+                       const barWidth = isMobile ? 45 : 60
 
                        // Calculate bar segments (Y-axis inverted: smaller picks at top)
                        const topY = getPickPosition(data.targetRoundStart)
@@ -246,54 +261,57 @@ const PlayerTargetsModal: React.FC<PlayerTargetsModalProps> = ({
                 </div>
               </div>
 
-              {/* X-axis labels */}
-              <div className="flex mt-4 ml-20">
-                <div className="relative" style={{ width: chartWidth }}>
-                  {chartData.map((data, idx) => (
-                    <div
-                      key={data.player.id}
-                      className="absolute text-xs text-center"
-                      style={{
-                        left: idx * 80 + 40,
-                        width: 80,
-                        transform: 'translateX(-50%)'
-                      }}
-                    >
-                      <div className="font-semibold truncate">{playerShortName(data.player.fullName)}</div>
-                      <div className="text-gray-600">{data.player.position} | {data.player.team}</div>
-                      <div className="text-gray-500">T: {data.targetPick}</div>
-                      <div className="text-gray-500">ADP: {Math.round(data.playerAdp)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                                            {/* X-axis labels */}
+               <div className={`flex mt-2 ${isMobile ? 'ml-12' : 'ml-20'} flex-shrink-0`}>
+                 <div className="relative overflow-x-auto" style={{ width: chartWidth, height: isMobile ? '60px' : '70px' }}>
+                   {chartData.map((data, idx) => {
+                     const barSpacing = isMobile ? 60 : 80
+                     return (
+                       <div
+                         key={data.player.id}
+                         className="absolute text-xs text-center"
+                         style={{
+                           left: idx * barSpacing + barSpacing/2,
+                           width: barSpacing,
+                           transform: 'translateX(-50%)'
+                         }}
+                       >
+                         <div className="font-semibold truncate">{playerShortName(data.player.fullName)}</div>
+                         <div className="text-gray-600">{data.player.position} | {data.player.team}</div>
+                         <div className="text-gray-500">T: {data.targetPick}</div>
+                         <div className="text-gray-500">ADP: {Math.round(data.playerAdp)}</div>
+                       </div>
+                     )
+                   })}
+                 </div>
+               </div>
 
-              {/* Legend */}
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <h3 className="text-lg font-semibold mb-3">Legend</h3>
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
+               {/* Legend */}
+                                <div className={`${isMobile ? 'mt-2' : 'mt-4'} p-2 md:p-3 bg-gray-50 rounded-lg flex-shrink-0`}>
+                  <h3 className={`text-base md:text-lg font-semibold ${isMobile ? 'mb-1' : 'mb-2 md:mb-3'}`}>Legend</h3>
+                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4">
                    <div className="flex items-center">
-                     <div className="w-4 h-4 bg-blue-300 border-2 border-black mr-2"></div>
-                     <span className="text-sm">Rd start to target</span>
+                     <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-300 border-2 border-black mr-1 md:mr-2"></div>
+                     <span className="text-xs md:text-sm">Rd start to target</span>
                    </div>
                    <div className="flex items-center">
-                     <div className="w-4 h-4 bg-blue-600 border-2 border-black mr-2"></div>
-                     <span className="text-sm">Target pick</span>
+                     <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-600 border-2 border-black mr-1 md:mr-2"></div>
+                     <span className="text-xs md:text-sm">Target pick</span>
                    </div>
                    <div className="flex items-center">
-                     <div className="w-4 h-4 bg-red-300 border-2 border-black mr-2"></div>
-                     <span className="text-sm">Target to ADP</span>
+                     <div className="w-3 h-3 md:w-4 md:h-4 bg-red-300 border-2 border-black mr-1 md:mr-2"></div>
+                     <span className="text-xs md:text-sm">Target to ADP</span>
                    </div>
                    <div className="flex items-center">
-                     <div className="w-4 h-4 bg-red-900 border-2 border-black mr-2"></div>
-                     <span className="text-sm">ADP</span>
+                     <div className="w-3 h-3 md:w-4 md:h-4 bg-red-900 border-2 border-black mr-1 md:mr-2"></div>
+                     <span className="text-xs md:text-sm">ADP</span>
                    </div>
                    <div className="flex items-center">
-                     <div className="w-4 h-4 bg-red-600 border-2 border-black mr-2"></div>
-                     <span className="text-sm">ADP to round end</span>
+                     <div className="w-3 h-3 md:w-4 md:h-4 bg-red-600 border-2 border-black mr-1 md:mr-2"></div>
+                     <span className="text-xs md:text-sm">ADP to round end</span>
                    </div>
                  </div>
-              </div>
+               </div>
             </div>
           )}
         </div>
