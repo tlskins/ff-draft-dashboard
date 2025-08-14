@@ -58,10 +58,13 @@ export const useADPView = ({
       return acc
     }, {} as { [key: string]: PlayerTarget })
 
-    // Get target players and sort by ADP
+    // Create a set of available player IDs for fast lookup
+    const availablePlayerIds = new Set(playerRanks.availPlayersByOverallRank.map(player => player.id))
+
+    // Get target players and sort by ADP, only including available players
     const targetPlayers = playerTargets
       .map(target => playerLib[target.playerId])
-      .filter(player => player) // Filter out any missing players
+      .filter(player => player && availablePlayerIds.has(player.id)) // Filter out missing players and drafted players
       .sort((a, b) => {
         const adpA = getPlayerAdp(a, fantasySettings, boardSettings)
         const adpB = getPlayerAdp(b, fantasySettings, boardSettings)
@@ -98,7 +101,7 @@ export const useADPView = ({
     }
     
     return sections
-  }, [playerTargets, playerLib, fantasySettings, boardSettings, myPicks])
+  }, [playerTargets, playerLib, fantasySettings, boardSettings, myPicks, playerRanks])
 
   const playersByRound = useMemo(() => {
     const availablePlayers = playerRanks.availPlayersByAdp

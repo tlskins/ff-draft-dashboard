@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../types'
-import { getPlayerAdp, getRoundNumForPickNum, getRoundIdxForPickNum, getRoundAndPickShortText } from '../behavior/draft'
+import { getPlayerAdp, getRoundNumForPickNum, getRoundIdxForPickNum, getRoundAndPickShortText, PlayerRanks } from '../behavior/draft'
 import { playerShortName } from '../behavior/presenters'
 
 interface PlayerTargetsModalProps {
@@ -10,6 +10,7 @@ interface PlayerTargetsModalProps {
   playerLib: { [key: string]: Player }
   fantasySettings: FantasySettings
   boardSettings: BoardSettings
+  playerRanks: PlayerRanks
 }
 
 interface ChartData {
@@ -29,6 +30,7 @@ const PlayerTargetsModal: React.FC<PlayerTargetsModalProps> = ({
   playerLib,
   fantasySettings,
   boardSettings,
+  playerRanks,
 }) => {
   const [isMobile, setIsMobile] = useState(false)
 
@@ -48,10 +50,13 @@ const PlayerTargetsModal: React.FC<PlayerTargetsModalProps> = ({
   const chartData = useMemo(() => {
     if (!playerTargets.length) return []
 
+    // Create a set of available player IDs for fast lookup
+    const availablePlayerIds = new Set(playerRanks.availPlayersByOverallRank.map(player => player.id))
+
     const data: ChartData[] = playerTargets
       .map(target => {
         const player = playerLib[target.playerId]
-        if (!player) return null
+        if (!player || !availablePlayerIds.has(player.id)) return null
 
         const targetPick = target.targetAsEarlyAs
         const playerAdp = getPlayerAdp(player, fantasySettings, boardSettings)
@@ -79,7 +84,7 @@ const PlayerTargetsModal: React.FC<PlayerTargetsModalProps> = ({
       .sort((a, b) => a.sortKey - b.sortKey)
 
     return data
-  }, [playerTargets, playerLib, fantasySettings, boardSettings])
+  }, [playerTargets, playerLib, fantasySettings, boardSettings, playerRanks])
 
   // Calculate Y-axis labels and colors for rounds 1-10
   const roundLabels = useMemo(() => {

@@ -539,6 +539,7 @@ const ADPView: React.FC<ADPViewProps> = ({
         playerLib={playerLib}
         fantasySettings={fantasySettings}
         boardSettings={boardSettings}
+        playerRanks={playerRanks}
       />
     </div>
   )
