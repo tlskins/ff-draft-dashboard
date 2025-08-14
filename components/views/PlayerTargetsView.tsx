@@ -133,7 +133,7 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
         ) : (
           <div className="flex flex-col flex-1 min-h-0">
             {/* Chart container */}
-            <div className="flex border border-gray-300 rounded-lg overflow-hidden flex-shrink-0">
+            <div className="flex border border-gray-300 rounded-lg overflow-hidden flex-shrink-0 relative">
               {/* Y-axis (rounds/picks) */}
               <div className={`${isMobile ? 'w-12' : 'w-20'} flex flex-col relative`} style={{ height: chartHeight }}>
                 {roundLabels.map(round => (
@@ -177,23 +177,12 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
 
                  {/* Current pick line */}
                  {currPick <= maxPick && (
-                   <>
-                     <div
-                       className="absolute w-full border-b-2 border-purple-900 z-10"
-                       style={{
-                         top: getPickPosition(currPick)
-                       }}
-                     />
-                     <div
-                       className="absolute bg-purple-900 text-white text-xs px-2 py-1 rounded font-semibold z-20"
-                       style={{
-                         top: getPickPosition(currPick) - 12,
-                         right: 8
-                       }}
-                     >
-                       {getRoundAndPickShortText(currPick, fantasySettings.numTeams)}
-                     </div>
-                   </>
+                   <div
+                     className="absolute w-full border-b-2 border-purple-900 z-10"
+                     style={{
+                       top: getPickPosition(currPick)
+                     }}
+                   />
                  )}
 
                  {/* Player target bars */}
@@ -273,6 +262,19 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
                  })}
                </div>
              </div>
+             
+             {/* Current pick label - positioned sticky to right side of chart container */}
+             {currPick <= maxPick && (
+               <div
+                 className="absolute bg-purple-900 text-white text-xs px-2 py-1 rounded font-semibold z-30 pointer-events-none"
+                 style={{
+                   top: getPickPosition(currPick) - 12,
+                   right: 8
+                 }}
+               >
+                 {getRoundAndPickShortText(currPick, fantasySettings.numTeams)}
+               </div>
+             )}
            </div>
 
            {/* X-axis labels */}

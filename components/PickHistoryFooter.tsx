@@ -30,7 +30,7 @@ const PickHistoryFooter: React.FC<PickHistoryFooterProps> = ({
   setViewPlayerId,
 }) => {
   return (
-    <div className="flex items-center justify-center w-full h-24 border-t border-gray-300 fixed bottom-0 z-10 bg-gray-200">
+    <div className="hidden md:flex items-center justify-center w-full h-24 border-t border-gray-300 fixed bottom-0 z-10 bg-gray-200">
       <div className="flex flex-col items-center">
         <p className="font-semibold underline text-center rounded py-1">
           Round {roundIdx + 1} Pick {currRoundPick} (#{currPick} Overall)
