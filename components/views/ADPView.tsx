@@ -5,6 +5,7 @@ import { getPosStyle, getTierStyle } from '../../behavior/styles'
 import { useADPView, PositionFilter } from '../../behavior/hooks/useADPView'
 import MobileViewFooter from '../MobileViewFooter'
 import { playerShortName } from '../../behavior/presenters'
+import PlayerTargetsModal from '../PlayerTargetsModal'
 
 interface ADPViewProps {
   playerRanks: PlayerRanks
@@ -57,6 +58,7 @@ const ADPView: React.FC<ADPViewProps> = ({
   const [isMobileTargetsOpen, setIsMobileTargetsOpen] = useState(false)
   const [isMobilePositionOpen, setIsMobilePositionOpen] = useState(false)
   const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null)
+  const [isTargetsModalOpen, setIsTargetsModalOpen] = useState(false)
   
   const getRoundCount = useCallback((round: number) => {
     return (playersByRound[round] || []).filter( (player, playerIdx) => {
@@ -204,10 +206,20 @@ const ADPView: React.FC<ADPViewProps> = ({
                       handleClearFavorites()
                       setIsDropdownOpen(false)
                     }}
-                    className="w-full px-2 py-2 text-xs text-left font-medium text-red-600 hover:bg-red-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-2 py-2 text-xs text-left font-medium text-red-600 hover:bg-red-600 hover:text-white transition-colors border-b border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={playerTargets.length === 0}
                   >
                     Clear targets
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsTargetsModalOpen(true)
+                      setIsDropdownOpen(false)
+                    }}
+                    className="w-full px-2 py-2 text-xs text-left font-medium text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={playerTargets.length === 0}
+                  >
+                    Visualize targets
                   </button>
                 </div>
               )}
@@ -452,6 +464,14 @@ const ADPView: React.FC<ADPViewProps> = ({
                   setIsMobileTargetsOpen(false)
                 },
                 disabled: playerTargets.length === 0
+              },
+              {
+                label: 'Visualize targets',
+                onClick: () => {
+                  setIsTargetsModalOpen(true)
+                  setIsMobileTargetsOpen(false)
+                },
+                disabled: playerTargets.length === 0
               }
             ]
           },
@@ -509,6 +529,16 @@ const ADPView: React.FC<ADPViewProps> = ({
           setIsMobileTargetsOpen(false)
           setIsMobilePositionOpen(false)
         }}
+      />
+
+      {/* Player Targets Modal */}
+      <PlayerTargetsModal
+        isOpen={isTargetsModalOpen}
+        onClose={() => setIsTargetsModalOpen(false)}
+        playerTargets={playerTargets}
+        playerLib={playerLib}
+        fantasySettings={fantasySettings}
+        boardSettings={boardSettings}
       />
     </div>
   )
