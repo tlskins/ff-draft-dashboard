@@ -9,6 +9,7 @@ interface PlayerTargetsViewProps {
   fantasySettings: FantasySettings
   boardSettings: BoardSettings
   playerRanks: PlayerRanks
+  currPick: number
 }
 
 interface ChartData {
@@ -27,6 +28,7 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
   fantasySettings,
   boardSettings,
   playerRanks,
+  currPick,
 }) => {
   const [isMobile, setIsMobile] = useState(false)
 
@@ -173,6 +175,27 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
                    />
                  ))}
 
+                 {/* Current pick line */}
+                 {currPick <= maxPick && (
+                   <>
+                     <div
+                       className="absolute w-full border-b-2 border-purple-900 z-10"
+                       style={{
+                         top: getPickPosition(currPick)
+                       }}
+                     />
+                     <div
+                       className="absolute bg-purple-900 text-white text-xs px-2 py-1 rounded font-semibold z-20"
+                       style={{
+                         top: getPickPosition(currPick) - 12,
+                         right: 8
+                       }}
+                     >
+                       {getRoundAndPickShortText(currPick, fantasySettings.numTeams)}
+                     </div>
+                   </>
+                 )}
+
                  {/* Player target bars */}
                  {chartData.map((data, idx) => {
                    const barSpacing = isMobile ? 60 : 80
@@ -254,7 +277,7 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
 
            {/* X-axis labels */}
            <div className={`flex mt-2 ${isMobile ? 'ml-12' : 'ml-20'} flex-shrink-0`}>
-             <div className="relative overflow-x-auto" style={{ width: chartWidth, height: isMobile ? '60px' : '70px' }}>
+             <div className="relative overflow-x-auto" style={{ width: chartWidth, height: isMobile ? '60px' : '90px' }}>
                {chartData.map((data, idx) => {
                  const barSpacing = isMobile ? 60 : 80
                  return (
@@ -269,8 +292,8 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
                    >
                      <div className="font-semibold truncate">{playerShortName(data.player.fullName)}</div>
                      <div className="text-gray-600">{data.player.position} | {data.player.team}</div>
-                     <div className="text-gray-500">T: {data.targetPick}</div>
-                     <div className="text-gray-500">ADP: {Math.round(data.playerAdp)}</div>
+                     <div className="text-gray-500">TGT: {getRoundAndPickShortText(data.targetPick, fantasySettings.numTeams)}</div>
+                     <div className="text-gray-500">ADP: {getRoundAndPickShortText(Math.round(data.playerAdp), fantasySettings.numTeams)}</div>
                    </div>
                  )
                })}
@@ -280,7 +303,7 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
            {/* Legend */}
            <div className={`${isMobile ? 'mt-2' : 'mt-4'} p-2 md:p-3 bg-gray-50 rounded-lg flex-shrink-0`}>
              <h3 className={`text-base md:text-lg font-semibold ${isMobile ? 'mb-1' : 'mb-2 md:mb-3'}`}>Legend</h3>
-             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4">
+             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-4">
                <div className="flex items-center">
                  <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-300 border-2 border-black mr-1 md:mr-2"></div>
                  <span className="text-xs md:text-sm">Rd start to target</span>
@@ -300,6 +323,10 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
                <div className="flex items-center">
                  <div className="w-3 h-3 md:w-4 md:h-4 bg-red-600 border-2 border-black mr-1 md:mr-2"></div>
                  <span className="text-xs md:text-sm">ADP to round end</span>
+               </div>
+               <div className="flex items-center">
+                 <div className="w-6 h-0.5 md:w-8 md:h-0.5 bg-purple-900 mr-1 md:mr-2"></div>
+                 <span className="text-xs md:text-sm">Current pick</span>
                </div>
              </div>
            </div>

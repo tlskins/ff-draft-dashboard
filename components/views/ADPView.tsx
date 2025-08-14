@@ -14,6 +14,7 @@ interface ADPViewProps {
   boardSettings: BoardSettings
   viewPlayerId: string | null
   myPicks: number[]
+  currPick: number
   onSelectPlayer: (player: Player) => void
   setViewPlayerId: (id: string) => void
   playerTargets: PlayerTarget[]
@@ -30,6 +31,7 @@ const ADPView: React.FC<ADPViewProps> = ({
   boardSettings,
   viewPlayerId,
   myPicks,
+  currPick,
   setViewPlayerId,
   playerTargets,
   playerLib,
@@ -123,6 +125,7 @@ const ADPView: React.FC<ADPViewProps> = ({
             fantasySettings={fantasySettings}
             boardSettings={boardSettings}
             playerRanks={playerRanks}
+            currPick={currPick}
           />
         )}
       </div>

@@ -346,6 +346,7 @@ const Home: FC = () => {
                 setViewPlayerId={setViewPlayerId}
                 viewPlayerId={viewPlayerId}
                 myPicks={myPicks}
+                currPick={currPick}
                 playerTargets={playerTargets}
                 playerLib={playerLib}
                 addPlayerTarget={addPlayerTarget}
@@ -438,6 +439,7 @@ const Home: FC = () => {
                 setViewPlayerId={setViewPlayerId}
                 viewPlayerId={viewPlayerId}
                 myPicks={myPicks}
+                currPick={currPick}
                 playerTargets={playerTargets}
                 playerLib={playerLib}
                 addPlayerTarget={addPlayerTarget}
