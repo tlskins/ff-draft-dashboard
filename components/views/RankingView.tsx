@@ -47,8 +47,6 @@ const RankingView = ({
     return playerTargets.find(target => target.playerId === playerId)
   }
 
-  console.log('rankingview', playerTargets)
-
   // Handler for selecting a player with animation
   const handleSelectPlayer = (player: Player) => {
     // Add player to animating out set
@@ -113,7 +111,7 @@ const RankingView = ({
           <div className="grid md:grid-cols-2 grid-cols-1">
             <div className="flex flex-col">
               <div className="flex flex-col mb-4">
-                <h2 className="text-2xl font-bold">Rankings By Position</h2>
+                <h2 className="text-2xl font-bold">{rankings.copiedRanker ? 'Custom' : ''} Rankings By Position</h2>
                 <div className="h-1">
                   { isUsingCustomRanks &&
                     <p className="text-xs">
@@ -311,7 +309,6 @@ const RankingView = ({
                         const isHoveringPlayer = viewPlayerId === id
                         const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
                         const playerFavorite = getPlayerFavorite(id)
-                        console.log('playerFavorite', playerFavorite)
 
                         return(
                           <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}

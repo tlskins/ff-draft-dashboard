@@ -63,8 +63,8 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
   const [isMobilePositionOpen, setIsMobilePositionOpen] = useState(false)
   const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null)
   
-  // Auto-navigation: advance to next page when currPick passes user's next pick in earliest visible round
-  useEffect(() => {
+  // Helper function to check if we should advance to next page
+  const checkAutoAdvance = useCallback(() => {
     if (currentPage >= totalPages - 1) return // Don't advance if we're on the last page
     
     // Find the user's next pick in the earliest visible round (startRound)
@@ -82,7 +82,12 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
         handleNextPage()
       }
     }
-  }, [currPick, startRound, myPicks, fantasySettings.numTeams, currentPage, totalPages, handleNextPage])
+  }, [currentPage, totalPages, myPicks, fantasySettings.numTeams, startRound, currPick, handleNextPage])
+
+  // Auto-navigation: advance to next page when currPick passes user's next pick in earliest visible round
+  useEffect(() => {
+    checkAutoAdvance()
+  }, [currPick])
   
   const getRoundCount = useCallback((round: number) => {
     return (playersByRound[round] || []).filter( (player, playerIdx) => {
@@ -113,10 +118,6 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
       {/* Desktop Header - Hidden on mobile */}
       <div className="mb-4 hidden md:block flex-shrink-0">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-semibold text-gray-800">
-            Available By Round Sorted By Rank
-            {positionFilter !== 'All' && ` - ${positionFilter} Only`}
-          </h2>
           <div className="flex items-center space-x-2">
             <select
               value={positionFilter}
@@ -156,18 +157,6 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
             </button>
           </div>
         </div>
-        <div className="flex flex-col text-left">
-          <p className="text-sm text-gray-600">
-            Grayed out players you can still get in the next round
-          </p>
-          <p className="text-sm text-gray-600">
-            Shows players available in each round based on their Average Draft Position
-            {positionFilter !== 'All' && ` (filtered to ${positionFilter} players only)`}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Use ← → arrow keys or buttons to navigate between round groups
-          </p>
-        </div>
       </div>
 
       {/* Mobile Header - Simplified */}
@@ -179,9 +168,12 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
       </div>
       
       {/* Main Grid - Dynamic based on rounds */}
-      <div className={`grid gap-2 min-w-full flex-1 mb-20 md:mb-4 ${roundsToShow.length === 3 ? 'grid-cols-4' : 'grid-cols-5'} overflow-hidden`}>
+      <div 
+        className={`grid gap-2 min-w-full mb-20 md:mb-4 ${roundsToShow.length === 3 ? 'grid-cols-4' : 'grid-cols-5'} overflow-hidden`}
+        style={{ height: 'calc(100vh - 170px)' }}
+      >
         {/* Player Targets Column */}
-        <div className="flex flex-col min-w-0 overflow-hidden">
+        <div className="flex flex-col min-w-0 overflow-hidden h-full">
           <div className="sticky top-0 bg-yellow-300 border-b-2 border-purple-300 p-2 text-center flex-shrink-0">
             <h3 className="text-sm font-semibold text-purple-800">
               Targets
@@ -191,7 +183,7 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
             </p>
           </div>
           
-          <div className="flex flex-col space-y-1 p-2 overflow-y-auto flex-1">
+          <div className="flex flex-col space-y-1 p-2 overflow-y-auto" style={{ height: 'calc(100% - 80px)' }}>
             {/* Desktop Manage Targets Dropdown */}
             <div className="relative mt-2 hidden md:block">
               <button
@@ -345,7 +337,7 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
 
         {/* Round Columns - Dynamic based on viewport */}
         {roundsToShow.map((round) => (
-          <div key={round} className="flex flex-col min-w-0 overflow-hidden">
+          <div key={round} className="flex flex-col min-w-0 overflow-hidden h-full">
             <div className="sticky top-0 bg-blue-100 border-b-2 border-blue-300 p-2 text-center flex-shrink-0">
               <h3 className="text-sm font-semibold text-blue-800">
                 Round {round}
@@ -355,7 +347,7 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
               </p>
             </div>
             
-            <div className="flex flex-col space-y-1 p-0.5 overflow-y-auto flex-1">
+            <div className="flex flex-col space-y-1 p-0.5 overflow-y-auto" style={{ height: 'calc(100% - 80px)' }}>
               {(() => {
                 const roundPlayers = playersByRound[round] || []
                 const firstTeamPlayers = roundPlayers.slice(0, fantasySettings.numTeams)
@@ -405,7 +397,7 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
                           {player.position} | {player.team}
                         </p>
                         { playerTargets.find(target => target.playerId === player.id) ?
-                          <p className="bg-blue-500 text-white rounded px-1 py-0.5 mt-0.5 ml-1">
+                          <p className="text-xs font-medium bg-blue-500 text-white rounded px-0.5 mt-0.5 ml-1">
                             ★ @ {getRoundAndPickShortText(playerTargets.find(target => target.playerId === player.id)?.targetAsEarlyAs || 0, fantasySettings.numTeams)}
                           </p>
                           :

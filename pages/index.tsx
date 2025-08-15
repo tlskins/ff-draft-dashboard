@@ -135,20 +135,24 @@ const Home: FC = () => {
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
   const [mobileView, setMobileView] = useState<MobileView>(MobileView.OVERVIEW)
 
+  const browserLoaded = typeof window !== "undefined"
+
   const loadCurrentRankings = useCallback(() => {
-    const currentRankings = getPlayerData()
-    if (currentRankings) {
-      onLoadPlayers(currentRankings)
-      resetBoardSettings()
+    if (browserLoaded && hasCustomRankingsSaved()) {
+      loadCustomRankings()
+    } else {
+      const currentRankings = getPlayerData()
+      if (currentRankings) {
+        onLoadPlayers(currentRankings)
+        resetBoardSettings()
+      }
     }
-  }, [onLoadPlayers, resetBoardSettings])
+  }, [onLoadPlayers, resetBoardSettings, browserLoaded, loadCustomRankings])
 
   useEffect(() => {
     loadCurrentRankings()
   }, [])
 
-  // Custom ranking state - modal now shows automatically when draftView === CUSTOM_RANKING
-  
   const currentOptimalRoster = optimalRosters[selectedOptimalRosterIdx] || optimalRosters[0]
 
   const currRound = getDraftRoundForPickNum(currPick)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   addToRoster,
   calcCurrRoundPick,
@@ -411,27 +411,29 @@ export const useRanks = ({
 
   // Player targeting functions
   const addPlayerTarget = useCallback((player: Player, targetAsEarlyAs: number) => {
-    // Check if player is already targeted
-    const isAlreadyTargeted = playerTargets.some(target => target.playerId === player.id)
-    if (isAlreadyTargeted) return
+    setPlayerTargets(prevTargets => {
+      // Check if player is already targeted
+      const isAlreadyTargeted = prevTargets.some(target => target.playerId === player.id)
+      if (isAlreadyTargeted) return prevTargets
 
-    const newTarget: PlayerTarget = {
-      playerId: player.id,
-      targetAsEarlyAs
-    }
-    setPlayerTargets([...playerTargets, newTarget])
-  }, [playerTargets])
+      const newTarget: PlayerTarget = {
+        playerId: player.id,
+        targetAsEarlyAs
+      }
+      return [...prevTargets, newTarget]
+    })
+  }, [])
 
   const replacePlayerTargets = useCallback((newTargets: PlayerTarget[]) => {
     setPlayerTargets(newTargets)
-  }, [playerTargets])
+  }, [])
 
   const removePlayerTarget = useCallback((playerId: string) => {
-    setPlayerTargets(playerTargets.filter(target => target.playerId !== playerId))
-  }, [playerTargets])
+    setPlayerTargets(prevTargets => prevTargets.filter(target => target.playerId !== playerId))
+  }, [])
   const removePlayerTargets = useCallback((playerIds: string[]) => {
-    setPlayerTargets(playerTargets.filter(target => !playerIds.includes(target.playerId)))
-  }, [playerTargets])
+    setPlayerTargets(prevTargets => prevTargets.filter(target => !playerIds.includes(target.playerId)))
+  }, [])
 
   // Save/Load custom rankings functionality
   const saveCustomRankings = useCallback(() => {
@@ -459,9 +461,23 @@ export const useRanks = ({
     settings,
   ])
 
-  const loadCustomRankings = useCallback(() => {
+  const getCustomTextRankings = () => {
     try {
       const savedData = localStorage.getItem('ff-draft-custom-rankings')
+      if (!savedData) {
+        return false
+      }
+      return savedData
+    } catch (error) {
+      console.error('Failed to get custom rankings from storage:', error)
+      return false
+    }
+  }
+
+  const loadCustomRankings = useCallback((savedTextData?: string) => {
+    try {
+      const savedData = savedTextData ? savedTextData : getCustomTextRankings()
+
       if (!savedData) {
         return false
       }
@@ -469,7 +485,7 @@ export const useRanks = ({
       const parsedData = JSON.parse(savedData)
       const {
         players,
-        rankingSummaries: savedRankingSummaries,
+        rankingsSummaries: savedRankingSummaries,
         cachedAt: savedCachedAt,
         copiedRanker: savedCopiedRanker,
         editedAt: savedEditedAt,
@@ -504,7 +520,6 @@ export const useRanks = ({
       // Switch to custom ranker
       setBoardSettings({ ...boardSettings, ranker: ThirdPartyRanker.CUSTOM })
 
-      console.log('Custom rankings loaded successfully')
       return true
     } catch (error) {
       console.error('Failed to load custom rankings:', error)

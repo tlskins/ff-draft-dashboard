@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../types'
 import { getPlayerAdp, getPlayerMetrics, PlayerRanks, getRoundIdxForPickNum } from '../draft'
 
@@ -28,6 +28,7 @@ export const useADPView = ({
   const [currentPage, setCurrentPage] = useState(0) // 0-based page index
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
   const [isMobile, setIsMobile] = useState(false)
+  const [hasAttemptedAutoLoad, setHasAttemptedAutoLoad] = useState(false)
   
   // Detect mobile viewport
   useEffect(() => {
@@ -184,7 +185,7 @@ export const useADPView = ({
     }
   }
 
-  const handleLoadFavorites = () => {
+  const handleLoadFavorites = useCallback(() => {
     try {
       const savedFavorites = localStorage.getItem('ff-draft-favorites')
       if (savedFavorites) {
@@ -195,7 +196,6 @@ export const useADPView = ({
             return Boolean(player)
           })
           replacePlayerTargets(newTargets)
-          alert(`Loaded ${newTargets.length} favorites!`)
         } else {
           alert('No saved favorites found')
         }
@@ -205,7 +205,32 @@ export const useADPView = ({
     } catch (error) {
       alert('Failed to load favorites')
     }
-  }
+  }, [playerLib, replacePlayerTargets])
+
+  // Auto-load favorites when playerLib is available (only once)
+  useEffect(() => {
+    // Only auto-load if we haven't tried yet and playerLib has data
+    if (!hasAttemptedAutoLoad && Object.keys(playerLib).length > 0) {
+      setHasAttemptedAutoLoad(true)
+      try {
+        const savedFavorites = localStorage.getItem('ff-draft-favorites')
+        if (savedFavorites) {
+          const savedTargets = JSON.parse(savedFavorites) as PlayerTarget[]
+          if (Array.isArray(savedTargets) && savedTargets.length > 0) {
+            const newTargets = savedTargets.filter( target => {
+              const player = playerLib[target.playerId]
+              return Boolean(player)
+            })
+            if (newTargets.length > 0) {
+              replacePlayerTargets(newTargets)
+            }
+          }
+        }
+      } catch (error) {
+        // Silently ignore errors during auto-load
+      }
+    }
+  }, [hasAttemptedAutoLoad, playerLib, replacePlayerTargets])
 
   const handleClearFavorites = () => {
     if (confirm('Are you sure you want to clear all player targets?')) {

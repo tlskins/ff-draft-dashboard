@@ -72,7 +72,6 @@ const predictFuturePicks = (
     let pickPredicts: PredictedPicks = {};
     let posCounts = { ...initialPosCounts };
     let availablePlayers = [...playerRanks.availPlayersByAdp];
-    console.log('predictFuturePicks', predictUpToPick, currPick)
 
     for (let i = 0; i < predictUpToPick - currPick; i++) {
         const pickNum = currPick + i;
@@ -367,8 +366,6 @@ export const usePredictions = ({
       myPicks = getMyPicksBetween(currPick, predictUpToPick, myPickNum, settings.numTeams);
     }
 
-    console.log('predictPicks', highlightOption, predictUpToPick, myPicks)
-
     const { predictedPicks: pickPredicts } = predictFuturePicks(
         { rosters, playerRanks, settings, boardSettings, currPick, myPickNum },
         initialPosCounts,
@@ -405,12 +402,12 @@ export const usePredictions = ({
   ]);
 
   useEffect(() => {
-    console.log('useEffect predictOptimalGreedyRoster')
+    // console.log('useEffect predictOptimalGreedyRoster')
     predictOptimalGreedyRoster();
   }, [predictPicks, numPostPredicts, predictOptimalGreedyRoster]);
 
   useEffect(() => {
-    console.log('useEffect predictPicks', highlightOption)
+    // console.log('useEffect predictPicks', highlightOption)
     predictPicks();
   }, [predictPicks, numPostPredicts, draftStarted, highlightOption]);
 

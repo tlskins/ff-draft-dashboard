@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react"
+import React, { useState, useMemo, useRef, useEffect } from "react"
 
 import { myCurrentRound, PlayerRanks, Roster } from '../behavior/draft'
 import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, FantasyPosition, PlayerTarget } from "../types"
@@ -109,7 +109,7 @@ const RankingsBoard = ({
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
-  
+
   // Mobile state for EditRankingsView
   const [selectedPosition, setSelectedPosition] = useState<keyof PlayerRanks>(FantasyPosition.QUARTERBACK)
   const [isPositionDropdownOpen, setIsPositionDropdownOpen] = useState(false)
