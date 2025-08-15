@@ -312,9 +312,15 @@ const RankingsBoard = ({
             </h3>
             {canEditCustomRankings ? (
               <>
-                <p className="text-gray-700 mb-6">
-                  Create a custom ranking based on <span className="font-bold text-green-600">{boardSettings.ranker}</span> rankings?
-                </p>
+                { rankings.copiedRanker ?
+                  <p className="text-gray-700 mb-6">
+                    Edit custom rankings?
+                  </p>
+                  :
+                  <p className="text-gray-700 mb-6">
+                    Create custom rankings from <span className="font-bold text-green-600">{boardSettings.ranker}</span> rankings?
+                  </p>
+                }
                 <p className="text-sm text-gray-600 mb-6">
                   You'll be able to drag players to reorder rankings and adjust tier boundaries.
                 </p>

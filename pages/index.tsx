@@ -22,7 +22,7 @@ import { getPlayerData } from "@/behavior/playerData"
 export enum DraftView {
   RANKING = "Rankings By Position",
   BEST_AVAILABLE = "Best Available By Round",
-  CUSTOM_RANKING = "Create Custom Ranking",
+  CUSTOM_RANKING = "Edit Rankings",
 }
 
 export enum SortOption {
