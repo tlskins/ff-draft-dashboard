@@ -1,5 +1,5 @@
 import { PlayerRanks, Roster } from '../behavior/draft'
-import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings } from './index'
+import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, PlayerTarget } from './index'
 import { SortOption } from '../pages'
 import { HighlightOption } from '../behavior/hooks/usePredictions'
 import { DraftView } from '../pages'
@@ -48,6 +48,7 @@ export interface SharedViewProps {
   draftStarted: boolean
   getDraftRoundForPickNum: (pickNum: number) => (string | null)[]
   viewPlayerId: string | null
+  playerTargets: PlayerTarget[]
 }
 
 // Props specific to ranking view

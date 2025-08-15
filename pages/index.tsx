@@ -332,6 +332,7 @@ const Home: FC = () => {
                 loadCurrentRankings={loadCurrentRankings}
                 rankings={rankings}
                 removePlayerTargets={removePlayerTargets}
+                playerTargets={playerTargets}
               />
             </div>
 
@@ -425,6 +426,7 @@ const Home: FC = () => {
                 loadCurrentRankings={loadCurrentRankings}
                 rankings={rankings}
                 removePlayerTargets={removePlayerTargets}
+                playerTargets={playerTargets}
               />
             )}
 

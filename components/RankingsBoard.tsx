@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from "react"
 
 import { myCurrentRound, PlayerRanks, Roster } from '../behavior/draft'
-import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, FantasyPosition } from "../types"
+import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, FantasyPosition, PlayerTarget } from "../types"
 import { DraftView, SortOption } from "../pages"
 import { HighlightOption } from "../behavior/hooks/usePredictions"
 import { getDraftBoard } from '../behavior/DraftBoardUtils'
@@ -59,6 +59,7 @@ interface RankingsBoardProps {
   loadCurrentRankings: () => void,
   rankings: Rankings,
   removePlayerTargets: (playerIds: string[]) => void,
+  playerTargets: PlayerTarget[]
 }
 
 const RankingsBoard = ({
@@ -103,6 +104,7 @@ const RankingsBoard = ({
   onPurgePlayer,
   setViewPlayerId,
   viewPlayerId,
+  playerTargets,
 }: RankingsBoardProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
@@ -156,6 +158,7 @@ const RankingsBoard = ({
     draftStarted,
     getDraftRoundForPickNum,
     viewPlayerId,
+    playerTargets,
   }
 
   const renderCurrentView = () => {

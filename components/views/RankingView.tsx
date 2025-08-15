@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from "react"
 
 import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor, getPickDiffColor } from '../../behavior/styles'
-import { myCurrentRound, getPlayerMetrics, getProjectedTier, getRoundIdxForPickNum } from '../../behavior/draft'
-import { Player, FantasyPosition, DataRanker } from "../../types"
+import { myCurrentRound, getPlayerMetrics, getProjectedTier, getRoundIdxForPickNum, getRoundAndPickShortText } from '../../behavior/draft'
+import { Player, FantasyPosition, DataRanker, PlayerTarget } from "../../types"
 import { SortOption } from "../../pages"
 import { HighlightOption } from "../../behavior/hooks/usePredictions"
 import { RankingViewProps } from "../../types/DraftBoardTypes"
@@ -32,6 +32,7 @@ const RankingView = ({
   setHighlightOption,
   viewPlayerId,
   rankings,
+  playerTargets,
 }: RankingViewProps) => {
   const [shownPlayerBg, setShownPlayerBg] = useState("")
   const [animatingOutPlayers, setAnimatingOutPlayers] = useState<Set<string>>(new Set())
@@ -40,6 +41,13 @@ const RankingView = ({
   const [modalPlayer, setModalPlayer] = useState<Player | null>(null)
 
   const { AnyTiDelete, AnyAiFillCheckCircle, AnyBsLink } = getIconTypes()
+
+  // Helper function to check if a player is a favorite
+  const getPlayerFavorite = (playerId: string): PlayerTarget | undefined => {
+    return playerTargets.find(target => target.playerId === playerId)
+  }
+
+  console.log('rankingview', playerTargets)
 
   // Handler for selecting a player with animation
   const handleSelectPlayer = (player: Player) => {
@@ -304,6 +312,8 @@ const RankingView = ({
                         const rankDiffScore = ((overallRank || 999) - (adp || 999)) * -1
                         const isHoveringPlayer = viewPlayerId === id
                         const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
+                        const playerFavorite = getPlayerFavorite(id)
+                        console.log('playerFavorite', playerFavorite)
 
                         return(
                           <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
@@ -315,10 +325,16 @@ const RankingView = ({
                             }}
                           >
                             <div className="flex flex-col text-center items-center">
-                              <div className="flex text-center items-center justify-center w-full md:hidden">
-                                <p className="text-sm font-semibold">
-                                  { playerShortName(fullName) } ({team})
-                                </p>
+                              <div className="flex text-center items-center justify-center w-full">
+                                { playerFavorite ?
+                                  <p className="bg-blue-500 text-white rounded px-1 py-0.5 mt-0.5 ml-1">
+                                    { playerShortName(fullName) } ({team}) ★ @ {getRoundAndPickShortText(playerFavorite.targetAsEarlyAs || 0, fantasySettings.numTeams)}
+                                  </p>
+                                  :
+                                  <p className="text-sm font-semibold">
+                                    { playerShortName(fullName) } ({team})
+                                  </p>
+                                }
                                 {/* Mobile-only stats button */}
                                 <button 
                                   className="block md:hidden p-1 text-blue-500 hover:text-blue-700 transition-colors"
@@ -327,12 +343,10 @@ const RankingView = ({
                                   📊
                                 </button>
                               </div>
-                              <p className="text-sm font-semibold flex text-center hidden md:block">
-                                { fullName } ({team})
-                              </p>
                               <p className="text-xs">
                                 { rankText } ({rankDiffScore > 0 ? '+' : '-'}{Math.abs(rankDiffScore).toFixed(1)} vs ADP) { tier ? ` | Tier ${tierNumber}${projTierText}` : "" }
                               </p>
+
                               { !rankByAdp &&
                                 <p className={`text-xs ${getPickDiffColor(currAdpDiff)} text-white rounded px-1 py-0.5 mt-0.5`}>
                                   NOW { currAdpDiff } { isBelowAdp ? 'BELOW' : 'ABOVE' } ADP (R{adpRound} P{adp?.toFixed(1)})
