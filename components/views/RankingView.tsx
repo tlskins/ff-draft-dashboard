@@ -105,8 +105,6 @@ const RankingView = ({
   const rankByAdp = sortOption === SortOption.ADP
   const isUsingCustomRanks = rankings.copiedRanker && rankings.cachedAt && rankings.editedAt
 
-  console.log('rankingView', predictedPicks, highlightOption, predNextTiers)
-
   return (
     <>
       {/* Controls for ranking view */}

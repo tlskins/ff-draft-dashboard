@@ -107,6 +107,7 @@ const ADPView: React.FC<ADPViewProps> = ({
             boardSettings={boardSettings}
             viewPlayerId={viewPlayerId}
             myPicks={myPicks}
+            currPick={currPick}
             setViewPlayerId={setViewPlayerId}
             playerTargets={playerTargets}
             playerLib={playerLib}

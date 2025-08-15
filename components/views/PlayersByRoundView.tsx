@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useState, useEffect } from 'react'
 import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../types'
 import { getPlayerAdp, getPlayerMetrics, getRoundIdxForPickNum, getRoundNumForPickNum, getPickInRoundForPickNum, PlayerRanks, getRoundAndPickShortText } from '../../behavior/draft'
 import { getPosStyle, getTierStyle } from '../../behavior/styles'
@@ -12,6 +12,7 @@ interface PlayersByRoundViewProps {
   boardSettings: BoardSettings
   viewPlayerId: string | null
   myPicks: number[]
+  currPick: number
   setViewPlayerId: (id: string) => void
   playerTargets: PlayerTarget[]
   playerLib: { [key: string]: Player }
@@ -30,6 +31,7 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
   boardSettings,
   viewPlayerId,
   myPicks,
+  currPick,
   setViewPlayerId,
   playerTargets,
   playerLib,
@@ -60,6 +62,27 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
   const [isMobileTargetsOpen, setIsMobileTargetsOpen] = useState(false)
   const [isMobilePositionOpen, setIsMobilePositionOpen] = useState(false)
   const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null)
+  
+  // Auto-navigation: advance to next page when currPick passes user's next pick in earliest visible round
+  useEffect(() => {
+    if (currentPage >= totalPages - 1) return // Don't advance if we're on the last page
+    
+    // Find the user's next pick in the earliest visible round (startRound)
+    const myPicksInStartRound = myPicks.filter(pick => {
+      const pickRound = getRoundIdxForPickNum(pick, fantasySettings.numTeams) + 1
+      return pickRound === startRound
+    })
+    
+    if (myPicksInStartRound.length > 0) {
+      const earliestPickInStartRound = Math.min(...myPicksInStartRound)
+      
+      // Check if currPick has passed this pick (meaning user just made their pick)
+      if (currPick > earliestPickInStartRound) {
+        // Advance to next page to show upcoming rounds
+        handleNextPage()
+      }
+    }
+  }, [currPick, startRound, myPicks, fantasySettings.numTeams, currentPage, totalPages, handleNextPage])
   
   const getRoundCount = useCallback((round: number) => {
     return (playersByRound[round] || []).filter( (player, playerIdx) => {
