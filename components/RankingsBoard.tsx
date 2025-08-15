@@ -2,7 +2,8 @@ import React, { useState, useMemo, useRef } from "react"
 
 import { myCurrentRound, PlayerRanks, Roster } from '../behavior/draft'
 import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, FantasyPosition } from "../types"
-import { DraftView, SortOption, HighlightOption } from "../pages"
+import { DraftView, SortOption } from "../pages"
+import { HighlightOption } from "../behavior/hooks/usePredictions"
 import { getDraftBoard } from '../behavior/DraftBoardUtils'
 import { isTitleCard, PredictedPicks } from '../types/DraftBoardTypes'
 import { getPosStyle } from '../behavior/styles'

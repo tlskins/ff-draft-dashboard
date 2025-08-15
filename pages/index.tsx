@@ -15,7 +15,7 @@ import MobileTiersView from "../components/MobileTiersView"
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
 import { useDraftListener } from '../behavior/hooks/useDraftListener'
-import { usePredictions } from "../behavior/hooks/usePredictions"
+import { usePredictions, HighlightOption } from "../behavior/hooks/usePredictions"
 import { Player, ThirdPartyRanker } from "types"
 import { getPlayerData } from "@/behavior/playerData"
 
@@ -30,10 +30,7 @@ export enum SortOption {
   ADP = "Sort By ADP",
 }
 
-export enum HighlightOption {
-  PREDICTED_TAKEN = "Highlight Next Taken",
-  PREDICTED_TAKEN_NEXT_TURN = "Highlight Next-Next Taken",
-}
+
 
 const Home: FC = () => {
   const {
@@ -119,6 +116,8 @@ const Home: FC = () => {
     predNextTiers,
     setNumPostPredicts,
     optimalRosters,
+    highlightOption,
+    setHighlightOption,
   } = usePredictions({
     rosters,
     playerRanks,
@@ -132,7 +131,6 @@ const Home: FC = () => {
 
   const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
   const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
-  const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
   const [mobileView, setMobileView] = useState<MobileView>(MobileView.OVERVIEW)

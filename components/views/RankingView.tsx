@@ -3,7 +3,8 @@ import React, { useState, useMemo } from "react"
 import { getPosStyle, getTierStyle, predBgColor, nextPredBgColor, getPickDiffColor } from '../../behavior/styles'
 import { myCurrentRound, getPlayerMetrics, getProjectedTier, getRoundIdxForPickNum } from '../../behavior/draft'
 import { Player, FantasyPosition, DataRanker } from "../../types"
-import { SortOption, HighlightOption } from "../../pages"
+import { SortOption } from "../../pages"
+import { HighlightOption } from "../../behavior/hooks/usePredictions"
 import { RankingViewProps } from "../../types/DraftBoardTypes"
 import { getDraftBoard, getIconTypes } from "../../behavior/DraftBoardUtils"
 import { isTitleCard } from "../../types/DraftBoardTypes"
@@ -95,6 +96,8 @@ const RankingView = ({
   const showNextPreds = highlightOption === HighlightOption.PREDICTED_TAKEN_NEXT_TURN
   const rankByAdp = sortOption === SortOption.ADP
   const isUsingCustomRanks = rankings.copiedRanker && rankings.cachedAt && rankings.editedAt
+
+  console.log('rankingView', predictedPicks, highlightOption, predNextTiers)
 
   return (
     <>

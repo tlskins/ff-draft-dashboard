@@ -23,8 +23,14 @@ import {
   getProjectedTier,
   getRoundIdxForPickNum,
   getPlayerAdp,
+  getMyNextPick,
 } from '../draft';
 import { Player, RankingSummary } from 'types';
+
+export enum HighlightOption {
+  PREDICTED_TAKEN = "Highlight Next Taken",
+  PREDICTED_TAKEN_NEXT_TURN = "Highlight Next-Next Taken",
+}
 
 type PredictedPicks = { [playerId: string]: number };
 type TierPredictions = {
@@ -61,10 +67,12 @@ const predictFuturePicks = (
     },
     initialPosCounts: PositionCounts,
     predictUpToPick: number,
+    myPicks: number[],
 ): { predictedPicks: PredictedPicks; finalPosCounts: PositionCounts } => {
     let pickPredicts: PredictedPicks = {};
     let posCounts = { ...initialPosCounts };
     let availablePlayers = [...playerRanks.availPlayersByAdp];
+    console.log('predictFuturePicks', predictUpToPick, currPick)
 
     for (let i = 0; i < predictUpToPick - currPick; i++) {
         const pickNum = currPick + i;
@@ -196,6 +204,7 @@ export const usePredictions = ({
     [FantasyPosition.TIGHT_END]: 0,
   });
   const [numPostPredicts, setNumPostPredicts] = useState(0);
+  const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN);
 
   const maxCurrPick = useRef(0);
 
@@ -337,17 +346,34 @@ export const usePredictions = ({
     if (rosters.length === 0 || !draftStarted) {
       return;
     }
-    if (currPick <= maxCurrPick.current) {
-      return;
-    }
 
     maxCurrPick.current = currPick;
     const initialPosCounts = calculatePositionCounts(rosters);
 
+    // Determine how far to predict based on highlight option
+    let predictUpToPick: number;
+    let myPicks: number[];
+    
+    if (highlightOption === HighlightOption.PREDICTED_TAKEN_NEXT_TURN) {
+      // Predict up to my next next turn - find my next 2 picks
+      const nextPick = getMyNextPick(currPick, myPickNum, settings.numTeams);
+      const nextNextPick = getMyNextPick(nextPick, myPickNum, settings.numTeams);
+      predictUpToPick = nextNextPick;
+      myPicks = getMyPicksBetween(currPick, predictUpToPick, myPickNum, settings.numTeams);
+    } else {
+      // Predict just to the next pick after current
+      const nextPick = getMyNextPick(currPick, myPickNum, settings.numTeams);
+      predictUpToPick = nextPick;
+      myPicks = getMyPicksBetween(currPick, predictUpToPick, myPickNum, settings.numTeams);
+    }
+
+    console.log('predictPicks', highlightOption, predictUpToPick, myPicks)
+
     const { predictedPicks: pickPredicts } = predictFuturePicks(
         { rosters, playerRanks, settings, boardSettings, currPick, myPickNum },
         initialPosCounts,
-        myPickNum
+        predictUpToPick,
+        myPicks
     );
     
     const { tierRunAlerts, nextRunTiers, runDetected } = detectTierRuns(
@@ -374,17 +400,26 @@ export const usePredictions = ({
     predRunTiers,
     draftStarted,
     predNextTiers,
-    rosters,
-    playerRanks,
-    boardSettings,
+    highlightOption,
     rankingSummaries,
   ]);
 
   useEffect(() => {
-    predictPicks();
+    console.log('useEffect predictOptimalGreedyRoster')
     predictOptimalGreedyRoster();
-  }, [predictPicks, numPostPredicts, draftStarted, predictOptimalGreedyRoster]);
+  }, [predictPicks, numPostPredicts, predictOptimalGreedyRoster]);
 
+  useEffect(() => {
+    console.log('useEffect predictPicks', highlightOption)
+    predictPicks();
+  }, [predictPicks, numPostPredicts, draftStarted, highlightOption]);
 
-  return { predictedPicks, predNextTiers, setNumPostPredicts, optimalRosters };
+  return { 
+    predictedPicks, 
+    predNextTiers, 
+    setNumPostPredicts, 
+    optimalRosters, 
+    highlightOption, 
+    setHighlightOption 
+  };
 }; 
