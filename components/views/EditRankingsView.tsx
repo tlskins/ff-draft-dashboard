@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react"
+import { toast } from 'react-toastify'
 
 import { getPosStyle, getTierStyle } from '../../behavior/styles'
 import { myCurrentRound, getPlayerMetrics, getProjectedTier, getRoundIdxForPickNum, PlayerRanks } from '../../behavior/draft'
@@ -377,9 +378,9 @@ const EditRankingsView = ({
                 onClick={() => {
                   const success = saveCustomRankings()
                   if (success) {
-                    alert('Custom rankings saved successfully!')
+                    toast.success('Custom rankings saved successfully!')
                   } else {
-                    alert('Failed to save custom rankings')
+                    toast.error('Failed to save custom rankings')
                   }
                 }}
               >

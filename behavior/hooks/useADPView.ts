@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
+import { toast } from 'react-toastify'
 import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../types'
 import { getPlayerAdp, getPlayerMetrics, PlayerRanks, getRoundIdxForPickNum } from '../draft'
 
@@ -179,9 +180,9 @@ export const useADPView = ({
   const handleSaveFavorites = () => {
     try {
       localStorage.setItem('ff-draft-favorites', JSON.stringify(playerTargets))
-      alert('Favorites saved successfully!')
+      toast.success('Targets saved successfully!')
     } catch (error) {
-      alert('Failed to save favorites')
+      toast.error('Failed to save targets')
     }
   }
 
@@ -197,13 +198,13 @@ export const useADPView = ({
           })
           replacePlayerTargets(newTargets)
         } else {
-          alert('No saved favorites found')
+          toast.info('No saved favorites found')
         }
       } else {
-        alert('No saved favorites found')
+        toast.info('No saved favorites found')
       }
     } catch (error) {
-      alert('Failed to load favorites')
+      toast.error('Failed to load favorites')
     }
   }, [playerLib, replacePlayerTargets])
 

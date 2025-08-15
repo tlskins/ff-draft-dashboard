@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react"
+import { toast } from 'react-toastify'
 
 import { myCurrentRound, PlayerRanks, Roster } from '../behavior/draft'
 import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, FantasyPosition, PlayerTarget } from "../types"
@@ -566,9 +567,9 @@ const RankingsBoard = ({
               onClick: () => {
                 const success = saveCustomRankings()
                 if (success) {
-                  alert('Custom rankings saved successfully!')
+                  toast.success('Custom rankings saved successfully!')
                 } else {
-                  alert('Failed to save custom rankings')
+                  toast.error('Failed to save custom rankings')
                 }
               },
               variant: 'secondary'

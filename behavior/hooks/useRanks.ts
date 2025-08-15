@@ -221,6 +221,11 @@ export const useRanks = ({
       return false
     }
 
+    // If editing custom ranks selected ranker should be the original copied ranker
+    if ( selectedRankerToCopy === ThirdPartyRanker.CUSTOM && rankings.copiedRanker ) {
+      selectedRankerToCopy = rankings.copiedRanker as ThirdPartyRanker
+    }
+
     // Get all currently available players
     const allAvailablePlayers = [
       ...playerRanks[FantasyPosition.QUARTERBACK],
@@ -461,22 +466,15 @@ export const useRanks = ({
     settings,
   ])
 
-  const getCustomTextRankings = () => {
+  const loadCustomRankings = useCallback(() => {
+    if ( typeof localStorage === 'undefined' ) {
+      return false
+    }
     try {
       const savedData = localStorage.getItem('ff-draft-custom-rankings')
       if (!savedData) {
         return false
       }
-      return savedData
-    } catch (error) {
-      console.error('Failed to get custom rankings from storage:', error)
-      return false
-    }
-  }
-
-  const loadCustomRankings = useCallback((savedTextData?: string) => {
-    try {
-      const savedData = savedTextData ? savedTextData : getCustomTextRankings()
 
       if (!savedData) {
         return false
@@ -528,6 +526,9 @@ export const useRanks = ({
   }, [onLoadPlayers, boardSettings, canEditCustomRankings])
 
   const hasCustomRankingsSaved = useCallback(() => {
+    if ( typeof localStorage === 'undefined' ) {
+      return false
+    }
     try {
       const savedData = localStorage.getItem('ff-draft-custom-rankings')
       if (!savedData) return false
