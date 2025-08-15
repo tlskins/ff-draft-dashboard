@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect } from 'react'
 import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../types'
-import { getPlayerAdp, getPlayerMetrics, getRoundIdxForPickNum, getRoundNumForPickNum, getPickInRoundForPickNum, PlayerRanks, getRoundAndPickShortText } from '../../behavior/draft'
+import { getPlayerAdp, getPlayerMetrics, getRoundIdxForPickNum, getRoundNumForPickNum, PlayerRanks, getRoundAndPickShortText } from '../../behavior/draft'
 import { getPosStyle, getTierStyle } from '../../behavior/styles'
 import { useADPView, PositionFilter } from '../../behavior/hooks/useADPView'
 import MobileViewFooter from '../MobileViewFooter'
@@ -393,7 +393,7 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
                     >
                       <div className="flex flex-col text-center items-center py-0.5">
                         <p className="text-xs font-semibold truncate w-full">
-                          {playerShortName(player.fullName)}
+                          { playerShortName(player.fullName) }
                         </p>
                         <p className="text-xs font-medium text-gray-600 hidden md:flex">
                           {player.position} | {player.team}
@@ -404,9 +404,15 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
                         <p className="text-xs font-medium text-gray-600 flex md:hidden">
                           {player.position} | {player.team}
                         </p>
-                        <p className="text-xs font-medium text-gray-600 flex md:hidden">
-                          ADP {adpRoundAndPick}
-                        </p>
+                        { playerTargets.find(target => target.playerId === player.id) ?
+                          <p className="bg-blue-500 text-white rounded px-1 py-0.5 mt-0.5 ml-1">
+                            ★ @ {getRoundAndPickShortText(playerTargets.find(target => target.playerId === player.id)?.targetAsEarlyAs || 0, fantasySettings.numTeams)}
+                          </p>
+                          :
+                          <p className="text-xs font-medium text-gray-600 flex md:hidden">
+                            ADP {adpRoundAndPick}
+                          </p>
+                        }
                         <div className="flex gap-1 mt-1">
                           {!isPlayerTargeted && userPickForRound && (
                             <button
