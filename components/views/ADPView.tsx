@@ -6,6 +6,7 @@ import MobileViewFooter from '../MobileViewFooter'
 import PlayersByRoundView from './PlayersByRoundView'
 import PlayersByADPRoundView from './PlayersByADPRoundView'
 import PlayerTargetsView from './PlayerTargetsView'
+import PlayerSearchModal from '../PlayerSearchModal'
 
 type ViewType = 'playersByRound' | 'playersByADPRound' | 'playerTargets'
 
@@ -24,6 +25,8 @@ interface ADPViewProps {
   replacePlayerTargets: (targets: PlayerTarget[]) => void
   removePlayerTarget: (playerId: string) => void
   removePlayerTargets: (playerIds: string[]) => void
+  rankingSummaries: any[]
+  myPickNum: number
 }
 
 const ADPView: React.FC<ADPViewProps> = ({
@@ -40,10 +43,13 @@ const ADPView: React.FC<ADPViewProps> = ({
   replacePlayerTargets,
   removePlayerTarget,
   removePlayerTargets,
+  rankingSummaries,
+  myPickNum,
 }) => {
   const [currentView, setCurrentView] = useState<ViewType>('playersByRound')
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
   const [isMobileViewOpen, setIsMobileViewOpen] = useState(false)
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
 
   const handleSwitchToTargetsView = () => {
     setCurrentView('playerTargets')
@@ -112,12 +118,21 @@ const ADPView: React.FC<ADPViewProps> = ({
 
       {/* Mobile Header */}
       <div className="mb-4 md:hidden flex-shrink-0">
-        <h2 className="text-lg font-semibold text-gray-800 text-center">
-          {currentView === 'playersByRound' ? 'Highest Ranked Avail Players by Round' : 
-           currentView === 'playersByADPRound' ? 'Players by ADP Round' : 
-           'Targets Visualization'}
-          {(currentView === 'playersByRound' || currentView === 'playersByADPRound') && positionFilter !== 'All' && ` - ${positionFilter}`}
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-800 text-center flex-1">
+            {currentView === 'playersByRound' ? 'Highest Ranked Avail Players by Round' : 
+             currentView === 'playersByADPRound' ? 'Players by ADP Round' : 
+             'Targets Visualization'}
+            {(currentView === 'playersByRound' || currentView === 'playersByADPRound') && positionFilter !== 'All' && ` - ${positionFilter}`}
+          </h2>
+          <button
+            onClick={() => setIsSearchModalOpen(true)}
+            className="ml-3 p-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow transition-colors flex-shrink-0"
+            title="Search Players"
+          >
+            🔍
+          </button>
+        </div>
       </div>
       
       {/* Main Content */}
@@ -217,6 +232,21 @@ const ADPView: React.FC<ADPViewProps> = ({
         onClickOutside={() => {
           setIsMobileViewOpen(false)
         }}
+      />
+
+      {/* Player Search Modal */}
+      <PlayerSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        playerLib={playerLib}
+        fantasySettings={fantasySettings}
+        boardSettings={boardSettings}
+        rankingSummaries={rankingSummaries}
+        playerTargets={playerTargets}
+        addPlayerTarget={addPlayerTarget}
+        removePlayerTarget={removePlayerTarget}
+        myPickNum={myPickNum}
+        currPick={currPick}
       />
     </div>
   )

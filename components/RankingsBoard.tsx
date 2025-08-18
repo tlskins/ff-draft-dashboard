@@ -64,7 +64,9 @@ interface RankingsBoardProps {
   playerTargets: PlayerTarget[],
   customAndLatestRankingsDiffs: { [key: string]: PlayerRankingDiff },
   onSyncPendingRankings: () => void,
-  onRevertPlayerToPreSync: (playerId: string) => void
+  onRevertPlayerToPreSync: (playerId: string) => void,
+  addPlayerTarget: (player: Player, targetAsEarlyAs: number) => void,
+  removePlayerTarget: (playerId: string) => void
 }
 
 const RankingsBoard = ({
@@ -114,6 +116,8 @@ const RankingsBoard = ({
   customAndLatestRankingsDiffs,
   onSyncPendingRankings,
   onRevertPlayerToPreSync,
+  addPlayerTarget,
+  removePlayerTarget,
 }: RankingsBoardProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
@@ -172,6 +176,8 @@ const RankingsBoard = ({
     viewPlayerId,
     playerTargets,
     customAndLatestRankingsDiffs,
+    addPlayerTarget,
+    removePlayerTarget,
   }
 
   const renderCurrentView = () => {

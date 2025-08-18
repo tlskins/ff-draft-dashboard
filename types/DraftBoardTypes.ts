@@ -49,6 +49,8 @@ export interface SharedViewProps {
   viewPlayerId: string | null
   playerTargets: PlayerTarget[]
   customAndLatestRankingsDiffs: { [key: string]: PlayerRankingDiff }
+  addPlayerTarget: (player: Player, targetAsEarlyAs: number) => void
+  removePlayerTarget: (playerId: string) => void
 }
 
 // Props specific to ranking view

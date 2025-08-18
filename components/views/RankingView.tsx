@@ -9,6 +9,7 @@ import { RankingViewProps } from "../../types/DraftBoardTypes"
 import { getDraftBoard, getIconTypes } from "../../behavior/DraftBoardUtils"
 import { isTitleCard } from "../../types/DraftBoardTypes"
 import HistoricalStats from "../HistoricalStats"
+import PlayerSearchModal from "../PlayerSearchModal"
 import { playerShortName } from "@/behavior/presenters"
 
 const RankingView = ({
@@ -33,12 +34,15 @@ const RankingView = ({
   viewPlayerId,
   rankings,
   playerTargets,
+  addPlayerTarget,
+  removePlayerTarget,
 }: RankingViewProps) => {
   const [shownPlayerBg, setShownPlayerBg] = useState("")
   const [animatingOutPlayers, setAnimatingOutPlayers] = useState<Set<string>>(new Set())
   const [isRosterVisible, setIsRosterVisible] = useState(true)
   const [isStatsModalVisible, setIsStatsModalVisible] = useState(false)
   const [modalPlayer, setModalPlayer] = useState<Player | null>(null)
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
 
   const { AnyTiDelete, AnyAiFillCheckCircle, AnyBsLink } = getIconTypes()
 
@@ -142,6 +146,13 @@ const RankingView = ({
                   >
                   { Object.values(HighlightOption).map( (option: HighlightOption) => <option key={option} value={ option }> { option } </option>) }
                 </select>
+                <button
+                  onClick={() => setIsSearchModalOpen(true)}
+                  className="p-2 m-1 border rounded bg-purple-100 hover:bg-purple-200 shadow transition-colors"
+                  title="Search Players"
+                >
+                  🔍
+                </button>
               </div>
             </div>
             <div className="hidden md:flex flex-col h-full items-end content-end justify-end pb-2">
@@ -410,6 +421,30 @@ const RankingView = ({
           </div>
         </div>
       )}
+
+      {/* Player Search Modal */}
+      <PlayerSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        playerLib={playerLib}
+        fantasySettings={fantasySettings}
+        boardSettings={boardSettings}
+        rankingSummaries={rankingSummaries}
+        playerTargets={playerTargets}
+        addPlayerTarget={addPlayerTarget}
+        removePlayerTarget={removePlayerTarget}
+        myPickNum={myPickNum}
+        currPick={currPick}
+      />
+
+      {/* Mobile Search Button */}
+      <button
+        onClick={() => setIsSearchModalOpen(true)}
+        className="md:hidden fixed bottom-20 right-4 w-12 h-12 bg-purple-500 hover:bg-purple-600 text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors"
+        title="Search Players"
+      >
+        🔍
+      </button>
     </>
   )
 }

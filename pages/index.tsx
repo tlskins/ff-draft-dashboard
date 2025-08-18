@@ -378,6 +378,8 @@ const Home: FC = () => {
                 customAndLatestRankingsDiffs={customAndLatestRankingsDiffs}
                 onSyncPendingRankings={onSyncPendingRankings}
                 onRevertPlayerToPreSync={onRevertPlayerToPreSync}
+                addPlayerTarget={addPlayerTarget}
+                removePlayerTarget={removePlayerTarget}
               />
             </div>
 
@@ -397,6 +399,8 @@ const Home: FC = () => {
                 replacePlayerTargets={replacePlayerTargets}
                 removePlayerTarget={removePlayerTarget}
                 removePlayerTargets={removePlayerTargets}
+                rankingSummaries={rankingSummaries}
+                myPickNum={myPickNum}
               />
             </div>
           </div>
@@ -476,6 +480,8 @@ const Home: FC = () => {
                 customAndLatestRankingsDiffs={customAndLatestRankingsDiffs}
                 onSyncPendingRankings={onSyncPendingRankings}
                 onRevertPlayerToPreSync={onRevertPlayerToPreSync}
+                addPlayerTarget={addPlayerTarget}
+                removePlayerTarget={removePlayerTarget}
               />
             )}
 
@@ -495,6 +501,8 @@ const Home: FC = () => {
                 replacePlayerTargets={replacePlayerTargets}
                 removePlayerTarget={removePlayerTarget}
                 removePlayerTargets={removePlayerTargets}
+                rankingSummaries={rankingSummaries}
+                myPickNum={myPickNum}
               />
             )}
 
