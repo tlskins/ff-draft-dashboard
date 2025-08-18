@@ -249,8 +249,8 @@ const RankingView = ({
               const { columnTitle, cards } = draftBoardColumn
               const posStyle = getPosStyle(columnTitle)
               return(
-                <div key={i} className="flex flex-row">
-                  <div className="flex flex-col">
+                <div key={i} className="flex flex-row w-full md:w-auto">
+                  <div className="flex flex-col w-full md:w-auto">
                     <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500 sticky top-0 z-10 md:static`}>
                       <span className="font-bold underline">{ columnTitle }</span>
                       { Boolean(predNextTiers[columnTitle]) &&

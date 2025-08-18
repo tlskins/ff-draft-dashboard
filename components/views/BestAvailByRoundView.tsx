@@ -63,8 +63,8 @@ const BestAvailByRoundView = ({
         </div>
       </div>
 
-      <div className="flex flex-row h-full mb-32">
-        <div className="flex flex-col">
+      <div className="flex flex-row h-full mb-32 w-full">
+        <div className="flex flex-col w-full">
           { draftStarted && (
             <div className="flex flex-row justify-center grid grid-cols-4 gap-1">
               { draftBoardView.filter(column => column.columnTitle !== 'Purge').map( (draftBoardColumn, i) => {
@@ -106,8 +106,8 @@ const BestAvailByRoundView = ({
               const posStyle = getPosStyle(columnTitle)
               
               return(
-                <div key={i} className="flex flex-row">
-                  <div className="flex flex-col">
+                <div key={i} className="flex flex-row w-full">
+                  <div className="flex flex-col w-full">
                     <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500`}>
                       <span className="font-bold underline">{ columnTitle }</span>
                       { Boolean(predNextTiers[columnTitle]) &&

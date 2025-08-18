@@ -554,9 +554,9 @@ const EditRankingsView = ({
             {/* Main content area */}
             <div 
               ref={setScrollContainerRef}
-              className="overflow-x-auto overflow-y-auto h-full flex-1"
+              className="overflow-x-auto overflow-y-auto h-full w-full"
             >
-              <div className="flex flex-row min-w-full md:min-w-0 w-full">
+              <div className="grid grid-cols-1 md:grid-cols-4 min-w-full md:min-w-0 w-full">
               { draftBoardView.filter(column => column.columnTitle !== 'Purge').map( (draftBoardColumn, i) => {
                 const { columnTitle, cards } = draftBoardColumn
 
@@ -566,7 +566,6 @@ const EditRankingsView = ({
                 }
 
                 const posStyle = getPosStyle(columnTitle)
-                const playerCards = cards.filter(card => !isTitleCard(card)) as Player[]
                 
                 // Apply diff filtering to cards
                 const filteredCards = filterCardsByDiffs(cards)
@@ -582,7 +581,7 @@ const EditRankingsView = ({
                 
                 return(
                   <div key={i} className="flex flex-row w-full md:w-auto">
-                    <div className="flex flex-col w-full md:w-auto">
+                    <div className="flex flex-col w-full">
                       <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500`}>
                         <span className="font-bold underline">{ columnTitle }</span>
                         { Boolean(predNextTiers[columnTitle]) &&
