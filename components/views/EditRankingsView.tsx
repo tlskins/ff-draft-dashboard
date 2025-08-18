@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from "react"
 import { toast } from 'react-toastify'
 
-import { getPosStyle, getTierStyle } from '../../behavior/styles'
-import { myCurrentRound, getPlayerMetrics, getProjectedTier, getRoundIdxForPickNum, PlayerRanks } from '../../behavior/draft'
+import { getPickDiffColor, getPosStyle, getTierStyle } from '../../behavior/styles'
+import { myCurrentRound, getPlayerMetrics, getProjectedTier, getRoundIdxForPickNum, PlayerRanks, getRoundAndPickShortText } from '../../behavior/draft'
 import { Player, FantasyPosition, DataRanker } from "../../types"
 import { EditRankingsViewProps } from "../../types/DraftBoardTypes"
 import { getDraftBoard } from "../../behavior/DraftBoardUtils"
@@ -12,6 +12,12 @@ import HistoricalStats from "../HistoricalStats"
 import { playerShortName } from "@/behavior/presenters"
 
 let viewPlayerIdTimer: NodeJS.Timeout
+
+// Filter options for diff view
+export enum DiffFilterOption {
+  SHOW_ALL = "Show All",
+  SHOW_CHANGED = "Show Changed",
+}
 
 // Helper function to detect mobile/touch devices
 const isMobileDevice = () => {
@@ -42,6 +48,15 @@ const EditRankingsView = ({
   loadCurrentRankings,
   selectedPosition,
   setSelectedPosition,
+  customAndLatestRankingsDiffs,
+  onSyncPendingRankings,
+  onRevertPlayerToPreSync,
+  diffFilter: externalDiffFilter,
+  setDiffFilter: externalSetDiffFilter,
+  isDiffFilterDropdownOpen,
+  setIsDiffFilterDropdownOpen,
+  rankings,
+  latestRankings,
 }: EditRankingsViewProps) => {
   const [shownPlayerId, setShownPlayerId] = useState<string | null>(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
@@ -57,6 +72,49 @@ const EditRankingsView = ({
   const [scrollContainerRef, setScrollContainerRef] = useState<HTMLDivElement | null>(null)
   const [scrollbarRef, setScrollbarRef] = useState<HTMLDivElement | null>(null)
   const [isDraggingScrollbar, setIsDraggingScrollbar] = useState(false)
+  // Diff filter state - use external state if provided, otherwise use local state
+  const [internalDiffFilter, setInternalDiffFilter] = useState<DiffFilterOption>(DiffFilterOption.SHOW_ALL)
+  const diffFilter = (externalDiffFilter as DiffFilterOption) || internalDiffFilter
+  const setDiffFilter = externalSetDiffFilter ? 
+    (filter: DiffFilterOption) => externalSetDiffFilter(filter) : 
+    setInternalDiffFilter
+
+  // Check if there are newer rankings available (different cachedAt timestamps)
+  const hasNewerRankings = Boolean(
+    latestRankings && 
+    rankings.cachedAt && 
+    latestRankings.cachedAt && 
+    latestRankings.cachedAt !== rankings.cachedAt
+  )
+
+  // Function to check if a player has significant diffs
+  const hasSignificantDiffs = (playerId: string): boolean => {
+    if (!customAndLatestRankingsDiffs || !customAndLatestRankingsDiffs[playerId]) {
+      return false
+    }
+    
+    const syncPlayerDiffs = customAndLatestRankingsDiffs[playerId]
+    const hasAdpDiff = Boolean(syncPlayerDiffs.adpDiff && syncPlayerDiffs.adpDiff > (fantasySettings.numTeams / 2))
+    const hasPosRankDiff = Boolean(syncPlayerDiffs.posRankDiff && syncPlayerDiffs.posRankDiff > (fantasySettings.numTeams / 3))
+    
+    return hasAdpDiff || hasPosRankDiff
+  }
+
+  // Function to filter cards based on diff filter
+  const filterCardsByDiffs = (cards: (Player | any)[]): (Player | any)[] => {
+    if (diffFilter === DiffFilterOption.SHOW_ALL) {
+      return cards
+    }
+    
+    return cards.filter(card => {
+      if (isTitleCard(card)) {
+        return true // Always show title cards
+      }
+      
+      const player = card as Player
+      return hasSignificantDiffs(player.id)
+    })
+  }
 
   // Handler for opening stats modal
   const handleOpenStatsModal = (player: Player) => {
@@ -354,8 +412,6 @@ const EditRankingsView = ({
     setTouchStartY(0)
   }
 
-
-
   return (
     <div className="h-full flex flex-col">
       {/* Controls for edit rankings view */}
@@ -394,6 +450,33 @@ const EditRankingsView = ({
                   Clear
                 </button>
               }
+              {hasNewerRankings && (
+                <button
+                  className="p-2 m-1 border rounded-md bg-yellow-500 text-white hover:bg-yellow-600"
+                  onClick={() => {
+                    onSyncPendingRankings()
+                    toast.success('Rankings synced with latest data!')
+                  }}
+                >
+                  Sync ({Object.keys(customAndLatestRankingsDiffs).length})
+                </button>
+              )}
+            </div>
+            <div className="flex flex-row items-center mt-2">
+              <label className="text-sm font-medium text-gray-700 mr-2">
+                Filter Diffs:
+              </label>
+              <select
+                className="px-3 py-1 border rounded bg-gray-100 shadow text-sm"
+                value={diffFilter}
+                onChange={(e) => setDiffFilter(e.target.value as DiffFilterOption)}
+              >
+                {Object.values(DiffFilterOption).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -485,6 +568,9 @@ const EditRankingsView = ({
                 const posStyle = getPosStyle(columnTitle)
                 const playerCards = cards.filter(card => !isTitleCard(card)) as Player[]
                 
+                // Apply diff filtering to cards
+                const filteredCards = filterCardsByDiffs(cards)
+                
                 // Use the tier dividers hook for this position
                 const tierDividers = useTierDividers({
                   position: columnTitle as keyof PlayerRanks,
@@ -504,7 +590,7 @@ const EditRankingsView = ({
                         }
                       </div>
 
-                      { cards.slice(0, 50).map( (card, playerPosIdx) => {
+                      { filteredCards.slice(0, 50).map( (card, playerPosIdx) => {
                         // Check if we should render a tier divider before this card
                         const dividerBefore = tierDividers.shouldRenderDividerBefore(playerPosIdx)
                         // Check if we should render a placement indicator before this card
@@ -533,8 +619,6 @@ const EditRankingsView = ({
                               (() => {
                                 const player = card as Player
                                 const {
-                                  firstName,
-                                  lastName,
                                   fullName,
                                   id,
                                   team,
@@ -542,7 +626,7 @@ const EditRankingsView = ({
                                 } = player
 
                                 const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
-                                const { tier, adp, posRank } = metrics
+                                const { tier, adp, posRank, overallRank } = metrics
                                 const { tierNumber } = tier || {}
                                 
                                 let tierStyle
@@ -571,6 +655,7 @@ const EditRankingsView = ({
                                 const dragOverStyle = isDraggedOver ? 'border-2 border-dashed border-blue-500 bg-blue-50' : ''
                                 const draggedStyle = isDragged ? 'opacity-50' : ''
                                 const touchDraggedStyle = touchDragActive && isDragged ? 'z-50 transform scale-105 shadow-2xl' : ''
+                                const syncPlayerDiffs = customAndLatestRankingsDiffs ? customAndLatestRankingsDiffs[id] : undefined
 
                                 return(
                                   <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
@@ -626,9 +711,41 @@ const EditRankingsView = ({
                                       <p className="text-xs">
                                         { rankText } { tier ? ` - Tier ${tierNumber}${projTierText}` : "" }
                                       </p>
-                                      <p className="text-xs text-gray-600">
-                                        ADP: R{adpRound} P{adp?.toFixed(1)}
-                                      </p>
+                                      <div className="flex flex-row items-center justify-center align-center">
+                                        <p className="text-xs">
+                                          ADP {adp ? getRoundAndPickShortText(adp, fantasySettings.numTeams) : ''}
+                                        </p>
+                                        { syncPlayerDiffs && Boolean(syncPlayerDiffs.adpDiff && syncPlayerDiffs.adpDiff > (fantasySettings.numTeams / 2)) && (
+                                          <p className={`text-xs ${getPickDiffColor(syncPlayerDiffs.adpDiff)} border-2 border-blue-500 text-white rounded px-1 py-0.5 mt-0.5 ml-1`}>
+                                            { syncPlayerDiffs.adpDiff > 0 ? '+' : '-' } { Math.abs(syncPlayerDiffs.adpDiff).toFixed(1) }
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-row items-center justify-center align-center">
+                                        <p className="text-xs">
+                                          OVR Pick {overallRank ? getRoundAndPickShortText(overallRank, fantasySettings.numTeams) : ''}
+                                        </p>
+                                        { syncPlayerDiffs && Boolean(syncPlayerDiffs.posRankDiff && syncPlayerDiffs.posRankDiff > (fantasySettings.numTeams / 3)) && (
+                                          <p className={`text-xs ${getPickDiffColor(syncPlayerDiffs.posRankDiff)} border-2 border-green-500 text-white rounded px-1 py-0.5 mt-0.5 ml-1`}>
+                                           { syncPlayerDiffs.posRankDiff > 0 ? '+' : '-' } { Math.abs(syncPlayerDiffs.posRankDiff).toFixed(1) }
+                                          </p>
+                                        )}
+                                      </div>
+                                      { syncPlayerDiffs && hasSignificantDiffs(id) && (
+                                        <button
+                                          className="text-xs bg-orange-500 text-white rounded px-2 py-1 mt-1 hover:bg-orange-600 transition-colors"
+                                          onClick={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            onRevertPlayerToPreSync(id)
+                                            toast.success(`Reverted ${fullName} to pre-sync ranking`)
+                                          }}
+                                          onTouchStart={(e) => e.stopPropagation()}
+                                          onTouchEnd={(e) => e.stopPropagation()}
+                                        >
+                                          Revert
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                 )

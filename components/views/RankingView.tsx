@@ -344,7 +344,7 @@ const RankingView = ({
 
                               { !rankByAdp &&
                                 <p className={`text-xs ${getPickDiffColor(currAdpDiff)} text-white rounded px-1 py-0.5 mt-0.5`}>
-                                  NOW { currAdpDiff } { isBelowAdp ? 'BELOW' : 'ABOVE' } ADP (R{adpRound} P{adp?.toFixed(1)})
+                                  NOW { currAdpDiff } { isBelowAdp ? 'BELOW' : 'ABOVE' } ADP Pick {!adp ? 'Undrafted' : getRoundAndPickShortText(adp, fantasySettings.numTeams)}
                                 </p>
                               }
                               { rankByAdp &&

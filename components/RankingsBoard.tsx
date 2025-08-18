@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from "react"
+import React, { useState, useMemo, useRef } from "react"
 import { toast } from 'react-toastify'
 
 import { myCurrentRound, PlayerRanks, Roster } from '../behavior/draft'
@@ -6,11 +6,11 @@ import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, Fanta
 import { DraftView, SortOption } from "../pages"
 import { HighlightOption } from "../behavior/hooks/usePredictions"
 import { getDraftBoard } from '../behavior/DraftBoardUtils'
-import { isTitleCard, PredictedPicks } from '../types/DraftBoardTypes'
+import { isTitleCard, PlayerRankingDiff, PredictedPicks } from '../types/DraftBoardTypes'
 import { getPosStyle } from '../behavior/styles'
 import RankingView from './views/RankingView'
 import BestAvailByRoundView from './views/BestAvailByRoundView'
-import EditRankingsView from './views/EditRankingsView'
+import EditRankingsView, { DiffFilterOption } from './views/EditRankingsView'
 import RosterDisplay from './RosterDisplay'
 import Dropdown from './dropdown'
 import MobileViewFooter from './MobileViewFooter'
@@ -59,8 +59,12 @@ interface RankingsBoardProps {
   activeDraftListenerTitle: string | null,
   loadCurrentRankings: () => void,
   rankings: Rankings,
+  latestRankings: Rankings | null,
   removePlayerTargets: (playerIds: string[]) => void,
-  playerTargets: PlayerTarget[]
+  playerTargets: PlayerTarget[],
+  customAndLatestRankingsDiffs: { [key: string]: PlayerRankingDiff },
+  onSyncPendingRankings: () => void,
+  onRevertPlayerToPreSync: (playerId: string) => void
 }
 
 const RankingsBoard = ({
@@ -100,12 +104,16 @@ const RankingsBoard = ({
   listenerActive,
   activeDraftListenerTitle,
   rankings,
+  latestRankings,
   loadCurrentRankings,
   onSelectPlayer,
   onPurgePlayer,
   setViewPlayerId,
   viewPlayerId,
   playerTargets,
+  customAndLatestRankingsDiffs,
+  onSyncPendingRankings,
+  onRevertPlayerToPreSync,
 }: RankingsBoardProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
@@ -114,6 +122,9 @@ const RankingsBoard = ({
   // Mobile state for EditRankingsView
   const [selectedPosition, setSelectedPosition] = useState<keyof PlayerRanks>(FantasyPosition.QUARTERBACK)
   const [isPositionDropdownOpen, setIsPositionDropdownOpen] = useState(false)
+  const [isDiffFilterDropdownOpen, setIsDiffFilterDropdownOpen] = useState(false)
+  const [diffFilter, setDiffFilter] = useState<string>(DiffFilterOption.SHOW_ALL)
+  const [isEditsDropdownOpen, setIsEditsDropdownOpen] = useState(false)
 
   // Refs for dropdown containers (still needed for the new component)
   const draftViewRef = useRef<HTMLDivElement>(null)
@@ -160,6 +171,7 @@ const RankingsBoard = ({
     getDraftRoundForPickNum,
     viewPlayerId,
     playerTargets,
+    customAndLatestRankingsDiffs,
   }
 
   const renderCurrentView = () => {
@@ -176,6 +188,15 @@ const RankingsBoard = ({
           loadCurrentRankings={loadCurrentRankings}
           selectedPosition={selectedPosition}
           setSelectedPosition={setSelectedPosition}
+          customAndLatestRankingsDiffs={customAndLatestRankingsDiffs}
+          onSyncPendingRankings={onSyncPendingRankings}
+          onRevertPlayerToPreSync={onRevertPlayerToPreSync}
+          diffFilter={diffFilter}
+          setDiffFilter={setDiffFilter}
+          isDiffFilterDropdownOpen={isDiffFilterDropdownOpen}
+          setIsDiffFilterDropdownOpen={setIsDiffFilterDropdownOpen}
+          rankings={rankings}
+          latestRankings={latestRankings}
         />
       )
     }
@@ -499,6 +520,62 @@ const RankingsBoard = ({
                   isSelected: selectedPosition === FantasyPosition.TIGHT_END
                 }
               ]
+            },
+            {
+              label: 'Diffs',
+              isOpen: isDiffFilterDropdownOpen,
+              onToggle: () => setIsDiffFilterDropdownOpen(!isDiffFilterDropdownOpen),
+              variant: 'secondary',
+              items: Object.values(DiffFilterOption).map((option: string) => ({
+                label: option,
+                onClick: () => {
+                  setDiffFilter(option)
+                  setIsDiffFilterDropdownOpen(false)
+                },
+                isSelected: diffFilter === option
+              }))
+            },
+            {
+              label: 'Edits',
+              isOpen: isEditsDropdownOpen,
+              onToggle: () => setIsEditsDropdownOpen(!isEditsDropdownOpen),
+              variant: 'primary',
+              items: [
+                {
+                  label: 'Finish',
+                  onClick: () => {
+                    onFinishCustomRanking()
+                    setIsEditsDropdownOpen(false)
+                  }
+                },
+                {
+                  label: 'Save',
+                  onClick: () => {
+                    const success = saveCustomRankings()
+                    if (success) {
+                      toast.success('Custom rankings saved successfully!')
+                    } else {
+                      toast.error('Failed to save custom rankings')
+                    }
+                    setIsEditsDropdownOpen(false)
+                  }
+                },
+                ...(hasCustomRanking ? [{
+                  label: 'Clear',
+                  onClick: () => {
+                    loadCurrentRankings()
+                    setIsEditsDropdownOpen(false)
+                  }
+                }] : []),
+                ...(Object.keys(customAndLatestRankingsDiffs).length > 0 ? [{
+                  label: `Sync (${Object.keys(customAndLatestRankingsDiffs).length})`,
+                  onClick: () => {
+                    onSyncPendingRankings()
+                    toast.success('Rankings synced with latest data!')
+                    setIsEditsDropdownOpen(false)
+                  }
+                }] : [])
+              ]
             }
           ] : [
             {
@@ -561,36 +638,13 @@ const RankingsBoard = ({
             ] : [])
           ]
         }
-        buttons={
-          isEditingCustomRanking ? [
-            {
-              label: 'Finish',
-              onClick: onFinishCustomRanking,
-              variant: 'primary'
-            },
-            {
-              label: 'Save',
-              onClick: () => {
-                const success = saveCustomRankings()
-                if (success) {
-                  toast.success('Custom rankings saved successfully!')
-                } else {
-                  toast.error('Failed to save custom rankings')
-                }
-              },
-              variant: 'secondary'
-            },
-            ...(hasCustomRanking ? [{
-              label: 'Clear',
-              onClick: loadCurrentRankings,
-              variant: 'danger' as const
-            }] : [])
-          ] : []
-        }
+        buttons={[]}
         onClickOutside={() => {
           setOpenDropdown(null)
           if (isEditingCustomRanking) {
             setIsPositionDropdownOpen(false)
+            setIsDiffFilterDropdownOpen(false)
+            setIsEditsDropdownOpen(false)
           }
         }}
       />

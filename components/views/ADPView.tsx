@@ -52,8 +52,6 @@ const ADPView: React.FC<ADPViewProps> = ({
     setCurrentView('playersByRound')
   }
 
-
-
   return (
     <div className="h-screen bg-white p-2 w-full flex flex-col">
       {/* Desktop Header */}

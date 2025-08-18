@@ -1,5 +1,6 @@
 /*global chrome*/
 import React, { useEffect, useState, useCallback, FC } from "react"
+import { toast } from 'react-toastify'
 
 import PageHead from "../components/pageHead"
 import Header from "../components/Header"
@@ -67,6 +68,8 @@ const Home: FC = () => {
     isEditingCustomRanking,
     playerTargets,
     rankings,
+    latestRankings,
+    customAndLatestRankingsDiffs,
     // funcs
     onDraftPlayer,
     onRemoveDraftedPlayer,
@@ -89,10 +92,18 @@ const Home: FC = () => {
     // save/load custom rankings funcs
     saveCustomRankings,
     loadCustomRankings,
+    loadCustomRankingsData,
     hasCustomRankingsSaved,
     clearSavedCustomRankings,
     resetBoardSettings,
+    // sync functions
+    onSyncPendingRankings,
+    onRevertPlayerToPreSync,
     onLoadPlayers,
+    setLatestRankings,
+    setCustomAndLatestRankingsDiffs,
+    // helper funcs
+    calculateRankingDiffs,
   } = useRanks({ settings, myPickNum })
 
   const usingCustomRanking = boardSettings.ranker === ThirdPartyRanker.CUSTOM
@@ -138,16 +149,42 @@ const Home: FC = () => {
   const browserLoaded = typeof window !== "undefined"
 
   const loadCurrentRankings = useCallback(() => {
+    const currentRankings = getPlayerData()
+    if (!currentRankings) return
+
+    // if custom rankings are detected load those as rankings and set latest rankings to the current rankings
     if (browserLoaded && hasCustomRankingsSaved()) {
-      loadCustomRankings()
-    } else {
-      const currentRankings = getPlayerData()
-      if (currentRankings) {
-        onLoadPlayers(currentRankings)
-        resetBoardSettings()
+      // Load custom rankings without setting state first to get the data
+      const customRankingsData = loadCustomRankingsData()
+      if (customRankingsData) {
+        // Now load the custom rankings into state
+        loadCustomRankings()
+        setLatestRankings(currentRankings)
+        
+        // Calculate diffs between custom rankings and latest data
+        // Create temporary playerLib from custom rankings for diff calculation
+        const customPlayerLib = customRankingsData.players.reduce((acc: any, player: Player) => {
+          acc[player.id] = player
+          return acc
+        }, {})
+        
+        const diffs = calculateRankingDiffs(customRankingsData, customPlayerLib, currentRankings, settings, boardSettings)
+        const diffCount = Object.keys(diffs).length
+        
+        if (diffCount > 0) {
+          setCustomAndLatestRankingsDiffs(diffs)
+          toast.info(`${diffCount} players have ranking changes have changed since you last adjusted your rankings. Go to Edit Rankings - Sync to update.`, {
+            autoClose: 8000,
+            position: 'top-right'
+          })
+        }
       }
+    } else {
+      // otherwise load the latest rankings
+      onLoadPlayers(currentRankings)
+      resetBoardSettings()
     }
-  }, [onLoadPlayers, resetBoardSettings, browserLoaded, loadCustomRankings])
+  }, [onLoadPlayers, resetBoardSettings, browserLoaded, loadCustomRankings, loadCustomRankingsData, hasCustomRankingsSaved, setLatestRankings, calculateRankingDiffs, settings, boardSettings, setCustomAndLatestRankingsDiffs])
 
   useEffect(() => {
     loadCurrentRankings()
@@ -335,8 +372,12 @@ const Home: FC = () => {
                 activeDraftListenerTitle={activeDraftListenerTitle}
                 loadCurrentRankings={loadCurrentRankings}
                 rankings={rankings}
+                latestRankings={latestRankings}
                 removePlayerTargets={removePlayerTargets}
                 playerTargets={playerTargets}
+                customAndLatestRankingsDiffs={customAndLatestRankingsDiffs}
+                onSyncPendingRankings={onSyncPendingRankings}
+                onRevertPlayerToPreSync={onRevertPlayerToPreSync}
               />
             </div>
 
@@ -429,8 +470,12 @@ const Home: FC = () => {
                 activeDraftListenerTitle={activeDraftListenerTitle}
                 loadCurrentRankings={loadCurrentRankings}
                 rankings={rankings}
+                latestRankings={latestRankings}
                 removePlayerTargets={removePlayerTargets}
                 playerTargets={playerTargets}
+                customAndLatestRankingsDiffs={customAndLatestRankingsDiffs}
+                onSyncPendingRankings={onSyncPendingRankings}
+                onRevertPlayerToPreSync={onRevertPlayerToPreSync}
               />
             )}
 

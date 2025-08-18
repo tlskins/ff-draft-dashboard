@@ -31,6 +31,8 @@ import {
   Rankings,
   Tier,
 } from '../../types'
+import { PlayerRankingDiff } from '../../types/DraftBoardTypes'
+import { cloneDeep } from 'lodash'
 
 interface UseRanksProps {
   settings: FantasySettings
@@ -55,6 +57,8 @@ export const useRanks = ({
     settings,
     copiedRanker: undefined,
   } as Rankings)
+  const [pendingRankings, setPendingRankings] = useState<Rankings | null>(null)
+  const [latestRankings, setLatestRankings] = useState<Rankings | null>(null)
 
   const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
   const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})
@@ -101,11 +105,57 @@ export const useRanks = ({
   const onLoadPlayers = useCallback((
     rankings: Rankings
   ) => {
-    onCreatePlayerRanks(rankings.players, boardSettings)
+    const nextPlayerRanks = createPlayerRanks(rankings.players, settings, boardSettings)
+    setPlayerRanks(nextPlayerRanks)
     createPlayerLibrary(rankings.players)
     setRankingSummaries(rankings.rankingsSummaries)
     setRankings(rankings)
-  }, [boardSettings])
+  }, [boardSettings, settings])
+
+  const onLoadCustomPlayerRanks = useCallback((rankings: Rankings, ranker: ThirdPartyRanker) => {
+    // First load the players with the source ranker to get proper rankings
+    const tempPlayerRanks = createPlayerRanks(rankings.players, settings, { ...boardSettings, ranker })
+    const tempPlayerLib = rankings.players.reduce((acc: PlayerLibrary, player) => {
+      acc[player.id] = player
+      return acc
+    }, {})
+    const tempPlayersByPosByTeam = rankings.players.reduce((dict: PlayersByPositionAndTeam, player: Player) => {
+      if (player.position) {
+        if ( !dict[player.position] ) {
+          dict[player.position] = {}
+        }
+        if (dict[player.position] && !dict[player.position]![player.team] ) {
+          dict[player.position]![player.team] = []
+        }
+        dict[player.position]![player.team]!.push(player)
+      }
+      return dict
+    }, {})
+
+    // Get all available players from the temporary rankings
+    const allAvailablePlayers = [
+      ...tempPlayerRanks[FantasyPosition.QUARTERBACK],
+      ...tempPlayerRanks[FantasyPosition.RUNNING_BACK],
+      ...tempPlayerRanks[FantasyPosition.WIDE_RECEIVER],
+      ...tempPlayerRanks[FantasyPosition.TIGHT_END],
+    ]
+
+    // Use helper function to create custom rankings for all players
+    const { nextPlayerLib, nextRanks, nextPlayersByPosByTeam } = createCustomRankingsForPlayers(
+      allAvailablePlayers,
+      ranker,
+      tempPlayerLib,
+      tempPlayerRanks,
+      tempPlayersByPosByTeam
+    )
+
+    console.log('onLoadCustomPlayerRanks', rankings, boardSettings, nextRanks)
+    setPlayerRanks(nextRanks)
+    setPlayerLib(nextPlayerLib)
+    setPlayersByPosByTeam(nextPlayersByPosByTeam)
+    setRankingSummaries(rankings.rankingsSummaries)
+    setRankings(rankings)
+  }, [boardSettings, settings])
 
   const getRosterIdxFromPick = (pickNum: number) => {
     const roundIdx = getRoundIdxForPickNum(pickNum, settings.numTeams)
@@ -165,10 +215,10 @@ export const useRanks = ({
   const onSetAdpRanker = (adpRanker: ThirdPartyADPRanker) => {
     setBoardSettings({ ...boardSettings, adpRanker })
   }
-  const onCreatePlayerRanks = useCallback((players: Player[], boardSettings: BoardSettings) => {
+  const onCreatePlayerRanks = useCallback((players: Player[]) => {
     const nextPlayerRanks = createPlayerRanks( players, settings, boardSettings )
     setPlayerRanks(nextPlayerRanks)
-  }, [settings])
+  }, [settings, boardSettings])
   const onRemovePlayerFromBoard = (player: Player) => {
     const nextPlayerRanks = removePlayerFromBoard( playerRanks, player )
     setPlayerRanks(nextPlayerRanks)
@@ -215,6 +265,54 @@ export const useRanks = ({
     return !hasDraftedPlayers && !hasPurgedPlayers
   }
 
+  // Helper function to create custom rankings for all players
+  const createCustomRankingsForPlayers = useCallback((
+    playersToUpdate: Player[],
+    sourceRanker: ThirdPartyRanker,
+    currentPlayerLib: PlayerLibrary,
+    currentPlayerRanks: PlayerRanks,
+    currentPlayersByPosByTeam: PlayersByPositionAndTeam
+  ) => {
+    const nextPlayerLib = cloneDeep(currentPlayerLib)
+    const nextRanks = cloneDeep(currentPlayerRanks)
+    const nextPlayersByPosByTeam = cloneDeep(currentPlayersByPosByTeam)
+    
+    // Copy selected ranker's data to Custom ranker for each player
+    playersToUpdate.forEach(player => {
+      const sourceRanking = player.ranks?.[sourceRanker]
+      if (sourceRanking) {
+        // Create or update the Custom ranking for this player
+        const updatedPlayer = {
+          ...player,
+          ranks: {
+            ...player.ranks,
+            [ThirdPartyRanker.CUSTOM]: {
+              ...sourceRanking,
+              copiedRanker: sourceRanker,
+              ranker: ThirdPartyRanker.CUSTOM,
+            }
+          }
+        }
+        
+        // Update player in all data structures
+        nextPlayerLib[player.id] = updatedPlayer
+        nextRanks[player.position as keyof PlayerRanks] = nextRanks[player.position as keyof PlayerRanks].map(p => p.id === player.id ? updatedPlayer : p)
+        nextRanks.availPlayersByOverallRank = nextRanks.availPlayersByOverallRank.map(p => p.id === player.id ? updatedPlayer : p)
+        nextRanks.availPlayersByAdp = nextRanks.availPlayersByAdp.map(p => p.id === player.id ? updatedPlayer : p)
+        
+        if (nextPlayersByPosByTeam[player.position]?.[player.team]) {
+          nextPlayersByPosByTeam[player.position]![player.team] = nextPlayersByPosByTeam[player.position]![player.team]!.map(p => p.id === player.id ? updatedPlayer : p)
+        }
+      }
+    })
+    
+    return {
+      nextPlayerLib,
+      nextRanks,
+      nextPlayersByPosByTeam
+    }
+  }, [])
+
   const onStartCustomRanking = useCallback((selectedRankerToCopy: ThirdPartyRanker) => {
     if (!canEditCustomRankings()) {
       console.warn("Cannot edit custom rankings when players have been drafted or purged")
@@ -234,45 +332,30 @@ export const useRanks = ({
       ...playerRanks[FantasyPosition.TIGHT_END],
     ]
 
-    const nextPlayerLib = { ...playerLib }
-    const nextRanks = { ...playerRanks }
-    const nextPlayersByPosByTeam = { ...playersByPosByTeam }
-    
-    // Copy selected ranker's data to Custom ranker for each player
-    allAvailablePlayers.forEach(player => {
-      const sourceRanking = player.ranks?.[selectedRankerToCopy]
-      if (sourceRanking) {
-        // Create or update the Custom ranking for this player
-        const updatedPlayer = {
-          ...player,
-          ranks: {
-            ...player.ranks,
-            [ThirdPartyRanker.CUSTOM]: {
-              ...sourceRanking,
-              copiedRanker: selectedRankerToCopy,
-              ranker: ThirdPartyRanker.CUSTOM,
-            }
-          }
-        }
-        // Update player
-        nextPlayerLib[player.id] = updatedPlayer
-        nextRanks[player.position as keyof PlayerRanks] = nextRanks[player.position as keyof PlayerRanks].map(p => p.id === player.id ? updatedPlayer : p)
-        nextRanks.availPlayersByOverallRank = nextRanks.availPlayersByOverallRank.map(p => p.id === player.id ? updatedPlayer : p)
-        nextRanks.availPlayersByAdp = nextRanks.availPlayersByAdp.map(p => p.id === player.id ? updatedPlayer : p)
-        nextPlayersByPosByTeam[player.position]![player.team] = nextPlayersByPosByTeam[player.position]![player.team]!.map(p => p.id === player.id ? updatedPlayer : p)
-      }
-    })
+    // Use helper function to create custom rankings
+    const { nextPlayerLib, nextRanks, nextPlayersByPosByTeam } = createCustomRankingsForPlayers(
+      allAvailablePlayers,
+      selectedRankerToCopy,
+      playerLib,
+      playerRanks,
+      playersByPosByTeam
+    )
     
     // Switch to custom ranker and start editing
     setBoardSettings({ ...boardSettings, ranker: ThirdPartyRanker.CUSTOM })
     setIsEditingCustomRanking(true)
-    setPlayerLib({ ...nextPlayerLib })
-    setPlayersByPosByTeam({ ...nextPlayersByPosByTeam })
-    setPlayerRanks({ ...nextRanks })
+    setPlayerLib(nextPlayerLib)
+    setPlayersByPosByTeam(nextPlayersByPosByTeam)
+    setPlayerRanks(nextRanks)
+    if ( !rankings.copiedRanker ) {
+      // Clear any existing diffs when starting fresh
+      setCustomAndLatestRankingsDiffs({})
+    }
     setRankings({ ...rankings, copiedRanker: selectedRankerToCopy })
     return true
   }, [
     canEditCustomRankings,
+    createCustomRankingsForPlayers,
     playerLib,
     playerRanks,
     playersByPosByTeam,
@@ -288,6 +371,8 @@ export const useRanks = ({
 
   const onFinishCustomRanking = () => {
     setIsEditingCustomRanking(false)
+    // Clear any pending diffs when finishing custom ranking
+    setCustomAndLatestRankingsDiffs({})
   }
 
   const onReorderPlayerInPosition = useCallback((playerId: string, position: keyof PlayerRanks, newIndex: number) => {
@@ -414,6 +499,145 @@ export const useRanks = ({
     setRankings({ ...rankings, editedAt: new Date().toISOString(), players: nextPlayers })
   }
 
+  // Syncing rankings - stored as state to preserve diffs across ranking updates
+  const [customAndLatestRankingsDiffs, setCustomAndLatestRankingsDiffs] = useState<{ [key: string]: PlayerRankingDiff }>({})
+
+  console.log('customAndLatestRankingsDiffs', customAndLatestRankingsDiffs)
+
+  // Helper function to calculate ranking diffs
+  const calculateRankingDiffs = useCallback((
+    currentRankings: Rankings,
+    currentPlayerLib: PlayerLibrary,
+    latestRankingsData: Rankings,
+    settings: FantasySettings,
+    boardSettings: BoardSettings
+  ): { [key: string]: PlayerRankingDiff } => {
+    if (!currentRankings.copiedRanker || !latestRankingsData || !settings) {
+      return {}
+    }
+
+    const copiedRanker = currentRankings.copiedRanker as ThirdPartyRanker
+    const adpRanker = boardSettings.adpRanker as ThirdPartyADPRanker
+
+    const diffs: { [key: string]: PlayerRankingDiff } = {}
+
+    latestRankingsData.players.forEach(player => {
+      const playerRanks = player.ranks?.[copiedRanker]
+      const playerAdpRank = player.ranks?.[adpRanker]
+      const currRanking = currentPlayerLib[player.id]?.ranks?.[ThirdPartyRanker.CUSTOM]
+      const currAdpRank = currentPlayerLib[player.id]?.ranks?.[adpRanker]
+      if (playerRanks && currRanking && playerAdpRank && currAdpRank && ((currRanking.standardOverallRank || 999) <= 150 || (currRanking.pprOverallRank || 999) <= 150)) {
+        const adpDiff = (currAdpRank?.adp || 999) - (playerAdpRank?.adp || 999)
+        const posRankDiff = (settings.ppr ? currRanking.pprPositionRank || 999 : currRanking.standardPositionRank || 999) - (settings.ppr ? playerRanks.pprPositionRank || 999 :  playerRanks.standardPositionRank || 999)
+        if (Math.abs(adpDiff) >= 1.0 || posRankDiff !== 0) {
+          diffs[player.id] = {
+            playerId: player.id,
+            playerName: player.fullName,
+            adpDiff,
+            posRankDiff,
+            prevStandardPositionRank: currRanking.standardPositionRank,
+            prevPprPositionRank: currRanking.pprPositionRank,
+            prevStandardPositionTier: currRanking.standardPositionTier,
+            prevPprPositionTier: currRanking.pprPositionTier,
+          }
+        }
+      }
+    })
+
+    return diffs
+  }, [])
+
+  const onSyncPendingRankings = useCallback(() => {
+    if (!latestRankings || !isEditingCustomRanking || !canEditCustomRankings()) return
+
+    // Calculate diffs BEFORE updating rankings to preserve the comparison
+    const diffs = calculateRankingDiffs(rankings, playerLib, latestRankings, settings, boardSettings)
+    console.log('diffs', diffs)
+    if (Object.keys(diffs).length === 0) return
+
+    // Store the diffs in state
+    setCustomAndLatestRankingsDiffs(diffs)
+
+    // Copy latest rankings to pending
+    const clonedPendingRankings = cloneDeep(latestRankings)
+    setPendingRankings(clonedPendingRankings)
+    
+    // Load the latest rankings with the original ranker
+    const updatedRankings = {
+      ...clonedPendingRankings,
+      copiedRanker: rankings.copiedRanker
+    }
+    console.log('onSyncPendingRankings', updatedRankings)
+    
+    onLoadCustomPlayerRanks(updatedRankings, rankings.copiedRanker as ThirdPartyRanker)
+    
+  }, [latestRankings, isEditingCustomRanking, canEditCustomRankings, calculateRankingDiffs, rankings, playerLib, settings, boardSettings, setPendingRankings, onLoadCustomPlayerRanks]) 
+
+  const onRevertPlayerToPreSync = useCallback((playerId: string) => {
+    if (!isEditingCustomRanking || !canEditCustomRankings()) return
+    
+    const playerDiff = customAndLatestRankingsDiffs[playerId]
+    if (!playerDiff) return
+    
+    const player = playerLib[playerId]
+    if (!player || !player.ranks?.[ThirdPartyRanker.CUSTOM]) return
+    
+    // Revert the player's custom ranking to pre-sync values
+    const customRanking = player.ranks[ThirdPartyRanker.CUSTOM]
+    const updatedCustomRanking = {
+      ...customRanking,
+      standardPositionRank: playerDiff.prevStandardPositionRank,
+      pprPositionRank: playerDiff.prevPprPositionRank,
+      standardPositionTier: playerDiff.prevStandardPositionTier,
+      pprPositionTier: playerDiff.prevPprPositionTier,
+    }
+    
+    const updatedPlayer = {
+      ...player,
+      ranks: {
+        ...player.ranks,
+        [ThirdPartyRanker.CUSTOM]: updatedCustomRanking
+      }
+    }
+    
+    // Update player in all data structures
+    const nextPlayerLib = { ...playerLib, [playerId]: updatedPlayer }
+    const nextPlayersByPosByTeam = { ...playersByPosByTeam }
+    if (nextPlayersByPosByTeam[player.position]?.[player.team]) {
+      nextPlayersByPosByTeam[player.position]![player.team] = nextPlayersByPosByTeam[player.position]![player.team]!.map(p => 
+        p.id === playerId ? updatedPlayer : p
+      )
+    }
+    
+    // Recreate player ranks to reflect the changes
+    const nextPlayerRanks = editPlayersInPlayerRanks(playerRanks, [updatedPlayer], settings, boardSettings)
+    const nextPlayers = getPlayersFromPlayerRanks(nextPlayerRanks)
+    
+    setPlayerLib(nextPlayerLib)
+    setPlayersByPosByTeam(nextPlayersByPosByTeam)
+    setPlayerRanks(nextPlayerRanks)
+    setRankings({ ...rankings, editedAt: new Date().toISOString(), players: nextPlayers })
+    
+    // Remove the diff for this player since it's been reverted
+    const updatedDiffs = { ...customAndLatestRankingsDiffs }
+    delete updatedDiffs[playerId]
+    setCustomAndLatestRankingsDiffs(updatedDiffs)
+  }, [
+    isEditingCustomRanking,
+    canEditCustomRankings,
+    customAndLatestRankingsDiffs,
+    playerLib,
+    playersByPosByTeam,
+    playerRanks,
+    settings,
+    boardSettings,
+    rankings,
+    setPlayerLib,
+    setPlayersByPosByTeam,
+    setPlayerRanks,
+    setRankings,
+  ])
+
   // Player targeting functions
   const addPlayerTarget = useCallback((player: Player, targetAsEarlyAs: number) => {
     setPlayerTargets(prevTargets => {
@@ -466,18 +690,14 @@ export const useRanks = ({
     settings,
   ])
 
-  const loadCustomRankings = useCallback(() => {
+  const loadCustomRankingsData = useCallback(() => {
     if ( typeof localStorage === 'undefined' ) {
-      return false
+      return null
     }
     try {
       const savedData = localStorage.getItem('ff-draft-custom-rankings')
       if (!savedData) {
-        return false
-      }
-
-      if (!savedData) {
-        return false
+        return null
       }
 
       const parsedData = JSON.parse(savedData)
@@ -496,34 +716,43 @@ export const useRanks = ({
 
       if (!hasCustomRankings) {
         console.warn("No custom rankings found in saved data")
-        return false
+        return null
       }
 
       // Cannot load if draft has started or players are purged
       if (!canEditCustomRankings()) {
         console.warn("Cannot load custom rankings when draft has started or players are purged")
-        return false
+        return null
       }
 
-      // Load the data
-      onLoadPlayers({
+      return {
         players,
         rankingsSummaries: savedRankingSummaries,
         cachedAt: savedCachedAt,
         editedAt: savedEditedAt,
         copiedRanker: savedCopiedRanker as ThirdPartyRanker,
         settings,
-      } as Rankings)
-      
-      // Switch to custom ranker
-      setBoardSettings({ ...boardSettings, ranker: ThirdPartyRanker.CUSTOM })
-
-      return true
+      } as Rankings
     } catch (error) {
       console.error('Failed to load custom rankings:', error)
+      return null
+    }
+  }, [canEditCustomRankings, settings])
+
+  const loadCustomRankings = useCallback(() => {
+    const customRankings = loadCustomRankingsData()
+    if (!customRankings) {
       return false
     }
-  }, [onLoadPlayers, boardSettings, canEditCustomRankings])
+
+    // Load the data into state
+    onLoadPlayers(customRankings)
+    
+    // Switch to custom ranker
+    setBoardSettings({ ...boardSettings, ranker: ThirdPartyRanker.CUSTOM })
+
+    return true
+  }, [loadCustomRankingsData, onLoadPlayers, boardSettings])
 
   const hasCustomRankingsSaved = useCallback(() => {
     if ( typeof localStorage === 'undefined' ) {
@@ -571,6 +800,7 @@ export const useRanks = ({
     playerLib,
     playersByPosByTeam,
     playerRanks,
+    latestRankings,
     settings,
     noPlayers,
     draftHistory,
@@ -579,6 +809,9 @@ export const useRanks = ({
     isEditingCustomRanking,
     playerTargets,
     rankings,
+    customAndLatestRankingsDiffs,
+    setLatestRankings,
+    setCustomAndLatestRankingsDiffs,
     // funcs
     onDraftPlayer,
     onRemoveDraftedPlayer,
@@ -605,10 +838,17 @@ export const useRanks = ({
     // save/load custom rankings funcs
     saveCustomRankings,
     loadCustomRankings,
+    loadCustomRankingsData,
     hasCustomRankingsSaved,
     clearSavedCustomRankings,
     resetBoardSettings,
+    // sync functions
+    onSyncPendingRankings,
+    onRevertPlayerToPreSync,
     // load funcs
     onLoadPlayers,
+    onLoadCustomPlayerRanks,
+    // helper funcs
+    calculateRankingDiffs,
   }
 }

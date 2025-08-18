@@ -1,8 +1,7 @@
 import { PlayerRanks, Roster } from '../behavior/draft'
-import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, PlayerTarget } from './index'
+import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, PlayerTarget, Tier } from './index'
 import { SortOption } from '../pages'
 import { HighlightOption } from '../behavior/hooks/usePredictions'
-import { DraftView } from '../pages'
 
 export type DraftBoardTitleCard = {
   bgColor: string
@@ -49,6 +48,7 @@ export interface SharedViewProps {
   getDraftRoundForPickNum: (pickNum: number) => (string | null)[]
   viewPlayerId: string | null
   playerTargets: PlayerTarget[]
+  customAndLatestRankingsDiffs: { [key: string]: PlayerRankingDiff }
 }
 
 // Props specific to ranking view
@@ -71,6 +71,18 @@ export interface EditRankingsViewProps extends SharedViewProps {
   saveCustomRankings: () => boolean
   selectedPosition: keyof PlayerRanks
   setSelectedPosition: (position: keyof PlayerRanks) => void
+  customAndLatestRankingsDiffs: { [key: string]: PlayerRankingDiff }
+  // Sync functions
+  onSyncPendingRankings: () => void
+  onRevertPlayerToPreSync: (playerId: string) => void
+  // Diff filter props
+  diffFilter?: string
+  setDiffFilter?: (filter: string) => void
+  isDiffFilterDropdownOpen?: boolean
+  setIsDiffFilterDropdownOpen?: (open: boolean) => void
+  // Rankings data for timestamp comparison
+  rankings: Rankings
+  latestRankings: Rankings | null
 }
 
 // Props for best available by round view
@@ -96,3 +108,14 @@ export interface DragState {
   dragOverIndex: number | null
   setDragOverIndex: (index: number | null) => void
 } 
+
+export interface PlayerRankingDiff {
+  playerId: string
+  playerName: string
+  adpDiff: number
+  posRankDiff: number
+  prevStandardPositionRank: number
+  prevStandardPositionTier?: Tier
+  prevPprPositionRank: number
+  prevPprPositionTier?: Tier
+}
