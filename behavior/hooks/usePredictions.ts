@@ -241,6 +241,28 @@ export const usePredictions = ({
     let topRosters: OptimalRoster[] = [];
     const maxRosters = 10;
 
+    // Helper function to check if position requirements are met
+    const arePositionRequirementsMet = (posCounts: PositionCounts): boolean => {
+        const { numStartingQbs, numStartingRbs, numStartingWrs, numStartingTes, numFlex } = settings;
+        
+        const qbCount = posCounts.QB || 0;
+        const rbCount = posCounts.RB || 0;
+        const wrCount = posCounts.WR || 0;
+        const teCount = posCounts.TE || 0;
+        
+        // Check minimum required for each position
+        if (qbCount < numStartingQbs) return false;
+        if (rbCount < numStartingRbs) return false;
+        if (wrCount < numStartingWrs) return false;
+        if (teCount < numStartingTes) return false;
+        
+        // Check flex requirements - flex can be filled by RB, WR, or TE
+        const flexEligibleCount = (rbCount - numStartingRbs) + (wrCount - numStartingWrs);
+        if (flexEligibleCount < numFlex) return false;
+        
+        return true;
+    };
+
     const findBestRoster = (
         pickIndex: number,
         currentRoster: OptimalRoster,
@@ -248,11 +270,8 @@ export const usePredictions = ({
         posCounts: PositionCounts,
         selectedPlayerIds: Set<string> = new Set(),
     ) => {
-        // Check if all required positions are filled
-        const { numStartingQbs, numStartingRbs, numStartingWrs, numStartingTes, numFlex } = settings;
-        const totalPositionsFilled = (posCounts.QB || 0) + (posCounts.RB || 0) + (posCounts.WR || 0) + (posCounts.TE || 0);
-        const totalRequiredPositions = numStartingQbs + numStartingRbs + numStartingWrs + numStartingTes + numFlex;
-        const allPositionsFilled = totalPositionsFilled >= totalRequiredPositions;
+        // Check if all required positions are filled using strict validation
+        const allPositionsFilled = arePositionRequirementsMet(posCounts);
         
         if (pickIndex >= myPicks.length || allPositionsFilled) {
             const completedRoster: OptimalRoster = {
@@ -294,7 +313,7 @@ export const usePredictions = ({
             if (position === FantasyPosition.QUARTERBACK) maxForPosition = numStartingQbs;
             else if (position === FantasyPosition.RUNNING_BACK) maxForPosition = numStartingRbs + numFlex;
             else if (position === FantasyPosition.WIDE_RECEIVER) maxForPosition = numStartingWrs + numFlex;
-            else if (position === FantasyPosition.TIGHT_END) maxForPosition = numStartingTes + numFlex;
+            else if (position === FantasyPosition.TIGHT_END) maxForPosition = numStartingTes;
 
             if (currentPositionCount < maxForPosition) {
                 const tier = getProjectedTier(player, boardSettings.ranker, DataRanker.LAST_SSN_PPG, settings, rankingSummaries);

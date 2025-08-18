@@ -53,7 +53,11 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
     const regex = new RegExp(escapedTerm, 'i')
     
     return allPlayers
-      .filter(player => regex.test(player.fullName))
+      .filter(player => {
+        // Remove non a-z characters from player name and convert to lowercase
+        const normalizedPlayerName = player.fullName.replace(/[^a-zA-Z]/g, '').toLowerCase()
+        return regex.test(normalizedPlayerName)
+      })
       .sort((a, b) => {
         const aMetrics = getPlayerMetrics(a, fantasySettings, boardSettings)
         const bMetrics = getPlayerMetrics(b, fantasySettings, boardSettings)
@@ -141,8 +145,6 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
 
   const playerFavorite = selectedPlayer ? getPlayerFavorite(selectedPlayer.id) : undefined
   const positionSummary = selectedPlayer ? getPositionRankingSummary() : undefined
-
-  console.log('position summary',selectedPlayer, positionSummary)
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 md:p-4">
