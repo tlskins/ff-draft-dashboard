@@ -4,9 +4,10 @@ import { PlayerRanks } from '../../behavior/draft'
 import { PositionFilter } from '../../behavior/hooks/useADPView'
 import MobileViewFooter from '../MobileViewFooter'
 import PlayersByRoundView from './PlayersByRoundView'
+import PlayersByADPRoundView from './PlayersByADPRoundView'
 import PlayerTargetsView from './PlayerTargetsView'
 
-type ViewType = 'playersByRound' | 'playerTargets'
+type ViewType = 'playersByRound' | 'playersByADPRound' | 'playerTargets'
 
 interface ADPViewProps {
   playerRanks: PlayerRanks
@@ -52,14 +53,20 @@ const ADPView: React.FC<ADPViewProps> = ({
     setCurrentView('playersByRound')
   }
 
+  const handleSwitchToADPRoundsView = () => {
+    setCurrentView('playersByADPRound')
+  }
+
   return (
     <div className="h-screen bg-white p-2 w-full flex flex-col">
       {/* Desktop Header */}
       <div className="mb-4 hidden md:block flex-shrink-0">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-semibold text-gray-800">
-            {currentView === 'playersByRound' ? 'Available By Round Sorted By Rank' : 'Player Targets Visualization'}
-            {currentView === 'playersByRound' && positionFilter !== 'All' && ` - ${positionFilter} Only`}
+            {currentView === 'playersByRound' ? 'Available By Round' : 
+             currentView === 'playersByADPRound' ? 'Players by ADP Round' : 
+             'Player Targets Visualization'}
+            {(currentView === 'playersByRound' || currentView === 'playersByADPRound') && positionFilter !== 'All' && ` - ${positionFilter} Only`}
           </h2>
           <div className="flex items-center space-x-2">
             <select
@@ -67,7 +74,8 @@ const ADPView: React.FC<ADPViewProps> = ({
               onChange={(e) => setCurrentView(e.target.value as ViewType)}
               className="px-2 py-1 text-sm border border-gray-300 rounded bg-white text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="playersByRound">Players by Round</option>
+              <option value="playersByRound">Highest Ranked Avail Players by Round</option>
+              <option value="playersByADPRound">Players Expected to be Drafted by Round</option>
               <option value="playerTargets">Targets Visualization</option>
             </select>
           </div>
@@ -86,13 +94,29 @@ const ADPView: React.FC<ADPViewProps> = ({
             </p>
           </div>
         )}
+        {currentView === 'playersByADPRound' && (
+          <div className="flex flex-col text-left">
+            <p className="text-sm text-gray-600">
+              Shows all players expected to be drafted in each round, sorted by overall rank
+            </p>
+            <p className="text-sm text-gray-600">
+              Rank differential shows how much higher/lower a player is ranked vs their ADP
+              {positionFilter !== 'All' && ` (filtered to ${positionFilter} players only)`}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Use ← → arrow keys or buttons to navigate between round groups
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Mobile Header */}
       <div className="mb-4 md:hidden flex-shrink-0">
         <h2 className="text-lg font-semibold text-gray-800 text-center">
-          {currentView === 'playersByRound' ? 'Players by Round' : 'Targets Visualization'}
-          {currentView === 'playersByRound' && positionFilter !== 'All' && ` - ${positionFilter}`}
+          {currentView === 'playersByRound' ? 'Highest Ranked Avail Players by Round' : 
+           currentView === 'playersByADPRound' ? 'Players by ADP Round' : 
+           'Targets Visualization'}
+          {(currentView === 'playersByRound' || currentView === 'playersByADPRound') && positionFilter !== 'All' && ` - ${positionFilter}`}
         </h2>
       </div>
       
@@ -100,6 +124,25 @@ const ADPView: React.FC<ADPViewProps> = ({
       <div className="flex-1 mb-20 md:mb-4 overflow-hidden">
         {currentView === 'playersByRound' ? (
           <PlayersByRoundView
+            playerRanks={playerRanks}
+            fantasySettings={fantasySettings}
+            boardSettings={boardSettings}
+            viewPlayerId={viewPlayerId}
+            myPicks={myPicks}
+            currPick={currPick}
+            setViewPlayerId={setViewPlayerId}
+            playerTargets={playerTargets}
+            playerLib={playerLib}
+            addPlayerTarget={addPlayerTarget}
+            replacePlayerTargets={replacePlayerTargets}
+            removePlayerTarget={removePlayerTarget}
+            removePlayerTargets={removePlayerTargets}
+            positionFilter={positionFilter}
+            setPositionFilter={setPositionFilter}
+            onSwitchToTargetsView={handleSwitchToTargetsView}
+          />
+        ) : currentView === 'playersByADPRound' ? (
+          <PlayersByADPRoundView
             playerRanks={playerRanks}
             fantasySettings={fantasySettings}
             boardSettings={boardSettings}
@@ -133,7 +176,9 @@ const ADPView: React.FC<ADPViewProps> = ({
       <MobileViewFooter
         dropdowns={[
           {
-            label: currentView === 'playersByRound' ? 'Rounds View' : 'Targets View',
+            label: currentView === 'playersByRound' ? 'Rounds View' : 
+                   currentView === 'playersByADPRound' ? 'ADP Rounds View' : 
+                   'Targets View',
             isOpen: isMobileViewOpen,
             onToggle: () => {
               setIsMobileViewOpen(!isMobileViewOpen)
@@ -141,12 +186,20 @@ const ADPView: React.FC<ADPViewProps> = ({
             variant: 'primary',
             items: [
               {
-                label: 'Players by Round',
+                label: 'Highest Ranked Avail Players by Round',
                 onClick: () => {
                   handleSwitchToRoundsView()
                   setIsMobileViewOpen(false)
                 },
                 isSelected: currentView === 'playersByRound'
+              },
+              {
+                label: 'Players Expected to be Drafted by Round',
+                onClick: () => {
+                  handleSwitchToADPRoundsView()
+                  setIsMobileViewOpen(false)
+                },
+                isSelected: currentView === 'playersByADPRound'
               },
               {
                 label: 'Targets Visualization',

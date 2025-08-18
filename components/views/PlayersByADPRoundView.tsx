@@ -1,12 +1,13 @@
-import React, { useCallback, useState, useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../types'
-import { getPlayerAdp, getRoundIdxForPickNum, getRoundNumForPickNum, PlayerRanks } from '../../behavior/draft'
-import { useADPView, PositionFilter } from '../../behavior/hooks/useADPView'
+import { PlayerRanks, getRoundIdxForPickNum } from '../../behavior/draft'
+import { PositionFilter, useADPView } from '../../behavior/hooks/useADPView'
+import { useADPRoundView } from '../../behavior/hooks/useADPRoundView'
 import MobileViewFooter from '../MobileViewFooter'
 import TargetsColumn from '../shared/TargetsColumn'
 import ADPPlayerCard from '../shared/ADPPlayerCard'
 
-interface PlayersByRoundViewProps {
+interface PlayersByADPRoundViewProps {
   playerRanks: PlayerRanks
   fantasySettings: FantasySettings
   boardSettings: BoardSettings
@@ -25,7 +26,7 @@ interface PlayersByRoundViewProps {
   onSwitchToTargetsView: () => void
 }
 
-const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
+const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
   playerRanks,
   fantasySettings,
   boardSettings,
@@ -43,62 +44,43 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
   setPositionFilter,
   onSwitchToTargetsView,
 }) => {
+  // Use the shared ADP view hook for navigation and targets organization
   const {
     currentPage,
     totalPages,
     startRound,
     endRound,
     roundsToShow,
-    playersByRound,
     organizedTargets,
     handlePrevPage,
     handleNextPage,
     handleSaveFavorites,
     handleLoadFavorites,
     handleClearFavorites,
-  } = useADPView({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib, replacePlayerTargets, removePlayerTargets })
+  } = useADPView({ 
+    playerRanks, 
+    fantasySettings, 
+    boardSettings, 
+    myPicks, 
+    playerTargets, 
+    playerLib, 
+    replacePlayerTargets, 
+    removePlayerTargets 
+  })
+
+  // Use the new ADP round view hook for organizing players by ADP round
+  const { playersByADPRound, getRoundCount } = useADPRoundView({
+    playerRanks,
+    fantasySettings,
+    boardSettings,
+    positionFilter,
+    roundsToShow,
+  })
   
   const [isMobileTargetsOpen, setIsMobileTargetsOpen] = useState(false)
   const [isMobilePositionOpen, setIsMobilePositionOpen] = useState(false)
   const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null)
   
-  // Helper function to check if we should advance to next page
-  const checkAutoAdvance = useCallback(() => {
-    if (currentPage >= totalPages - 1) return // Don't advance if we're on the last page
-    
-    // Find the user's next pick in the earliest visible round (startRound)
-    const myPicksInStartRound = myPicks.filter(pick => {
-      const pickRound = getRoundIdxForPickNum(pick, fantasySettings.numTeams) + 1
-      return pickRound === startRound
-    })
-    
-    if (myPicksInStartRound.length > 0) {
-      const earliestPickInStartRound = Math.min(...myPicksInStartRound)
-      
-      // Check if currPick has passed this pick (meaning user just made their pick)
-      if (currPick > earliestPickInStartRound) {
-        // Advance to next page to show upcoming rounds
-        handleNextPage()
-      }
-    }
-  }, [currentPage, totalPages, myPicks, fantasySettings.numTeams, startRound, currPick, handleNextPage])
-
-  // Auto-navigation: advance to next page when currPick passes user's next pick in earliest visible round
-  useEffect(() => {
-    checkAutoAdvance()
-  }, [currPick])
-  
-  const getRoundCount = useCallback((round: number) => {
-    return (playersByRound[round] || []).filter( (player, playerIdx) => {
-      if ( playerIdx >= fantasySettings.numTeams ) {
-        return false
-      }
-      const adp = getPlayerAdp(player, fantasySettings, boardSettings)
-      const adpRound = getRoundNumForPickNum(adp, fantasySettings.numTeams)
-      return adpRound === round
-    }).length
-  }, [fantasySettings, boardSettings, playersByRound])
-
   const handleMovePlayerToRound = useCallback((playerId: string, round: number) => {
     const newPickNumber = myPicks[round - 1] // round is 1-based, myPicks is 0-based
     if (newPickNumber) {
@@ -161,7 +143,7 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
       {/* Mobile Header - Simplified */}
       <div className="mb-4 md:hidden flex-shrink-0">
         <h2 className="text-lg font-semibold text-gray-800 text-center">
-          Rounds {startRound}-{endRound}
+          ADP Rounds {startRound}-{endRound}
           {positionFilter !== 'All' && ` - ${positionFilter}`}
         </h2>
       </div>
@@ -193,63 +175,40 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
         {/* Round Columns - Dynamic based on viewport */}
         {roundsToShow.map((round) => (
           <div key={round} className="flex flex-col min-w-0 overflow-hidden h-full">
-            <div className="sticky top-0 bg-blue-100 border-b-2 border-blue-300 p-2 text-center flex-shrink-0">
-              <h3 className="text-sm font-semibold text-blue-800">
-                Round {round}
+            <div className="sticky top-0 bg-green-100 border-b-2 border-green-300 p-2 text-center flex-shrink-0">
+              <h3 className="text-sm font-semibold text-green-800">
+                ADP Round {round}
               </h3>
-              <p className="text-xs text-blue-600">
+              <p className="text-xs text-green-600">
                 ({getRoundCount(round)} players)
               </p>
             </div>
             
             <div className="flex flex-col space-y-1 p-0.5 overflow-y-auto" style={{ height: 'calc(100% - 80px)' }}>
-              {(() => {
-                const roundPlayers = playersByRound[round] || []
-                const firstTeamPlayers = roundPlayers.slice(0, fantasySettings.numTeams)
-                const remainingPlayers = roundPlayers.slice(fantasySettings.numTeams)
+              {(playersByADPRound[round] || []).map((player, idx) => {
+                // Find the user's pick for this round
+                const userPickForRound = myPicks[round - 1] // round is 1-based, array is 0-based
+                const playerTarget = playerTargets.find(target => target.playerId === player.id)
+                const isPlayerTargeted = !!playerTarget
                 
-                const renderPlayer = (player: any, idx: number) => {
-                  const adp = getPlayerAdp(player, fantasySettings, boardSettings)
-                  const adpRound = getRoundNumForPickNum(adp, fantasySettings.numTeams)
-                  
-                  // Find the user's pick for this round
-                  const userPickForRound = myPicks[round - 1] // round is 1-based, array is 0-based
-                  const playerTarget = playerTargets.find(target => target.playerId === player.id)
-                  const isPlayerTargeted = !!playerTarget
-                  
-                  // Additional className for graying out players available next round
-                  const additionalClassName = adpRound === round ? '' : 'bg-gray-100'
-                  
-                  return (
-                    <ADPPlayerCard
-                      key={`${player.id}-${round}-${idx}`}
-                      player={player}
-                      fantasySettings={fantasySettings}
-                      boardSettings={boardSettings}
-                      viewPlayerId={viewPlayerId}
-                      setViewPlayerId={setViewPlayerId}
-                      positionFilter={positionFilter}
-                      isPlayerTargeted={isPlayerTargeted}
-                      playerTarget={playerTarget}
-                      userPickForRound={userPickForRound}
-                      addPlayerTarget={addPlayerTarget}
-                      removePlayerTarget={removePlayerTarget}
-                      className={additionalClassName}
-                    />
-                  )
-                }
-                
-                return (
-                  <>
-                    {firstTeamPlayers.length > 0 && (
-                      <div className="border-2 border border-gray-400 rounded-lg p-1 space-y-1">
-                        {firstTeamPlayers.map((player, idx) => renderPlayer(player, idx))}
-                      </div>
-                    )}
-                    {remainingPlayers.map((player, idx) => renderPlayer(player, idx + fantasySettings.numTeams))}
-                  </>
-                )
-              })()}
+                                 return (
+                   <ADPPlayerCard
+                     key={`${player.id}-${round}-${idx}`}
+                     player={player}
+                     fantasySettings={fantasySettings}
+                     boardSettings={boardSettings}
+                     viewPlayerId={viewPlayerId}
+                     setViewPlayerId={setViewPlayerId}
+                     positionFilter={positionFilter}
+                     isPlayerTargeted={isPlayerTargeted}
+                     playerTarget={playerTarget}
+                     userPickForRound={userPickForRound}
+                     addPlayerTarget={addPlayerTarget}
+                     removePlayerTarget={removePlayerTarget}
+                     showAdpRound={true}
+                   />
+                 )
+              })}
             </div>
           </div>
         ))}
@@ -359,4 +318,4 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
   )
 }
 
-export default PlayersByRoundView 
+export default PlayersByADPRoundView 
