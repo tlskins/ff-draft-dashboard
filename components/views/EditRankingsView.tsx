@@ -646,9 +646,7 @@ const EditRankingsView = ({
                                 const projTierText = projPlayerTier ? ` (${((projPlayerTier.upperLimitValue + projPlayerTier.lowerLimitValue) / 2).toFixed(1)} PPG)` : ''
                                 
                                 const rankText = posRank === undefined ? 'Unranked' : `${position}${posRank}`
-                                const adpRound = getRoundIdxForPickNum(adp === undefined ? 999 : Math.floor(adp), fantasySettings.numTeams) + 1
                                 const isHoveringPlayer = shownPlayerId === id
-                                const cardBorderStyle = isHoveringPlayer ? 'border border-4 border-indigo-500' : 'border'
 
                                 const isDraggedOver = dragOverIndex === playerPosIdx
                                 const isDragged = draggedPlayer?.id === id
@@ -656,6 +654,11 @@ const EditRankingsView = ({
                                 const draggedStyle = isDragged ? 'opacity-50' : ''
                                 const touchDraggedStyle = touchDragActive && isDragged ? 'z-50 transform scale-105 shadow-2xl' : ''
                                 const syncPlayerDiffs = customAndLatestRankingsDiffs ? customAndLatestRankingsDiffs[id] : undefined
+
+                                const majorSyncAdpDiff = syncPlayerDiffs && Boolean(syncPlayerDiffs.adpDiff && syncPlayerDiffs.adpDiff > (fantasySettings.numTeams / 2))
+                                const majorSyncPosRankDiff = syncPlayerDiffs && Boolean(syncPlayerDiffs.posRankDiff && syncPlayerDiffs.posRankDiff > (fantasySettings.numTeams / 3))
+                                const majorSyncDiff = majorSyncAdpDiff || majorSyncPosRankDiff
+                                const cardBorderStyle = isHoveringPlayer || majorSyncDiff ? 'border border-4 border-indigo-500' : 'border'
 
                                 return(
                                   <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
@@ -715,7 +718,7 @@ const EditRankingsView = ({
                                         <p className="text-xs">
                                           ADP {adp ? getRoundAndPickShortText(adp, fantasySettings.numTeams) : ''}
                                         </p>
-                                        { syncPlayerDiffs && Boolean(syncPlayerDiffs.adpDiff && syncPlayerDiffs.adpDiff > (fantasySettings.numTeams / 2)) && (
+                                        { majorSyncAdpDiff && (
                                           <p className={`text-xs ${getPickDiffColor(syncPlayerDiffs.adpDiff)} border-2 border-blue-500 text-white rounded px-1 py-0.5 mt-0.5 ml-1`}>
                                             { syncPlayerDiffs.adpDiff > 0 ? '+' : '-' } { Math.abs(syncPlayerDiffs.adpDiff).toFixed(1) }
                                           </p>
@@ -725,7 +728,7 @@ const EditRankingsView = ({
                                         <p className="text-xs">
                                           OVR Pick {overallRank ? getRoundAndPickShortText(overallRank, fantasySettings.numTeams) : ''}
                                         </p>
-                                        { syncPlayerDiffs && Boolean(syncPlayerDiffs.posRankDiff && syncPlayerDiffs.posRankDiff > (fantasySettings.numTeams / 3)) && (
+                                        { majorSyncPosRankDiff && (
                                           <p className={`text-xs ${getPickDiffColor(syncPlayerDiffs.posRankDiff)} border-2 border-green-500 text-white rounded px-1 py-0.5 mt-0.5 ml-1`}>
                                            { syncPlayerDiffs.posRankDiff > 0 ? '+' : '-' } { Math.abs(syncPlayerDiffs.posRankDiff).toFixed(1) }
                                           </p>
@@ -733,7 +736,7 @@ const EditRankingsView = ({
                                       </div>
                                       { syncPlayerDiffs && hasSignificantDiffs(id) && (
                                         <button
-                                          className="text-xs bg-orange-500 text-white rounded px-2 py-1 mt-1 hover:bg-orange-600 transition-colors"
+                                          className="text-xs bg-red-500 text-white rounded px-2 py-1 mt-1 hover:bg-orange-600 transition-colors"
                                           onClick={(e) => {
                                             e.preventDefault()
                                             e.stopPropagation()

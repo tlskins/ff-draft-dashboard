@@ -116,7 +116,7 @@ const RankingView = ({
             <div className="flex flex-col">
               <div className="flex flex-col mb-4">
                 <h2 className="text-2xl font-bold">{rankings.copiedRanker ? 'Custom' : ''} Rankings By Position</h2>
-                <div className="h-1">
+                <div className="h-1 flex flex-row">
                   { isUsingCustomRanks &&
                     <p className="text-xs">
                       Base { rankings.copiedRanker } ranks from { new Date(rankings.cachedAt).toLocaleString() } last edited { new Date(rankings.editedAt).toLocaleString() }
@@ -128,6 +128,13 @@ const RankingView = ({
                       Latest rankings from { new Date(rankings.cachedAt).toLocaleString() }
                     </p>
                   }
+                  <button
+                    onClick={() => setIsSearchModalOpen(true)}
+                    className="md:hidden w-12 h-12 bg-purple-500 hover:bg-purple-600 text-white rounded-full shadow-lg flex flex-col items-center justify-center transition-colors"
+                    title="Search Players"
+                  >
+                    🔍
+                  </button>
                 </div>
               </div>
 
@@ -148,7 +155,7 @@ const RankingView = ({
                 </select>
                 <button
                   onClick={() => setIsSearchModalOpen(true)}
-                  className="p-2 m-1 border rounded bg-purple-100 hover:bg-purple-200 shadow transition-colors"
+                  className="p-2 m-1 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow transition-colors flex-shrink-0"
                   title="Search Players"
                 >
                   🔍
@@ -313,7 +320,6 @@ const RankingView = ({
                         }
                         const isBelowAdp = currPick - (adp || 0) >= 0
                         const isBelowRank = currPick - (overallRank || 0) >= 0
-                        const adpRound = getRoundIdxForPickNum(adp === undefined ? 999 : Math.floor(adp), fantasySettings.numTeams) + 1
                         const currAdpDiff = Math.abs(currPick - (adp || 0)).toFixed(1)
                         const currRankDiff = Math.abs(currPick - (overallRank || 0)).toFixed(1)
                         const rankDiffScore = ((overallRank || 999) - (adp || 999)) * -1
@@ -436,15 +442,6 @@ const RankingView = ({
         myPickNum={myPickNum}
         currPick={currPick}
       />
-
-      {/* Mobile Search Button */}
-      <button
-        onClick={() => setIsSearchModalOpen(true)}
-        className="md:hidden fixed bottom-20 right-4 w-12 h-12 bg-purple-500 hover:bg-purple-600 text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors"
-        title="Search Players"
-      >
-        🔍
-      </button>
     </>
   )
 }
