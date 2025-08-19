@@ -3,6 +3,17 @@ import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../type
 import { getPlayerAdp, getRoundNumForPickNum, getRoundIdxForPickNum, getRoundAndPickShortText, PlayerRanks } from '../../behavior/draft'
 import { playerShortName } from '../../behavior/presenters'
 
+// Helper function to create extra short names for mobile (first initial + last initial)
+const getPlayerInitials = (fullName: string): string => {
+  const nameParts = fullName.trim().split(/\s+/)
+  if (nameParts.length === 0) return ''
+  if (nameParts.length === 1) return nameParts[0].charAt(0).toUpperCase()
+  
+  const firstInitial = nameParts[0].charAt(0).toUpperCase()
+  const lastInitial = nameParts[nameParts.length - 1].charAt(0).toUpperCase()
+  return `${firstInitial}${lastInitial}`
+}
+
 interface PlayerTargetsViewProps {
   playerTargets: PlayerTarget[]
   playerLib: { [key: string]: Player }
@@ -30,6 +41,8 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
   currPick,
 }) => {
   const [isMobile, setIsMobile] = useState(false)
+  const [hoveredPlayerId, setHoveredPlayerId] = useState<string | null>(null)
+  const [popoverPosition, setPopoverPosition] = useState({ x: 0, y: 0 })
 
   // Detect mobile viewport
   useEffect(() => {
@@ -110,8 +123,21 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
     return ((clampedPick - 1) / maxPick) * chartHeight
   }
 
+  const handlePlayerClick = (playerId: string, event: React.MouseEvent) => {
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+    setPopoverPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top - 10
+    })
+    setHoveredPlayerId(playerId)
+  }
+
+  const handleClickOutside = () => {
+    setHoveredPlayerId(null)
+  }
+
   return (
-    <div className="h-full bg-white flex flex-col overflow-hidden">
+    <div className="h-full bg-white flex flex-col overflow-hidden" onClick={handleClickOutside}>
       <div className="p-3 md:p-6 overflow-auto flex-1 flex flex-col">
         <h2 className="text-lg md:text-2xl font-bold text-gray-800 mb-2 md:mb-4 text-center flex-shrink-0">
           Player Targets Visualization
@@ -213,15 +239,23 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
                           color: '#333'
                         }}
                       >
-                        {playerShortName(data.player.fullName)}
+                        {isMobile ? getPlayerInitials(data.player.fullName) : playerShortName(data.player.fullName)}
                       </div>
 
-                      <div key={data.player.id} className="absolute border-2 border-black" style={{ 
-                        left: x - barWidth/2,
-                        top: fullTopY,
-                        height: fullEndY - fullTopY,
-                        width: barWidth
-                      }}>
+                      <div 
+                        key={data.player.id} 
+                        className="absolute border-2 border-black cursor-pointer hover:shadow-lg transition-shadow" 
+                        style={{ 
+                          left: x - barWidth/2,
+                          top: fullTopY,
+                          height: fullEndY - fullTopY,
+                          width: barWidth
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handlePlayerClick(data.player.id, e)
+                        }}
+                      >
                         {/* Show ADP round segment if target and ADP rounds are the same, otherwise show full range in target color */}
                         {data.adpRound === data.targetRound ? (
                           <div
@@ -282,6 +316,23 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
                  }}
                >
                  {getRoundAndPickShortText(currPick, fantasySettings.numTeams)}
+               </div>
+             )}
+
+             {/* Player name popover */}
+             {hoveredPlayerId && (
+               <div
+                 className="fixed bg-black text-white text-sm px-3 py-2 rounded shadow-lg z-50 pointer-events-none"
+                 style={{
+                   left: popoverPosition.x,
+                   top: popoverPosition.y,
+                   transform: 'translateX(-50%) translateY(-100%)'
+                 }}
+               >
+                 {playerLib[hoveredPlayerId]?.fullName}
+                 <div className="text-xs text-gray-300 mt-1">
+                   {playerLib[hoveredPlayerId]?.position} | {playerLib[hoveredPlayerId]?.team}
+                 </div>
                </div>
              )}
            </div>
