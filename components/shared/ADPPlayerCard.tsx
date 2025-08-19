@@ -16,7 +16,7 @@ interface ADPPlayerCardProps {
   isPlayerTargeted?: boolean
   playerTarget?: PlayerTarget
   userPickForRound?: number
-  addPlayerTarget?: (player: Player, targetAsEarlyAs: number) => void
+  addPlayerTarget?: (player: Player, targetAsEarlyAsRound: number) => void
   removePlayerTarget?: (playerId: string) => void
   // Optional styling overrides
   showAdpRound?: boolean // Show ADP round instead of availability

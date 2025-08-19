@@ -21,7 +21,7 @@ interface ADPViewProps {
   setViewPlayerId: (id: string) => void
   playerTargets: PlayerTarget[]
   playerLib: { [key: string]: Player }
-  addPlayerTarget: (player: Player, targetAsEarlyAs: number) => void
+  addPlayerTarget: (player: Player, targetAsEarlyAsRound: number) => void
   replacePlayerTargets: (targets: PlayerTarget[]) => void
   removePlayerTarget: (playerId: string) => void
   removePlayerTargets: (playerIds: string[]) => void

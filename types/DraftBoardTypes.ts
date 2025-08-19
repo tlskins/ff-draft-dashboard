@@ -49,7 +49,7 @@ export interface SharedViewProps {
   viewPlayerId: string | null
   playerTargets: PlayerTarget[]
   customAndLatestRankingsDiffs: { [key: string]: PlayerRankingDiff }
-  addPlayerTarget: (player: Player, targetAsEarlyAs: number) => void
+  addPlayerTarget: (player: Player, targetAsEarlyAsRound: number) => void
   removePlayerTarget: (playerId: string) => void
 }
 

@@ -79,13 +79,15 @@ export const useADPView = ({
     let currentPickIndex = 0
     
     targetPlayers.forEach(player => {
-      const earlyAs = targetPlayersMap[player.id].targetAsEarlyAs
+      const targetRound = targetPlayersMap[player.id].targetAsEarlyAsRound
       const target = playerTargets.find(t => t.playerId === player.id)!
       
-      // Add dividers for any picks that come before this player's ADP
-      while (currentPickIndex < myPicks.length && myPicks[currentPickIndex] <= earlyAs) {
+      // Add dividers for any picks that come before this player's target round
+      while (currentPickIndex < myPicks.length) {
         const pick = myPicks[currentPickIndex]
-        const round = getRoundIdxForPickNum(pick, fantasySettings.numTeams) + 1
+        const pickRound = getRoundIdxForPickNum(pick, fantasySettings.numTeams) + 1
+        if (pickRound > targetRound) break
+        const round = pickRound
         sections.push({ type: 'divider', round, pick })
         currentPickIndex++
       }

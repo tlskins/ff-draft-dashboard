@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Player, FantasySettings, BoardSettings, RankingSummary, PlayerTarget } from '../types'
-import { getPlayerAdp, getPlayerMetrics, getRoundAndPickShortText, getMyPicksBetween, getRoundIdxForPickNum } from '../behavior/draft'
+import { getPlayerAdp, getPlayerMetrics, getRoundAndPickShortText, getRoundIdxForPickNum } from '../behavior/draft'
 import { getPosStyle, getTierStyle } from '../behavior/styles'
 import HistoricalStats from './HistoricalStats'
 import { playerShortName } from '../behavior/presenters'
@@ -13,7 +13,7 @@ interface PlayerSearchModalProps {
   boardSettings: BoardSettings
   rankingSummaries: RankingSummary[]
   playerTargets: PlayerTarget[]
-  addPlayerTarget: (player: Player, targetAsEarlyAs: number) => void
+  addPlayerTarget: (player: Player, targetAsEarlyAsRound: number) => void
   removePlayerTarget: (playerId: string) => void
   myPickNum: number
   currPick: number
@@ -66,17 +66,18 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
       .slice(0, 20) // Limit to top 20 results
   }, [searchTerm, allPlayers, fantasySettings, boardSettings])
 
-  // Calculate user's pick options for targeting
+  // Calculate user's round options for targeting
   const targetingOptions = useMemo(() => {
-    const startPick = currPick > 0 ? currPick : 1
-    const myPicks = getMyPicksBetween(startPick - 1, fantasySettings.numTeams * 15, myPickNum, fantasySettings.numTeams)
+    const startRound = currPick > 0 ? getRoundIdxForPickNum(currPick, fantasySettings.numTeams) + 1 : 1
     
-    return myPicks.map(pick => ({
-      pick,
-      round: getRoundIdxForPickNum(pick, fantasySettings.numTeams) + 1,
-      label: getRoundAndPickShortText(pick, fantasySettings.numTeams)
-    })).slice(0, 15) // Limit to next 15 picks
-  }, [currPick, myPickNum, fantasySettings.numTeams])
+    return Array.from({ length: 15 }, (_, i) => {
+      const round = startRound + i
+      return {
+        round,
+        label: `Round ${round}`
+      }
+    }).filter(option => option.round <= 15) // Limit to reasonable round range
+  }, [currPick, fantasySettings.numTeams])
 
   // Get player favorite status
   const getPlayerFavorite = (playerId: string): PlayerTarget | undefined => {
@@ -99,9 +100,9 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
   }
 
   // Handle targeting
-  const handleAddTarget = (targetPick: number) => {
+  const handleAddTarget = (targetRound: number) => {
     if (selectedPlayer) {
-      addPlayerTarget(selectedPlayer, targetPick)
+      addPlayerTarget(selectedPlayer, targetRound)
       setShowTargetingSelect(false)
     }
   }
@@ -246,11 +247,11 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
                           <div className="space-y-1">
                             {targetingOptions.map((option) => (
                               <button
-                                key={option.pick}
-                                onClick={() => handleAddTarget(option.pick)}
+                                key={option.round}
+                                onClick={() => handleAddTarget(option.round)}
                                 className="block w-full text-left px-2 py-2 text-sm hover:bg-gray-100 rounded"
                               >
-                                Round {option.round}: {option.label}
+                                {option.label}
                               </button>
                             ))}
                           </div>
@@ -270,7 +271,7 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
                     </div>
                     {playerFavorite && (
                       <div className="text-xs text-blue-600 font-medium">
-                        Target: {getRoundAndPickShortText(playerFavorite.targetAsEarlyAs, fantasySettings.numTeams)}
+                        Target: Early as RD {playerFavorite.targetAsEarlyAsRound}
                       </div>
                     )}
                   </div>

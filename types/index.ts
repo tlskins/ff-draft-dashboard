@@ -277,5 +277,5 @@ export interface OptimalRoster {
 
 export interface PlayerTarget {
     playerId: string;
-    targetAsEarlyAs: number;
+    targetAsEarlyAsRound: number;
 }

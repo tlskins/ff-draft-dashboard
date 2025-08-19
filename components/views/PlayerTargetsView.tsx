@@ -15,10 +15,9 @@ interface PlayerTargetsViewProps {
 interface ChartData {
   player: Player
   target: PlayerTarget
-  targetRoundStart: number // Start pick of targetAsEarlyAs round
-  targetPick: number // targetAsEarlyAs pick
+  targetRound: number // targetAsEarlyAsRound
   playerAdp: number
-  adpRoundEnd: number // End pick of ADP round
+  adpRound: number // ADP round
   sortKey: number // For sorting
 }
 
@@ -56,26 +55,17 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
         const player = playerLib[target.playerId]
         if (!player || !availablePlayerIds.has(player.id)) return null
 
-        const targetPick = target.targetAsEarlyAs
+        const targetRound = target.targetAsEarlyAsRound
         const playerAdp = getPlayerAdp(player, fantasySettings, boardSettings)
-        
-        // Calculate round boundaries
-        const targetRound = getRoundNumForPickNum(targetPick, fantasySettings.numTeams)
-        const targetRoundIdx = getRoundIdxForPickNum(targetPick, fantasySettings.numTeams)
-        const targetRoundStart = targetRoundIdx * fantasySettings.numTeams + 1
-        
         const adpRound = getRoundNumForPickNum(playerAdp, fantasySettings.numTeams)
-        const adpRoundIdx = getRoundIdxForPickNum(playerAdp, fantasySettings.numTeams)
-        const adpRoundEnd = (adpRoundIdx + 1) * fantasySettings.numTeams
 
         return {
           player,
           target,
-          targetRoundStart,
-          targetPick,
+          targetRound,
           playerAdp,
-          adpRoundEnd,
-          sortKey: targetPick * 1000 + playerAdp // Sort by target pick first, then ADP
+          adpRound,
+          sortKey: targetRound * 1000 + adpRound // Sort by target round first, then ADP round
         }
       })
       .filter((item): item is ChartData => item !== null)
@@ -84,10 +74,10 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
     return data
   }, [playerTargets, playerLib, fantasySettings, boardSettings, playerRanks])
 
-  // Calculate Y-axis labels and colors for rounds 1-10
+  // Calculate Y-axis labels and colors for rounds 1-15
   const roundLabels = useMemo(() => {
     const rounds = []
-    for (let round = 1; round <= 10; round++) {
+    for (let round = 1; round <= 15; round++) {
       const roundIdx = round - 1
       const startPick = roundIdx * fantasySettings.numTeams + 1
       const endPick = round * fantasySettings.numTeams
@@ -95,7 +85,8 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
       // Different colors for each round
       const colors = [
         'bg-red-100', 'bg-orange-100', 'bg-yellow-100', 'bg-green-100', 'bg-blue-100',
-        'bg-indigo-100', 'bg-purple-100', 'bg-pink-100', 'bg-gray-100', 'bg-teal-100'
+        'bg-indigo-100', 'bg-purple-100', 'bg-pink-100', 'bg-gray-100', 'bg-teal-100',
+        'bg-rose-100', 'bg-amber-100', 'bg-lime-100', 'bg-cyan-100', 'bg-violet-100'
       ]
       
       rounds.push({
@@ -108,7 +99,7 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
     return rounds
   }, [fantasySettings.numTeams])
 
-  const maxPick = 10 * fantasySettings.numTeams // Round 10 end
+  const maxPick = 15 * fantasySettings.numTeams // Round 15 end
   const chartHeight = isMobile ? 600 : 700 // Increased height for better visibility
   const chartWidth = Math.max(chartData.length * (isMobile ? 60 : 80), isMobile ? 250 : 600) // Dynamic width based on number of targets
 
@@ -140,7 +131,7 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
                   <div
                     key={round.round}
                     className={`${round.color} border-b border-gray-200 flex items-center justify-center text-xs font-semibold text-gray-700`}
-                    style={{ height: chartHeight / 10 }}
+                    style={{ height: chartHeight / 15 }}
                   >
                     R{round.round}
                   </div>
@@ -185,81 +176,99 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
                    />
                  )}
 
-                 {/* Player target bars */}
-                 {chartData.map((data, idx) => {
-                   const barSpacing = isMobile ? 60 : 80
-                   const x = idx * barSpacing + barSpacing/2 // Center each bar in its column
-                   const barWidth = isMobile ? 45 : 60
+                                 {/* Player target bars */}
+                {chartData.map((data, idx) => {
+                  const barSpacing = isMobile ? 60 : 80
+                  const x = idx * barSpacing + barSpacing/2 // Center each bar in its column
+                  const barWidth = isMobile ? 45 : 60
 
-                   // Calculate bar segments (Y-axis inverted: smaller picks at top)
-                   const topY = getPickPosition(data.targetRoundStart)
-                   const targetY = getPickPosition(data.targetPick)
-                   const adpY = getPickPosition(data.playerAdp)
-                   const bottomY = getPickPosition(data.adpRoundEnd)
+                  // Calculate round positions (Y-axis inverted: round 1 at top)
+                  const targetRoundStart = (data.targetRound - 1) * fantasySettings.numTeams + 1
+                  const targetRoundEnd = data.targetRound * fantasySettings.numTeams
+                  const adpRoundStart = (data.adpRound - 1) * fantasySettings.numTeams + 1
+                  const adpRoundEnd = data.adpRound * fantasySettings.numTeams
+                  
+                  const topY = getPickPosition(targetRoundStart)
+                  const targetEndY = getPickPosition(targetRoundEnd)
+                  const adpStartY = getPickPosition(adpRoundStart)
+                  const adpEndY = getPickPosition(adpRoundEnd)
 
-                   return (
-                     <div key={data.player.id} className="absolute border-2 border-black" style={{ 
-                       left: x - barWidth/2,
-                       top: topY,
-                       height: bottomY - topY,
-                       width: barWidth
-                     }}>
-                       {/* Segment 1: Round start to target pick */}
-                       <div
-                         className="absolute bg-blue-300"
-                         style={{
-                           top: 0,
-                           height: targetY - topY,
-                           width: '100%',
-                         }}
-                       />
-                       
-                       {/* Segment 2: Target pick (highlighted) */}
-                       <div
-                         className="absolute bg-blue-600"
-                         style={{
-                           top: targetY - topY - 2,
-                           height: 4,
-                           width: '100%',
-                         }}
-                       />
-                       
-                       {/* Segment 3: Target pick to ADP */}
-                       {adpY > targetY && (
-                         <div
-                           className="absolute bg-red-300"
-                           style={{
-                             top: targetY - topY,
-                             height: adpY - targetY,
-                             width: '100%',
-                           }}
-                         />
-                       )}
-                       
-                       {/* Segment 4: ADP to round end */}
-                       {bottomY > adpY && (
-                         <div
-                           className="absolute bg-red-600"
-                           style={{
-                             top: adpY - topY,
-                             height: bottomY - adpY,
-                             width: '100%',
-                           }}
-                         />
-                       )}
+                  // Calculate the full range from target round to ADP round
+                  const earliestRound = Math.min(data.targetRound, data.adpRound)
+                  const latestRound = Math.max(data.targetRound, data.adpRound)
+                  const fullRangeStart = (earliestRound - 1) * fantasySettings.numTeams + 1
+                  const fullRangeEnd = latestRound * fantasySettings.numTeams
+                  const fullTopY = getPickPosition(fullRangeStart)
+                  const fullEndY = getPickPosition(fullRangeEnd)
 
-                       {/* ADP marker */}
-                       <div
-                         className="absolute bg-red-900"
-                         style={{
-                           top: adpY - topY - 2,
-                           height: 4,
-                           width: '100%',
-                         }}
-                       />
-                     </div>
-                   )
-                 })}
+                  return (
+                    <>
+                      {/* Player name above the segment */}
+                      <div
+                        className="absolute text-xs font-bold text-center pointer-events-none"
+                        style={{
+                          left: x - barWidth/2,
+                          top: fullTopY - 20,
+                          width: barWidth,
+                          color: '#333'
+                        }}
+                      >
+                        {playerShortName(data.player.fullName)}
+                      </div>
+
+                      <div key={data.player.id} className="absolute border-2 border-black" style={{ 
+                        left: x - barWidth/2,
+                        top: fullTopY,
+                        height: fullEndY - fullTopY,
+                        width: barWidth
+                      }}>
+                        {/* Show ADP round segment if target and ADP rounds are the same, otherwise show full range in target color */}
+                        {data.adpRound === data.targetRound ? (
+                          <div
+                            className="absolute bg-red-400"
+                            style={{
+                              top: 0,
+                              height: fullEndY - fullTopY,
+                              width: '100%',
+                            }}
+                          />
+                        ) : (
+                          <>
+                            {/* Full range from target round to ADP round in target color */}
+                            <div
+                              className="absolute bg-blue-400"
+                              style={{
+                                top: 0,
+                                height: fullEndY - fullTopY,
+                                width: '100%',
+                              }}
+                            />
+                            
+                            {/* ADP round segment overlay in ADP color */}
+                            <div
+                              className="absolute bg-red-400"
+                              style={{
+                                top: adpStartY - fullTopY,
+                                height: adpEndY - adpStartY,
+                                width: '100%',
+                              }}
+                            />
+                          </>
+                        )}
+
+                        {/* ADP marker */}
+                        <div
+                          className="absolute bg-red-900"
+                          style={{
+                            top: getPickPosition(data.playerAdp) - fullTopY - 2,
+                            height: 4,
+                            width: '100%',
+                          }}
+                        />
+                      </div>
+                    </>
+                  )
+                })}
                </div>
              </div>
              
@@ -292,46 +301,38 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
                        transform: 'translateX(-50%)'
                      }}
                    >
-                     <div className="font-semibold truncate">{playerShortName(data.player.fullName)}</div>
-                     <div className="text-gray-600">{data.player.position} | {data.player.team}</div>
-                     <div className="text-gray-500">TGT: {getRoundAndPickShortText(data.targetPick, fantasySettings.numTeams)}</div>
-                     <div className="text-gray-500">ADP: {getRoundAndPickShortText(Math.round(data.playerAdp), fantasySettings.numTeams)}</div>
+                                         <div className="font-semibold truncate">{playerShortName(data.player.fullName)}</div>
+                    <div className="text-gray-600">{data.player.position} | {data.player.team}</div>
+                    <div className="text-gray-500">Early as RD {data.targetRound}</div>
+                    <div className="text-gray-500">ADP: {getRoundAndPickShortText(Math.round(data.playerAdp), fantasySettings.numTeams)}</div>
                    </div>
                  )
                })}
              </div>
            </div>
 
-           {/* Legend */}
-           <div className={`${isMobile ? 'mt-2' : 'mt-4'} p-2 md:p-3 bg-gray-50 rounded-lg flex-shrink-0`}>
-             <h3 className={`text-base md:text-lg font-semibold ${isMobile ? 'mb-1' : 'mb-2 md:mb-3'}`}>Legend</h3>
-             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-4">
-               <div className="flex items-center">
-                 <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-300 border-2 border-black mr-1 md:mr-2"></div>
-                 <span className="text-xs md:text-sm">Rd start to target</span>
-               </div>
-               <div className="flex items-center">
-                 <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-600 border-2 border-black mr-1 md:mr-2"></div>
-                 <span className="text-xs md:text-sm">Target pick</span>
-               </div>
-               <div className="flex items-center">
-                 <div className="w-3 h-3 md:w-4 md:h-4 bg-red-300 border-2 border-black mr-1 md:mr-2"></div>
-                 <span className="text-xs md:text-sm">Target to ADP</span>
-               </div>
-               <div className="flex items-center">
-                 <div className="w-3 h-3 md:w-4 md:h-4 bg-red-900 border-2 border-black mr-1 md:mr-2"></div>
-                 <span className="text-xs md:text-sm">ADP</span>
-               </div>
-               <div className="flex items-center">
-                 <div className="w-3 h-3 md:w-4 md:h-4 bg-red-600 border-2 border-black mr-1 md:mr-2"></div>
-                 <span className="text-xs md:text-sm">ADP to round end</span>
-               </div>
-               <div className="flex items-center">
-                 <div className="w-6 h-0.5 md:w-8 md:h-0.5 bg-purple-900 mr-1 md:mr-2"></div>
-                 <span className="text-xs md:text-sm">Current pick</span>
-               </div>
-             </div>
-           </div>
+                     {/* Legend */}
+          <div className={`${isMobile ? 'mt-2' : 'mt-4'} p-2 md:p-3 bg-gray-50 rounded-lg flex-shrink-0`}>
+            <h3 className={`text-base md:text-lg font-semibold ${isMobile ? 'mb-1' : 'mb-2 md:mb-3'}`}>Legend</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
+              <div className="flex items-center">
+                <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-400 border-2 border-black mr-1 md:mr-2"></div>
+                <span className="text-xs md:text-sm">Target round</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 md:w-4 md:h-4 bg-red-400 border-2 border-black mr-1 md:mr-2"></div>
+                <span className="text-xs md:text-sm">ADP round</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 md:w-4 md:h-4 bg-red-900 border-2 border-black mr-1 md:mr-2"></div>
+                <span className="text-xs md:text-sm">ADP pick</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-6 h-0.5 md:w-8 md:h-0.5 bg-purple-900 mr-1 md:mr-2"></div>
+                <span className="text-xs md:text-sm">Current pick</span>
+              </div>
+            </div>
+          </div>
          </div>
         )}
       </div>

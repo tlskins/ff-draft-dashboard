@@ -639,7 +639,7 @@ export const useRanks = ({
   ])
 
   // Player targeting functions
-  const addPlayerTarget = useCallback((player: Player, targetAsEarlyAs: number) => {
+  const addPlayerTarget = useCallback((player: Player, targetAsEarlyAsRound: number) => {
     setPlayerTargets(prevTargets => {
       // Check if player is already targeted
       const isAlreadyTargeted = prevTargets.some(target => target.playerId === player.id)
@@ -647,7 +647,7 @@ export const useRanks = ({
 
       const newTarget: PlayerTarget = {
         playerId: player.id,
-        targetAsEarlyAs
+        targetAsEarlyAsRound
       }
       return [...prevTargets, newTarget]
     })

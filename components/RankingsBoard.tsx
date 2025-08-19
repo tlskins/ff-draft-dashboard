@@ -65,7 +65,7 @@ interface RankingsBoardProps {
   customAndLatestRankingsDiffs: { [key: string]: PlayerRankingDiff },
   onSyncPendingRankings: () => void,
   onRevertPlayerToPreSync: (playerId: string) => void,
-  addPlayerTarget: (player: Player, targetAsEarlyAs: number) => void,
+  addPlayerTarget: (player: Player, targetAsEarlyAsRound: number) => void,
   removePlayerTarget: (playerId: string) => void
 }
 

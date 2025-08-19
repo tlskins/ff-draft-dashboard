@@ -340,7 +340,7 @@ const RankingView = ({
                               <div className="flex text-center items-center justify-center w-full">
                                 { playerFavorite ?
                                   <p className="bg-blue-500 text-white rounded px-1 py-0.5 mt-0.5 ml-1">
-                                    { playerShortName(fullName) } ({team}) ★ @ {getRoundAndPickShortText(playerFavorite.targetAsEarlyAs || 0, fantasySettings.numTeams)}
+                                    { playerShortName(fullName) } ({team}) ★ @ Early as RD {playerFavorite.targetAsEarlyAsRound}
                                   </p>
                                   :
                                   <p className="text-sm font-semibold">

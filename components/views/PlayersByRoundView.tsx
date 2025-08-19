@@ -16,7 +16,7 @@ interface PlayersByRoundViewProps {
   setViewPlayerId: (id: string) => void
   playerTargets: PlayerTarget[]
   playerLib: { [key: string]: Player }
-  addPlayerTarget: (player: Player, targetAsEarlyAs: number) => void
+  addPlayerTarget: (player: Player, targetAsEarlyAsRound: number) => void
   replacePlayerTargets: (targets: PlayerTarget[]) => void
   removePlayerTarget: (playerId: string) => void
   removePlayerTargets: (playerIds: string[]) => void
@@ -100,17 +100,14 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
   }, [fantasySettings, boardSettings, playersByRound])
 
   const handleMovePlayerToRound = useCallback((playerId: string, round: number) => {
-    const newPickNumber = myPicks[round - 1] // round is 1-based, myPicks is 0-based
-    if (newPickNumber) {
-      const updatedTargets = playerTargets.map(target => 
-        target.playerId === playerId 
-          ? { ...target, targetAsEarlyAs: newPickNumber }
-          : target
-      )
-      replacePlayerTargets(updatedTargets)
-    }
+    const updatedTargets = playerTargets.map(target => 
+      target.playerId === playerId 
+        ? { ...target, targetAsEarlyAsRound: round }
+        : target
+    )
+    replacePlayerTargets(updatedTargets)
     setMovingPlayerId(null) // Exit move mode
-  }, [playerTargets, myPicks, replacePlayerTargets])
+  }, [playerTargets, replacePlayerTargets])
 
   return (
     <>
@@ -160,10 +157,34 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
 
       {/* Mobile Header - Simplified */}
       <div className="mb-4 md:hidden flex-shrink-0">
-        <h2 className="text-lg font-semibold text-gray-800 text-center">
-          Rounds {startRound}-{endRound}
-          {positionFilter !== 'All' && ` - ${positionFilter}`}
-        </h2>
+        <div className="flex justify-between items-center mb-2">
+          <button
+            onClick={handlePrevPage}
+            disabled={currentPage === 0}
+            className={`px-3 py-2 text-sm rounded ${
+              currentPage === 0
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            }`}
+          >
+            ← Prev
+          </button>
+          <h2 className="text-lg font-semibold text-gray-800 text-center">
+            Rounds {startRound}-{endRound}
+            {positionFilter !== 'All' && ` - ${positionFilter}`}
+          </h2>
+          <button
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages - 1}
+            className={`px-3 py-2 text-sm rounded ${
+              currentPage === totalPages - 1
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            }`}
+          >
+            Next →
+          </button>
+        </div>
       </div>
       
       {/* Main Grid - Dynamic based on rounds */}
@@ -212,8 +233,8 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
                   const adp = getPlayerAdp(player, fantasySettings, boardSettings)
                   const adpRound = getRoundNumForPickNum(adp, fantasySettings.numTeams)
                   
-                  // Find the user's pick for this round
-                  const userPickForRound = myPicks[round - 1] // round is 1-based, array is 0-based
+                  // Use the round number for targeting
+                  const userPickForRound = myPicks[round - 1] ? round : undefined // Only if user has a pick in this round
                   const playerTarget = playerTargets.find(target => target.playerId === player.id)
                   const isPlayerTargeted = !!playerTarget
                   
