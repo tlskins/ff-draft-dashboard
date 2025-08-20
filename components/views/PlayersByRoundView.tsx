@@ -5,6 +5,7 @@ import { useADPView, PositionFilter } from '../../behavior/hooks/useADPView'
 import MobileViewFooter from '../MobileViewFooter'
 import TargetsColumn from '../shared/TargetsColumn'
 import ADPPlayerCard from '../shared/ADPPlayerCard'
+import HorizontalTargetBars from '../shared/HorizontalTargetBars'
 
 interface PlayersByRoundViewProps {
   playerRanks: PlayerRanks
@@ -13,7 +14,7 @@ interface PlayersByRoundViewProps {
   viewPlayerId: string | null
   myPicks: number[]
   currPick: number
-  setViewPlayerId: (id: string) => void
+  setViewPlayerId: (id: string | null) => void
   playerTargets: PlayerTarget[]
   playerLib: { [key: string]: Player }
   addPlayerTarget: (player: Player, targetAsEarlyAsRound: number) => void
@@ -187,10 +188,30 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
         </div>
       </div>
       
+      {/* Horizontal Target Bars */}
+      <div className={`grid gap-2 min-w-full ${roundsToShow.length === 3 ? 'grid-cols-4' : 'grid-cols-5'}`}>
+        {/* Empty space for targets column */}
+        <div></div>
+        
+        {/* Horizontal target bars spanning round columns */}
+        <div className={`${roundsToShow.length === 3 ? 'col-span-3' : 'col-span-4'} relative`}>
+          <HorizontalTargetBars
+            playerTargets={playerTargets}
+            playerLib={playerLib}
+            fantasySettings={fantasySettings}
+            boardSettings={boardSettings}
+            roundsToShow={roundsToShow}
+            availablePlayerIds={new Set(playerRanks.availPlayersByOverallRank.map(player => player.id))}
+            setViewPlayerId={setViewPlayerId}
+            positionFilter={positionFilter}
+          />
+        </div>
+      </div>
+
       {/* Main Grid - Dynamic based on rounds */}
       <div 
         className={`grid gap-2 min-w-full mb-20 md:mb-4 ${roundsToShow.length === 3 ? 'grid-cols-4' : 'grid-cols-5'} overflow-hidden`}
-        style={{ height: 'calc(100vh - 170px)' }}
+        style={{ height: 'calc(100vh - 220px)' }}
       >
         {/* Player Targets Column */}
         <TargetsColumn

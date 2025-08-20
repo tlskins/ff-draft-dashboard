@@ -51,10 +51,8 @@ export const TargetsColumn: React.FC<TargetsColumnProps> = ({
         <p className="text-xs text-purple-600">
           ({playerTargets.length} players)
         </p>
-      </div>
-      
-      <div className="flex flex-col space-y-1 p-2 overflow-y-auto" style={{ height: 'calc(100% - 80px)' }}>
-        {/* Desktop Manage Targets Dropdown */}
+        
+        {/* Desktop Manage Targets Dropdown - moved to sticky header */}
         <div className="relative mt-2 hidden md:block">
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -108,7 +106,9 @@ export const TargetsColumn: React.FC<TargetsColumnProps> = ({
             </div>
           )}
         </div>
-
+      </div>
+      
+      <div className="flex flex-col space-y-1 p-2 overflow-y-auto" style={{ height: 'calc(100% - 120px)' }}>
         {organizedTargets.map((item, idx) => {
           if (item.type === 'divider') {
             const isInMoveMode = movingPlayerId !== null

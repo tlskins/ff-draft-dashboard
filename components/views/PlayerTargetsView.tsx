@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../types'
 import { getPlayerAdp, getRoundNumForPickNum, getRoundIdxForPickNum, getRoundAndPickShortText, PlayerRanks } from '../../behavior/draft'
 import { playerShortName } from '../../behavior/presenters'
+import { PositionFilter } from '../../behavior/hooks/useADPView'
 
 // Helper function to create extra short names for mobile (first initial + last initial)
 const getPlayerInitials = (fullName: string): string => {
@@ -21,6 +22,8 @@ interface PlayerTargetsViewProps {
   boardSettings: BoardSettings
   playerRanks: PlayerRanks
   currPick: number
+  positionFilter: PositionFilter
+  setPositionFilter: (filter: PositionFilter) => void
 }
 
 interface ChartData {
@@ -39,6 +42,8 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
   boardSettings,
   playerRanks,
   currPick,
+  positionFilter,
+  setPositionFilter,
 }) => {
   const [isMobile, setIsMobile] = useState(false)
   const [hoveredPlayerId, setHoveredPlayerId] = useState<string | null>(null)
@@ -68,6 +73,9 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
         const player = playerLib[target.playerId]
         if (!player || !availablePlayerIds.has(player.id)) return null
 
+        // Apply position filter
+        if (positionFilter !== 'All' && player.position !== positionFilter) return null
+
         const targetRound = target.targetAsEarlyAsRound
         const playerAdp = getPlayerAdp(player, fantasySettings, boardSettings)
         const adpRound = getRoundNumForPickNum(playerAdp, fantasySettings.numTeams)
@@ -85,7 +93,7 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
       .sort((a, b) => a.sortKey - b.sortKey)
 
     return data
-  }, [playerTargets, playerLib, fantasySettings, boardSettings, playerRanks])
+  }, [playerTargets, playerLib, fantasySettings, boardSettings, playerRanks, positionFilter])
 
   // Calculate Y-axis labels and colors for rounds 1-15
   const roundLabels = useMemo(() => {
@@ -139,13 +147,34 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
   return (
     <div className="h-full bg-white flex flex-col overflow-hidden" onClick={handleClickOutside}>
       <div className="p-3 md:p-6 overflow-auto flex-1 flex flex-col">
-        <h2 className="text-lg md:text-2xl font-bold text-gray-800 mb-2 md:mb-4 text-center flex-shrink-0">
-          Player Targets Visualization
-        </h2>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2 md:mb-4 flex-shrink-0">
+          <h2 className="text-lg md:text-2xl font-bold text-gray-800 text-center md:text-left">
+            Player Targets Visualization
+            {positionFilter !== 'All' && ` - ${positionFilter} Only`}
+          </h2>
+          
+          {/* Position Filter Dropdown */}
+          <div className="flex justify-center md:justify-end mt-2 md:mt-0">
+            <select
+              value={positionFilter}
+              onChange={(e) => setPositionFilter(e.target.value as PositionFilter)}
+              className="px-3 py-2 text-sm border border-gray-300 rounded bg-white text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="All">All Positions</option>
+              <option value="QB">QB Only</option>
+              <option value="RB">RB Only</option>
+              <option value="WR">WR Only</option>
+              <option value="TE">TE Only</option>
+            </select>
+          </div>
+        </div>
         
         {chartData.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
-            No player targets to display
+            {positionFilter !== 'All' 
+              ? `No ${positionFilter} player targets to display`
+              : 'No player targets to display'
+            }
           </div>
         ) : (
           <div className="flex flex-col flex-1 min-h-0">

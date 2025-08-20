@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { toast } from 'react-toastify'
 import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../types'
 import { PlayerRanks } from '../../behavior/draft'
 import { PositionFilter } from '../../behavior/hooks/useADPView'
@@ -18,7 +19,7 @@ interface ADPViewProps {
   myPicks: number[]
   currPick: number
   onSelectPlayer: (player: Player) => void
-  setViewPlayerId: (id: string) => void
+  setViewPlayerId: (id: string | null) => void
   playerTargets: PlayerTarget[]
   playerLib: { [key: string]: Player }
   addPlayerTarget: (player: Player, targetAsEarlyAsRound: number) => void
@@ -49,6 +50,7 @@ const ADPView: React.FC<ADPViewProps> = ({
   const [currentView, setCurrentView] = useState<ViewType>('playersByRound')
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
   const [isMobileViewOpen, setIsMobileViewOpen] = useState(false)
+  const [isMobileTargetsOpen, setIsMobileTargetsOpen] = useState(false)
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
 
   const handleSwitchToTargetsView = () => {
@@ -61,6 +63,53 @@ const ADPView: React.FC<ADPViewProps> = ({
 
   const handleSwitchToADPRoundsView = () => {
     setCurrentView('playersByADPRound')
+  }
+
+  // Mobile target management handlers
+  const handleSaveFavorites = () => {
+    try {
+      localStorage.setItem('ff-draft-favorites', JSON.stringify(playerTargets))
+      toast.success('Targets saved successfully!')
+    } catch (error) {
+      toast.error('Failed to save targets')
+    }
+  }
+
+  const handleLoadFavorites = () => {
+    try {
+      const savedFavorites = localStorage.getItem('ff-draft-favorites')
+      if (savedFavorites) {
+        const savedTargets = JSON.parse(savedFavorites) as PlayerTarget[]
+        if (Array.isArray(savedTargets) && savedTargets.length > 0) {
+          const newTargets = savedTargets.filter( target => {
+            const player = playerLib[target.playerId]
+            return Boolean(player)
+          })
+          replacePlayerTargets(newTargets)
+          toast.success('Targets loaded successfully!')
+        } else {
+          toast.info('No saved favorites found')
+        }
+      } else {
+        toast.info('No saved favorites found')
+      }
+    } catch (error) {
+      toast.error('Failed to load favorites')
+    }
+  }
+
+  const handleClearFavorites = () => {
+    if (confirm('Are you sure you want to clear all player targets?')) {
+      const playerIds = playerTargets.map(target => target.playerId)
+      removePlayerTargets(playerIds)
+      try {
+        localStorage.removeItem('ff-draft-favorites')
+        toast.success('Targets cleared successfully!')
+      } catch (error) {
+        // Ignore localStorage errors on clear
+        toast.success('Targets cleared successfully!')
+      }
+    }
   }
 
   return (
@@ -118,20 +167,13 @@ const ADPView: React.FC<ADPViewProps> = ({
 
       {/* Mobile Header */}
       <div className="mb-4 md:hidden flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-800 text-center flex-1">
+        <div className="flex items-center justify-center">
+          <h2 className="text-lg font-semibold text-gray-800 text-center">
             {currentView === 'playersByRound' ? 'Highest Ranked Avail Players by Round' : 
              currentView === 'playersByADPRound' ? 'Players by ADP Round' : 
              'Targets Visualization'}
             {(currentView === 'playersByRound' || currentView === 'playersByADPRound') && positionFilter !== 'All' && ` - ${positionFilter}`}
           </h2>
-          <button
-            onClick={() => setIsSearchModalOpen(true)}
-            className="ml-3 p-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow transition-colors flex-shrink-0"
-            title="Search Players"
-          >
-            🔍
-          </button>
         </div>
       </div>
       
@@ -183,6 +225,8 @@ const ADPView: React.FC<ADPViewProps> = ({
             boardSettings={boardSettings}
             playerRanks={playerRanks}
             currPick={currPick}
+            positionFilter={positionFilter}
+            setPositionFilter={setPositionFilter}
           />
         )}
       </div>
@@ -197,6 +241,7 @@ const ADPView: React.FC<ADPViewProps> = ({
             isOpen: isMobileViewOpen,
             onToggle: () => {
               setIsMobileViewOpen(!isMobileViewOpen)
+              setIsMobileTargetsOpen(false)
             },
             variant: 'primary',
             items: [
@@ -226,11 +271,64 @@ const ADPView: React.FC<ADPViewProps> = ({
                 disabled: playerTargets.length === 0
               }
             ]
+          },
+          {
+            label: 'Manage Targets',
+            isOpen: isMobileTargetsOpen,
+            onToggle: () => {
+              setIsMobileTargetsOpen(!isMobileTargetsOpen)
+              setIsMobileViewOpen(false)
+            },
+            variant: 'purple',
+            items: [
+              {
+                label: 'Save targets',
+                onClick: () => {
+                  handleSaveFavorites()
+                  setIsMobileTargetsOpen(false)
+                },
+                disabled: playerTargets.length === 0
+              },
+              {
+                label: 'Load targets',
+                onClick: () => {
+                  handleLoadFavorites()
+                  setIsMobileTargetsOpen(false)
+                }
+              },
+              {
+                label: 'Clear targets',
+                onClick: () => {
+                  handleClearFavorites()
+                  setIsMobileTargetsOpen(false)
+                },
+                disabled: playerTargets.length === 0
+              },
+              {
+                label: 'Visualize targets',
+                onClick: () => {
+                  handleSwitchToTargetsView()
+                  setIsMobileTargetsOpen(false)
+                },
+                disabled: playerTargets.length === 0
+              }
+            ]
           }
         ]}
-        buttons={[]}
+        buttons={[
+          {
+            label: '🔍',
+            onClick: () => {
+              setIsSearchModalOpen(true)
+              setIsMobileViewOpen(false)
+              setIsMobileTargetsOpen(false)
+            },
+            variant: 'secondary'
+          }
+        ]}
         onClickOutside={() => {
           setIsMobileViewOpen(false)
+          setIsMobileTargetsOpen(false)
         }}
       />
 
