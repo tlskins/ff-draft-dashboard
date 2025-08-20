@@ -47,7 +47,7 @@ const ADPView: React.FC<ADPViewProps> = ({
   rankingSummaries,
   myPickNum,
 }) => {
-  const [currentView, setCurrentView] = useState<ViewType>('playersByRound')
+  const [currentView, setCurrentView] = useState<ViewType>('playersByADPRound')
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
   const [isMobileViewOpen, setIsMobileViewOpen] = useState(false)
   const [isMobileTargetsOpen, setIsMobileTargetsOpen] = useState(false)
@@ -118,8 +118,8 @@ const ADPView: React.FC<ADPViewProps> = ({
       <div className="mb-4 hidden md:block flex-shrink-0">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-semibold text-gray-800">
-            {currentView === 'playersByRound' ? 'Available By Round' : 
-             currentView === 'playersByADPRound' ? 'Players by ADP Round' : 
+            {currentView === 'playersByRound' ? 'Best Available' : 
+             currentView === 'playersByADPRound' ? 'Best By ADP Round' : 
              'Player Targets Visualization'}
             {(currentView === 'playersByRound' || currentView === 'playersByADPRound') && positionFilter !== 'All' && ` - ${positionFilter} Only`}
           </h2>
@@ -130,7 +130,7 @@ const ADPView: React.FC<ADPViewProps> = ({
               className="px-2 py-1 text-sm border border-gray-300 rounded bg-white text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="playersByRound">Highest Ranked Avail Players by Round</option>
-              <option value="playersByADPRound">Players Expected to be Drafted by Round</option>
+              <option value="playersByADPRound">Highest Ranked By ADP Round</option>
               <option value="playerTargets">Targets Visualization</option>
             </select>
           </div>
@@ -169,8 +169,8 @@ const ADPView: React.FC<ADPViewProps> = ({
       <div className="mb-4 md:hidden flex-shrink-0">
         <div className="flex items-center justify-center">
           <h2 className="text-lg font-semibold text-gray-800 text-center">
-            {currentView === 'playersByRound' ? 'Highest Ranked Avail Players by Round' : 
-             currentView === 'playersByADPRound' ? 'Players by ADP Round' : 
+            {currentView === 'playersByRound' ? 'Best Available' : 
+             currentView === 'playersByADPRound' ? 'Best By ADP Round' : 
              'Targets Visualization'}
             {(currentView === 'playersByRound' || currentView === 'playersByADPRound') && positionFilter !== 'All' && ` - ${positionFilter}`}
           </h2>
@@ -205,7 +205,6 @@ const ADPView: React.FC<ADPViewProps> = ({
             boardSettings={boardSettings}
             viewPlayerId={viewPlayerId}
             myPicks={myPicks}
-            currPick={currPick}
             setViewPlayerId={setViewPlayerId}
             playerTargets={playerTargets}
             playerLib={playerLib}
@@ -254,7 +253,7 @@ const ADPView: React.FC<ADPViewProps> = ({
                 isSelected: currentView === 'playersByRound'
               },
               {
-                label: 'Players Expected to be Drafted by Round',
+                label: 'Highest Ranked By ADP Round',
                 onClick: () => {
                   handleSwitchToADPRoundsView()
                   setIsMobileViewOpen(false)

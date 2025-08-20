@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Player, FantasySettings, BoardSettings } from '../../types'
+import { Player, FantasySettings, BoardSettings, FantasyPosition } from '../../types'
 import { getPlayerAdp, getPlayerMetrics, PlayerRanks, getRoundNumForPickNum } from '../draft'
 import { PositionFilter } from './useADPView'
 
@@ -31,7 +31,7 @@ export const useADPRoundView = ({
     // Filter players by position if a specific position is selected
     const filteredPlayers = positionFilter === 'All' 
       ? availablePlayers 
-      : availablePlayers.filter(player => player.position === positionFilter)
+      : availablePlayers.filter(player => player.position === positionFilter as FantasyPosition)
     
     // Organize filtered players by their ADP round
     filteredPlayers.forEach(player => {

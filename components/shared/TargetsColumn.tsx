@@ -168,7 +168,7 @@ export const TargetsColumn: React.FC<TargetsColumnProps> = ({
                     {player.position} | {player.team}
                   </p>
                   <p className="text-xs font-medium text-gray-600">
-                                          Early as RD {item.target.targetAsEarlyAsRound}
+                    Early as RD {item.target.targetAsEarlyAsRound}
                   </p>
                   <p className="text-xs font-medium text-gray-600">
                     ADP {getRoundAndPickShortText(parseInt(adp.toFixed(0)), fantasySettings.numTeams)}

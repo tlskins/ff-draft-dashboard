@@ -57,7 +57,7 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
     handleSaveFavorites,
     handleLoadFavorites,
     handleClearFavorites,
-  } = useADPView({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib, replacePlayerTargets, removePlayerTargets })
+  } = useADPView({ playerRanks, fantasySettings, boardSettings, myPicks, playerTargets, playerLib, replacePlayerTargets, removePlayerTargets, positionFilter })
   
   const [isMobileTargetsOpen, setIsMobileTargetsOpen] = useState(false)
   const [isMobilePositionOpen, setIsMobilePositionOpen] = useState(false)

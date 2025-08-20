@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react'
 import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../types'
-import { PlayerRanks, getRoundIdxForPickNum } from '../../behavior/draft'
+import { PlayerRanks } from '../../behavior/draft'
 import { PositionFilter, useADPView } from '../../behavior/hooks/useADPView'
 import { useADPRoundView } from '../../behavior/hooks/useADPRoundView'
 import MobileViewFooter from '../MobileViewFooter'
@@ -14,7 +14,6 @@ interface PlayersByADPRoundViewProps {
   boardSettings: BoardSettings
   viewPlayerId: string | null
   myPicks: number[]
-  currPick: number
   setViewPlayerId: (id: string | null) => void
   playerTargets: PlayerTarget[]
   playerLib: { [key: string]: Player }
@@ -33,7 +32,6 @@ const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
   boardSettings,
   viewPlayerId,
   myPicks,
-  currPick,
   setViewPlayerId,
   playerTargets,
   playerLib,
@@ -66,7 +64,8 @@ const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
     playerTargets, 
     playerLib, 
     replacePlayerTargets, 
-    removePlayerTargets 
+    removePlayerTargets,
+    positionFilter
   })
 
   // Use the new ADP round view hook for organizing players by ADP round

@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { toast } from 'react-toastify'
-import { Player, FantasySettings, BoardSettings, PlayerTarget } from '../../types'
+import { Player, FantasySettings, BoardSettings, PlayerTarget, FantasyPosition } from '../../types'
 import { getPlayerAdp, getPlayerMetrics, PlayerRanks, getRoundIdxForPickNum } from '../draft'
 
 export type PositionFilter = 'All' | 'QB' | 'RB' | 'WR' | 'TE'
@@ -14,6 +14,7 @@ interface UseADPViewProps {
   playerLib: { [key: string]: Player }
   replacePlayerTargets: (targets: PlayerTarget[]) => void
   removePlayerTargets: (playerIds: string[]) => void
+  positionFilter: PositionFilter
 }
 
 export const useADPView = ({
@@ -25,9 +26,9 @@ export const useADPView = ({
   playerLib,
   replacePlayerTargets,
   removePlayerTargets,
+  positionFilter,
 }: UseADPViewProps) => {
   const [currentPage, setCurrentPage] = useState(0) // 0-based page index
-  const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
   const [isMobile, setIsMobile] = useState(false)
   const [hasAttemptedAutoLoad, setHasAttemptedAutoLoad] = useState(false)
   
@@ -63,11 +64,20 @@ export const useADPView = ({
     // Create a set of available player IDs for fast lookup
     const availablePlayerIds = new Set(playerRanks.availPlayersByOverallRank.map(player => player.id))
 
-    // Get target players and sort by ADP, only including available players
+    // Get target players and sort by target round first, then by ADP within each round, only including available players
     const targetPlayers = playerTargets
       .map(target => playerLib[target.playerId])
       .filter(player => player && availablePlayerIds.has(player.id)) // Filter out missing players and drafted players
       .sort((a, b) => {
+        const targetA = targetPlayersMap[a.id].targetAsEarlyAsRound
+        const targetB = targetPlayersMap[b.id].targetAsEarlyAsRound
+        
+        // First sort by target round
+        if (targetA !== targetB) {
+          return targetA - targetB
+        }
+        
+        // If target rounds are the same, sort by ADP
         const adpA = getPlayerAdp(a, fantasySettings, boardSettings)
         const adpB = getPlayerAdp(b, fantasySettings, boardSettings)
         return adpA - adpB
@@ -120,7 +130,7 @@ export const useADPView = ({
     // Filter players by position if a specific position is selected
     const filteredPlayers = positionFilter === 'All' 
       ? availablePlayers 
-      : availablePlayers.filter(player => player.position === positionFilter)
+      : availablePlayers.filter(player => player.position === positionFilter as FantasyPosition)
     
     // Organize filtered players by ADP rounds
     filteredPlayers.forEach(player => {
@@ -251,7 +261,6 @@ export const useADPView = ({
     // State
     currentPage,
     positionFilter,
-    setPositionFilter,
     
     // Computed values
     roundsPerPage,
