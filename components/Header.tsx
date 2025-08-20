@@ -181,7 +181,7 @@ const Header: React.FC<HeaderProps> = ({
               <Dropdown
                 title="Find Mock Draft"
                 options={[
-                  { title: "ESPN Mock Draft", callback: () => window.open(`https://fantasy.espn.com/football/mockdraftlobby?addata=right_rail_mock_ffl${new Date().getFullYear()}`) },
+                  { title: "ESPN Mock Draft", callback: () => window.open(`https://fantasy.espn.com/football/mockdraftlobby?addata=right_rail_mock_ff${new Date().getFullYear()}`) },
                   { title: "NFL.com Mock Draft", callback: () => window.open('https://fantasy.nfl.com/draftcenter/mockdrafts') },
                 ]}
                 className="md:m-2 m-0 px-3 py-2 hover:text-white hover:bg-blue-800 cursor-pointer bg-gray-100 shadow-md md:w-auto w-full"
