@@ -303,18 +303,22 @@ const RankingsBoard = ({
             
             { draftView === DraftView.RANKING && (
               <div className="hidden md:flex flex-row">
-                <button
-                  className="px-3 py-1 text-sm rounded shadow bg-red-300 hover:bg-red-600 hover:text-white mx-2"
-                  onClick={() => setShowPurgedModal(true)}
-                >
-                  View Purged Players ({purgedCount})
-                </button>
-                <button
-                  className="px-3 py-1 text-sm rounded shadow bg-green-300 hover:bg-green-600 hover:text-white mx-2"
-                  onClick={() => setShowRostersModal(true)}
-                >
-                  View Rosters
-                </button>
+                { draftStarted && (
+                  <>
+                    <button
+                      className="px-3 py-1 text-sm rounded shadow bg-red-300 hover:bg-red-600 hover:text-white mx-2"
+                      onClick={() => setShowPurgedModal(true)}
+                    >
+                      View Purged Players ({purgedCount})
+                    </button>
+                    <button
+                      className="px-3 py-1 text-sm rounded shadow bg-green-300 hover:bg-green-600 hover:text-white mx-2"
+                      onClick={() => setShowRostersModal(true)}
+                    >
+                      View Rosters
+                    </button>
+                  </>
+                )}
                 { savedRankingsOptions.length > 0 && (
                   <Dropdown
                     title="Manage Saved Rankings"
