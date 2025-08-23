@@ -6,6 +6,7 @@ import PageHead from "../components/pageHead"
 import Header from "../components/Header"
 import RankingsBoard from "../components/RankingsBoard"
 import HistoricalStats from "../components/HistoricalStats"
+import PlayerRankingTable from "../components/PlayerRankingTable"
 import RankingSummaryDisplay from "../components/RankingSummary"
 import ADPView from "../components/views/ADPView"
 import OptimalRosterDisplay from "../components/OptimalRosterDisplay"
@@ -318,6 +319,11 @@ const Home: FC = () => {
                   rankingSummaries={rankingSummaries}
                   settings={settings}
                   ranker={boardSettings.ranker}
+                />
+                <PlayerRankingTable
+                  player={viewPlayerId ? playerLib[viewPlayerId] : null}
+                  settings={settings}
+                  boardSettings={boardSettings}
                 />
                 <HistoricalStats
                   settings={settings}
