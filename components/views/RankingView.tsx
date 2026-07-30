@@ -87,7 +87,16 @@ const RankingView = ({
 
   // Get user's roster
   const myRosterIdx = myPickNum - 1
-  const myRoster = rosters[myRosterIdx] || { QB: [], RB: [], WR: [], TE: [], picks: [] }
+  const myRoster = useMemo(
+    () => rosters[myRosterIdx] || {
+      QB: [],
+      RB: [],
+      WR: [],
+      TE: [],
+      picks: [],
+    },
+    [myRosterIdx, rosters],
+  )
   const myRosterEmpty = useMemo(() => {
     return myRoster.QB.length === 0 && myRoster.RB.length === 0 && myRoster.WR.length === 0 && myRoster.TE.length === 0
   }, [myRoster])
@@ -446,4 +455,4 @@ const RankingView = ({
   )
 }
 
-export default RankingView 
+export default RankingView

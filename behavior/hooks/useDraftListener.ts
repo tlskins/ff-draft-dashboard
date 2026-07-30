@@ -1,178 +1,270 @@
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "react-toastify"
-import moment, { Moment } from "moment"
 import {
-  parseEspnDraftEvents,
-  parseNflDraftEvents,
+  parseEspnDraftPicks,
+  parseNflDraftPicks,
+  ParsedDraftPick,
+} from "../draft-feed/parsers"
+import {
+  DraftSnapshot,
+  EspnDraftPick,
+  NflDraftPick,
+  normalizeDraftFeedMessage,
+} from "../draft-feed/types"
+import { mergeDraftSnapshots } from "../draft-feed/snapshots"
+import {
   PlayerLibrary,
   PlayersByPositionAndTeam,
-  EspnDraftEventParsed,
-  ParsedNflDraftEvent,
-  Roster,
 } from "../draft"
+import {
+  FantasyPosition,
+  NFLTeam,
+  Player,
+} from "../../types"
 
 interface UseDraftListenerProps {
-  playerLib: PlayerLibrary;
-  playersByPosByTeam: PlayersByPositionAndTeam;
-  rosters: Roster[];
-  settings: { numTeams: number };
-  onDraftPlayer: (playerId: string, pickNum: number) => void;
-  setCurrPick: (pick: number) => void;
-  setDraftStarted: (started: boolean) => void;
-  draftStarted: boolean;
+  playerLib: PlayerLibrary
+  playersByPosByTeam: PlayersByPositionAndTeam
+  settings: { numTeams: number }
+  onDraftPlayer: (
+    playerId: string,
+    pickNum: number,
+    fallbackPlayer?: Player,
+  ) => void
+  setCurrPick: (pick: number) => void
+  setDraftStarted: (started: boolean) => void
+}
+
+interface DraftDecision {
+  listening: boolean | null
+  acceptToastId: string | number
+  rejectToastId: string | number
+}
+
+const LISTENER_STALE_AFTER_MS = 7_000
+
+const fallbackPosition = (position: string): FantasyPosition => {
+  const positions = Object.values(FantasyPosition) as string[]
+  return positions.includes(position)
+    ? position as FantasyPosition
+    : FantasyPosition.NONE
+}
+
+const fallbackTeam = (team: string): NFLTeam => {
+  const normalizedTeam = team === "PHI" ? NFLTeam.PHL : team
+  const teams = Object.values(NFLTeam) as string[]
+  return teams.includes(normalizedTeam)
+    ? normalizedTeam as NFLTeam
+    : NFLTeam.FA
+}
+
+const createFallbackPlayer = ({
+  id,
+  name,
+  team,
+  position,
+}: ParsedDraftPick): Player => {
+  const [firstName = name, ...lastNameParts] = name.trim().split(/\s+/)
+  return {
+    id,
+    firstName,
+    lastName: lastNameParts.join(" "),
+    fullName: name,
+    team: fallbackTeam(team),
+    position: fallbackPosition(position),
+    ranks: {},
+  }
 }
 
 export const useDraftListener = ({
   playerLib,
   playersByPosByTeam,
-  rosters,
   settings,
   onDraftPlayer,
   setCurrPick,
   setDraftStarted,
-  draftStarted,
 }: UseDraftListenerProps) => {
-  const listeningDraftTitle = useRef<{
-    [key: string]: {
-      listening: boolean | null;
-      acceptToastId: string | number;
-      rejectToastId: string | number;
-    };
-  }>({});
+  const decisions = useRef<Record<string, DraftDecision>>({})
+  const pendingSnapshots = useRef<Record<string, DraftSnapshot>>({})
+  const processedPicks = useRef(new Set<string>())
+  const lastListenerAck = useRef<number | null>(null)
 
-  const [activeDraftListenerTitle, setActiveDraftListenerTitle] = useState<string | null>(null)
-  const [lastListenerAck, setLastListenerAck] = useState<Moment | null>(null)
+  const [activeDraftListenerTitle, setActiveDraftListenerTitle] =
+    useState<string | null>(null)
   const [listenerActive, setListenerActive] = useState(false)
-  
-  const listenerCheckTimer = useRef<NodeJS.Timeout | null>(null)
 
-  const checkListenerActive = useCallback(() => {
-    if (lastListenerAck === null || moment().diff(lastListenerAck, 'seconds') > 5) {
-      setListenerActive( false )
-    } else {
-      setListenerActive( true )
-    }
+  const applySnapshot = useCallback((snapshot: DraftSnapshot) => {
+    const parsedPicks: ParsedDraftPick[] =
+      snapshot.platform === "ESPN"
+        ? parseEspnDraftPicks(
+            snapshot.picks as EspnDraftPick[],
+            settings.numTeams,
+          )
+        : parseNflDraftPicks(
+            snapshot.picks as NflDraftPick[],
+            playersByPosByTeam,
+          )
 
-    if (typeof window !== 'undefined') {
-      listenerCheckTimer.current = setTimeout(checkListenerActive, 6000)
-    }
-  }, [lastListenerAck, setListenerActive])
-
-  useEffect(() => {
-    checkListenerActive()
-
-    return () => {
-      if ( listenerCheckTimer.current ) {
-        clearTimeout( listenerCheckTimer.current )
+    let lastProcessedPick = 0
+    parsedPicks.forEach((parsedPick) => {
+      const { id, overallPick } = parsedPick
+      const pickKey = `${snapshot.id}:${overallPick}`
+      const player = playerLib[id]
+      if (processedPicks.current.has(pickKey)) {
+        return
       }
-    }
-  }, [checkListenerActive])
 
-  const processListenedDraftPick = useCallback( (event: MessageEvent) => {
-    if ( event.data.type !== "FROM_EXT" || Object.values( playerLib ).length === 0 ) {
-      return
-    }
-    if ( event.data.draftData === true ) {
-      console.log('listener ack received in app')
-      setLastListenerAck(moment())
-      return
-    }
-    const { draftData: { draftPicks: draftPicksData, draftTitle, platform } } = event.data
+      processedPicks.current.add(pickKey)
+      lastProcessedPick = Math.max(lastProcessedPick, overallPick)
 
-    if ( listeningDraftTitle.current[draftTitle] === undefined ) {
-      const acceptToastId = toast(
-        `Listen to draft: ${ draftTitle }`,
+      if (player) {
+        onDraftPlayer(id, overallPick)
+        toast(
+          `Pick #${overallPick}: ${player.fullName} - ${player.position} - ${player.team}`,
+          {
+            type: "success",
+            theme: "colored",
+            position: "top-right",
+          },
+        )
+        return
+      }
+
+      const fallbackPlayer = createFallbackPlayer(parsedPick)
+      onDraftPlayer(id, overallPick, fallbackPlayer)
+      toast(
+        `Pick #${overallPick}: ${fallbackPlayer.fullName} was added from the live draft but is missing ranking data`,
         {
-          autoClose: false,
-          hideProgressBar: true,
-          type: 'success',
-          theme: 'colored',
-          position:'top-right',
-          containerId: 'AcceptListenDraft',
-          onClick: () => {
-            if(listeningDraftTitle.current[draftTitle]) {
-              listeningDraftTitle.current[draftTitle]!.listening = true
-            }
-            setActiveDraftListenerTitle( draftTitle )
-            toast.dismiss(listeningDraftTitle.current[draftTitle]!.rejectToastId)
-          }
-        })
-      const rejectToastId = toast(
-        `Ignore draft: ${ draftTitle }`,
-        {
-          autoClose: false,
-          hideProgressBar: true,
-          type: 'error',
-          theme: 'colored',
-          position:'top-right',
-          containerId: 'RejectListenDraft',
-          onClick: () => {
-            if (listeningDraftTitle.current[draftTitle]) {
-              listeningDraftTitle.current[draftTitle]!.listening = false
-              toast.dismiss(listeningDraftTitle.current[draftTitle]!.acceptToastId)
-            }
-          }
-        })
-      listeningDraftTitle.current = {
-        ...listeningDraftTitle.current,
-        [draftTitle]: {
-          listening: null,
-          acceptToastId,
-          rejectToastId,
-        }
-      }
-      return
-    } else if ( !listeningDraftTitle.current[draftTitle]?.listening || draftPicksData.length === 0 ) {
-      return
-    }
-
-    let draftPicks: (EspnDraftEventParsed | ParsedNflDraftEvent | null)[] | undefined
-    if ( platform === 'ESPN') {
-      draftPicks = parseEspnDraftEvents( draftPicksData )
-    } else if ( platform === 'NFL' ) {
-      draftPicks = parseNflDraftEvents( draftPicksData, playersByPosByTeam )
-    }
-
-    if ( !draftPicks || draftPicks.length === 0 ) {
-      return
-    }
-
-    let lastPickNum = 1
-    draftPicks.forEach( draftPick => {
-      if (draftPick) {
-        const { id, ovrPick } = draftPick
-        if ( id && playerLib[id] ) {
-        const player = playerLib[id]
-          const { fullName, position, team } = player
-          const pickNum = ovrPick || (('round' in draftPick && 'pick' in draftPick) ? ((draftPick.round-1) * settings.numTeams) + draftPick.pick : 0)
-          if (pickNum > 0) {
-            onDraftPlayer(String(id), pickNum)
-            lastPickNum = pickNum
-            toast(
-              `Pick #${pickNum}: ${ fullName } - ${ position } - ${ team }`,
-              {
-                type: 'success',
-                theme: 'colored',
-                position:'top-right',
-              })
-          }
-        }
-      }
+          type: "warning",
+          theme: "colored",
+          position: "top-right",
+        },
+      )
     })
 
-    setCurrPick(lastPickNum+1)
-    if ( !draftStarted ) {
+    if (lastProcessedPick > 0) {
+      setCurrPick(lastProcessedPick + 1)
       setDraftStarted(true)
     }
-  }, [settings.numTeams, playerLib, rosters, playersByPosByTeam, draftStarted, onDraftPlayer, setCurrPick, setDraftStarted])
-  
-  useEffect(() => {
-    window.addEventListener("message", processListenedDraftPick )
-    
-    return () => {
-      window.removeEventListener("message", processListenedDraftPick )
+  }, [
+    onDraftPlayer,
+    playerLib,
+    playersByPosByTeam,
+    setCurrPick,
+    setDraftStarted,
+    settings.numTeams,
+  ])
+
+  const bufferSnapshot = useCallback((snapshot: DraftSnapshot) => {
+    pendingSnapshots.current[snapshot.id] = mergeDraftSnapshots(
+      pendingSnapshots.current[snapshot.id],
+      snapshot,
+    )
+  }, [])
+
+  const promptForDraft = useCallback((snapshot: DraftSnapshot) => {
+    const acceptToastId = toast(`Listen to draft: ${snapshot.title}`, {
+      autoClose: false,
+      hideProgressBar: true,
+      type: "success",
+      theme: "colored",
+      position: "top-right",
+      containerId: "AcceptListenDraft",
+      onClick: () => {
+        const decision = decisions.current[snapshot.id]
+        if (!decision) {
+          return
+        }
+
+        decision.listening = true
+        setActiveDraftListenerTitle(snapshot.title)
+        toast.dismiss(decision.rejectToastId)
+
+        const pendingSnapshot = pendingSnapshots.current[snapshot.id]
+        if (pendingSnapshot) {
+          applySnapshot(pendingSnapshot)
+          delete pendingSnapshots.current[snapshot.id]
+        }
+      },
+    })
+
+    const rejectToastId = toast(`Ignore draft: ${snapshot.title}`, {
+      autoClose: false,
+      hideProgressBar: true,
+      type: "error",
+      theme: "colored",
+      position: "top-right",
+      containerId: "RejectListenDraft",
+      onClick: () => {
+        const decision = decisions.current[snapshot.id]
+        if (!decision) {
+          return
+        }
+
+        decision.listening = false
+        delete pendingSnapshots.current[snapshot.id]
+        toast.dismiss(decision.acceptToastId)
+      },
+    })
+
+    decisions.current[snapshot.id] = {
+      listening: null,
+      acceptToastId,
+      rejectToastId,
     }
-  }, [processListenedDraftPick])
+  }, [applySnapshot])
+
+  const processExtensionMessage = useCallback((event: MessageEvent) => {
+    if (event.source !== window || Object.keys(playerLib).length === 0) {
+      return
+    }
+
+    const feedEvent = normalizeDraftFeedMessage(event.data)
+    if (!feedEvent) {
+      return
+    }
+
+    lastListenerAck.current = Date.now()
+    setListenerActive(true)
+
+    if (feedEvent.kind === "heartbeat") {
+      return
+    }
+
+    const { draft } = feedEvent
+    const decision = decisions.current[draft.id]
+    if (!decision) {
+      bufferSnapshot(draft)
+      promptForDraft(draft)
+      return
+    }
+
+    if (decision.listening === null) {
+      bufferSnapshot(draft)
+      return
+    }
+
+    if (decision.listening) {
+      applySnapshot(draft)
+    }
+  }, [applySnapshot, bufferSnapshot, playerLib, promptForDraft])
+
+  useEffect(() => {
+    const checkListener = () => {
+      const lastAck = lastListenerAck.current
+      setListenerActive(
+        lastAck !== null && Date.now() - lastAck <= LISTENER_STALE_AFTER_MS,
+      )
+    }
+
+    const interval = window.setInterval(checkListener, 2_000)
+    return () => window.clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener("message", processExtensionMessage)
+    return () => window.removeEventListener("message", processExtensionMessage)
+  }, [processExtensionMessage])
 
   return { listenerActive, activeDraftListenerTitle }
-} 
+}

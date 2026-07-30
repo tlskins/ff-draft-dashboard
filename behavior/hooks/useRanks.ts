@@ -167,32 +167,72 @@ export const useRanks = ({
   }
   const addPlayerToRoster = ( player: Player, pickNum: number ) => {
     const rosterIdx = getRosterIdxFromPick( pickNum )
-    const newRosters = addToRoster( rosters, player, rosterIdx)
-    setRosters( newRosters )
+    setRosters(currentRosters =>
+      addToRoster(currentRosters, player, rosterIdx)
+    )
   }
   const removePlayerFromRoster = ( player: Player, pickNum: number ) => {
     const rosterIdx = getRosterIdxFromPick( pickNum )
-    const nextRosters = removeFromRoster( rosters, player, rosterIdx )
-    setRosters( nextRosters )
+    setRosters(currentRosters =>
+      removeFromRoster(currentRosters, player, rosterIdx)
+    )
   }
 
   // draft history
 
-  const onDraftPlayer = (playerId: string, pickNum: number): void => {
-    draftHistory[pickNum - 1] = playerId;
-    setDraftHistory(draftHistory);
-    const player = playerLib[playerId]
-    onRemovePlayerFromBoard(player)
+  const onDraftPlayer = (
+    playerId: string,
+    pickNum: number,
+    fallbackPlayer?: Player,
+  ): void => {
+    const player = playerLib[playerId] || fallbackPlayer
+    if (!player) {
+      return
+    }
+
+    if (!playerLib[playerId]) {
+      setPlayerLib(currentPlayerLib => ({
+        ...currentPlayerLib,
+        [playerId]: player,
+      }))
+      setPlayersByPosByTeam(currentPlayers => {
+        const positionPlayers = currentPlayers[player.position] || {}
+        const teamPlayers = positionPlayers[player.team] || []
+        return {
+          ...currentPlayers,
+          [player.position]: {
+            ...positionPlayers,
+            [player.team]: [...teamPlayers, player],
+          },
+        }
+      })
+    }
+
+    setDraftHistory(currentHistory => {
+      const nextHistory = [...currentHistory]
+      nextHistory[pickNum - 1] = playerId
+      return nextHistory
+    })
+    setPlayerRanks(currentRanks =>
+      removePlayerFromBoard(currentRanks, player)
+    )
     addPlayerToRoster(player, pickNum)
   };
   const onRemoveDraftedPlayer = (pickNum: number) => {
     const playerId = draftHistory[pickNum - 1];
-    draftHistory[pickNum - 1] = null;
-    setDraftHistory(draftHistory);
+    setDraftHistory(currentHistory => {
+      const nextHistory = [...currentHistory]
+      nextHistory[pickNum - 1] = null
+      return nextHistory
+    })
     if (playerId) {
       const player = playerLib[playerId]
-      onAddAvailPlayer( player )
-      removePlayerFromRoster( player, pickNum )
+      if (player) {
+        setPlayerRanks(currentRanks =>
+          addAvailPlayer(currentRanks, player, settings, boardSettings)
+        )
+        removePlayerFromRoster( player, pickNum )
+      }
     }
   };
   const getDraftRoundForPickNum = (pickNum: number): (string | null)[] => {
@@ -220,14 +260,24 @@ export const useRanks = ({
     setPlayerRanks(nextPlayerRanks)
   }, [settings, boardSettings])
   const onRemovePlayerFromBoard = (player: Player) => {
-    const nextPlayerRanks = removePlayerFromBoard( playerRanks, player )
-    setPlayerRanks(nextPlayerRanks)
+    setPlayerRanks(currentRanks =>
+      removePlayerFromBoard(currentRanks, player)
+    )
   }
   const onAddAvailPlayer = (player: Player) => {
-    setPlayerRanks(addAvailPlayer( playerRanks, player, settings, boardSettings ))
+    setPlayerRanks(currentRanks =>
+      addAvailPlayer(currentRanks, player, settings, boardSettings)
+    )
   }
   const onPurgeAvailPlayer = (player: Player) => {
-    setPlayerRanks(purgePlayerFromPlayerRanks( playerRanks, player, settings, boardSettings ))
+    setPlayerRanks(currentRanks =>
+      purgePlayerFromPlayerRanks(
+        currentRanks,
+        player,
+        settings,
+        boardSettings,
+      )
+    )
   }
   const onApplyRankingSortBy = useCallback((byAdp: boolean) => {
     const sortBy = byAdp ? SortPlayersByMetric.Adp : SortPlayersByMetric.PosRank

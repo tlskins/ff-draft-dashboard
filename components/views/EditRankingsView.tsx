@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, useCallback } from "react"
 import { toast } from 'react-toastify'
 
 import { getPickDiffColor, getPosStyle, getTierStyle } from '../../behavior/styles'
@@ -129,7 +129,7 @@ const EditRankingsView = ({
   }
 
   // Calculate scrollbar thumb height and visibility
-  const getScrollbarMetrics = () => {
+  const getScrollbarMetrics = useCallback(() => {
     if (!scrollContainerRef) return { thumbHeight: 60, isScrollable: false }
     
     const container = scrollContainerRef
@@ -146,10 +146,10 @@ const EditRankingsView = ({
     const thumbHeight = Math.max(minThumbHeight, Math.min(maxThumbHeight, containerHeight * ratio))
     
     return { thumbHeight, isScrollable }
-  }
+  }, [scrollContainerRef])
 
   // Mobile scrollbar handlers
-  const updateScrollbarPosition = () => {
+  const updateScrollbarPosition = useCallback(() => {
     if (!scrollContainerRef || !scrollbarRef || !isMobileDevice()) {
       return
     }
@@ -180,7 +180,7 @@ const EditRankingsView = ({
     const thumbTop = scrollPercentage * maxThumbTop
     
     scrollbarThumb.style.transform = `translateY(${Math.max(0, Math.min(maxThumbTop, thumbTop))}px)`
-  }
+  }, [getScrollbarMetrics, scrollContainerRef, scrollbarRef])
 
   const handleScrollbarMouseDown = (e: React.MouseEvent) => {
     if (!isMobileDevice()) return
@@ -196,7 +196,7 @@ const EditRankingsView = ({
     setIsDraggingScrollbar(true)
   }
 
-  const handleScrollbarMove = (clientY: number) => {
+  const handleScrollbarMove = useCallback((clientY: number) => {
     if (!isDraggingScrollbar || !scrollContainerRef || !scrollbarRef) return
     
     const scrollbar = scrollbarRef
@@ -216,20 +216,25 @@ const EditRankingsView = ({
     
     const maxScrollTop = container.scrollHeight - container.clientHeight
     container.scrollTop = scrollPercentage * maxScrollTop
-  }
+  }, [
+    getScrollbarMetrics,
+    isDraggingScrollbar,
+    scrollContainerRef,
+    scrollbarRef,
+  ])
 
-  const handleScrollbarMouseMove = (e: MouseEvent) => {
+  const handleScrollbarMouseMove = useCallback((e: MouseEvent) => {
     handleScrollbarMove(e.clientY)
-  }
+  }, [handleScrollbarMove])
 
-  const handleScrollbarTouchMove = (e: TouchEvent) => {
+  const handleScrollbarTouchMove = useCallback((e: TouchEvent) => {
     e.preventDefault()
     handleScrollbarMove(e.touches[0].clientY)
-  }
+  }, [handleScrollbarMove])
 
-  const handleScrollbarEnd = () => {
+  const handleScrollbarEnd = useCallback(() => {
     setIsDraggingScrollbar(false)
-  }
+  }, [])
 
   const draftBoard = useMemo(() => {
     const myCurrRound = myCurrentRound(currPick, myPickNum, fantasySettings.numTeams)
@@ -253,6 +258,45 @@ const EditRankingsView = ({
   }
 
   const draftBoardView = draftBoard.standardView
+  const cardsForPosition = (position: FantasyPosition) =>
+    draftBoardView.find(column => column.columnTitle === position)?.cards || []
+
+  const quarterbackTierDividers = useTierDividers({
+    position: FantasyPosition.QUARTERBACK,
+    fantasySettings,
+    boardSettings,
+    onUpdateTierBoundary,
+    allCards: cardsForPosition(FantasyPosition.QUARTERBACK),
+  })
+  const runningBackTierDividers = useTierDividers({
+    position: FantasyPosition.RUNNING_BACK,
+    fantasySettings,
+    boardSettings,
+    onUpdateTierBoundary,
+    allCards: cardsForPosition(FantasyPosition.RUNNING_BACK),
+  })
+  const wideReceiverTierDividers = useTierDividers({
+    position: FantasyPosition.WIDE_RECEIVER,
+    fantasySettings,
+    boardSettings,
+    onUpdateTierBoundary,
+    allCards: cardsForPosition(FantasyPosition.WIDE_RECEIVER),
+  })
+  const tightEndTierDividers = useTierDividers({
+    position: FantasyPosition.TIGHT_END,
+    fantasySettings,
+    boardSettings,
+    onUpdateTierBoundary,
+    allCards: cardsForPosition(FantasyPosition.TIGHT_END),
+  })
+  const tierDividersByPosition: Partial<
+    Record<FantasyPosition, ReturnType<typeof useTierDividers>>
+  > = {
+    [FantasyPosition.QUARTERBACK]: quarterbackTierDividers,
+    [FantasyPosition.RUNNING_BACK]: runningBackTierDividers,
+    [FantasyPosition.WIDE_RECEIVER]: wideReceiverTierDividers,
+    [FantasyPosition.TIGHT_END]: tightEndTierDividers,
+  }
 
   // Prevent scrolling when touch dragging on mobile
   useEffect(() => {
@@ -284,7 +328,12 @@ const EditRankingsView = ({
       document.removeEventListener('touchmove', handleScrollbarTouchMove)
       document.removeEventListener('touchend', handleScrollbarEnd)
     }
-  }, [isDraggingScrollbar])
+  }, [
+    handleScrollbarEnd,
+    handleScrollbarMouseMove,
+    handleScrollbarTouchMove,
+    isDraggingScrollbar,
+  ])
 
   // Update scrollbar position when content scrolls
   useEffect(() => {
@@ -305,7 +354,7 @@ const EditRankingsView = ({
       resizeObserver.disconnect()
       clearTimeout(timeoutId)
     }
-  }, [scrollContainerRef])
+  }, [scrollContainerRef, updateScrollbarPosition])
 
   // Update scrollbar when content changes (e.g., filtering)
   useEffect(() => {
@@ -313,7 +362,7 @@ const EditRankingsView = ({
       const timeoutId = setTimeout(updateScrollbarPosition, 50)
       return () => clearTimeout(timeoutId)
     }
-  }, [draftBoardView, selectedPosition])
+  }, [draftBoardView, selectedPosition, updateScrollbarPosition])
 
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, player: Player) => {
@@ -570,14 +619,11 @@ const EditRankingsView = ({
                 // Apply diff filtering to cards
                 const filteredCards = filterCardsByDiffs(cards)
                 
-                // Use the tier dividers hook for this position
-                const tierDividers = useTierDividers({
-                  position: columnTitle as keyof PlayerRanks,
-                  fantasySettings,
-                  boardSettings,
-                  onUpdateTierBoundary,
-                  allCards: cards
-                })
+                const tierDividers =
+                  tierDividersByPosition[columnTitle as FantasyPosition]
+                if (!tierDividers) {
+                  return null
+                }
                 
                 return(
                   <div key={i} className="flex flex-row w-full md:w-auto">
@@ -787,4 +833,4 @@ const EditRankingsView = ({
   )
 }
 
-export default EditRankingsView 
+export default EditRankingsView

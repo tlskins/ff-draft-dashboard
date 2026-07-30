@@ -19,7 +19,11 @@ import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
 import { useDraftListener } from '../behavior/hooks/useDraftListener'
 import { usePredictions, HighlightOption } from "../behavior/hooks/usePredictions"
 import { Player, ThirdPartyRanker } from "types"
-import { getPlayerData } from "@/behavior/playerData"
+import {
+  loadPlayerData,
+  rankingsAgeInDays,
+  rankingsAreStale,
+} from "@/behavior/playerData"
 
 export enum DraftView {
   RANKING = "Rankings By Position",
@@ -115,12 +119,10 @@ const Home: FC = () => {
   } = useDraftListener({
     playerLib,
     playersByPosByTeam,
-    rosters,
     settings,
     onDraftPlayer,
     setCurrPick,
     setDraftStarted,
-    draftStarted,
   })
 
   const {
@@ -149,9 +151,19 @@ const Home: FC = () => {
 
   const browserLoaded = typeof window !== "undefined"
 
-  const loadCurrentRankings = useCallback(() => {
-    const currentRankings = getPlayerData()
+  const loadCurrentRankings = useCallback(async () => {
+    const currentRankings = await loadPlayerData()
     if (!currentRankings) return
+    if (rankingsAreStale(currentRankings)) {
+      const ageInDays = rankingsAgeInDays(currentRankings)
+      toast.warn(
+        `Player rankings are ${Math.floor(ageInDays || 0)} days old. Refresh the API rankings before starting a live draft.`,
+        {
+          autoClose: 10_000,
+          position: "top-right",
+        },
+      )
+    }
 
     // if custom rankings are detected load those as rankings and set latest rankings to the current rankings
     if (browserLoaded && hasCustomRankingsSaved()) {
@@ -188,23 +200,14 @@ const Home: FC = () => {
   }, [onLoadPlayers, resetBoardSettings, browserLoaded, loadCustomRankings, loadCustomRankingsData, hasCustomRankingsSaved, setLatestRankings, calculateRankingDiffs, settings, boardSettings, setCustomAndLatestRankingsDiffs])
 
   useEffect(() => {
-    loadCurrentRankings()
+    void loadCurrentRankings()
+    // Rankings are intentionally loaded once on initial mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const currentOptimalRoster = optimalRosters[selectedOptimalRosterIdx] || optimalRosters[0]
 
   const currRound = getDraftRoundForPickNum(currPick)
-
-  // board navigation listener
-
-  useEffect(() => {
-    window.addEventListener('keyup', onKeyUp)
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('keyup', onKeyUp)
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [predictedPicks, playerLib, settings.ppr, noPlayers, currPick, predNextTiers])
 
   // key press / up commands
   const onKeyUp = useCallback( (e: KeyboardEvent) => {
@@ -218,7 +221,7 @@ const Home: FC = () => {
       // show predicted avail by round
       setDraftView(DraftView.RANKING)
     }
-  }, [playerLib, playerRanks, settings.ppr, noPlayers, currPick, predNextTiers])
+  }, [draftView, onApplyRankingSortBy, setHighlightOption])
 
   const onKeyDown = useCallback( (e: KeyboardEvent) => {
     // arrow up
@@ -244,8 +247,23 @@ const Home: FC = () => {
       // show predicted avail by round
       setDraftView(DraftView.BEST_AVAILABLE)
     }
-  }, [ playerLib, playerRanks, settings.ppr, noPlayers, currPick, predNextTiers, draftHistory])
+  }, [
+    draftHistory,
+    draftView,
+    onApplyRankingSortBy,
+    onNavRoundDown,
+    onNavRoundUp,
+    setHighlightOption,
+  ])
 
+  useEffect(() => {
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [onKeyDown, onKeyUp])
 
   // drafting
 

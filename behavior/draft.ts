@@ -1,33 +1,6 @@
 import { Player, FantasyPosition, FantasySettings, PlayerMetrics, BoardSettings, Tier, RankingSummary, DataRanker, FantasyRanker } from 'types'
 
 // Type Definitions
-export interface EspnDraftEventRaw {
-    imgUrl: string
-    pick: string
-    [key: string]: any
-}
-
-export interface EspnDraftEventParsed {
-    imgUrl: string
-    [key: string]: any
-    id: string | null
-    pickStr: string
-    round: number
-    pick: number
-}
-
-export interface NflDraftEvent {
-    name: string
-    team: string
-    position: FantasyPosition | string
-    pick: number
-}
-
-export interface ParsedNflDraftEvent {
-    id: string
-    ovrPick: number
-}
-
 export type PlayerLibrary = {
     [id: string]: Player
 }
@@ -119,121 +92,12 @@ export const getProjectedTier = (
     return tiers.find(t => t.tierNumber === playerTier.tierNumber)
 }
 
-// helpers
-
-const min = (a: number, b: number, c: number): number => {
-    return Math.min(a, Math.min(b, c))
-}
-  
-const levenshteinDistance = (str1: string, str2: string): number => {
-    const m = str1.length
-    const n = str2.length
-
-    const matrix = new Array(m + 1).fill(null).map(() => new Array(n + 1).fill(0))
-
-    for (let i = 0; i <= m; i++) {
-        matrix[i][0] = i
-    }
-
-    for (let j = 0; j <= n; j++) {
-        matrix[0][j] = j
-    }
-
-    for (let i = 1; i <= m; i++) {
-        for (let j = 1; j <= n; j++) {
-        const cost = str1[i - 1] !== str2[j - 1] ? 1 : 0
-        matrix[i][j] = min(
-            matrix[i - 1][j] + 1,
-            matrix[i][j - 1] + 1,
-            matrix[i - 1][j - 1] + cost
-        );
-        }
-    }
-
-    return matrix[m][n]
-}
-
-// draft listener
-
 export const rankablePositions: FantasyPosition[] = [
     FantasyPosition.QUARTERBACK,
     FantasyPosition.RUNNING_BACK,
     FantasyPosition.WIDE_RECEIVER,
     FantasyPosition.TIGHT_END,
 ]
-
-export const parseEspnDraftEvents = (draftPicksData: EspnDraftEventRaw[]): EspnDraftEventParsed[] => {
-    return draftPicksData.map( data => {
-        const imgMatch = data.imgUrl.match(/headshots\/nfl\/players\/full\/(\d+)\.png/)
-        const pickMatch = data.pick.match(/^R(\d+), P(\d+) /)
-        return {
-            ...data,
-            id: imgMatch && imgMatch[1].toString(), // TODO - changed this id to string - need to test
-            pickStr: data.pick,
-            round: pickMatch ? parseInt(pickMatch[1]) : 0,
-            pick: pickMatch ? parseInt(pickMatch[2]) : 0,
-        }
-    })
-}
-
-const normalizeNflName = (name: string): string => name.toLowerCase().replace(/[^a-zA-Z\s]/g, '')
-    .replace('iii', '')
-    .replace('ii', '')
-    .replace(' jr', '')
-    .trim()
-
-const playerToNflName = (player: Player): string => `${ player.firstName[0].toLowerCase() } ${ normalizeNflName( player.lastName )}`
-
-const parseNflTeamToPlayerTeam = (nflTeam: string): string => {
-switch(nflTeam) {
-    case 'JAX':
-        return 'JAC'
-    case 'PHI':
-        return 'PHL'
-    case 'LA':
-        return 'LAR'
-    default:
-        return nflTeam
-    }
-}
-
-export const parseNflDraftEvents = (
-    draftPicksData: NflDraftEvent[],
-    playersByPosByTeam: PlayersByPositionAndTeam,
-): ParsedNflDraftEvent[] => {
-    return draftPicksData.map(draftEvent => {
-        console.log('matching nfl event', draftEvent, playersByPosByTeam)
-        const { name, team: nflTeam, position, pick: ovrPick } = draftEvent
-        const team = parseNflTeamToPlayerTeam( nflTeam )
-        if ( !rankablePositions.includes( position as FantasyPosition )) {
-            return null
-        }
-
-        const posPlayers = playersByPosByTeam[position as FantasyPosition]?.[team] || []
-        const playerByExactName = posPlayers.find( p => playerToNflName( p ) === normalizeNflName( name ) )
-        if ( playerByExactName ) {
-            return { id: playerByExactName.id, ovrPick}
-        }
-
-        let minScore = 100
-        let minIdx = -1
-        posPlayers.forEach( (p, idx) => {
-            const simScore = levenshteinDistance( playerToNflName(p), name )
-            if ( simScore <= 5 && simScore < minScore ) {
-                minScore = simScore
-                minIdx = idx
-            }
-        })
-        if ( minIdx > -1 ) {
-            const simPlayer = posPlayers[minIdx]
-            return { id: simPlayer.id, ovrPick }
-        }
-
-        console.log('parseNflDraftEvents failed for ', draftEvent)
-
-        return null
-    }).filter( p => !!p )
-}
 
 // rosters
 
@@ -643,5 +507,4 @@ export const delay = ( action: () => void, timeout=400 ): void => {
     action()
   }, timeout )
 }
-
 

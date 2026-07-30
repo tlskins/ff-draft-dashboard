@@ -261,7 +261,7 @@ const RankingsBoard = ({
     }
 
     return dropdownOptions
-  }, [hasSavedCustomRankings, canEditCustomRankings, rankings.copiedRanker, loadCurrentRankings, clearSavedCustomRankings])
+  }, [hasSavedCustomRankings, canEditCustomRankings, rankings.copiedRanker, loadCurrentRankings, clearSavedCustomRankings, loadCustomRankings])
 
 
   return(
@@ -353,7 +353,7 @@ const RankingsBoard = ({
                   </p>
                 }
                 <p className="text-sm text-gray-600 mb-6">
-                  You'll be able to drag players to reorder rankings and adjust tier boundaries.
+                  You&apos;ll be able to drag players to reorder rankings and adjust tier boundaries.
                 </p>
                 <div className="flex justify-end space-x-3">
                   <button

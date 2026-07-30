@@ -1,29 +1,49 @@
-# Next.js + Tailwind CSS Example
+# Fantasy Football Draft Dashboard
 
-This example shows how to use [Tailwind CSS](https://tailwindcss.com/) [(v2.2)](https://blog.tailwindcss.com/tailwindcss-2-2) with Next.js. It follows the steps outlined in the official [Tailwind docs](https://tailwindcss.com/docs/guides/nextjs).
+A Next.js draft board with a Chrome extension that reads ESPN and NFL draft
+rooms. The app can run entirely from its embedded rankings or load the latest
+snapshot from the companion Flask API.
 
-It uses the new [`Just-in-Time Mode`](https://tailwindcss.com/docs/just-in-time-mode) for Tailwind CSS.
+## Local setup
 
-## Preview
-
-Preview the example live on [StackBlitz](http://stackblitz.com/):
-
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/vercel/next.js/tree/canary/examples/with-tailwindcss)
-
-## Deploy your own
-
-Deploy the example using [Vercel](https://vercel.com?utm_source=github&utm_medium=readme&utm_campaign=next-example):
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/git/external?repository-url=https://github.com/vercel/next.js/tree/canary/examples/with-tailwindcss&project-name=with-tailwindcss&repository-name=with-tailwindcss)
-
-## How to use
-
-Execute [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app) with [npm](https://docs.npmjs.com/cli/init) or [Yarn](https://yarnpkg.com/lang/en/docs/cli/create/) to bootstrap the example:
+Requires Node 22.
 
 ```bash
-npx create-next-app --example with-tailwindcss with-tailwindcss-app
-# or
-yarn create next-app --example with-tailwindcss with-tailwindcss-app
+corepack yarn install
+corepack yarn dev
 ```
 
-Deploy it to the cloud with [Vercel](https://vercel.com/new?utm_source=github&utm_medium=readme&utm_campaign=next-example) ([Documentation](https://nextjs.org/docs/deployment)).
+Open [http://localhost:3000](http://localhost:3000).
+
+To use the API rankings, copy `.env.example` to `.env.local` and run the API on
+port 5000. If the API is unavailable, the dashboard automatically falls back
+to `behavior/playerData.json`.
+
+## Chrome extension
+
+1. Open `chrome://extensions`.
+2. Enable Developer mode.
+3. Choose **Load unpacked** and select this repository's `public` directory.
+4. Reload the unpacked extension after changing `public/contentScript.js`,
+   `public/background.js`, or `public/manifest.json`.
+
+The extension sends versioned, full draft snapshots. The dashboard also accepts
+the legacy incremental message shape so an installed older extension does not
+have to be upgraded in lockstep.
+
+## Verification
+
+```bash
+corepack yarn tsc --noEmit
+corepack yarn test --runInBand
+corepack yarn build
+```
+
+The static export post-build step is implemented in Node and works on macOS and
+Linux.
+
+## Realtime advisor
+
+The model-independent advisor contract lives in `behavior/draft-advisor`.
+See `docs/realtime-draft-advisor.md` for the planned OpenAI Realtime adapter and
+UX data flow.

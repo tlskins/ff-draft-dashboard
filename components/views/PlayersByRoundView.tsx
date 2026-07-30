@@ -87,7 +87,7 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
   // Auto-navigation: advance to next page when currPick passes user's next pick in earliest visible round
   useEffect(() => {
     checkAutoAdvance()
-  }, [currPick])
+  }, [checkAutoAdvance])
   
   const getRoundCount = useCallback((round: number) => {
     return (playersByRound[round] || []).filter( (player, playerIdx) => {
@@ -401,4 +401,4 @@ const PlayersByRoundView: React.FC<PlayersByRoundViewProps> = ({
   )
 }
 
-export default PlayersByRoundView 
+export default PlayersByRoundView

@@ -1,53 +1,56 @@
-console.log('starting event listener')
+const CONNECTION_NAME = "ffDraftDashboard"
+const dashboardPorts = new Set()
+const platformPorts = new Set()
 
-let eventListenerActive = true
-
-chrome.runtime.onConnect.addListener(handleConnection)
-
-// App logic
-
-function handleIncomingDraftPicks(draftEventData) {
-  // Handle the message
-  if ( draftDashPort ) {
-    console.log("Outgoing draft picks to port")
-    draftDashPort.postMessage(draftEventData)
-  }
+const isDraftPlatformUrl = (url) => {
+  const normalizedUrl = url.toLowerCase()
+  return (
+    normalizedUrl.includes("fantasy.espn.com/football/draft") ||
+    normalizedUrl.includes("fantasy.nfl.com/draftclient")
+  )
 }
 
-var draftPlatformPort
-var draftDashPort
+const removePort = (port) => {
+  dashboardPorts.delete(port)
+  platformPorts.delete(port)
+}
 
-function handleConnection(port) {
-  console.log('incoming connection!', port.name, port.sender )
-  const senderUrl = port.sender.url
+const relayDraftEvent = (event) => {
+  dashboardPorts.forEach((dashboardPort) => {
+    try {
+      dashboardPort.postMessage(event)
+    } catch (error) {
+      console.warn("Unable to relay draft event", error)
+      removePort(dashboardPort)
+    }
+  })
+}
 
-  if ( !port.sender ) {
-    console.log('Port missing sender')
+const heartbeat = () => ({
+  version: 1,
+  kind: "heartbeat",
+  sentAt: Date.now(),
+})
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== CONNECTION_NAME) {
     return
   }
 
-  if ( port.name !== "ffDraftDashboard") {
-    console.log('not a connection from our extension', port.name)
-    return
-  }
-
+  const senderUrl = port.sender?.url
   const tabId = port.sender?.tab?.id
-  if ( !tabId || !senderUrl ) {
-    console.log('tab id or url not found ', senderUrl)
+  if (!senderUrl || tabId == null) {
+    console.warn("Ignoring extension port without a tab URL")
     return
   }
 
-  // Store the connection along with tab ID
-  if ( ['espn', 'nfl'].some( draftPlatformSubstr => senderUrl.toLowerCase().includes( draftPlatformSubstr ))) {
-    draftPlatformPort = port
-    draftPlatformPort.onMessage.addListener(handleIncomingDraftPicks)
-    console.log('draft platform connected!')
+  if (isDraftPlatformUrl(senderUrl)) {
+    platformPorts.add(port)
+    port.onMessage.addListener(relayDraftEvent)
   } else {
-    draftDashPort = port
-    draftDashPort.onMessage.addListener(() => {
-      console.log('draft dash keep alive')
-      draftDashPort.postMessage(true)
-    })
-    console.log('draft dashboard connected!')
+    dashboardPorts.add(port)
+    port.onMessage.addListener(() => port.postMessage(heartbeat()))
   }
-}
+
+  port.onDisconnect.addListener(() => removePort(port))
+})

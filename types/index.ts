@@ -241,6 +241,7 @@ export interface Rankings {
     players: Player[];
     rankingsSummaries: RankingSummary[];
     cachedAt: string;
+    season?: number;
     editedAt: string;
     copiedRanker?: FantasyRanker;
     settings: FantasySettings;

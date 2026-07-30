@@ -1,4 +1,5 @@
 import React, { useState } from "react"
+import Image from "next/image"
 import Dropdown from "./dropdown"
 import { ThirdPartyRanker, ThirdPartyADPRanker, FantasyRanker } from "../types"
 
@@ -70,9 +71,12 @@ const Header: React.FC<HeaderProps> = ({
       } md:pb-0 pb-20`}>
         {/* Logo */}
         <div className="flex-shrink-0 md:mb-0 mb-4">
-          <img 
+          <Image
             src="/friedchickentechlogo.png" 
             alt="Drafty Logo" 
+            width={128}
+            height={128}
+            unoptimized
             className="md:h-32 h-24 w-auto"
           />
         </div>
@@ -195,4 +199,4 @@ const Header: React.FC<HeaderProps> = ({
   )
 }
 
-export default Header 
+export default Header
