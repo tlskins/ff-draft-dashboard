@@ -152,6 +152,16 @@ interface MaterializedReplay {
   playerLib: PlayerLibrary
 }
 
+/**
+ * A pre-pick view yielded while replaying a completed board exactly once.
+ * Consumers must treat the context as a snapshot: it contains only the
+ * recorded selections strictly before `recordedPick`.
+ */
+export interface RecordedDraftAdvisorContextStep {
+  recordedPick: RecordedCompletedDraftReplay["actualPicks"][number]
+  context: DraftAdvisorContext
+}
+
 const userTier = (
   player: RecordedReplayPlayer,
 ): Tier => ({
@@ -282,6 +292,56 @@ const playerRanksFor = (
       - (getPlayerMetrics(right, settings, boardSettings).adp
         ?? Number.MAX_SAFE_INTEGER)),
   }
+}
+
+/**
+ * Walk a completed board without repeatedly materializing it from pick zero.
+ * This is deliberately lower-level than the boundary helper above: empirical
+ * offline evaluators can inspect every canonical pre-pick state, while live
+ * replay and API behavior remain unchanged.
+ */
+export const walkRecordedDraftAdvisorContexts = (
+  fixture: RecordedCompletedDraftReplay,
+  visit: (step: RecordedDraftAdvisorContextStep) => void,
+): void => {
+  const replay = materializeCompletedDraftReplay(fixture)
+  let rosters = createRosters(fixture.settings.numTeams)
+  let available = Object.values(replay.playerLib)
+  const draftHistory: Array<string | null> = []
+
+  ;[...fixture.actualPicks]
+    .sort((left, right) => left.overallPick - right.overallPick)
+    .forEach(recordedPick => {
+      visit({
+        recordedPick,
+        context: createDraftAdvisorContext({
+          settings: replay.settings,
+          boardSettings: replay.boardSettings,
+          currentPick: recordedPick.overallPick,
+          rosters,
+          draftHistory,
+          playerLib: replay.playerLib,
+          playerRanks: playerRanksFor(available, replay.settings, replay.boardSettings),
+          upcomingPickCount: replay.settings.numTeams * 2 + 1,
+        }),
+      })
+
+      const advisorEligible =
+        recordedPick.advisorEligible ?? recordedPick.playerId !== null
+      if (!advisorEligible || !recordedPick.playerId) {
+        draftHistory[recordedPick.overallPick - 1] = null
+        return
+      }
+      const selected = available.find(player => player.id === recordedPick.playerId)
+      if (!selected) {
+        throw new Error(
+          `Recorded pick ${recordedPick.overallPick} cannot be reconstructed`,
+        )
+      }
+      rosters = addToRoster(rosters, selected, recordedPick.rosterIndex)
+      available = available.filter(player => player.id !== selected.id)
+      draftHistory[recordedPick.overallPick - 1] = selected.id
+    })
 }
 
 const openStarterSpots = (

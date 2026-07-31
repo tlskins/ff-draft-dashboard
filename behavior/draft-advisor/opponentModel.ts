@@ -423,6 +423,24 @@ const positionProbabilities = (
   return blendPositionSources(sources, V1_EQUIVALENT_OPPONENT_CONFIG)
 }
 
+/**
+ * Position-only inference for offline evaluators. It shares the frozen v1
+ * calculation with the forecast path but does not create player/run outputs.
+ */
+export const opponentPositionProbabilities = (
+  context: DraftAdvisorContext,
+  overallPick: number,
+  rosterIndex: number,
+  model: OpponentModelKind = "combined",
+  combinedV2Config?: OpponentModelBlendConfig,
+): PositionProbability[] => positionProbabilities(
+  context,
+  overallPick,
+  rosterIndex,
+  model,
+  combinedV2Config,
+)
+
 const playerProbabilities = (
   context: DraftAdvisorContext,
   overallPick: number,

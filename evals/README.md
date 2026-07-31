@@ -73,6 +73,44 @@ Run its deterministic, offline tuning report with:
 npm run eval:opponent-v2-tuning
 ```
 
+## Offline empirical opponent-model v2
+
+Run the five-recorded-draft empirical report with:
+
+```sh
+npm run eval:opponent-empirical-v2
+```
+
+It walks each completed fixture once and emits one canonical, teacher-forced
+pre-pick example for each mapped opponent QB/RB/WR/TE pick. The feature surface
+is fixed before evaluation: smoothed log ADP, direct-team-need, and recent-run
+position probabilities; a normalized draft phase; position-specific
+intercepts; and, only for the format model, the fixed marginal-scarcity
+residual. The base model has 20 parameters (four positions × intercept plus
+four base features); the format model has 24. Full-batch softmax fitting uses
+fixed initialization, order, iterations, learning rate, clamps, and L2; it has
+no ML dependency and does not tune PPR/Standard allocations on these labels.
+
+Evaluation is leave-one-entire-draft-out across the five fixtures. Every fold
+fits only the other four fixture IDs, then reports holdout multiclass Brier,
+top-position accuracy, and log loss for frozen `combined` v1, learned base,
+and learned format. Aggregate and format results are pick-count weighted.
+The learned full-data coefficients are descriptive only, not holdout results.
+Run/window promotion is intentionally unevaluated because these are
+teacher-forced per-pick predictions rather than static boundary forecasts.
+
+The report makes two fail-closed shadow decisions. Learned base must have a
+material aggregate improvement over frozen v1 (Brier/log loss at least 1e-4,
+or accuracy at least 0.005) with no aggregate or per-format material
+regression. The format residual must additionally meet that same material
+threshold versus learned base, stay within the fixed aggregate/per-format
+regression tolerances against both models, and improve Brier or log loss in at
+least 3 of 5 whole-draft folds. This keeps a one-pick or numerical edge from
+being called format value. Neither result changes `combined` or the live
+recorder; even a passing decision is only eligible for a new shadow-validation
+slice. Sparse alternate roster shapes remain a coverage limitation, not
+evidence of generalization.
+
 The tuning report prepares every canonical evidence boundary once, then reuses
 those leakage-safe contexts for four legacy one-source ablations, three
 residual ablations, and a fixed nine-item grid. The first six candidates are
