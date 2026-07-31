@@ -45,6 +45,11 @@ export interface DraftAdvisorContext {
     bench: number
   }
   currentPick: number
+  /**
+   * Raw provider-board length when known. It includes excluded positions and
+   * is optional so previously exported schema-v1 contexts remain portable.
+   */
+  totalDraftPicks?: number
   upcomingSlots: UpcomingDraftSlot[]
   teams: DraftAdvisorTeam[]
   availablePlayers: DraftAdvisorPlayer[]

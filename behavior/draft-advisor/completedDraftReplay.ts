@@ -32,6 +32,7 @@ import type {
   OpponentForecast,
   OpponentModelKind,
 } from "./types"
+import type { EmpiricalBaseShadowForecast } from "./empiricalBaseShadow"
 
 type ReplayPosition =
   | FantasyPosition.QUARTERBACK
@@ -94,6 +95,29 @@ export interface ReplayForecastEvidence {
   observations: ReplayForecastObservation[]
 }
 
+/**
+ * Additive local-only labels for an immutable challenger. This stays separate
+ * from v1 forecastEvidence so legacy fingerprints and API snapshots remain
+ * byte-for-byte stable.
+ */
+export interface ReplayEmpiricalBaseShadowObservation {
+  observedThroughOverallPick: number
+  inputFingerprint: string
+  observationFingerprint: string
+  modelIdentity: "empirical_opponent_base_shadow_v1"
+  artifactId: "empirical_opponent_base_shadow_v1"
+  trainingCorpusFingerprint: string
+  targetRosterIndex: number
+  phaseProvenance: EmpiricalBaseShadowForecast["phaseProvenance"]
+  forecast: EmpiricalBaseShadowForecast
+}
+
+export interface ReplayEmpiricalBaseShadowEvidence {
+  schemaVersion: 1
+  sessionId: string
+  observations: ReplayEmpiricalBaseShadowObservation[]
+}
+
 export interface RecordedCompletedDraftReplay {
   fixtureVersion: 1
   id: string
@@ -123,6 +147,8 @@ export interface RecordedCompletedDraftReplay {
   }>
   /** Optional live-only labels; invalid labels never make roster replay valid. */
   forecastEvidence?: ReplayForecastEvidence
+  /** Optional parallel challenger labels; absent from all historical fixtures. */
+  empiricalBaseShadowEvidence?: ReplayEmpiricalBaseShadowEvidence
 }
 
 export interface FinalRosterQuality {
@@ -516,6 +542,7 @@ export const createRecordedDraftAdvisorContextAtBoundary = (
     settings: replay.settings,
     boardSettings: replay.boardSettings,
     currentPick,
+    totalDraftPicks: fixture.actualPicks.length,
     rosters,
     draftHistory,
     playerLib: replay.playerLib,

@@ -17,6 +17,7 @@ import { getRosterIndexForPick } from "../draft-feed/session"
 import {
   getAdvisorRosterCapacity,
 } from "./recommendations"
+import { validateEmpiricalBaseShadowEvidence } from "./empiricalBaseShadowMetrics"
 import {
   DraftSnapshot,
   EspnDraftPick,
@@ -24,6 +25,7 @@ import {
 import type {
   RecordedCompletedDraftReplay,
   RecordedReplayPlayer,
+  ReplayEmpiricalBaseShadowEvidence,
   ReplayForecastEvidence,
 } from "./completedDraftReplay"
 
@@ -37,6 +39,7 @@ interface CaptureCompletedDraftReplayParams {
   draftHistory: Array<string | null>
   sourceSnapshot?: DraftSnapshot | null
   forecastEvidence?: ReplayForecastEvidence
+  empiricalBaseShadowEvidence?: ReplayEmpiricalBaseShadowEvidence
 }
 
 const projectionSummary = (
@@ -207,7 +210,7 @@ export const validateCompletedDraftReplay = (
       `expected ${expectedTargetAdvisorPicks} advisor picks for the target roster, received ${targetAdvisorPicks}`,
     )
   }
-  return errors
+  return [...errors, ...validateEmpiricalBaseShadowEvidence(fixture)]
 }
 
 const rankablePosition = (position: string): FantasyPosition | null => {
@@ -300,6 +303,7 @@ export const captureCompletedDraftReplay = ({
   draftHistory,
   sourceSnapshot,
   forecastEvidence,
+  empiricalBaseShadowEvidence,
 }: CaptureCompletedDraftReplayParams): RecordedCompletedDraftReplay => {
   const completion = sourceSnapshot?.completion
   const targetRosterIndexFromSource =
@@ -400,6 +404,14 @@ export const captureCompletedDraftReplay = ({
         throw new Error("Replay forecast evidence belongs to a different draft session or target roster")
       }
       return { forecastEvidence }
+    })() : {}),
+    ...(empiricalBaseShadowEvidence ? (() => {
+      if (empiricalBaseShadowEvidence.sessionId !== id
+        || empiricalBaseShadowEvidence.observations.some(observation =>
+          observation.targetRosterIndex !== targetRosterIndexFromSource)) {
+        throw new Error("Replay empirical-base shadow evidence belongs to a different draft session or target roster")
+      }
+      return { empiricalBaseShadowEvidence }
     })() : {}),
   }
   const errors = validateCompletedDraftReplay(fixture)

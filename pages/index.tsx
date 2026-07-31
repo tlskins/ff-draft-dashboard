@@ -221,6 +221,7 @@ const Home: FC = () => {
     opponentForecast,
     advisorContext,
     replayForecastEvidence,
+    empiricalBaseShadowEvidence,
     replayCaptureStatus,
   } = usePredictions({
     rosters,
@@ -236,6 +237,7 @@ const Home: FC = () => {
     draftSessionId: activeDraftSessionId,
     sourceComplete: dashboardDraftComplete,
     sourceObservedThroughOverallPick,
+    sourceTotalPicks: activeDraftSnapshot?.completion?.totalPicks,
   })
 
   const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
@@ -310,11 +312,15 @@ const Home: FC = () => {
       playerLib,
       draftHistory,
       sourceSnapshot: activeDraftSnapshot,
-      ...(rosterOnly ? {} : { forecastEvidence: replayForecastEvidence }),
+      ...(rosterOnly ? {} : {
+        forecastEvidence: replayForecastEvidence,
+        empiricalBaseShadowEvidence,
+      }),
     })
   }, [
     activeDraftSessionId, activeDraftSnapshot, boardSettings, draftHistory,
-    myPickNum, playerLib, rankingSummaries, replayForecastEvidence, settings,
+    empiricalBaseShadowEvidence, myPickNum, playerLib, rankingSummaries,
+    replayForecastEvidence, settings,
   ])
   const replayExportPreflight = useMemo(() => {
     if (!canExportReplay) return undefined

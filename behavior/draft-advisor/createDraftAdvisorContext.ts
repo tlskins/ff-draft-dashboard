@@ -22,6 +22,7 @@ interface CreateDraftAdvisorContextParams {
   playerRanks: PlayerRanks
   upcomingPickCount?: number
   availablePlayerLimit?: number
+  totalDraftPicks?: number
 }
 
 type StarterPosition =
@@ -79,6 +80,7 @@ export const createDraftAdvisorContext = ({
   playerRanks,
   upcomingPickCount = 6,
   availablePlayerLimit = 60,
+  totalDraftPicks,
 }: CreateDraftAdvisorContextParams): DraftAdvisorContext => {
   const requirements = starterRequirements(settings)
 
@@ -97,6 +99,9 @@ export const createDraftAdvisorContext = ({
       bench: settings.numBenchPlayers,
     },
     currentPick,
+    ...(Number.isInteger(totalDraftPicks) && totalDraftPicks! > 0
+      ? { totalDraftPicks }
+      : {}),
     upcomingSlots: createUpcomingSlots(
       currentPick,
       settings.numTeams,

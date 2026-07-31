@@ -7,6 +7,9 @@ import {
   EMPIRICAL_OPPONENT_CONFIG,
   runEmpiricalOpponentV2Evaluation,
 } from "../behavior/draft-advisor/opponentEmpiricalV2"
+import {
+  EMPIRICAL_BASE_SHADOW_ARTIFACT,
+} from "../behavior/draft-advisor/empiricalBaseShadow"
 import type { RecordedCompletedDraftReplay } from "../behavior/draft-advisor/completedDraftReplay"
 
 const fixtures = [
@@ -66,6 +69,7 @@ describe("opponent empirical v2 LODO evaluation", () => {
     }
 
     expect(report.corpus.fixtures).toHaveLength(5)
+    expect(report.corpus.examples).toHaveLength(656)
     expect(report.corpus.skippedFixtures).toEqual([])
     expect(report.folds).toHaveLength(5)
     expect(report.folds.every(fold => fold.trainingFixtureIds.length === 4)).toBe(true)
@@ -75,5 +79,15 @@ describe("opponent empirical v2 LODO evaluation", () => {
       .toBe(report.corpus.examples.length)
     expect(report.promotion.promoted).toBe(false)
     expect(report.runWindowEvaluation.evaluated).toBe(false)
+    expect(EMPIRICAL_BASE_SHADOW_ARTIFACT.trainingCorpusFingerprint).toBe(
+      "d43e0754c60937794fabcf3fbf89cf7cad43fea6133274255d56008271f6c652",
+    )
+    expect(EMPIRICAL_BASE_SHADOW_ARTIFACT.training).toEqual(EMPIRICAL_OPPONENT_CONFIG)
+    expect(EMPIRICAL_BASE_SHADOW_ARTIFACT.featureSet)
+      .toBe(report.fullDataModels.baseModel.featureSet)
+    expect(EMPIRICAL_BASE_SHADOW_ARTIFACT.featureNames)
+      .toEqual(report.fullDataModels.baseModel.featureNames)
+    expect(EMPIRICAL_BASE_SHADOW_ARTIFACT.coefficients)
+      .toEqual(report.fullDataModels.baseModel.coefficients)
   })
 })

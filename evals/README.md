@@ -111,6 +111,30 @@ recorder; even a passing decision is only eligible for a new shadow-validation
 slice. Sparse alternate roster shapes remain a coverage limitation, not
 evidence of generalization.
 
+### Immutable learned-base shadow capture
+
+```sh
+npm run eval:opponent-empirical-base-shadow
+```
+
+The browser now computes the audited full-data learned-base coefficients beside
+the frozen `combined` forecast at the same live, pre-pick boundary. It records
+only a position/run-only `empiricalBaseShadowEvidence` envelope: a separately
+versioned and fingerprinted artifact tied to the canonical campaign fingerprint
+`d43e0754…c652`. It does not fit in the browser, alter recommendations, change
+the frozen forecast object, or persist through the API.
+
+The learned feature's draft phase is also stored as either a known raw board
+total or a context-horizon fallback. Only known-total evidence is comparable
+for promotion reporting; fallback capture remains observable but fails closed.
+
+Historic fixtures deliberately have no such envelope. The shadow evaluator is
+therefore unavailable—and promotion remains false—until a newly captured
+fixture contains matching frozen-v1 and shadow boundaries. When both are
+present, it reports pick-weighted position Brier/accuracy and static-window run
+precision/recall only for their identical recorded horizons. Any missing,
+malformed, or mismatched evidence fails closed.
+
 The tuning report prepares every canonical evidence boundary once, then reuses
 those leakage-safe contexts for four legacy one-source ablations, three
 residual ablations, and a fixed nine-item grid. The first six candidates are

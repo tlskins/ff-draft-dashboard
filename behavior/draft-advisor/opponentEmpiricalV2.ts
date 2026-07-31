@@ -60,6 +60,23 @@ export interface EmpiricalOpponentExample {
   draftPhase: number
 }
 
+/**
+ * The deterministic feature surface shared by offline corpus construction and
+ * the immutable learned-base shadow.  It intentionally contains no label or
+ * fixture identity, so producing it at a live boundary cannot train or leak.
+ */
+export interface EmpiricalOpponentFeatureSurface {
+  adpLogProbabilities: number[]
+  directNeedLogProbabilities: number[]
+  recentRunLogProbabilities: number[]
+  marginalScarcityResiduals: number[]
+  draftPhase: number
+}
+
+export type EmpiricalDraftPhaseProvenance =
+  | { kind: "known_total"; totalDraftPicks: number }
+  | { kind: "fallback_context_horizon"; totalDraftPicks: number }
+
 export interface EmpiricalCorpusFixture {
   fixtureId: string
   leagueFormat: string
@@ -103,6 +120,46 @@ const normalized = (values: number[]): number[] => {
     : values.map(() => 1 / values.length)
 }
 
+export const empiricalDraftPhaseProvenance = (
+  context: Parameters<typeof opponentPositionSources>[0],
+  totalDraftPicks = context.totalDraftPicks,
+): EmpiricalDraftPhaseProvenance => {
+  if (Number.isInteger(totalDraftPicks) && (totalDraftPicks || 0) > 1) {
+    return { kind: "known_total", totalDraftPicks: totalDraftPicks! }
+  }
+  return {
+    kind: "fallback_context_horizon",
+    totalDraftPicks: Math.max(context.currentPick,
+      ...context.upcomingSlots.map(slot => slot.overallPick)),
+  }
+}
+
+export const createEmpiricalOpponentFeatureSurface = (
+  context: Parameters<typeof opponentPositionSources>[0],
+  overallPick: number,
+  rosterIndex: number,
+  totalDraftPicks = context.totalDraftPicks,
+): EmpiricalOpponentFeatureSurface => {
+  const sources = opponentPositionSources(context, overallPick, rosterIndex)
+  const scarcity = new Map(marginalScarcityPositionResiduals(context)
+    .map(item => [item.position, item.residual]))
+  const phase = empiricalDraftPhaseProvenance(context, totalDraftPicks)
+  const phaseDenominator = Math.max(1, phase.totalDraftPicks - 1)
+  return {
+    adpLogProbabilities: EMPIRICAL_OPPONENT_POSITIONS.map(position =>
+      smoothedLogProbability(probabilityFor(sources.adp, position))),
+    directNeedLogProbabilities: EMPIRICAL_OPPONENT_POSITIONS.map(position =>
+      smoothedLogProbability(probabilityFor(sources.directNeed, position))),
+    recentRunLogProbabilities: EMPIRICAL_OPPONENT_POSITIONS.map(position =>
+      smoothedLogProbability(probabilityFor(sources.recentRun, position))),
+    marginalScarcityResiduals: EMPIRICAL_OPPONENT_POSITIONS.map(position => {
+      const value = scarcity.get(position) || 0
+      return Number.isFinite(value) ? Math.max(-0.75, Math.min(0.75, value)) : 0
+    }),
+    draftPhase: Math.max(0, Math.min(1, (overallPick - 1) / phaseDenominator)),
+  }
+}
+
 /**
  * One single-pass canonical corpus per completed fixture. Every feature is
  * derived before the labelled selection is applied by the replay walker.
@@ -129,13 +186,6 @@ export const prepareEmpiricalOpponentCorpus = (
       const player = playerById.get(recordedPick.playerId)
       if (!player || EMPIRICAL_OPPONENT_POSITIONS.indexOf(player.position) < 0) return
 
-      const sources = opponentPositionSources(
-        context,
-        recordedPick.overallPick,
-        recordedPick.rosterIndex,
-      )
-      const scarcity = new Map(marginalScarcityPositionResiduals(context)
-        .map(item => [item.position, item.residual]))
       const baseline = opponentPositionProbabilities(
         context,
         recordedPick.overallPick,
@@ -151,18 +201,12 @@ export const prepareEmpiricalOpponentCorpus = (
         label: player.position,
         baselineProbabilities: normalized(EMPIRICAL_OPPONENT_POSITIONS.map(position =>
           probabilityFor(baseline, position))),
-        adpLogProbabilities: EMPIRICAL_OPPONENT_POSITIONS.map(position =>
-          smoothedLogProbability(probabilityFor(sources.adp, position))),
-        directNeedLogProbabilities: EMPIRICAL_OPPONENT_POSITIONS.map(position =>
-          smoothedLogProbability(probabilityFor(sources.directNeed, position))),
-        recentRunLogProbabilities: EMPIRICAL_OPPONENT_POSITIONS.map(position =>
-          smoothedLogProbability(probabilityFor(sources.recentRun, position))),
-        marginalScarcityResiduals: EMPIRICAL_OPPONENT_POSITIONS.map(position => {
-          const value = scarcity.get(position) || 0
-          return Number.isFinite(value) ? Math.max(-0.75, Math.min(0.75, value)) : 0
-        }),
-        draftPhase: Math.max(0, Math.min(1,
-          (recordedPick.overallPick - 1) / Math.max(1, fixture.actualPicks.length - 1))),
+        ...createEmpiricalOpponentFeatureSurface(
+          context,
+          recordedPick.overallPick,
+          recordedPick.rosterIndex,
+          fixture.actualPicks.length,
+        ),
       })
     })
 
@@ -209,7 +253,7 @@ const featureNamesFor = (featureSet: FeatureSet): string[] =>
   [...(featureSet === "format" ? FORMAT_FEATURE_NAMES : BASE_FEATURE_NAMES)]
 
 const featureValues = (
-  example: EmpiricalOpponentExample,
+  example: EmpiricalOpponentFeatureSurface,
   position: number,
   featureSet: FeatureSet,
 ): number[] => [
@@ -235,7 +279,7 @@ const stableSoftmax = (logits: number[]): number[] => {
 
 export const predictEmpiricalOpponentProbabilities = (
   model: EmpiricalSoftmaxModel,
-  example: EmpiricalOpponentExample,
+  example: EmpiricalOpponentFeatureSurface,
 ): number[] => stableSoftmax(EMPIRICAL_OPPONENT_POSITIONS.map((_, position) =>
   model.coefficients[position].reduce((sum, coefficient, featureIndex) =>
     sum + coefficient * featureValues(example, position, model.featureSet)[featureIndex], 0)))
