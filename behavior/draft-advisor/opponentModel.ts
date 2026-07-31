@@ -28,6 +28,61 @@ export interface OpponentModelOptions {
   targetRosterIndex: number
   runLength?: number
   playerLimitPerPosition?: number
+  /** Offline-only tuning may supply an explicit combined_v2 blend. */
+  combinedV2Config?: OpponentModelBlendConfig
+}
+
+/**
+ * Every source is itself a normalized position distribution.  Keeping the
+ * blend explicit makes a challenger auditable and prevents a replay search
+ * from quietly changing the frozen live-v1 formula.
+ */
+export interface OpponentModelBlendConfig {
+  id: string
+  adpWeight: number
+  directNeedWeight: number
+  formatFlexPressureWeight: number
+  recentRunWeight: number
+}
+
+export const V1_EQUIVALENT_OPPONENT_CONFIG: OpponentModelBlendConfig = {
+  id: "v1_equivalent",
+  adpWeight: 0.55,
+  directNeedWeight: 0.35,
+  formatFlexPressureWeight: 0,
+  recentRunWeight: 0.1,
+}
+
+/** The original offline v2 challenger, preserved as a named baseline. */
+export const INITIAL_V2_OPPONENT_CONFIG: OpponentModelBlendConfig = {
+  id: "initial_v2",
+  adpWeight: 0.5,
+  directNeedWeight: 0,
+  formatFlexPressureWeight: 0.4,
+  recentRunWeight: 0.1,
+}
+
+export const validateOpponentModelBlendConfig = (
+  config: OpponentModelBlendConfig,
+): OpponentModelBlendConfig => {
+  const weights = [
+    config.adpWeight,
+    config.directNeedWeight,
+    config.formatFlexPressureWeight,
+    config.recentRunWeight,
+  ]
+  if (!config.id || weights.some(weight => !Number.isFinite(weight) || weight < 0)) {
+    throw new Error("Opponent model blend config has invalid weights")
+  }
+  const total = weights.reduce((sum, weight) => sum + weight, 0)
+  if (total <= 0) throw new Error("Opponent model blend config has no active source")
+  return {
+    ...config,
+    adpWeight: config.adpWeight / total,
+    directNeedWeight: config.directNeedWeight / total,
+    formatFlexPressureWeight: config.formatFlexPressureWeight / total,
+    recentRunWeight: config.recentRunWeight / total,
+  }
 }
 
 const normalize = (
@@ -177,42 +232,63 @@ const v2FormatNeedScores = (
   }))
 }
 
+const blendPositionSources = (
+  sources: {
+    adp: PositionProbability[]
+    directNeed: PositionProbability[]
+    formatFlexPressure: PositionProbability[]
+    recentRun: PositionProbability[]
+  },
+  config: OpponentModelBlendConfig,
+): PositionProbability[] => {
+  const validated = validateOpponentModelBlendConfig(config)
+  const probabilityFor = (
+    source: PositionProbability[],
+    position: ForecastPosition,
+  ) => source.find(item => item.position === position)?.probability || 0
+  return normalize(POSITIONS.map(position => ({
+    position,
+    score:
+      probabilityFor(sources.adp, position) * validated.adpWeight
+      + probabilityFor(sources.directNeed, position) * validated.directNeedWeight
+      + probabilityFor(sources.formatFlexPressure, position)
+        * validated.formatFlexPressureWeight
+      + probabilityFor(sources.recentRun, position) * validated.recentRunWeight,
+  })))
+}
+
+/** Exposed for deterministic offline ablations; all outputs are normalized. */
+export const opponentPositionSources = (
+  context: DraftAdvisorContext,
+  overallPick: number,
+  rosterIndex: number,
+) => ({
+  adp: adpScores(context, overallPick),
+  directNeed: needScores(context, rosterIndex),
+  // This deliberately preserves the initial v2 source, including its existing
+  // direct/league/flex construction, so its historical challenger is stable.
+  formatFlexPressure: v2FormatNeedScores(context, rosterIndex),
+  recentRun: recentScores(context),
+})
+
 const positionProbabilities = (
   context: DraftAdvisorContext,
   overallPick: number,
   rosterIndex: number,
   model: OpponentModelKind,
+  combinedV2Config?: OpponentModelBlendConfig,
 ): PositionProbability[] => {
-  const adp = adpScores(context, overallPick)
-  const need = needScores(context, rosterIndex)
+  const sources = opponentPositionSources(context, overallPick, rosterIndex)
+  const { adp, directNeed: need, recentRun: recent } = sources
   if (model === "adp_only") return adp
   if (model === "need_only") return need
-  const recent = recentScores(context)
   if (model === "combined_v2") {
-    const formatNeed = v2FormatNeedScores(context, rosterIndex)
-    return normalize(POSITIONS.map(position => {
-      const probabilityFor = (source: PositionProbability[]) =>
-        source.find(item => item.position === position)?.probability || 0
-      return {
-        position,
-        score:
-          probabilityFor(adp) * 0.5
-          + probabilityFor(formatNeed) * 0.4
-          + probabilityFor(recent) * 0.1,
-      }
-    }))
+    return blendPositionSources(
+      sources,
+      combinedV2Config || INITIAL_V2_OPPONENT_CONFIG,
+    )
   }
-  return normalize(POSITIONS.map(position => {
-    const probabilityFor = (source: PositionProbability[]) =>
-      source.find(item => item.position === position)?.probability || 0
-    return {
-      position,
-      score:
-        probabilityFor(adp) * 0.55
-        + probabilityFor(need) * 0.35
-        + probabilityFor(recent) * 0.1,
-    }
-  }))
+  return blendPositionSources(sources, V1_EQUIVALENT_OPPONENT_CONFIG)
 }
 
 const playerProbabilities = (
@@ -338,6 +414,7 @@ export const createOpponentForecast = (
     targetRosterIndex,
     runLength = 3,
     playerLimitPerPosition = 5,
+    combinedV2Config,
   }: OpponentModelOptions,
 ): OpponentForecast => {
   const picks = slotsBeforeUserPick(context, targetRosterIndex).map(slot => {
@@ -346,6 +423,7 @@ export const createOpponentForecast = (
       slot.overallPick,
       slot.rosterIndex,
       model,
+      combinedV2Config,
     )
     return {
       overallPick: slot.overallPick,

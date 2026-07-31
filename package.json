@@ -20,6 +20,7 @@
     "test": "jest",
     "eval": "jest --runInBand --testPathPattern=__evals__",
     "eval:opponent-v2": "V2_OPPONENT_REPORT=1 jest --runInBand __evals__/opponentModelV2.eval.test.ts",
+    "eval:opponent-v2-tuning": "V2_OPPONENT_TUNING_REPORT=1 jest --runInBand __evals__/opponentModelV2Tuning.eval.test.ts",
     "eval:phase7": "npm run api:types:check && npm run eval && (cd ../ff-draft-dashboard-python-api && .venv/bin/python -m unittest tests.test_realtime_eval)"
   },
   "dependencies": {

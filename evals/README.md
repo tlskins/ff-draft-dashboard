@@ -67,6 +67,40 @@ Run the format-aware challenger report with:
 npm run eval:opponent-v2
 ```
 
+Run its deterministic, offline tuning report with:
+
+```sh
+npm run eval:opponent-v2-tuning
+```
+
+The tuning report prepares every canonical evidence boundary once, then reuses
+those leakage-safe contexts for four one-source ablations and a fixed six-item
+blend grid. The grid contains a `v1_equivalent` abstention candidate, the
+unchanged `initial_v2` challenger, and four small format-pressure blends. It
+does not tune PPR/Standard scoring multipliers. All blends are auditable
+combinations of normalized ADP, direct per-team need, format/flex pressure,
+and recent-run sources.
+
+Selection is cross-format only: it selects on Standard and reports PPR
+holdout, then selects on PPR and reports Standard holdout. A candidate is
+training-eligible only when it is within modest fixed tolerances of
+`v1_equivalent` (Brier +0.01, top-position −0.02, run precision/recall −0.05),
+then sorts by Brier, top-position, run precision, run recall, and stable id.
+Full-data results are explicitly descriptive and are never presented as
+holdout results. Promotion requires both folds to choose the same positive
+format-weight candidate, every held-out fold to meet non-regressing Brier and
+top-position gates, every fold to stay within two points of v1 run precision
+and recall, and the aggregate held-out result to meet those same gates. The
+report fails closed with **no promotion** otherwise; it also never promotes
+directly even if these limited gates pass, because the next required step is a
+shadow validation on newly captured formats.
+
+There are currently only two labeled, 10-team 1QB/2RB/2WR/1TE/1Flex fixtures
+(one Standard and one PPR). Cross-format folds therefore provide only weak
+evidence and do not empirically validate different starter counts or flex
+counts. `combined` and the live recorder identity remain frozen; all tuning is
+offline-only.
+
 This replays `combined` (v1) and `combined_v2` at each saved live observation
 boundary. It builds a canonical, leakage-safe lower-bound roster,
 available-player, and recent-pick context from only picks at or before that
