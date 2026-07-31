@@ -27,13 +27,23 @@ import {
   optimizeProjectedLineup,
 } from "./recommendations"
 import type { DraftPlatform } from "../draft-feed/types"
-import type { OpponentForecast, OpponentModelKind } from "./types"
+import type {
+  DraftAdvisorContext,
+  OpponentForecast,
+  OpponentModelKind,
+} from "./types"
 
 type ReplayPosition =
   | FantasyPosition.QUARTERBACK
   | FantasyPosition.RUNNING_BACK
   | FantasyPosition.WIDE_RECEIVER
   | FantasyPosition.TIGHT_END
+
+/** Frozen model surface for evidence recorded by deterministic_opponent_v1. */
+export type RecordedV1OpponentModelKind = Exclude<
+  OpponentModelKind,
+  "combined_v2"
+>
 
 const POSITIONS: ReplayPosition[] = [
   FantasyPosition.QUARTERBACK,
@@ -73,7 +83,7 @@ export interface ReplayForecastObservation {
   /** Recomputable identity of this exported observation, not its model inputs. */
   observationFingerprint: string
   modelIdentity: "deterministic_opponent_v1"
-  model: OpponentModelKind
+  model: RecordedV1OpponentModelKind
   targetRosterIndex: number
   forecast: OpponentForecast
 }
@@ -392,6 +402,66 @@ const scoreRoster = (
     projectedStarterPointsAboveReplacement,
     benchCeiling,
   }
+}
+
+/**
+ * Rebuild a canonical, leakage-safe lower-bound context at a recorded board
+ * boundary. It intentionally materializes only picks at or before the
+ * boundary, so it cannot reproduce UI-only own-turn state that was never
+ * serialized and cannot read later labels through roster, history, or
+ * availability.
+ */
+export const createRecordedDraftAdvisorContextAtBoundary = (
+  fixture: RecordedCompletedDraftReplay,
+  observedThroughOverallPick: number,
+  upcomingPickCount = fixture.settings.numTeams * 2 + 1,
+  currentPick = observedThroughOverallPick + 1,
+): DraftAdvisorContext => {
+  if (!Number.isInteger(observedThroughOverallPick)
+    || observedThroughOverallPick < 0
+    || observedThroughOverallPick >= fixture.actualPicks.length) {
+    throw new Error("Recorded opponent boundary is outside the completed draft")
+  }
+  if (!Number.isInteger(currentPick) || currentPick < observedThroughOverallPick + 1) {
+    throw new Error("Recorded opponent context starts before its observed boundary")
+  }
+  const replay = materializeCompletedDraftReplay(fixture)
+  let rosters = createRosters(fixture.settings.numTeams)
+  let available = Object.values(replay.playerLib)
+  const draftHistory: Array<string | null> = []
+
+  fixture.actualPicks
+    .filter(recordedPick =>
+      recordedPick.overallPick <= observedThroughOverallPick)
+    .sort((left, right) => left.overallPick - right.overallPick)
+    .forEach(recordedPick => {
+      const advisorEligible =
+        recordedPick.advisorEligible ?? recordedPick.playerId !== null
+      if (!advisorEligible || !recordedPick.playerId) {
+        draftHistory[recordedPick.overallPick - 1] = null
+        return
+      }
+      const selected = available.find(player => player.id === recordedPick.playerId)
+      if (!selected) {
+        throw new Error(
+          `Recorded pick ${recordedPick.overallPick} cannot be reconstructed`,
+        )
+      }
+      rosters = addToRoster(rosters, selected, recordedPick.rosterIndex)
+      available = available.filter(player => player.id !== selected.id)
+      draftHistory[recordedPick.overallPick - 1] = selected.id
+    })
+
+  return createDraftAdvisorContext({
+    settings: replay.settings,
+    boardSettings: replay.boardSettings,
+    currentPick,
+    rosters,
+    draftHistory,
+    playerLib: replay.playerLib,
+    playerRanks: playerRanksFor(available, replay.settings, replay.boardSettings),
+    upcomingPickCount,
+  })
 }
 
 export const runCompletedDraftReplay = (

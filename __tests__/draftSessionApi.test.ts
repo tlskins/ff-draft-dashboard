@@ -3,6 +3,7 @@ import {
   loadAdvisorSnapshots,
   persistAdvisorSnapshots,
   persistDraftEvents,
+  toOpponentForecastSnapshot,
 } from "../behavior/api/draftSessions"
 import type { CanonicalDraftEvent } from "../behavior/draft-feed/session"
 import type {
@@ -127,6 +128,23 @@ describe("draft session API adapter", () => {
       source_event_count: 1,
       model: "combined",
     })
+  })
+
+  it("refuses to serialize the offline v2 challenger as a live v1 snapshot", () => {
+    const offlineV2: OpponentForecast = {
+      schemaVersion: 1,
+      model: "combined_v2",
+      targetRosterIndex: 0,
+      picks: [],
+      runProbabilities: [],
+      tierBoundaryProbabilities: [],
+    }
+
+    expect(() => toOpponentForecastSnapshot(offlineV2, {
+      sourceEventCount: 1,
+      inputFingerprint: "1234abcd",
+      generatedAt: "2026-07-30T12:00:00Z",
+    })).toThrow("Offline opponent model combined_v2 cannot be persisted")
   })
 
   it("loads nullable advisor snapshots and fingerprints inputs stably", async () => {

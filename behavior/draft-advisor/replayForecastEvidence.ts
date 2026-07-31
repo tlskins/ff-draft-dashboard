@@ -1,4 +1,5 @@
 import type {
+  RecordedV1OpponentModelKind,
   ReplayForecastEvidence,
   ReplayForecastObservation,
 } from "./completedDraftReplay"
@@ -52,7 +53,7 @@ export interface RecordReplayForecastParams {
   sessionId: string
   observedThroughOverallPick: number
   forecast: OpponentForecast
-  model?: OpponentModelKind
+  model?: RecordedV1OpponentModelKind
   targetRosterIndex: number
   inputFingerprint: string
 }
@@ -75,17 +76,19 @@ export class ReplayForecastEvidenceRecorder {
     sessionId,
     observedThroughOverallPick,
     forecast,
-    model = forecast.model,
+    model,
     targetRosterIndex,
     inputFingerprint,
   }: RecordReplayForecastParams): ReplayForecastEvidence | undefined {
     // Reset before validation so an invalid first render from a new session can
     // never expose observations captured under the preceding draft id.
     if (this.sessionId !== sessionId) this.reset(sessionId)
+    const resolvedModel = model || forecast.model
     if (!sessionId || !Number.isInteger(observedThroughOverallPick)
       || observedThroughOverallPick < 0
       || forecast.targetRosterIndex !== targetRosterIndex
-      || forecast.model !== model
+      || !["adp_only", "need_only", "combined"].includes(resolvedModel)
+      || forecast.model !== resolvedModel
       || !/^[a-f0-9]{8}$/.test(inputFingerprint)
       || forecast.picks.length === 0
       || forecast.picks.some(pick => pick.overallPick <= observedThroughOverallPick)) {
@@ -94,7 +97,7 @@ export class ReplayForecastEvidenceRecorder {
     const base = {
       observedThroughOverallPick,
       modelIdentity: REPLAY_FORECAST_MODEL_IDENTITY,
-      model,
+      model: resolvedModel as RecordedV1OpponentModelKind,
       targetRosterIndex,
       forecast,
     } as const

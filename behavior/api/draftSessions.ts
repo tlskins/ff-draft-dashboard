@@ -19,6 +19,12 @@ type OpponentForecastSnapshot =
   ApiComponents["schemas"]["OpponentForecastSnapshot"]
 type OpponentForecastSnapshotResponse =
   ApiComponents["schemas"]["OpponentForecastSnapshotResponse"]
+type LiveOpponentModelKind = OpponentForecastSnapshot["model"]
+
+const isLiveOpponentModel = (
+  model: OpponentForecast["model"],
+): model is LiveOpponentModelKind =>
+  model === "adp_only" || model === "need_only" || model === "combined"
 
 interface PersistDraftEventsOptions {
   apiHost?: string
@@ -197,42 +203,49 @@ export const toOpponentForecastSnapshot = (
     inputFingerprint: string
     generatedAt: string
   },
-): OpponentForecastSnapshot => ({
-  schema_version: 1,
-  calculation_version: "combined_opponent_v1",
-  source_event_count: sourceEventCount,
-  input_fingerprint: inputFingerprint,
-  generated_at: generatedAt,
-  model: forecast.model,
-  target_roster_index: forecast.targetRosterIndex,
-  picks: forecast.picks.map(pick => ({
-    overall_pick: pick.overallPick,
-    roster_index: pick.rosterIndex,
-    position_probabilities: pick.positionProbabilities.map(position => ({
-      position: position.position as "QB" | "RB" | "WR" | "TE",
-      probability: position.probability,
+): OpponentForecastSnapshot => {
+  if (!isLiveOpponentModel(forecast.model)) {
+    throw new Error(
+      `Offline opponent model ${forecast.model} cannot be persisted as a v1 snapshot`,
+    )
+  }
+  return {
+    schema_version: 1,
+    calculation_version: "combined_opponent_v1",
+    source_event_count: sourceEventCount,
+    input_fingerprint: inputFingerprint,
+    generated_at: generatedAt,
+    model: forecast.model,
+    target_roster_index: forecast.targetRosterIndex,
+    picks: forecast.picks.map(pick => ({
+      overall_pick: pick.overallPick,
+      roster_index: pick.rosterIndex,
+      position_probabilities: pick.positionProbabilities.map(position => ({
+        position: position.position as "QB" | "RB" | "WR" | "TE",
+        probability: position.probability,
+      })),
+      player_probabilities: pick.playerProbabilities.map(player => ({
+        player_id: player.playerId,
+        name: player.name,
+        position: player.position as "QB" | "RB" | "WR" | "TE",
+        conditional_probability: player.conditionalProbability,
+        overall_probability: player.overallProbability,
+      })),
     })),
-    player_probabilities: pick.playerProbabilities.map(player => ({
-      player_id: player.playerId,
-      name: player.name,
-      position: player.position as "QB" | "RB" | "WR" | "TE",
-      conditional_probability: player.conditionalProbability,
-      overall_probability: player.overallProbability,
+    run_probabilities: forecast.runProbabilities.map(run => ({
+      position: run.position as "QB" | "RB" | "WR" | "TE",
+      minimum_picks: run.minimumPicks,
+      probability: run.probability,
     })),
-  })),
-  run_probabilities: forecast.runProbabilities.map(run => ({
-    position: run.position as "QB" | "RB" | "WR" | "TE",
-    minimum_picks: run.minimumPicks,
-    probability: run.probability,
-  })),
-  tier_boundary_probabilities:
-    forecast.tierBoundaryProbabilities.map(boundary => ({
-      position: boundary.position as "QB" | "RB" | "WR" | "TE",
-      user_tier: boundary.userTier,
-      player_ids: boundary.playerIds,
-      probability: boundary.probability,
-    })),
-})
+    tier_boundary_probabilities:
+      forecast.tierBoundaryProbabilities.map(boundary => ({
+        position: boundary.position as "QB" | "RB" | "WR" | "TE",
+        user_tier: boundary.userTier,
+        player_ids: boundary.playerIds,
+        probability: boundary.probability,
+      })),
+  }
+}
 
 export const persistAdvisorSnapshots = async (
   {

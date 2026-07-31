@@ -13,6 +13,11 @@ export interface DraftAdvisorPlayer {
 export interface DraftAdvisorTeam {
   rosterIndex: number
   draftedPlayerIds: string[]
+  /** Position counts let format-aware models allocate flex without guessing. */
+  draftedPositionCounts?: Array<{
+    position: FantasyPosition
+    count: number
+  }>
   needs: Array<{
     position: FantasyPosition
     openStarterSpots: number
@@ -29,6 +34,15 @@ export interface DraftAdvisorContext {
   league: {
     numTeams: number
     ppr: boolean
+  }
+  /** Optional so previously exported schema-v1 contexts stay consumable. */
+  rosterFormat?: {
+    startingQbs: number
+    startingRbs: number
+    startingWrs: number
+    startingTes: number
+    flex: number
+    bench: number
   }
   currentPick: number
   upcomingSlots: UpcomingDraftSlot[]
@@ -66,7 +80,11 @@ export interface DraftAdvisor {
   ): Promise<DraftPickPrediction[]>
 }
 
-export type OpponentModelKind = "adp_only" | "need_only" | "combined"
+export type OpponentModelKind =
+  | "adp_only"
+  | "need_only"
+  | "combined"
+  | "combined_v2"
 
 export interface PositionProbability {
   position: FantasyPosition

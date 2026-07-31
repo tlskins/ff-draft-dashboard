@@ -59,6 +59,37 @@ combined model no longer improves both position Brier score and top-position
 accuracy over the two simple baselines, regresses run precision or recall, or
 exceeds the 150 ms local p95 calculation target.
 
+## Offline opponent-model v2 challenger
+
+Run the format-aware challenger report with:
+
+```sh
+npm run eval:opponent-v2
+```
+
+This replays `combined` (v1) and `combined_v2` at each saved live observation
+boundary. It builds a canonical, leakage-safe lower-bound roster,
+available-player, and recent-pick context from only picks at or before that
+boundary, then scores the same future opponent window. It cannot recreate
+UI-only own-turn state that the evidence never serialized. Stored v1
+probabilities are not inputs to either replay; evidence is used only for the
+boundary and terminal window.
+
+The report includes overall, per-fixture, and per-league-format metrics, plus
+`v2 - v1` deltas. Negative Brier deltas are better; positive accuracy,
+precision, and recall deltas are better. This is a challenger report, not a
+promotion gate: the live advisor and recorder remain `combined` /
+`deterministic_opponent_v1` until a later promotion slice reviews broader
+format coverage and explicitly changes that default.
+
+It also prints `v1ReconstructionDeltas` against the stored live-v1 scores.
+Those are a fidelity audit, not a v2 comparison: small or non-zero differences
+can arise because v1 evidence stored forecasts but not a full historical UI
+context at own-turn transitions. The reconstructed path deliberately prefers
+the canonical fixture's picks at/before each boundary over unavailable future
+or UI-only state. Investigate large deltas before treating challenger results
+as promotion evidence.
+
 The completed-draft counterfactual replay then applies actual opponent picks
 while substituting the configured user strategy at the user's snake-draft
 turns. It compares `combined`, `adp_only`, `need_only`, and `rank_only` final

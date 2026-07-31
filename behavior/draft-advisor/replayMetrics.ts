@@ -1,4 +1,7 @@
 import { FantasyPosition } from "../../types"
+import {
+  createRecordedDraftAdvisorContextAtBoundary,
+} from "./completedDraftReplay"
 import { createOpponentForecast } from "./opponentModel"
 import type {
   RecordedCompletedDraftReplay,
@@ -44,6 +47,81 @@ export interface OpponentReplayMetrics extends OpponentForecastMetrics {
   replayCount: number
   latencyP95Ms: number
 }
+
+export interface RecordedOpponentModelFixtureResult {
+  available: true
+  fixtureId: string
+  leagueFormat: string
+  labeledWindowCount: number
+  labeledPickCount: number
+  metrics: OpponentForecastMetrics
+}
+
+export type RecordedOpponentModelReplayResult =
+  | {
+      available: true
+      model: OpponentModelKind
+      labeledFixtureCount: number
+      labeledWindowCount: number
+      labeledPickCount: number
+      metrics: OpponentForecastMetrics
+      byFixture: RecordedOpponentModelFixtureResult[]
+      byLeagueFormat: Array<{
+        leagueFormat: string
+        labeledFixtureCount: number
+        labeledWindowCount: number
+        labeledPickCount: number
+        metrics: OpponentForecastMetrics
+      }>
+    }
+  | {
+      available: false
+      model: OpponentModelKind
+      reason: string
+    }
+
+export interface OpponentForecastMetricDeltas {
+  positionBrierScore: number
+  topPositionAccuracy: number
+  playerTopThreeAccuracy: number
+  runPrecision: number
+  runRecall: number
+  tierCrossingBrierScore: number
+}
+
+export type RecordedOpponentModelComparison =
+  | {
+      available: true
+      v1: Extract<RecordedOpponentModelReplayResult, { available: true }>
+      v2: Extract<RecordedOpponentModelReplayResult, { available: true }>
+      /** Stored live v1 scores, retained only to audit replay fidelity. */
+      storedV1: {
+        labeledFixtureCount: number
+        labeledWindowCount: number
+        labeledPickCount: number
+        metrics: OpponentForecastMetrics
+      }
+      /** Reconstructed-v1 minus stored-v1; zero means exact scoring fidelity. */
+      v1ReconstructionDeltas: OpponentForecastMetricDeltas
+      deltas: OpponentForecastMetricDeltas
+      byFixture: Array<{
+        fixtureId: string
+        leagueFormat: string
+        v1: OpponentForecastMetrics
+        v2: OpponentForecastMetrics
+        deltas: OpponentForecastMetricDeltas
+      }>
+      byLeagueFormat: Array<{
+        leagueFormat: string
+        v1: OpponentForecastMetrics
+        v2: OpponentForecastMetrics
+        deltas: OpponentForecastMetricDeltas
+      }>
+    }
+  | {
+      available: false
+      reason: string
+    }
 
 export type RecordedOpponentEvidenceResult =
   | {
@@ -421,6 +499,284 @@ export const scoreRecordedOpponentForecastEvidence = (
     labeledWindowCount: windowScores.length,
     labeledPickCount: metrics.evaluatedPicks,
     metrics,
+  }
+}
+
+const opponentActualPicks = (
+  fixture: RecordedCompletedDraftReplay,
+): ActualOpponentPick[] => {
+  const validPositions = new Set<FantasyPosition>([
+    FantasyPosition.QUARTERBACK,
+    FantasyPosition.RUNNING_BACK,
+    FantasyPosition.WIDE_RECEIVER,
+    FantasyPosition.TIGHT_END,
+  ])
+  return fixture.actualPicks.flatMap(actual => {
+    if (!actual.playerId || actual.rosterIndex === fixture.targetRosterIndex) {
+      return []
+    }
+    const player = fixture.players.find(candidate => candidate.id === actual.playerId)
+    return player && validPositions.has(player.position)
+      ? [{
+          overallPick: actual.overallPick,
+          playerId: actual.playerId,
+          position: player.position,
+        }]
+      : []
+  })
+}
+
+export const leagueFormatFor = (fixture: RecordedCompletedDraftReplay): string =>
+  `${fixture.settings.numTeams}-team-${fixture.settings.ppr ? "PPR" : "STANDARD"}`
+  + `-QB${fixture.settings.numStartingQbs}`
+  + `-RB${fixture.settings.numStartingRbs}`
+  + `-WR${fixture.settings.numStartingWrs}`
+  + `-TE${fixture.settings.numStartingTes}`
+  + `-flex-${fixture.settings.numFlex}`
+  + `-bench-${fixture.settings.numBenchPlayers}`
+
+const terminalPickForObservation = (
+  observation: ReplayForecastObservation,
+): number => Math.max(...observation.forecast.picks.map(pick => pick.overallPick))
+
+/**
+ * Pick classifiers have one label per opponent pick; run/tier classifiers have
+ * one label per representative terminal window. Keep those denominators
+ * separate so a 15-window fixture is not treated like a 6-window fixture.
+ */
+const aggregateRecordedMetrics = (
+  results: Array<{
+    labeledPickCount: number
+    labeledWindowCount: number
+    metrics: OpponentForecastMetrics
+  }>,
+): OpponentForecastMetrics => {
+  const totalPicks = results.reduce((total, result) =>
+    total + result.labeledPickCount, 0)
+  const totalWindows = results.reduce((total, result) =>
+    total + result.labeledWindowCount, 0)
+  const pickWeighted = (
+    key: "positionBrierScore" | "topPositionAccuracy" | "playerTopThreeAccuracy",
+  ) => totalPicks === 0 ? 0 : results.reduce((total, result) =>
+    total + result.metrics[key] * result.labeledPickCount, 0) / totalPicks
+  const windowWeighted = (
+    key: "runPrecision" | "runRecall" | "tierCrossingBrierScore",
+  ) => totalWindows === 0 ? 0 : results.reduce((total, result) =>
+    total + result.metrics[key] * result.labeledWindowCount, 0) / totalWindows
+  return {
+    evaluatedPicks: totalPicks,
+    positionBrierScore: pickWeighted("positionBrierScore"),
+    topPositionAccuracy: pickWeighted("topPositionAccuracy"),
+    playerTopThreeAccuracy: pickWeighted("playerTopThreeAccuracy"),
+    runPrecision: windowWeighted("runPrecision"),
+    runRecall: windowWeighted("runRecall"),
+    tierCrossingBrierScore: windowWeighted("tierCrossingBrierScore"),
+  }
+}
+
+/**
+ * Replays a challenger against the old live observation boundaries. Stored
+ * forecasts contribute only their boundary and terminal horizon; neither their
+ * probabilities nor candidate ordering is supplied to the challenger.
+ */
+export const replayRecordedOpponentModel = (
+  fixture: RecordedCompletedDraftReplay,
+  model: OpponentModelKind,
+): RecordedOpponentModelFixtureResult | { available: false; reason: string } => {
+  if (!fixture.forecastEvidence) {
+    return { available: false, reason: "fixture has no live forecast boundaries" }
+  }
+  const errors = validateRecordedOpponentForecastEvidence(fixture)
+  if (errors.length > 0) {
+    return { available: false, reason: `forecast evidence is invalid: ${errors.join("; ")}` }
+  }
+  const forecasts = fixture.forecastEvidence.observations.map(observation => {
+    const terminalPick = terminalPickForObservation(observation)
+    const expected = expectedForecastPicks(fixture, observation)
+      .filter(pick => pick.overallPick <= terminalPick)
+    const currentPick = expected[0]?.overallPick
+    if (!currentPick) {
+      throw new Error(
+        `Recorded opponent window has no opponent pick at ${observation.observedThroughOverallPick}`,
+      )
+    }
+    const context = createRecordedDraftAdvisorContextAtBoundary(
+      fixture,
+      observation.observedThroughOverallPick,
+      terminalPick - currentPick + 2,
+      currentPick,
+    )
+    const forecast = createOpponentForecast(context, {
+      model,
+      targetRosterIndex: fixture.targetRosterIndex,
+    })
+    if (forecast.picks.length !== expected.length || forecast.picks.some((pick, index) =>
+      pick.overallPick !== expected[index].overallPick
+      || pick.rosterIndex !== expected[index].rosterIndex)) {
+      throw new Error(
+        `Recorded opponent window cannot be reconstructed at ${observation.observedThroughOverallPick}`,
+      )
+    }
+    return { observation, terminalPick, forecast }
+  })
+  const actualPicks = opponentActualPicks(fixture)
+  const pickScores = actualPicks.flatMap(actual => {
+    const owner = forecasts
+      .filter(candidate =>
+        candidate.observation.observedThroughOverallPick < actual.overallPick
+        && candidate.terminalPick >= actual.overallPick)
+      .sort((left, right) => right.observation.observedThroughOverallPick
+        - left.observation.observedThroughOverallPick)[0]
+    return owner ? [scoreOpponentForecast(owner.forecast, [actual])] : []
+  })
+  if (pickScores.length === 0) {
+    return { available: false, reason: "forecast evidence has no labeled opponent picks" }
+  }
+  const representativeWindows = new Map<number, typeof forecasts[number]>()
+  forecasts.forEach(candidate => {
+    const existing = representativeWindows.get(candidate.terminalPick)
+    if (!existing || candidate.observation.observedThroughOverallPick
+      < existing.observation.observedThroughOverallPick) {
+      representativeWindows.set(candidate.terminalPick, candidate)
+    }
+  })
+  const windowScores = Array.from(representativeWindows.values()).map(candidate =>
+    scoreOpponentForecast(candidate.forecast, actualPicks.filter(actual =>
+      actual.overallPick > candidate.observation.observedThroughOverallPick
+      && actual.overallPick <= candidate.terminalPick)))
+  const pickMetrics = aggregateEvidenceMetrics(pickScores)
+  const metrics: OpponentForecastMetrics = {
+    ...pickMetrics,
+    runPrecision: mean(windowScores.map(metric => metric.runPrecision)),
+    runRecall: mean(windowScores.map(metric => metric.runRecall)),
+    tierCrossingBrierScore: mean(
+      windowScores.map(metric => metric.tierCrossingBrierScore),
+    ),
+  }
+  return {
+    available: true,
+    fixtureId: fixture.id,
+    leagueFormat: leagueFormatFor(fixture),
+    labeledWindowCount: windowScores.length,
+    labeledPickCount: metrics.evaluatedPicks,
+    metrics,
+  }
+}
+
+export const runRecordedOpponentModelReplay = (
+  fixtures: RecordedCompletedDraftReplay[],
+  model: OpponentModelKind,
+): RecordedOpponentModelReplayResult => {
+  const labeledFixtures = fixtures.filter(fixture => fixture.forecastEvidence)
+  if (labeledFixtures.length === 0) {
+    return { available: false, model, reason: "no fixtures have live forecast boundaries" }
+  }
+  const results = labeledFixtures.flatMap(fixture => {
+    const result = replayRecordedOpponentModel(fixture, model)
+    return result.available ? [] : [result]
+  })
+  if (results.length > 0) {
+    return { available: false, model, reason: results.map(result => result.reason).join("; ") }
+  }
+  const byFixture = labeledFixtures.map(fixture => replayRecordedOpponentModel(fixture, model))
+    .filter((result): result is RecordedOpponentModelFixtureResult => result.available)
+  if (byFixture.length === 0) {
+    return { available: false, model, reason: "no fixtures supplied" }
+  }
+  const formatGroups = new Map<string, RecordedOpponentModelFixtureResult[]>()
+  byFixture.forEach(result => {
+    const group = formatGroups.get(result.leagueFormat) || []
+    group.push(result)
+    formatGroups.set(result.leagueFormat, group)
+  })
+  return {
+    available: true,
+    model,
+    labeledFixtureCount: byFixture.length,
+    labeledWindowCount: byFixture.reduce((total, result) =>
+      total + result.labeledWindowCount, 0),
+    labeledPickCount: byFixture.reduce((total, result) =>
+      total + result.labeledPickCount, 0),
+    metrics: aggregateRecordedMetrics(byFixture),
+    byFixture,
+    byLeagueFormat: Array.from(formatGroups.entries()).map(([leagueFormat, group]) => ({
+      leagueFormat,
+      labeledFixtureCount: group.length,
+      labeledWindowCount: group.reduce((total, result) =>
+        total + result.labeledWindowCount, 0),
+      labeledPickCount: group.reduce((total, result) =>
+        total + result.labeledPickCount, 0),
+      metrics: aggregateRecordedMetrics(group),
+    })),
+  }
+}
+
+const metricDeltas = (
+  v1: OpponentForecastMetrics,
+  v2: OpponentForecastMetrics,
+): OpponentForecastMetricDeltas => ({
+  positionBrierScore: v2.positionBrierScore - v1.positionBrierScore,
+  topPositionAccuracy: v2.topPositionAccuracy - v1.topPositionAccuracy,
+  playerTopThreeAccuracy: v2.playerTopThreeAccuracy - v1.playerTopThreeAccuracy,
+  runPrecision: v2.runPrecision - v1.runPrecision,
+  runRecall: v2.runRecall - v1.runRecall,
+  tierCrossingBrierScore: v2.tierCrossingBrierScore - v1.tierCrossingBrierScore,
+})
+
+/** Compare rebuilt v1 and v2 forecasts without changing the live v1 model. */
+export const compareRecordedOpponentModels = (
+  fixtures: RecordedCompletedDraftReplay[],
+): RecordedOpponentModelComparison => {
+  const v1 = runRecordedOpponentModelReplay(fixtures, "combined")
+  const v2 = runRecordedOpponentModelReplay(fixtures, "combined_v2")
+  if (!v1.available) return { available: false, reason: `v1 unavailable: ${v1.reason}` }
+  if (!v2.available) return { available: false, reason: `v2 unavailable: ${v2.reason}` }
+  const storedV1Results = fixtures.filter(fixture => fixture.forecastEvidence)
+    .map(fixture => scoreRecordedOpponentForecastEvidence(fixture))
+  const unavailableStoredV1 = storedV1Results.find(result => !result.available)
+  if (unavailableStoredV1 && !unavailableStoredV1.available) {
+    return { available: false, reason: `stored v1 unavailable: ${unavailableStoredV1.reason}` }
+  }
+  const storedV1Available = storedV1Results.filter(
+    (result): result is Extract<RecordedOpponentEvidenceResult, { available: true }> =>
+      result.available,
+  )
+  const storedV1 = {
+    labeledFixtureCount: storedV1Available.length,
+    labeledWindowCount: storedV1Available.reduce((total, result) =>
+      total + result.labeledWindowCount, 0),
+    labeledPickCount: storedV1Available.reduce((total, result) =>
+      total + result.labeledPickCount, 0),
+    metrics: aggregateRecordedMetrics(storedV1Available),
+  }
+  const v2Fixtures = new Map(v2.byFixture.map(result => [result.fixtureId, result]))
+  const v2Formats = new Map(v2.byLeagueFormat.map(result => [result.leagueFormat, result]))
+  return {
+    available: true,
+    v1,
+    v2,
+    storedV1,
+    v1ReconstructionDeltas: metricDeltas(storedV1.metrics, v1.metrics),
+    deltas: metricDeltas(v1.metrics, v2.metrics),
+    byFixture: v1.byFixture.flatMap(result => {
+      const challenger = v2Fixtures.get(result.fixtureId)
+      return challenger ? [{
+        fixtureId: result.fixtureId,
+        leagueFormat: result.leagueFormat,
+        v1: result.metrics,
+        v2: challenger.metrics,
+        deltas: metricDeltas(result.metrics, challenger.metrics),
+      }] : []
+    }),
+    byLeagueFormat: v1.byLeagueFormat.flatMap(result => {
+      const challenger = v2Formats.get(result.leagueFormat)
+      return challenger ? [{
+        leagueFormat: result.leagueFormat,
+        v1: result.metrics,
+        v2: challenger.metrics,
+        deltas: metricDeltas(result.metrics, challenger.metrics),
+      }] : []
+    }),
   }
 }
 

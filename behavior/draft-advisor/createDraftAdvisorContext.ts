@@ -88,6 +88,14 @@ export const createDraftAdvisorContext = ({
       numTeams: settings.numTeams,
       ppr: settings.ppr,
     },
+    rosterFormat: {
+      startingQbs: settings.numStartingQbs,
+      startingRbs: settings.numStartingRbs,
+      startingWrs: settings.numStartingWrs,
+      startingTes: settings.numStartingTes,
+      flex: settings.numFlex,
+      bench: settings.numBenchPlayers,
+    },
     currentPick,
     upcomingSlots: createUpcomingSlots(
       currentPick,
@@ -97,6 +105,10 @@ export const createDraftAdvisorContext = ({
     teams: rosters.map((roster, rosterIndex) => ({
       rosterIndex,
       draftedPlayerIds: [...roster.picks],
+      draftedPositionCounts: requirements.map(([position]) => ({
+        position,
+        count: roster[position].length,
+      })),
       needs: requirements.map(([position, required]) => ({
         position,
         openStarterSpots: Math.max(

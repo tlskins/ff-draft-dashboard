@@ -90,6 +90,93 @@ const recentScores = (
   })))
 }
 
+const formatFor = (context: DraftAdvisorContext) => {
+  const inferred = (position: ForecastPosition) => context.teams.reduce(
+    (maximum, team) => Math.max(maximum, team.needs.find(need =>
+      need.position === position)?.openStarterSpots || 0),
+    0,
+  )
+  return context.rosterFormat || {
+    startingQbs: inferred(FantasyPosition.QUARTERBACK),
+    startingRbs: inferred(FantasyPosition.RUNNING_BACK),
+    startingWrs: inferred(FantasyPosition.WIDE_RECEIVER),
+    startingTes: inferred(FantasyPosition.TIGHT_END),
+    flex: 0,
+    bench: 0,
+  }
+}
+
+const directStarterRequirement = (
+  context: DraftAdvisorContext,
+  position: ForecastPosition,
+): number => {
+  const format = formatFor(context)
+  return {
+    QB: format.startingQbs,
+    RB: format.startingRbs,
+    WR: format.startingWrs,
+    TE: format.startingTes,
+  }[position]
+}
+
+const isFlexEligible = (position: ForecastPosition): boolean =>
+  position === FantasyPosition.RUNNING_BACK
+  || position === FantasyPosition.WIDE_RECEIVER
+  || position === FantasyPosition.TIGHT_END
+
+/** Extra RB/WR/TE players beyond direct slots absorb flex demand; QB cannot. */
+const openFlexSpots = (
+  context: DraftAdvisorContext,
+  rosterIndex: number,
+): number => {
+  const team = context.teams.find(candidate =>
+    candidate.rosterIndex === rosterIndex)
+  if (!team) return 0
+  const format = formatFor(context)
+  const occupiedFlexSpots = POSITIONS.reduce((total, position) => {
+    if (!isFlexEligible(position)) return total
+    const drafted = team.draftedPositionCounts?.find(count =>
+      count.position === position)?.count || 0
+    return total + Math.max(
+      0,
+      drafted - directStarterRequirement(context, position),
+    )
+  }, 0)
+  return Math.max(0, format.flex - occupiedFlexSpots)
+}
+
+const v2FormatNeedScores = (
+  context: DraftAdvisorContext,
+  rosterIndex: number,
+): PositionProbability[] => {
+  const team = context.teams.find(candidate =>
+    candidate.rosterIndex === rosterIndex)
+  const teamFlexOpen = openFlexSpots(context, rosterIndex)
+  const scoringMultiplier = (position: ForecastPosition): number => {
+    if (context.league.ppr && position === FantasyPosition.WIDE_RECEIVER) return 1.08
+    if (context.league.ppr && position === FantasyPosition.TIGHT_END) return 1.05
+    if (!context.league.ppr && position === FantasyPosition.RUNNING_BACK) return 1.05
+    return 1
+  }
+  return normalize(POSITIONS.map(position => {
+    const directOpen = team?.needs.find(need =>
+      need.position === position)?.openStarterSpots || 0
+    const leagueDirectOpen = context.teams.reduce((total, candidate) => total + (
+      candidate.needs.find(need => need.position === position)?.openStarterSpots || 0
+    ), 0)
+    const leagueFlexOpen = context.teams.reduce((total, candidate) =>
+      total + openFlexSpots(context, candidate.rosterIndex), 0)
+    const flexDemand = isFlexEligible(position)
+      ? teamFlexOpen * 1.15 + leagueFlexOpen * 0.2
+      : 0
+    return {
+      position,
+      score: (0.2 + directOpen * 1.8 + leagueDirectOpen * 0.35 + flexDemand)
+        * scoringMultiplier(position),
+    }
+  }))
+}
+
 const positionProbabilities = (
   context: DraftAdvisorContext,
   overallPick: number,
@@ -101,6 +188,20 @@ const positionProbabilities = (
   if (model === "adp_only") return adp
   if (model === "need_only") return need
   const recent = recentScores(context)
+  if (model === "combined_v2") {
+    const formatNeed = v2FormatNeedScores(context, rosterIndex)
+    return normalize(POSITIONS.map(position => {
+      const probabilityFor = (source: PositionProbability[]) =>
+        source.find(item => item.position === position)?.probability || 0
+      return {
+        position,
+        score:
+          probabilityFor(adp) * 0.5
+          + probabilityFor(formatNeed) * 0.4
+          + probabilityFor(recent) * 0.1,
+      }
+    }))
+  }
   return normalize(POSITIONS.map(position => {
     const probabilityFor = (source: PositionProbability[]) =>
       source.find(item => item.position === position)?.probability || 0
