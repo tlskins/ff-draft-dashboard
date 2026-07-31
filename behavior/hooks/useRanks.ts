@@ -112,6 +112,26 @@ export const useRanks = ({
     setRankings(rankings)
   }, [boardSettings, settings])
 
+  // Import supplies a complete, already-validated preference/ranking bundle.
+  // Build every derived rank view from that same bundle rather than waiting for
+  // separate settings and board-setting state updates to settle.
+  const applyImportedRankings = useCallback((
+    nextRankings: Rankings,
+    nextSettings: FantasySettings,
+    nextBoardSettings: BoardSettings,
+  ) => {
+    const nextPlayerRanks = createPlayerRanks(
+      nextRankings.players,
+      nextSettings,
+      nextBoardSettings,
+    )
+    setBoardSettings({ ...nextBoardSettings })
+    setPlayerRanks(nextPlayerRanks)
+    createPlayerLibrary(nextRankings.players)
+    setRankingSummaries(nextRankings.rankingsSummaries)
+    setRankings(nextRankings)
+  }, [])
+
   const onLoadCustomPlayerRanks = useCallback((rankings: Rankings, ranker: ThirdPartyRanker) => {
     // First load the players with the source ranker to get proper rankings
     const tempPlayerRanks = createPlayerRanks(rankings.players, settings, { ...boardSettings, ranker })
@@ -165,8 +185,12 @@ export const useRanks = ({
 
     return rosterIdx
   }
-  const addPlayerToRoster = ( player: Player, pickNum: number ) => {
-    const rosterIdx = getRosterIdxFromPick( pickNum )
+  const addPlayerToRoster = (
+    player: Player,
+    pickNum: number,
+    rosterIndex?: number,
+  ) => {
+    const rosterIdx = rosterIndex ?? getRosterIdxFromPick(pickNum)
     setRosters(currentRosters =>
       addToRoster(currentRosters, player, rosterIdx)
     )
@@ -184,6 +208,7 @@ export const useRanks = ({
     playerId: string,
     pickNum: number,
     fallbackPlayer?: Player,
+    rosterIndex?: number,
   ): void => {
     const player = playerLib[playerId] || fallbackPlayer
     if (!player) {
@@ -216,7 +241,7 @@ export const useRanks = ({
     setPlayerRanks(currentRanks =>
       removePlayerFromBoard(currentRanks, player)
     )
-    addPlayerToRoster(player, pickNum)
+    addPlayerToRoster(player, pickNum, rosterIndex)
   };
   const onRemoveDraftedPlayer = (pickNum: number) => {
     const playerId = draftHistory[pickNum - 1];
@@ -897,6 +922,7 @@ export const useRanks = ({
     onRevertPlayerToPreSync,
     // load funcs
     onLoadPlayers,
+    applyImportedRankings,
     onLoadCustomPlayerRanks,
     // helper funcs
     calculateRankingDiffs,

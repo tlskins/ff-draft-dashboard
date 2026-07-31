@@ -4,6 +4,7 @@ import { getPlayerAdp, getPlayerMetrics, getRoundAndPickShortText, getRoundIdxFo
 import { getPosStyle, getTierStyle } from '../behavior/styles'
 import HistoricalStats from './HistoricalStats'
 import { playerShortName } from '../behavior/presenters'
+import { useDialogAccessibility } from '../behavior/hooks/useDialogAccessibility'
 
 interface PlayerSearchModalProps {
   isOpen: boolean
@@ -38,8 +39,13 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
   const [showTargetingSelect, setShowTargetingSelect] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-
-  console.log('player search', rankingSummaries)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const onDialogKeyDown = useDialogAccessibility({
+    active: isOpen,
+    dialogRef,
+    initialFocusRef: searchInputRef,
+    onClose,
+  })
 
   // Get available players from playerLib
   const allPlayers = Object.values(playerLib)
@@ -135,13 +141,6 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
     }
   }, [isOpen])
 
-  // Focus search input when modal opens
-  useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      searchInputRef.current.focus()
-    }
-  }, [isOpen])
-
   if (!isOpen) return null
 
   const playerFavorite = selectedPlayer ? getPlayerFavorite(selectedPlayer.id) : undefined
@@ -149,11 +148,20 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 md:p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full h-screen md:h-5/6 flex flex-col relative">
+      <div
+        aria-labelledby="player-search-title"
+        aria-modal="true"
+        className="bg-white rounded-lg shadow-xl max-w-4xl w-full h-screen md:h-5/6 flex flex-col relative"
+        onKeyDown={onDialogKeyDown}
+        ref={dialogRef}
+        role="dialog"
+        tabIndex={-1}
+      >
         {/* Header */}
         <div className="flex-shrink-0 bg-white border-b p-3 md:p-4 flex justify-between items-center rounded-t-lg">
-          <h2 className="text-lg md:text-xl font-bold">Search Players</h2>
+          <h2 className="text-lg md:text-xl font-bold" id="player-search-title">Search Players</h2>
           <button
+            aria-label="Close player search"
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-2xl"
           >
@@ -168,6 +176,11 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
             <div className="relative">
               <input
                 ref={searchInputRef}
+                aria-autocomplete="list"
+                aria-controls="player-search-results"
+                aria-expanded={showDropdown && filteredPlayers.length > 0}
+                aria-haspopup="listbox"
+                role="combobox"
                 type="text"
                 placeholder="Search for a player..."
                 value={searchTerm}
@@ -185,14 +198,24 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
 
             {/* Dropdown Results */}
             {showDropdown && filteredPlayers.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+              <ul
+                aria-label="Player search results"
+                className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-96 overflow-y-auto"
+                id="player-search-results"
+                role="listbox"
+              >
                 {filteredPlayers.map((player) => {
                   const posStyle = getPosStyle(player.position)
                   return (
-                    <div
+                    <li key={player.id}>
+                    <button
+                      aria-label={`Select ${player.fullName}, ${player.position}, ${player.team}`}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-100 border-b last:border-b-0 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 ${posStyle}`}
                       key={player.id}
                       onClick={() => handlePlayerSelect(player)}
-                      className={`px-4 py-3 cursor-pointer hover:bg-gray-100 border-b last:border-b-0 ${posStyle}`}
+                      aria-selected={selectedPlayer?.id === player.id}
+                      role="option"
+                      type="button"
                     >
                       <div className="flex justify-between items-center">
                         <div>
@@ -205,10 +228,11 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
                           ADP {getRoundAndPickShortText(getPlayerAdp(player, fantasySettings, boardSettings), fantasySettings.numTeams)}
                         </div>
                       </div>
-                    </div>
+                    </button>
+                    </li>
                   )
                 })}
-              </div>
+              </ul>
             )}
           </div>
 
@@ -346,4 +370,4 @@ const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
   )
 }
 
-export default PlayerSearchModal 
+export default PlayerSearchModal

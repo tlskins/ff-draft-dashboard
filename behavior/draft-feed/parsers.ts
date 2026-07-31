@@ -42,27 +42,63 @@ const levenshteinDistance = (left: string, right: string): number => {
   return matrix[left.length][right.length]
 }
 
+const normalizePlayerName = (name: string): string =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\b(iii|ii|jr|sr)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+
+const normalizeEspnPosition = (position: string): string =>
+  position.split(",")[0]?.trim() || position
+
+const espnPlayerId = (
+  pick: EspnDraftPick,
+  playersByPositionAndTeam: PlayersByPositionAndTeam,
+): string | null => {
+  const imageMatch = pick.imgUrl.match(
+    /headshots\/nfl\/players\/full\/(\d+)\.png/,
+  )
+  if (imageMatch) return imageMatch[1]
+
+  const position = normalizeEspnPosition(pick.position)
+  const teamAliases = {
+    JAX: "JAC",
+    PHI: "PHL",
+    WSH: "WAS",
+  } as Record<string, string>
+  const team = teamAliases[pick.team] || pick.team
+  const candidates = playersByPositionAndTeam[
+    position as FantasyPosition
+  ]?.[team] || []
+  const normalizedName = normalizePlayerName(pick.name)
+  return candidates.find(player =>
+    normalizePlayerName(player.fullName) === normalizedName)?.id || null
+}
+
 export const parseEspnDraftPicks = (
   picks: EspnDraftPick[],
   numTeams: number,
+  playersByPositionAndTeam: PlayersByPositionAndTeam = {},
 ): ParsedDraftPick[] =>
   picks.flatMap((pick) => {
-    const imageMatch = pick.imgUrl.match(
-      /headshots\/nfl\/players\/full\/(\d+)\.png/,
-    )
     const pickMatch = pick.pick.match(/^R(\d+), P(\d+)\b/)
-    if (!imageMatch || !pickMatch) {
+    const position = normalizeEspnPosition(pick.position)
+    if (!draftablePositions.has(position) || !pickMatch) {
       return []
     }
+    const playerId = espnPlayerId(pick, playersByPositionAndTeam)
+    if (!playerId) return []
 
     const round = Number.parseInt(pickMatch[1], 10)
     const pickInRound = Number.parseInt(pickMatch[2], 10)
     return [{
-      id: imageMatch[1],
+      id: playerId,
       overallPick: (round - 1) * numTeams + pickInRound,
       name: pick.name,
       team: pick.team,
-      position: pick.position,
+      position,
     }]
   })
 

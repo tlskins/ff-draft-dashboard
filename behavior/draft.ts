@@ -82,14 +82,20 @@ export const getProjectedTier = (
         return undefined
     }
 
-    const playerTier = settings.ppr ? playerRanks.pprPositionTier : playerRanks.standardPositionTier;
+    const positionRank = settings.ppr
+        ? playerRanks.pprPositionRank
+        : playerRanks.standardPositionRank;
 
-    if ( !summary || !playerTier ) {
+    if ( !summary || !positionRank ) {
         return undefined
     }
 
     const tiers = summary.tiers[player.position] || []
-    return tiers.find(t => t.tierNumber === playerTier.tierNumber)
+    const playerIndex = positionRank - 1
+    return tiers.find(t =>
+        playerIndex >= t.upperLimitPlayerIdx &&
+        playerIndex <= t.lowerLimitPlayerIdx
+    )
 }
 
 export const rankablePositions: FantasyPosition[] = [
@@ -272,6 +278,10 @@ export const createRosters = (numTeams: number): Roster[] => {
 
 export const addToRoster = ( rosters: Roster[], player: Player, rosterIdx: number ): Roster[] => {
     const roster = rosters[rosterIdx]
+    if (!roster) {
+        console.warn(`Ignoring pick for missing roster index ${rosterIdx}`)
+        return rosters
+    }
     if ( roster.picks.includes(player.id)) {
         return rosters
     }
@@ -289,6 +299,10 @@ export const addToRoster = ( rosters: Roster[], player: Player, rosterIdx: numbe
 
 export const removeFromRoster = ( rosters: Roster[], player: Player, rosterIdx: number ): Roster[] => {
     const roster = rosters[rosterIdx]
+    if (!roster) {
+        console.warn(`Ignoring removal for missing roster index ${rosterIdx}`)
+        return rosters
+    }
     const newRosters = [
         ...rosters.slice(0, rosterIdx),
         {
@@ -447,12 +461,11 @@ const isEvenRound = (round: number): boolean => round % 2 === 0
 export const isMyPick = ( pickNum: number, myPickNum: number, numTeams: number ): boolean => {
     const round = roundForPick( pickNum, numTeams )
     const isEven = isEvenRound( round )
-    const rem = pickNum % numTeams
+    const pickInRound = getPickInRound(pickNum, numTeams)
     if ( isEven ) {
         const myEvenPick = numTeams - myPickNum + 1
-        return myEvenPick === rem
+        return myEvenPick === pickInRound
     } else {
-        const pickInRound = rem === 0 ? numTeams : rem
         return pickInRound === myPickNum
     }
 }
@@ -507,4 +520,3 @@ export const delay = ( action: () => void, timeout=400 ): void => {
     action()
   }, timeout )
 }
-

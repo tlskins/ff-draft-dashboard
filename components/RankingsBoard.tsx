@@ -14,6 +14,18 @@ import EditRankingsView, { DiffFilterOption } from './views/EditRankingsView'
 import RosterDisplay from './RosterDisplay'
 import Dropdown from './dropdown'
 import MobileViewFooter from './MobileViewFooter'
+import type { RankingProfileControls } from '../behavior/hooks/useRankingProfiles'
+import type { DraftSourceHealth } from '../behavior/draft-feed/types'
+import type {
+  DraftCaptureConnectionState,
+  DraftPersistenceBoundary,
+  DraftSourceHealthFreshness,
+} from '../behavior/boundaryState'
+import DraftSourceHealthBadge from './DraftSourceHealthBadge'
+import {
+  DraftCaptureStatus,
+  DraftPersistenceStatus,
+} from './DraftBoundaryStatus'
 
 
 
@@ -55,8 +67,12 @@ interface RankingsBoardProps {
   viewPlayerId: string | null,
   draftHistory: (string | null)[],
   viewRosterIdx: number,
-  listenerActive: boolean,
+  draftCaptureState: DraftCaptureConnectionState,
   activeDraftListenerTitle: string | null,
+  draftSourceHealth: DraftSourceHealth | null,
+  draftSourceHealthFreshness: DraftSourceHealthFreshness,
+  draftPersistence: DraftPersistenceBoundary,
+  onRetryDraftPersistence: () => void,
   loadCurrentRankings: () => void,
   rankings: Rankings,
   latestRankings: Rankings | null,
@@ -67,6 +83,7 @@ interface RankingsBoardProps {
   onRevertPlayerToPreSync: (playerId: string) => void,
   addPlayerTarget: (player: Player, targetAsEarlyAsRound: number) => void,
   removePlayerTarget: (playerId: string) => void
+  rankingProfileControls: RankingProfileControls
 }
 
 const RankingsBoard = ({
@@ -103,8 +120,12 @@ const RankingsBoard = ({
   getDraftRoundForPickNum,
   draftHistory,
   viewRosterIdx,
-  listenerActive,
+  draftCaptureState,
   activeDraftListenerTitle,
+  draftSourceHealth,
+  draftSourceHealthFreshness,
+  draftPersistence,
+  onRetryDraftPersistence,
   rankings,
   latestRankings,
   loadCurrentRankings,
@@ -118,6 +139,7 @@ const RankingsBoard = ({
   onRevertPlayerToPreSync,
   addPlayerTarget,
   removePlayerTarget,
+  rankingProfileControls,
 }: RankingsBoardProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
@@ -203,6 +225,7 @@ const RankingsBoard = ({
           setIsDiffFilterDropdownOpen={setIsDiffFilterDropdownOpen}
           rankings={rankings}
           latestRankings={latestRankings}
+          rankingProfileControls={rankingProfileControls}
         />
       )
     }
@@ -269,23 +292,20 @@ const RankingsBoard = ({
     <></>
     :
     <div className={`flex flex-col md:p-4 p-1 h-full border border-4 rounded shadow-md bg-white text-sm ${isEditingCustomRanking ? 'overflow-hidden' : 'overflow-y-scroll'}`}>
-      <div className="hidden md:flex flex-col items-center justify-center content-center mb-2">
+      <div className="flex flex-col items-center justify-center content-center mb-2">
         <div className="flex flex-col items-center w-full">
-          { (!activeDraftListenerTitle && !listenerActive) &&
-            <p className="bg-gray-300 font-semibold shadow rounded-md text-sm my-1 px-4">
-              Listener inactive
-            </p>
-          }
-          { (!activeDraftListenerTitle && listenerActive) &&
-            <p className="bg-yellow-300 font-semibold shadow rounded-md text-sm my-1 px-4">
-              Listener active...
-            </p>
-          }
-          { activeDraftListenerTitle &&
-            <p className="bg-green-300 font-semibold shadow rounded-md text-sm my-1 px-4">
-              Listening to: { activeDraftListenerTitle }
-            </p>
-          }
+          <DraftCaptureStatus
+            activeDraftTitle={activeDraftListenerTitle}
+            state={draftCaptureState}
+          />
+          <DraftSourceHealthBadge
+            freshness={draftSourceHealthFreshness}
+            health={draftSourceHealth}
+          />
+          <DraftPersistenceStatus
+            onRetry={onRetryDraftPersistence}
+            persistence={draftPersistence}
+          />
         </div>
       </div>  
     

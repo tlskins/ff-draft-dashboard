@@ -2,11 +2,15 @@ const CONNECTION_NAME = "ffDraftDashboard"
 const FEED_VERSION = 1
 const READ_INTERVAL_MS = 1_000
 const KEEP_ALIVE_INTERVAL_MS = 5_000
+const HEALTH_REPORT_INTERVAL_MS = 30_000
+const espnExtractor = globalThis.DraftyEspnExtractor
 
 const state = {
   port: null,
   reconnectTimer: null,
   workTimer: null,
+  lastEspnHealthFingerprint: null,
+  lastEspnHealthSentAt: 0,
 }
 
 const sleep = (milliseconds) =>
@@ -43,9 +47,15 @@ const postToExtension = (message) => {
   }
 }
 
-const draftId = (platform, title) => `${platform}:${title}`
+const draftId = (platform, title) => {
+  if (platform === "ESPN") {
+    const leagueId = new URL(window.location.href).searchParams.get("leagueId")
+    if (leagueId) return `${platform}:${leagueId}`
+  }
+  return `${platform}:${title}`
+}
 
-const sendSnapshot = (platform, title, picks) => {
+const sendSnapshot = (platform, title, picks, details = {}) => {
   postToExtension(createEvent("draft-snapshot", {
     draft: {
       id: draftId(platform, title),
@@ -53,38 +63,97 @@ const sendSnapshot = (platform, title, picks) => {
       platform,
       picks,
       capturedAt: Date.now(),
+      sourceUrl: window.location.href,
+      ...details,
     },
   }))
 }
 
+const espnHealthFingerprint = (health) => JSON.stringify([
+  health.status,
+  health.mode,
+  health.issues,
+  health.checks.map((check) => [
+    check.name,
+    check.matched,
+    check.healthy,
+  ]),
+])
+
+const reportEspnHealth = (health) => {
+  const fingerprint = espnHealthFingerprint(health)
+  const now = Date.now()
+  const changed = fingerprint !== state.lastEspnHealthFingerprint
+  const reportDue =
+    now - state.lastEspnHealthSentAt >= HEALTH_REPORT_INTERVAL_MS
+  if (!changed && !reportDue) return
+
+  state.lastEspnHealthFingerprint = fingerprint
+  state.lastEspnHealthSentAt = now
+  postToExtension(createEvent("source-health", { health }))
+  if (changed && health.status !== "healthy") {
+    console.warn("ESPN draft selector health changed", health)
+  }
+}
+
+const readEspnDraftMetadata = (title) => {
+  const teamCount = Number.parseInt(
+    title.match(/\b(\d+)-Team\b/i)?.[1] || "",
+    10,
+  )
+  const teamIdText = new URL(window.location.href)
+    .searchParams.get("teamId")
+  const teamId = teamIdText && /^[1-9]\d*$/.test(teamIdText)
+    ? Number(teamIdText)
+    : Number.NaN
+  const targetRosterIndex = Number.isSafeInteger(teamCount)
+    && teamCount > 0
+    && Number.isSafeInteger(teamId)
+    && teamId <= teamCount
+    ? teamId - 1
+    : null
+  return {
+    numTeams: Number.isFinite(teamCount) ? teamCount : undefined,
+    targetRosterIndex,
+    scoringFormat: /\bPPR\b/i.test(title)
+      ? "PPR"
+      : /\bStandard\b/i.test(title)
+        ? "STANDARD"
+        : null,
+  }
+}
+
 const readEspnDraft = () => {
-  const draftTitle =
-    document.querySelector("h1.title")?.textContent?.trim() ||
+  if (!espnExtractor) {
+    console.warn("ESPN draft extractor is unavailable")
+    return
+  }
+  const extraction = espnExtractor.inspectEspnDraft(document)
+  reportEspnHealth(extraction.health)
+  if (
+    extraction.health.mode === "unavailable" ||
+    extraction.health.mode === "waiting"
+  ) {
+    return
+  }
+
+  const draftTitle = extraction.title ||
     `ESPN Draft ${window.location.pathname}`
-  const history =
-    document.querySelector(".draft-columns .draft-column:nth-child(3) ul")
-  const picks = []
-
-  history?.querySelectorAll("li").forEach((draftPick) => {
-    picks.push({
-      imgUrl:
-        draftPick
-          .querySelector(".player-headshot img:not(fallback)")
-          ?.getAttribute("src") || "",
-      name:
-        draftPick.querySelector(".playerinfo__playername")?.textContent?.trim() ||
-        "",
-      team:
-        draftPick.querySelector(".playerinfo__playerteam")?.textContent?.trim() ||
-        "",
-      position:
-        draftPick.querySelector(".playerinfo__playerpos")?.textContent?.trim() ||
-        "",
-      pick: draftPick.querySelector(".pick-info")?.textContent?.trim() || "",
+  const draftMetadata = readEspnDraftMetadata(draftTitle)
+  if (extraction.completion) {
+    sendSnapshot("ESPN", draftTitle, extraction.preferredPicks, {
+      ...draftMetadata,
+      completion: extraction.completion,
     })
-  })
+    return
+  }
 
-  sendSnapshot("ESPN", draftTitle, picks)
+  sendSnapshot(
+    "ESPN",
+    draftTitle,
+    extraction.preferredPicks,
+    draftMetadata,
+  )
 }
 
 const readNflDraft = () => {
@@ -128,11 +197,11 @@ const scheduleWork = (work, delay) => {
 }
 
 const startEspnReader = async () => {
-  const draftRoot = await waitForElement('div[class="draft-columns"]')
-  if (draftRoot) {
-    readEspnDraft()
-    scheduleWork(readEspnDraft, READ_INTERVAL_MS)
-  }
+  await waitForElement(
+    espnExtractor?.selectors.draftRoot || ".draft-columns",
+  )
+  readEspnDraft()
+  scheduleWork(readEspnDraft, READ_INTERVAL_MS)
 }
 
 const startNflReader = async () => {
@@ -189,6 +258,8 @@ const connect = () => {
   }
 
   state.port = chrome.runtime.connect({ name: CONNECTION_NAME })
+  state.lastEspnHealthFingerprint = null
+  state.lastEspnHealthSentAt = 0
   state.port.onDisconnect.addListener(() => {
     state.port = null
     window.clearTimeout(state.workTimer)

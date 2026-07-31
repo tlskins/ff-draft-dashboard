@@ -57,6 +57,7 @@ const EditRankingsView = ({
   setIsDiffFilterDropdownOpen,
   rankings,
   latestRankings,
+  rankingProfileControls,
 }: EditRankingsViewProps) => {
   const [shownPlayerId, setShownPlayerId] = useState<string | null>(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
@@ -74,10 +75,17 @@ const EditRankingsView = ({
   const [isDraggingScrollbar, setIsDraggingScrollbar] = useState(false)
   // Diff filter state - use external state if provided, otherwise use local state
   const [internalDiffFilter, setInternalDiffFilter] = useState<DiffFilterOption>(DiffFilterOption.SHOW_ALL)
+  const [profileName, setProfileName] = useState("My Rankings")
   const diffFilter = (externalDiffFilter as DiffFilterOption) || internalDiffFilter
   const setDiffFilter = externalSetDiffFilter ? 
     (filter: DiffFilterOption) => externalSetDiffFilter(filter) : 
     setInternalDiffFilter
+
+  useEffect(() => {
+    if (rankingProfileControls.activeProfile) {
+      setProfileName(rankingProfileControls.activeProfile.name)
+    }
+  }, [rankingProfileControls.activeProfile])
 
   // Check if there are newer rankings available (different cachedAt timestamps)
   const hasNewerRankings = Boolean(
@@ -470,6 +478,141 @@ const EditRankingsView = ({
           <p className="text-sm text-gray-600">
             Drag players to reorder rankings • Click tier to edit and click new placement to move
           </p>
+          <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex min-w-44 flex-col text-xs font-semibold text-gray-700">
+                Ranking profile
+                <select
+                  aria-label="Ranking profile"
+                  className="mt-1 rounded border border-gray-300 bg-white px-2 py-2 text-sm font-normal"
+                  value={rankingProfileControls.activeProfile?.id || ""}
+                  onChange={event => {
+                    if (event.target.value) {
+                      rankingProfileControls.select(event.target.value)
+                    } else {
+                      rankingProfileControls.startNew()
+                      setProfileName("My Rankings")
+                    }
+                  }}
+                  disabled={rankingProfileControls.isLoading}
+                >
+                  <option value="">New profile</option>
+                  {rankingProfileControls.profiles.map(profile => (
+                    <option key={profile.id} value={profile.id}>
+                      {profile.name} · rev {profile.current_revision}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex min-w-44 flex-1 flex-col text-xs font-semibold text-gray-700">
+                Profile name
+                <input
+                  aria-label="Profile name"
+                  className="mt-1 rounded border border-gray-300 bg-white px-2 py-2 text-sm font-normal"
+                  maxLength={80}
+                  value={profileName}
+                  onChange={event => setProfileName(event.target.value)}
+                />
+              </label>
+              <button
+                className="rounded bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={
+                  rankingProfileControls.isSaving ||
+                  profileName.trim().length === 0
+                }
+                onClick={async () => {
+                  try {
+                    const profile = await rankingProfileControls.save(
+                      profileName.trim(),
+                    )
+                    toast.success(
+                      `${profile.name} saved as revision ${profile.current_revision}`,
+                    )
+                  } catch (error) {
+                    const message = error instanceof Error
+                      ? error.message
+                      : "Unable to save ranking profile"
+                    if (message.startsWith("Saved in this browser")) {
+                      toast.info(message)
+                    } else {
+                      toast.error(message)
+                    }
+                  }
+                }}
+              >
+                {rankingProfileControls.isSaving ? "Saving…" : (
+                  rankingProfileControls.activeProfile
+                    ? "Save revision"
+                    : "Create profile"
+                )}
+              </button>
+              <button
+                aria-label="Undo profile revision"
+                className="rounded border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40"
+                disabled={
+                  rankingProfileControls.isSaving ||
+                  !rankingProfileControls.activeProfile?.can_undo
+                }
+                onClick={async () => {
+                  try {
+                    await rankingProfileControls.undo()
+                    toast.info("Previous ranking revision restored")
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Unable to undo")
+                  }
+                }}
+              >
+                Undo
+              </button>
+              <button
+                aria-label="Redo profile revision"
+                className="rounded border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40"
+                disabled={
+                  rankingProfileControls.isSaving ||
+                  !rankingProfileControls.activeProfile?.can_redo
+                }
+                onClick={async () => {
+                  try {
+                    await rankingProfileControls.redo()
+                    toast.info("Next ranking revision restored")
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Unable to redo")
+                  }
+                }}
+              >
+                Redo
+              </button>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
+              <span>
+                <strong>User tiers</strong> are your editable draft groups.
+              </span>
+              <span>
+                <strong>Projection range</strong> uses standard_deviation_v1
+                against historical PPG.
+              </span>
+              {rankingProfileControls.activeProfile && (
+                <details>
+                  <summary className="cursor-pointer text-indigo-700">
+                    Revision {rankingProfileControls.activeProfile.current_revision}
+                    {" "}of {rankingProfileControls.activeProfile.max_revision}
+                  </summary>
+                  <ol className="mt-1 list-inside list-decimal">
+                    {rankingProfileControls.activeProfile.history.map(item => (
+                      <li key={item.revision}>
+                        {item.reason || "Saved edit"}
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              )}
+              {rankingProfileControls.error && (
+                <span className="text-amber-700">
+                  Local browser editing remains available: {rankingProfileControls.error}
+                </span>
+              )}
+            </div>
+          </div>
           <div className="hidden md:flex flex-col">
             <div className="flex flex-row">
               <button
@@ -688,7 +831,13 @@ const EditRankingsView = ({
                                   fantasySettings,
                                   rankingSummaries,
                                 )
-                                const projTierText = projPlayerTier ? ` (${((projPlayerTier.upperLimitValue + projPlayerTier.lowerLimitValue) / 2).toFixed(1)} PPG)` : ''
+                                const projTierText = projPlayerTier
+                                  ? `${projPlayerTier.lowerLimitValue.toFixed(1)}–${projPlayerTier.upperLimitValue.toFixed(1)} PPG`
+                                  : ""
+                                const hasHistory = (
+                                  Object.keys(player.historicalStats || {}).length > 0 ||
+                                  Boolean(player.seasonStats?.length)
+                                )
                                 
                                 const rankText = posRank === undefined ? 'Unranked' : `${position}${posRank}`
                                 const isHoveringPlayer = shownPlayerId === id
@@ -757,7 +906,15 @@ const EditRankingsView = ({
                                         { fullName } ({team})
                                       </p>
                                       <p className="text-xs">
-                                        { rankText } { tier ? ` - Tier ${tierNumber}${projTierText}` : "" }
+                                        {rankText}
+                                        {tier ? ` · User T${tierNumber}` : ""}
+                                      </p>
+                                      <p className="text-xs text-gray-700">
+                                        {projTierText
+                                          ? `Projection ${projTierText}`
+                                          : hasHistory
+                                            ? "Projection range unavailable"
+                                            : "Projection uncertain · limited history"}
                                       </p>
                                       <div className="flex flex-row items-center justify-center align-center">
                                         <p className="text-xs">

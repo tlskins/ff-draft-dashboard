@@ -5,6 +5,7 @@ import {
   parseEspnDraftPicks,
 } from "../behavior/draft-feed/parsers"
 import { mergeDraftSnapshots } from "../behavior/draft-feed/snapshots"
+import { FantasyPosition, NFLTeam } from "../types"
 
 describe("draft feed compatibility", () => {
   it("normalizes the legacy extension heartbeat", () => {
@@ -52,6 +53,113 @@ describe("draft feed compatibility", () => {
   it("rejects unrelated window messages", () => {
     expect(normalizeDraftFeedMessage({ type: "something-else" })).toBeNull()
   })
+
+  it("normalizes bounded extension selector health", () => {
+    const message = {
+      type: "FF_DRAFT_DASHBOARD",
+      payload: {
+        version: 1,
+        kind: "source-health",
+        sentAt: 500,
+        health: {
+          selectorVersion: 1,
+          platform: "ESPN",
+          status: "degraded",
+          mode: "live-history",
+          checkedAt: 499,
+          pickCount: 3,
+          checks: [{
+            name: "history-rows",
+            selector: ".draft-column li",
+            matched: 4,
+            required: false,
+            healthy: false,
+          }],
+          issues: ["history-rows-unhealthy"],
+        },
+      },
+    }
+
+    expect(normalizeDraftFeedMessage(message)).toEqual(message.payload)
+  })
+
+  it("rejects malformed selector health instead of trusting page data", () => {
+    expect(normalizeDraftFeedMessage({
+      type: "FF_DRAFT_DASHBOARD",
+      payload: {
+        version: 1,
+        kind: "source-health",
+        sentAt: 500,
+        health: {
+          selectorVersion: 1,
+          platform: "ESPN",
+          status: "fine",
+          mode: "live-history",
+          checkedAt: 499,
+          pickCount: -1,
+          checks: [],
+          issues: [],
+        },
+      },
+    })).toBeNull()
+  })
+
+  it("derives ESPN's zero-based target roster from a valid one-based URL team id", () => {
+    const event = normalizeDraftFeedMessage({
+      type: "FF_DRAFT_DASHBOARD",
+      payload: {
+        version: 1,
+        kind: "draft-snapshot",
+        sentAt: 500,
+        draft: {
+          id: "ESPN:236942237",
+          title: "10-Team PPR Mock",
+          platform: "ESPN",
+          capturedAt: 500,
+          sourceUrl: "https://fantasy.espn.com/football/draft?leagueId=236942237&seasonId=2026&teamId=3&memberId=private",
+          numTeams: 10,
+          picks: [],
+        },
+      },
+    })
+
+    expect(event).toMatchObject({
+      kind: "draft-snapshot",
+      draft: { targetRosterIndex: 2 },
+    })
+  })
+
+  it.each([
+    ["missing", "https://fantasy.espn.com/football/draft?leagueId=1"],
+    ["non-numeric", "https://fantasy.espn.com/football/draft?teamId=3oops"],
+    ["zero", "https://fantasy.espn.com/football/draft?teamId=0"],
+    ["out of range", "https://fantasy.espn.com/football/draft?teamId=11"],
+    ["untrusted host", "https://example.test/football/draft?teamId=3"],
+  ])("fails closed for a %s ESPN team id", (_reason, sourceUrl) => {
+    const event = normalizeDraftFeedMessage({
+      type: "FF_DRAFT_DASHBOARD",
+      payload: {
+        version: 1,
+        kind: "draft-snapshot",
+        sentAt: 500,
+        draft: {
+          id: "ESPN:236942237",
+          title: "10-Team PPR Mock",
+          platform: "ESPN",
+          capturedAt: 500,
+          sourceUrl,
+          numTeams: 10,
+          targetRosterIndex: 2,
+          picks: [],
+        },
+      },
+    })
+
+    expect(event).toMatchObject({
+      kind: "draft-snapshot",
+      draft: { targetRosterIndex: null },
+    })
+  })
 })
 
 describe("ESPN draft parsing", () => {
@@ -88,6 +196,56 @@ describe("ESPN draft parsing", () => {
           pick: "",
         }],
         12,
+      ),
+    ).toEqual([])
+  })
+
+  it("matches completed-board picks whose history image is unavailable", () => {
+    expect(
+      parseEspnDraftPicks(
+        [{
+          imgUrl: "",
+          name: "Jahmyr Gibbs",
+          team: "DET",
+          position: "RB",
+          pick: "R1, P2",
+        }],
+        10,
+        {
+          RB: {
+            DET: [{
+              id: "4429795",
+              firstName: "Jahmyr",
+              lastName: "Gibbs",
+              fullName: "Jahmyr Gibbs",
+              team: NFLTeam.DET,
+              position: FantasyPosition.RUNNING_BACK,
+              ranks: {},
+            }],
+          },
+        },
+      ),
+    ).toEqual([{
+      id: "4429795",
+      overallPick: 2,
+      name: "Jahmyr Gibbs",
+      team: "DET",
+      position: "RB",
+    }])
+  })
+
+  it("ignores platform-only positions without corrupting rosters", () => {
+    expect(
+      parseEspnDraftPicks(
+        [{
+          imgUrl:
+            "https://a.espncdn.com/i/headshots/nfl/players/full/123.png",
+          name: "Some Kicker",
+          team: "BUF",
+          position: "K",
+          pick: "R15, P1",
+        }],
+        10,
       ),
     ).toEqual([])
   })

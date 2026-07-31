@@ -115,6 +115,7 @@ export const createDraftAdvisorContext = ({
           team: player.team,
           adp: metrics.adp ?? null,
           positionRank: metrics.posRank,
+          userTier: metrics.tier?.tierNumber ?? null,
         }
       })
       .sort(

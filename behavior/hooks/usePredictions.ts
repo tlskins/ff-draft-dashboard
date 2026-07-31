@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'react-toastify';
 import {
   FantasyPosition,
@@ -13,19 +13,34 @@ import {
   Roster,
   PlayerRanks,
   PositionCounts,
-  nextPositionPicked,
-  predictNextPick,
   getPlayerMetrics,
   rankablePositions,
-  roundForPick,
-  getPickInRound,
   getMyPicksBetween,
   getProjectedTier,
   getRoundIdxForPickNum,
   getPlayerAdp,
   getMyNextPick,
+  isMyPick,
 } from '../draft';
+import {
+  predictUpcomingPicksGreedy,
+} from '../draft-advisor/greedyOpponentPredictor';
+import {
+  createDraftRecommendations,
+} from '../draft-advisor/recommendations';
+import {
+  createDraftAdvisorContext,
+} from '../draft-advisor/createDraftAdvisorContext';
+import {
+  createOpponentForecast,
+} from '../draft-advisor/opponentModel';
+import {
+  createReplayForecastInputFingerprint,
+  ReplayForecastEvidenceRecorder,
+} from '../draft-advisor/replayForecastEvidence';
 import { Player, RankingSummary } from 'types';
+import type { ReplayForecastEvidence } from "../draft-advisor/completedDraftReplay";
+import { deriveReplayCaptureStatus } from "../draft-advisor/replayCaptureStatus";
 
 export enum HighlightOption {
   PREDICTED_TAKEN = "Highlight Next Taken",
@@ -40,72 +55,6 @@ type TierPredictions = {
   [FantasyPosition.WIDE_RECEIVER]: number;
   [FantasyPosition.TIGHT_END]: number;
 };
-
-const calculatePositionCounts = (rosters: Roster[]): PositionCounts => {
-    const posCounts: PositionCounts = { QB: 0, RB: 0, WR: 0, TE: 0, DST: 0, '': 0 };
-    rosters.forEach(roster => {
-      rankablePositions.forEach(pos => {
-        if (pos in roster && posCounts[pos] !== undefined) {
-          const rosterPos = roster[pos as keyof Roster];
-          if(Array.isArray(rosterPos)) {
-            posCounts[pos]! += rosterPos.length;
-          }
-        }
-      });
-    });
-    return posCounts;
-};
-
-const predictFuturePicks = (
-    { rosters, playerRanks, settings, boardSettings, currPick, myPickNum }: {
-        rosters: Roster[];
-        playerRanks: PlayerRanks;
-        settings: FantasySettings;
-        boardSettings: BoardSettings;
-        currPick: number;
-        myPickNum: number;
-    },
-    initialPosCounts: PositionCounts,
-    predictUpToPick: number,
-    myPicks: number[],
-): { predictedPicks: PredictedPicks; finalPosCounts: PositionCounts } => {
-    let pickPredicts: PredictedPicks = {};
-    let posCounts = { ...initialPosCounts };
-    let availablePlayers = [...playerRanks.availPlayersByAdp];
-
-    for (let i = 0; i < predictUpToPick - currPick; i++) {
-        const pickNum = currPick + i;
-        if (pickNum >= predictUpToPick) break;
-
-        const round = roundForPick(pickNum, settings.numTeams);
-        const pickInRound = getPickInRound(pickNum, settings.numTeams);
-        const isEven = round % 2 === 0;
-        const teamNum = isEven ? settings.numTeams - pickInRound + 1 : pickInRound;
-        const roster = rosters[teamNum - 1];
-
-        if (roster) {
-            const positions = nextPositionPicked(roster, round, posCounts);
-            const { predicted, updatedCounts, pickedPlayer } = predictNextPick(
-                availablePlayers,
-                settings,
-                boardSettings,
-                positions,
-                pickPredicts,
-                posCounts,
-                myPickNum,
-                currPick,
-                pickNum
-            );
-            pickPredicts = predicted;
-            posCounts = updatedCounts as { [key in FantasyPosition]: number };
-            if (pickedPlayer) {
-                availablePlayers = availablePlayers.filter(p => p.id !== pickedPlayer.id);
-            }
-        }
-    }
-
-    return { predictedPicks: pickPredicts, finalPosCounts: posCounts };
-}
 
 const detectTierRuns = (
     { playerRanks, settings, boardSettings }: {
@@ -171,6 +120,14 @@ interface UsePredictionsProps {
   myPickNum: number;
   draftStarted: boolean;
   rankingSummaries: RankingSummary[];
+  playerLib: { [playerId: string]: Player };
+  draftHistory: Array<string | null>;
+  /** Local-only identity used for exportable, session-scoped forecast labels. */
+  draftSessionId?: string | null;
+  /** A completed board can be a cumulative catch-up, never a new live label. */
+  sourceComplete?: boolean;
+  /** Raw platform boundary, including explicitly excluded K/DST board picks. */
+  sourceObservedThroughOverallPick?: number;
 }
 
 export const usePredictions = ({
@@ -182,6 +139,11 @@ export const usePredictions = ({
   myPickNum,
   draftStarted,
   rankingSummaries,
+  playerLib,
+  draftHistory,
+  draftSessionId,
+  sourceComplete = false,
+  sourceObservedThroughOverallPick,
 }: UsePredictionsProps) => {
   const [predictedPicks, setPredictedPicks] = useState<PredictedPicks>({});
   const [optimalRosters, setOptimalRosters] = useState<OptimalRoster[]>([{
@@ -206,6 +168,10 @@ export const usePredictions = ({
   const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN);
 
   const maxCurrPick = useRef(0);
+  const forecastEvidenceRecorder = useRef(new ReplayForecastEvidenceRecorder());
+  const forecastEvidenceSessionId = useRef<string | null>(null);
+  const [replayForecastEvidence, setReplayForecastEvidence] =
+    useState<ReplayForecastEvidence | undefined>(undefined);
 
   const predictOptimalGreedyRoster = useCallback(() => {
     // When draft hasn't started, predict from pick 1. When started, predict from current pick
@@ -366,31 +332,29 @@ export const usePredictions = ({
     }
 
     maxCurrPick.current = currPick;
-    const initialPosCounts = calculatePositionCounts(rosters);
-
     // Determine how far to predict based on highlight option
     let predictUpToPick: number;
-    let myPicks: number[];
-    
     if (highlightOption === HighlightOption.PREDICTED_TAKEN_NEXT_TURN) {
       // Predict up to my next next turn - find my next 2 picks
       const nextPick = getMyNextPick(currPick, myPickNum, settings.numTeams);
       const nextNextPick = getMyNextPick(nextPick, myPickNum, settings.numTeams);
       predictUpToPick = nextNextPick;
-      myPicks = getMyPicksBetween(currPick, predictUpToPick, myPickNum, settings.numTeams);
     } else {
       // Predict just to the next pick after current
       const nextPick = getMyNextPick(currPick, myPickNum, settings.numTeams);
       predictUpToPick = nextPick;
-      myPicks = getMyPicksBetween(currPick, predictUpToPick, myPickNum, settings.numTeams);
     }
 
-    const { predictedPicks: pickPredicts } = predictFuturePicks(
-        { rosters, playerRanks, settings, boardSettings, currPick, myPickNum },
-        initialPosCounts,
+    const { predictedPicks: pickPredicts } =
+      predictUpcomingPicksGreedy({
+        rosters,
+        playerRanks,
+        settings,
+        boardSettings,
+        currPick,
+        myPickNum,
         predictUpToPick,
-        myPicks
-    );
+      });
     
     const { tierRunAlerts, nextRunTiers, runDetected } = detectTierRuns(
         { playerRanks, settings, boardSettings },
@@ -430,12 +394,126 @@ export const usePredictions = ({
     predictPicks();
   }, [predictPicks, numPostPredicts, draftStarted, highlightOption]);
 
-  return { 
-    predictedPicks, 
-    predNextTiers, 
-    setNumPostPredicts, 
-    optimalRosters, 
-    highlightOption, 
-    setHighlightOption 
+  const advisorContext = useMemo(() => createDraftAdvisorContext({
+    settings,
+    boardSettings,
+    currentPick: (
+      isMyPick(Math.max(1, currPick), myPickNum, settings.numTeams)
+        ? Math.max(1, currPick) + 1
+        : Math.max(1, currPick)
+    ),
+    rosters,
+    draftHistory,
+    playerLib,
+    playerRanks,
+    upcomingPickCount: settings.numTeams * 2 + 1,
+  }), [
+    boardSettings,
+    currPick,
+    draftHistory,
+    myPickNum,
+    playerLib,
+    playerRanks,
+    rosters,
+    settings,
+  ]);
+
+  const opponentForecast = useMemo(() => createOpponentForecast(
+    advisorContext,
+    {
+      model: "combined",
+      targetRosterIndex: myPickNum - 1,
+    },
+  ), [advisorContext, myPickNum]);
+  const observedThroughOverallPick = Math.max(0, currPick - 1, sourceObservedThroughOverallPick || 0)
+  const replayForecastInputFingerprint = useMemo(() => createReplayForecastInputFingerprint({
+    schemaVersion: advisorContext.schemaVersion, observedThroughOverallPick,
+    modelIdentity: "deterministic_opponent_v1", model: opponentForecast.model,
+    targetRosterIndex: myPickNum - 1, context: advisorContext,
+  }), [advisorContext, myPickNum, observedThroughOverallPick, opponentForecast.model])
+  const historyAhead = draftHistory.slice(observedThroughOverallPick).some(Boolean)
+
+  useEffect(() => {
+    // Do this before completion/cumulative guards: a different completed
+    // session must not retain labels from the previous live draft.
+    if (forecastEvidenceSessionId.current !== (draftSessionId || null)) {
+      forecastEvidenceSessionId.current = draftSessionId || null
+      forecastEvidenceRecorder.current.reset(draftSessionId || null)
+      setReplayForecastEvidence(undefined)
+    }
+    if (!draftSessionId) {
+      return
+    }
+    // A full/cumulative completed board has already revealed every label. Keep
+    // previously recorded live evidence, but never manufacture an observation.
+    if (!draftStarted || sourceComplete) return
+    // If state contains picks beyond this boundary, it was applied cumulatively
+    // and cannot honestly stand in for a pre-pick live observation.
+    if (historyAhead) return
+    setReplayForecastEvidence(forecastEvidenceRecorder.current.record({
+      sessionId: draftSessionId,
+      observedThroughOverallPick,
+      forecast: opponentForecast,
+      targetRosterIndex: myPickNum - 1,
+      inputFingerprint: replayForecastInputFingerprint,
+    }))
+  }, [
+    currPick,
+    draftHistory,
+    draftSessionId,
+    draftStarted,
+    advisorContext,
+    myPickNum,
+    opponentForecast,
+    sourceComplete,
+    sourceObservedThroughOverallPick,
+    observedThroughOverallPick,
+    replayForecastInputFingerprint,
+    historyAhead,
+  ])
+  const replayCaptureStatus = deriveReplayCaptureStatus({
+    sessionId: draftSessionId, draftStarted, complete: sourceComplete,
+    rawBoundary: observedThroughOverallPick, evidence: replayForecastEvidence,
+    forecast: opponentForecast, targetRosterIndex: myPickNum - 1,
+    inputFingerprint: replayForecastInputFingerprint,
+    historyAhead,
+  })
+
+  const recommendations = useMemo(() => createDraftRecommendations({
+    settings,
+    boardSettings,
+    rankingSummaries,
+    playerRanks,
+    playerLib,
+    roster: rosters[myPickNum - 1],
+    currentPick: currPick,
+    myPickNum,
+    predictedPicks,
+    opponentForecast,
+  }), [
+    boardSettings,
+    currPick,
+    myPickNum,
+    opponentForecast,
+    playerLib,
+    playerRanks,
+    predictedPicks,
+    rankingSummaries,
+    rosters,
+    settings,
+  ]);
+
+  return {
+    predictedPicks,
+    predNextTiers,
+    setNumPostPredicts,
+    optimalRosters,
+    highlightOption,
+    setHighlightOption,
+    recommendations,
+    opponentForecast,
+    advisorContext,
+    replayForecastEvidence,
+    replayCaptureStatus,
   };
-}; 
+};

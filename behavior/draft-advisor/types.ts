@@ -7,6 +7,7 @@ export interface DraftAdvisorPlayer {
   team: string
   adp: number | null
   positionRank: number
+  userTier: number | null
 }
 
 export interface DraftAdvisorTeam {
@@ -63,4 +64,48 @@ export interface DraftAdvisor {
     context: DraftAdvisorContext,
     signal?: AbortSignal,
   ): Promise<DraftPickPrediction[]>
+}
+
+export type OpponentModelKind = "adp_only" | "need_only" | "combined"
+
+export interface PositionProbability {
+  position: FantasyPosition
+  probability: number
+}
+
+export interface ForecastPlayerProbability {
+  playerId: string
+  name: string
+  position: FantasyPosition
+  conditionalProbability: number
+  overallProbability: number
+}
+
+export interface OpponentPickForecast {
+  overallPick: number
+  rosterIndex: number
+  positionProbabilities: PositionProbability[]
+  playerProbabilities: ForecastPlayerProbability[]
+}
+
+export interface PositionalRunProbability {
+  position: FantasyPosition
+  minimumPicks: number
+  probability: number
+}
+
+export interface TierBoundaryProbability {
+  position: FantasyPosition
+  userTier: number
+  playerIds: string[]
+  probability: number
+}
+
+export interface OpponentForecast {
+  schemaVersion: 1
+  model: OpponentModelKind
+  targetRosterIndex: number
+  picks: OpponentPickForecast[]
+  runProbabilities: PositionalRunProbability[]
+  tierBoundaryProbabilities: TierBoundaryProbability[]
 }

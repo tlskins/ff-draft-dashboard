@@ -338,12 +338,18 @@ const RankingView = ({
 
                         return(
                           <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}
-                            className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle} transition-all duration-700 ease-in-out transform`}
+                            aria-label={`${fullName}, ${position}, ${team}. Draft actions are available when focused.`}
+                            className={`px-2 py-1 m-1 text-center rounded shadow-md ${tierStyle} cursor-pointer ${cardBorderStyle} transition-all duration-700 ease-in-out transform focus:outline-none focus:ring-2 focus:ring-indigo-800`}
+                            onFocus={() => {
+                              if (!isAnimatingOut) setViewPlayerId(id)
+                            }}
                             onMouseEnter={ () => {
                               if (!isAnimatingOut) {
                                 setViewPlayerId(id)
                               }
                             }}
+                            role="group"
+                            tabIndex={0}
                           >
                             <div className="flex flex-col text-center items-center">
                               <div className="flex text-center items-center justify-center w-full">
@@ -381,32 +387,38 @@ const RankingView = ({
         
                               { isHoveringPlayer && !isAnimatingOut &&
                                 <div className={`grid grid-cols-3 items-center justify-items-center gap-2 mt-2 pt-2 w-full border-t`}>
-                                  <AnyTiDelete
-                                    className="cursor-pointer"
-                                    color="red"
+                                  <button
+                                    aria-label={`Purge ${fullName}`}
+                                    className="rounded focus:outline-none focus:ring-2 focus:ring-red-800"
                                     onClick={ () => onPurgePlayer(player) }
                                     onMouseEnter={() => setShownPlayerBg("bg-red-500")}
                                     onMouseLeave={() => setShownPlayerBg("")}
-                                    size={32}
-                                  />
+                                    type="button"
+                                  >
+                                    <AnyTiDelete color="red" size={32} />
+                                  </button>
         
-                                  <AnyAiFillCheckCircle
-                                    className="cursor-pointer"
-                                    color="green"
+                                  <button
+                                    aria-label={`Draft ${fullName}`}
+                                    className="rounded focus:outline-none focus:ring-2 focus:ring-green-800"
                                     onClick={ () => handleSelectPlayer(player) }
                                     onMouseEnter={() => setShownPlayerBg("bg-green-400")}
                                     onMouseLeave={() => setShownPlayerBg("")}
-                                    size={26}
-                                  />
+                                    type="button"
+                                  >
+                                    <AnyAiFillCheckCircle color="green" size={26} />
+                                  </button>
         
-                                  <AnyBsLink
-                                    className="cursor-pointer"
-                                    color="blue"
+                                  <button
+                                    aria-label={`Open ${fullName} game log`}
+                                    className="rounded focus:outline-none focus:ring-2 focus:ring-blue-800"
                                     onClick={ () => window.open(`https://www.fantasypros.com/nfl/games/${playerUrl}.php`) }
                                     onMouseEnter={() => setShownPlayerBg("bg-blue-400")}
                                     onMouseLeave={() => setShownPlayerBg("")}
-                                    size={30}
-                                  />
+                                    type="button"
+                                  >
+                                    <AnyBsLink color="blue" size={30} />
+                                  </button>
                                 </div>
                               }
                             </div>

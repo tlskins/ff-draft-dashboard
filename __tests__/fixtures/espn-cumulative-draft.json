@@ -1,0 +1,85 @@
+{
+  "metadata": {
+    "fixtureVersion": 1,
+    "name": "ESPN cumulative snake draft",
+    "numTeams": 12
+  },
+  "snapshots": [
+    {
+      "id": "ESPN:Replay Mock",
+      "title": "Replay Mock",
+      "platform": "ESPN",
+      "capturedAt": 100,
+      "picks": [
+        {
+          "imgUrl": "https://a.espncdn.com/i/headshots/nfl/players/full/4362628.png",
+          "name": "Ja'Marr Chase",
+          "team": "CIN",
+          "position": "WR",
+          "pick": "R1, P1 Team One"
+        }
+      ]
+    },
+    {
+      "id": "ESPN:Replay Mock",
+      "title": "Replay Mock",
+      "platform": "ESPN",
+      "capturedAt": 200,
+      "picks": [
+        {
+          "imgUrl": "https://a.espncdn.com/i/headshots/nfl/players/full/4362628.png",
+          "name": "Ja'Marr Chase",
+          "team": "CIN",
+          "position": "WR",
+          "pick": "R1, P1 Team One"
+        },
+        {
+          "imgUrl": "https://a.espncdn.com/i/headshots/nfl/players/full/4430807.png",
+          "name": "Bijan Robinson",
+          "team": "ATL",
+          "position": "RB",
+          "pick": "R1, P2 Team Two"
+        }
+      ]
+    },
+    {
+      "id": "ESPN:Replay Mock",
+      "title": "Replay Mock",
+      "platform": "ESPN",
+      "capturedAt": 300,
+      "picks": [
+        {
+          "imgUrl": "https://a.espncdn.com/i/headshots/nfl/players/full/4362628.png",
+          "name": "Ja'Marr Chase",
+          "team": "CIN",
+          "position": "WR",
+          "pick": "R1, P1 Team One"
+        },
+        {
+          "imgUrl": "https://a.espncdn.com/i/headshots/nfl/players/full/4430807.png",
+          "name": "Bijan Robinson",
+          "team": "ATL",
+          "position": "RB",
+          "pick": "R1, P2 Team Two"
+        },
+        {
+          "imgUrl": "https://a.espncdn.com/i/headshots/nfl/players/full/4040715.png",
+          "name": "Josh Allen",
+          "team": "BUF",
+          "position": "QB",
+          "pick": "R2, P1 Team Twelve"
+        }
+      ]
+    }
+  ],
+  "expected": {
+    "eventIds": [
+      "ESPN:Replay Mock:pick:1",
+      "ESPN:Replay Mock:pick:2",
+      "ESPN:Replay Mock:pick:13"
+    ],
+    "overallPicks": [1, 2, 13],
+    "rosterIndexes": [0, 1, 11],
+    "currentPick": 14
+  }
+}

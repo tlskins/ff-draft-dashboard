@@ -1,29 +1,76 @@
 /*global chrome*/
-import React, { useEffect, useState, useCallback, FC } from "react"
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  FC,
+} from "react"
 import { toast } from 'react-toastify'
 
 import PageHead from "../components/pageHead"
 import Header from "../components/Header"
 import RankingsBoard from "../components/RankingsBoard"
 import HistoricalStats from "../components/HistoricalStats"
+import HistoricalComparison from "../components/HistoricalComparison"
 import PlayerRankingTable from "../components/PlayerRankingTable"
+import PlayerStatusPanel from "../components/PlayerStatusPanel"
 import RankingSummaryDisplay from "../components/RankingSummary"
 import ADPView from "../components/views/ADPView"
 import OptimalRosterDisplay from "../components/OptimalRosterDisplay"
 import PickHistoryFooter from "../components/PickHistoryFooter"
 import MobileFooter, { MobileView } from "../components/MobileFooter"
 import MobileTiersView from "../components/MobileTiersView"
+import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
+import LiveAdvisorPanel from "../components/LiveAdvisorPanel"
+import PortableDataControls from "../components/PortableDataControls"
 
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
 import { useDraftListener } from '../behavior/hooks/useDraftListener'
 import { usePredictions, HighlightOption } from "../behavior/hooks/usePredictions"
+import { useRankingProfiles } from "../behavior/hooks/useRankingProfiles"
+import { useRealtimeAdvisor } from "../behavior/hooks/useRealtimeAdvisor"
+import {
+  usePlayerStatusCache,
+} from "../behavior/hooks/usePlayerStatusCache"
+import {
+  useRealtimeConversation,
+} from "../behavior/hooks/useRealtimeConversation"
 import { Player, ThirdPartyRanker } from "types"
+import {
+  createAdvisorInputFingerprint,
+  persistAdvisorSnapshots,
+} from "@/behavior/api/draftSessions"
+import {
+  captureCompletedDraftReplay,
+} from "@/behavior/draft-advisor/replayFixtures"
+import {
+  preflightReplayExport,
+  validateReplayExportAtConfirmation,
+} from "@/behavior/draft-advisor/replayCaptureStatus"
+import {
+  getAdvisorRosterCapacity,
+} from "@/behavior/draft-advisor/recommendations"
 import {
   loadPlayerData,
   rankingsAgeInDays,
   rankingsAreStale,
 } from "@/behavior/playerData"
+import { shouldIgnoreGlobalDraftShortcut } from "@/behavior/accessibility"
+import {
+  applyPortableRankingSnapshot,
+  createImportedDraftPlan,
+  createPortableDataPackage,
+  PortableDataPackage,
+  writeStorageTransaction,
+} from "@/behavior/portableData"
+import { draftPlanStorageKey } from "@/behavior/realtime/storage"
+import {
+  getSnapshotObservedThroughOverallPick,
+  isDraftCaptureComplete,
+} from "@/behavior/draft-feed/snapshots"
 
 export enum DraftView {
   RANKING = "Rankings By Position",
@@ -41,7 +88,8 @@ export enum SortOption {
 const Home: FC = () => {
   const {
     // state
-    settings, setNumTeams, setIsPpr,
+    settings, setNumTeams, setIsPpr, replaceSettings,
+    applyAuthoritativeDraftSettings,
     draftStarted, setDraftStarted,
     myPickNum, setMyPickNum,
     currPick, setCurrPick,
@@ -105,6 +153,7 @@ const Home: FC = () => {
     onSyncPendingRankings,
     onRevertPlayerToPreSync,
     onLoadPlayers,
+    applyImportedRankings,
     setLatestRankings,
     setCustomAndLatestRankingsDiffs,
     // helper funcs
@@ -113,9 +162,25 @@ const Home: FC = () => {
 
   const usingCustomRanking = boardSettings.ranker === ThirdPartyRanker.CUSTOM
 
+  const rankingProfileControls = useRankingProfiles({
+    playerRanks,
+    rankings,
+    settings,
+    boardSettings,
+    onLoadPlayers,
+    onSetRanker,
+    saveLocalRankings: saveCustomRankings,
+  })
+
   const {
-    listenerActive,
     activeDraftListenerTitle,
+    activeDraftSessionId,
+    activeDraftSnapshot,
+    draftCaptureState,
+    draftSourceHealth,
+    draftSourceHealthFreshness,
+    draftPersistence,
+    retryDraftPersistence,
   } = useDraftListener({
     playerLib,
     playersByPosByTeam,
@@ -123,7 +188,27 @@ const Home: FC = () => {
     onDraftPlayer,
     setCurrPick,
     setDraftStarted,
+    onDraftMetadata: snapshot => {
+      applyAuthoritativeDraftSettings({
+        ...(snapshot.numTeams ? { numTeams: snapshot.numTeams } : {}),
+        ...(snapshot.scoringFormat
+          ? { ppr: snapshot.scoringFormat === "PPR" }
+          : {}),
+      })
+      if (snapshot.targetRosterIndex !== null
+        && snapshot.targetRosterIndex !== undefined) {
+        setMyPickNum(snapshot.targetRosterIndex + 1)
+      }
+    },
   })
+  const sourceObservedThroughOverallPick = useMemo(() =>
+    getSnapshotObservedThroughOverallPick(activeDraftSnapshot, settings.numTeams),
+  [activeDraftSnapshot, settings.numTeams])
+  const dashboardDraftComplete = isDraftCaptureComplete(
+    activeDraftSnapshot,
+    draftHistory.filter(Boolean).length,
+    getAdvisorRosterCapacity(settings) * settings.numTeams,
+  )
 
   const {
     predictedPicks,
@@ -132,6 +217,11 @@ const Home: FC = () => {
     optimalRosters,
     highlightOption,
     setHighlightOption,
+    recommendations,
+    opponentForecast,
+    advisorContext,
+    replayForecastEvidence,
+    replayCaptureStatus,
   } = usePredictions({
     rosters,
     playerRanks,
@@ -141,6 +231,11 @@ const Home: FC = () => {
     myPickNum,
     draftStarted,
     rankingSummaries,
+    playerLib,
+    draftHistory,
+    draftSessionId: activeDraftSessionId,
+    sourceComplete: dashboardDraftComplete,
+    sourceObservedThroughOverallPick,
   })
 
   const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
@@ -148,8 +243,271 @@ const Home: FC = () => {
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
   const [mobileView, setMobileView] = useState<MobileView>(MobileView.OVERVIEW)
+  const [analysisOpen, setAnalysisOpen] = useState(false)
+  const statusPlayerIds = useMemo(() => [
+    ...recommendations.candidates.map(candidate => candidate.player.id),
+    ...(viewPlayerId ? [viewPlayerId] : []),
+  ], [recommendations.candidates, viewPlayerId])
+  const playerStatus = usePlayerStatusCache(statusPlayerIds)
+  const [confirmedRealtimeView, setConfirmedRealtimeView] = useState<{
+    view: "tier_landscape"
+      | "positional_bests"
+      | "cross_position"
+      | "intra_position"
+    explanation: string
+    revision: number
+  } | null>(null)
+  const advisorPersistenceQueue = useRef(Promise.resolve())
+  const sourceEventCount = draftHistory.filter(Boolean).length
+  const realtimeAdvisor = useRealtimeAdvisor({
+    draftSessionId: activeDraftSessionId,
+    sourceEventCount,
+    onApplyView: (view, proposal) => {
+      setConfirmedRealtimeView({
+        view,
+        explanation: proposal.explanation,
+        revision: sourceEventCount,
+      })
+      setAnalysisOpen(true)
+    },
+  })
+  const realtimeToolContext = useMemo(() => (
+    activeDraftSessionId && realtimeAdvisor.plan
+      ? {
+          draftSessionId: activeDraftSessionId,
+          sourceEventCount,
+          advisorContext,
+          recommendations,
+          plan: realtimeAdvisor.plan,
+        }
+      : null
+  ), [
+    activeDraftSessionId,
+    advisorContext,
+    realtimeAdvisor.plan,
+    recommendations,
+    sourceEventCount,
+  ])
+  const realtimeConversation = useRealtimeConversation({
+    draftSessionId: activeDraftSessionId,
+    toolContext: realtimeToolContext,
+    onProposal: realtimeAdvisor.enqueueProposal,
+  })
+  const canExportReplay = Boolean(
+    activeDraftSessionId && dashboardDraftComplete,
+  )
+
+  const buildReplayFixture = useCallback((rosterOnly = false) => {
+    if (!activeDraftSessionId) {
+      throw new Error("Open the current draft session before exporting")
+    }
+    return captureCompletedDraftReplay({
+      id: activeDraftSessionId,
+      settings,
+      targetRosterIndex: myPickNum - 1,
+      boardSettings,
+      rankingSummaries,
+      playerLib,
+      draftHistory,
+      sourceSnapshot: activeDraftSnapshot,
+      ...(rosterOnly ? {} : { forecastEvidence: replayForecastEvidence }),
+    })
+  }, [
+    activeDraftSessionId, activeDraftSnapshot, boardSettings, draftHistory,
+    myPickNum, playerLib, rankingSummaries, replayForecastEvidence, settings,
+  ])
+  const replayExportPreflight = useMemo(() => {
+    if (!canExportReplay) return undefined
+    try {
+      return preflightReplayExport(buildReplayFixture())
+    } catch (error) {
+      return {
+        state: "blocked" as const,
+        message: error instanceof Error ? error.message : "Replay fixture export failed",
+        totalPlatformPicks: activeDraftSnapshot?.completion?.totalPicks || draftHistory.length,
+        boardComplete: false,
+        authoritativePlatformBoard: false,
+        campaignEvidenceReady: false,
+        sessionMatch: false,
+        targetRosterMatch: false,
+        evidencePresent: Boolean(replayForecastEvidence),
+        evidenceValid: false as const,
+        canExportRosterOnly: false,
+        labeledPickCount: 0 as const,
+        labeledWindowCount: 0 as const,
+        opponentMetricsAvailable: false as const,
+      }
+    }
+  }, [
+    activeDraftSnapshot, buildReplayFixture, canExportReplay,
+    draftHistory.length, replayForecastEvidence,
+  ])
+  const exportReplay = useCallback((rosterOnly = false) => {
+    if (!activeDraftSessionId) return
+    try {
+      const { fixture } = validateReplayExportAtConfirmation(
+        buildReplayFixture,
+        rosterOnly,
+      )
+      const blob = new Blob(
+        [JSON.stringify(fixture, null, 2)],
+        { type: "application/json" },
+      )
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = url
+      anchor.download = `${
+        activeDraftSessionId.replace(/[^a-z0-9]+/gi, "-")
+      }-replay.json`
+      anchor.click()
+      URL.revokeObjectURL(url)
+      toast.success("Completed draft replay fixture exported")
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Replay fixture export failed",
+      )
+    }
+  }, [activeDraftSessionId, buildReplayFixture])
+
+  useEffect(() => {
+    if (!activeDraftSessionId || !draftStarted) return
+    const inputFingerprint = createAdvisorInputFingerprint({
+      sourceEventCount,
+      currentPick: currPick,
+      myPickNum,
+      settings,
+      boardSettings,
+      roster: rosters[myPickNum - 1]?.picks || [],
+      available: playerRanks.availPlayersByAdp
+        .slice(0, 60)
+        .map(player => player.id),
+    })
+    const publish = () => persistAdvisorSnapshots({
+        sessionId: activeDraftSessionId,
+        sourceEventCount,
+        inputFingerprint,
+        recommendations,
+        opponentForecast,
+      })
+    advisorPersistenceQueue.current = advisorPersistenceQueue.current
+      .then(publish, publish)
+      .catch(error => {
+        console.warn(
+          "Advisor snapshots remain local because persistence failed",
+          error,
+        )
+      })
+  }, [
+    activeDraftSessionId,
+    boardSettings,
+    currPick,
+    draftHistory,
+    draftStarted,
+    myPickNum,
+    opponentForecast,
+    playerRanks.availPlayersByAdp,
+    recommendations,
+    rosters,
+    settings,
+    sourceEventCount,
+  ])
 
   const browserLoaded = typeof window !== "undefined"
+
+  const portableValidationContext = useMemo(() => ({
+    playersById: new Map(Object.values(playerLib).map(player => [player.id, player])),
+  }), [playerLib])
+
+  const createPortableData = useCallback(() => createPortableDataPackage({
+    rankings,
+    settings,
+    boardSettings,
+    myPickNum,
+    playerTargets,
+    plan: realtimeAdvisor.plan,
+  }), [
+    boardSettings,
+    myPickNum,
+    playerTargets,
+    rankings,
+    realtimeAdvisor.plan,
+    settings,
+  ])
+
+  const applyPortableData = useCallback((portable: PortableDataPackage) => {
+    // A package is a coherent pre-draft profile. Replacing ranks or league
+    // rules after a pick would mix two deterministic boards, so check again at
+    // confirmation time in addition to disabling the file picker.
+    if (draftStarted || draftHistory.some(Boolean)) {
+      throw new Error("Import is available before the first draft pick so the live board cannot be mixed")
+    }
+    if (portable.data.draft_plan && !activeDraftSessionId) {
+      throw new Error("Open the current draft session before importing a package with a draft plan")
+    }
+    if (typeof localStorage === "undefined") {
+      throw new Error("Browser storage is unavailable; local data was not changed")
+    }
+
+    const nextRankings = {
+      ...applyPortableRankingSnapshot(
+        rankings,
+        portable.data.custom_rankings,
+      ),
+      settings: { ...portable.data.preferences.settings },
+    }
+    const importedTargets = portable.data.preferences.player_targets.map(target => ({
+      playerId: target.player_id,
+      targetAsEarlyAsRound: target.target_as_early_as_round,
+    }))
+    const importedPlan = activeDraftSessionId
+      ? createImportedDraftPlan(
+          activeDraftSessionId,
+          sourceEventCount,
+          portable.data.draft_plan?.entries || [],
+          realtimeAdvisor.plan,
+        )
+      : null
+    const writes = [
+      {
+        key: "ff-draft-custom-rankings",
+        value: portable.data.custom_rankings
+          ? JSON.stringify(nextRankings)
+          : null,
+      },
+      {
+        key: "ff-draft-favorites",
+        value: JSON.stringify(importedTargets),
+      },
+      ...(importedPlan ? [{
+        key: draftPlanStorageKey(activeDraftSessionId as string),
+        value: JSON.stringify(importedPlan),
+      }] : []),
+    ]
+    writeStorageTransaction(localStorage, writes)
+
+    replaceSettings(portable.data.preferences.settings)
+    setMyPickNum(portable.data.preferences.my_pick_num)
+    replacePlayerTargets(importedTargets)
+    applyImportedRankings(
+      nextRankings,
+      portable.data.preferences.settings,
+      portable.data.preferences.board,
+    )
+    if (importedPlan) realtimeAdvisor.replacePlanFromImport(importedPlan)
+  }, [
+    activeDraftSessionId,
+    applyImportedRankings,
+    draftHistory,
+    draftStarted,
+    rankings,
+    realtimeAdvisor,
+    replacePlayerTargets,
+    replaceSettings,
+    setMyPickNum,
+    sourceEventCount,
+  ])
 
   const loadCurrentRankings = useCallback(async () => {
     const currentRankings = await loadPlayerData()
@@ -211,6 +569,7 @@ const Home: FC = () => {
 
   // key press / up commands
   const onKeyUp = useCallback( (e: KeyboardEvent) => {
+    if (shouldIgnoreGlobalDraftShortcut(e)) return
     if (['MetaRight', 'MetaLeft'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
       setHighlightOption(HighlightOption.PREDICTED_TAKEN)
     } else if (['ShiftLeft', 'ShiftRight'].includes(e.code) && draftView !== DraftView.CUSTOM_RANKING) {
@@ -224,6 +583,7 @@ const Home: FC = () => {
   }, [draftView, onApplyRankingSortBy, setHighlightOption])
 
   const onKeyDown = useCallback( (e: KeyboardEvent) => {
+    if (shouldIgnoreGlobalDraftShortcut(e)) return
     // arrow up
     if (e.code === 'ArrowUp' ) {
       onNavRoundUp()
@@ -318,7 +678,97 @@ const Home: FC = () => {
         </div>
 
         <div className="flex flex-col items-center md:mt-4 mt-1 w-full h-screen">
+          <div className="hidden w-full justify-end px-5 md:flex">
+            <button
+              className={`mb-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                analysisOpen
+                  ? "border-indigo-600 bg-indigo-600 text-white"
+                  : "border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50"
+              }`}
+              onClick={() => setAnalysisOpen(current => !current)}
+            >
+              {analysisOpen ? "Close analysis" : "Open analysis workspace"}
+            </button>
+          </div>
+          {!noPlayers && (
+            <PortableDataControls
+              createPackage={createPortableData}
+              importDisabledReason={draftStarted || draftHistory.some(Boolean)
+                ? "Finish or start a new draft before importing data; live picks stay untouched."
+                : null}
+              onApply={applyPortableData}
+              validationContext={portableValidationContext}
+            />
+          )}
+          {!analysisOpen && (
+            <div className="w-full px-2 md:px-5">
+              <LiveAdvisorPanel
+                draftStarted={draftStarted}
+                onSelectPlayer={onSelectPlayer}
+                onExportReplay={
+                  canExportReplay ? () => exportReplay() : undefined
+                }
+                onExportRosterOnly={canExportReplay ? () => exportReplay(true) : undefined}
+                replayCaptureStatus={replayCaptureStatus}
+                replayExportPreflight={replayExportPreflight}
+                recommendations={recommendations}
+                playerStatus={playerStatus}
+                draftPlan={realtimeAdvisor.plan}
+                realtimeProposals={realtimeAdvisor.proposals}
+                onAcceptProposal={realtimeAdvisor.acceptProposal}
+                onRejectProposal={realtimeAdvisor.rejectProposal}
+                realtimeStatus={realtimeConversation.status}
+                realtimeMessages={realtimeConversation.messages}
+                realtimeError={realtimeConversation.error}
+                realtimeIsResponding={realtimeConversation.isResponding}
+                realtimeReconnectAttempt={
+                  realtimeConversation.reconnectAttempt
+                }
+                realtimeAutoAdviceEnabled={
+                  realtimeConversation.autoAdviceEnabled
+                }
+                realtimeMode={realtimeConversation.mode}
+                realtimeMicrophoneEnabled={
+                  realtimeConversation.microphoneEnabled
+                }
+                realtimeIsUserSpeaking={
+                  realtimeConversation.isUserSpeaking
+                }
+                onConnectRealtime={realtimeConversation.connect}
+                onDisconnectRealtime={realtimeConversation.disconnect}
+                onCancelRealtimeResponse={
+                  realtimeConversation.cancelResponse
+                }
+                onSetRealtimeAutoAdviceEnabled={
+                  realtimeConversation.setAutoAdviceEnabled
+                }
+                onSetRealtimeMode={realtimeConversation.setMode}
+                onSetRealtimeMicrophoneEnabled={
+                  realtimeConversation.setMicrophoneEnabled
+                }
+                onSendRealtimeText={realtimeConversation.sendText}
+              />
+            </div>
+          )}
+          {analysisOpen && (
+            <div className="hidden w-screen px-4 pb-8 md:block">
+              <AnalysisWorkspace
+                activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
+                boardSettings={boardSettings}
+                onClose={() => setAnalysisOpen(false)}
+                players={Object.values(playerLib)}
+                rankingSummaries={rankingSummaries}
+                settings={settings}
+                advisorViewSuggestion={confirmedRealtimeView || {
+                  view: recommendations.preferredView,
+                  explanation: recommendations.viewExplanation,
+                  revision: currPick,
+                }}
+              />
+            </div>
+          )}
           {/* Desktop Layout */}
+          {!analysisOpen && (
           <div className="hidden md:grid justify-center w-screen relative mb-4 grid grid-cols-12 gap-1 px-1">
             {/* Stats Column */}
             <div className="md:col-span-3">
@@ -343,9 +793,27 @@ const Home: FC = () => {
                   settings={settings}
                   boardSettings={boardSettings}
                 />
+                <PlayerStatusPanel
+                  playerId={viewPlayerId}
+                  status={
+                    viewPlayerId
+                      ? playerStatus[viewPlayerId]
+                      : undefined
+                  }
+                  playerName={
+                    viewPlayerId
+                      ? playerLib[viewPlayerId]?.fullName
+                      : undefined
+                  }
+                />
                 <HistoricalStats
                   settings={settings}
                   player={viewPlayerId ? playerLib[viewPlayerId] : null}
+                />
+                <HistoricalComparison
+                  settings={settings}
+                  player={viewPlayerId ? playerLib[viewPlayerId] : null}
+                  players={Object.values(playerLib)}
                 />
               </div>
             </div>
@@ -392,11 +860,16 @@ const Home: FC = () => {
                 viewPlayerId={viewPlayerId}
                 draftHistory={draftHistory}
                 viewRosterIdx={myPickNum-1}
-                listenerActive={listenerActive}
                 activeDraftListenerTitle={activeDraftListenerTitle}
+                draftCaptureState={draftCaptureState}
+                draftSourceHealth={draftSourceHealth}
+                draftSourceHealthFreshness={draftSourceHealthFreshness}
+                draftPersistence={draftPersistence}
+                onRetryDraftPersistence={retryDraftPersistence}
                 loadCurrentRankings={loadCurrentRankings}
                 rankings={rankings}
                 latestRankings={latestRankings}
+                rankingProfileControls={rankingProfileControls}
                 removePlayerTargets={removePlayerTargets}
                 playerTargets={playerTargets}
                 customAndLatestRankingsDiffs={customAndLatestRankingsDiffs}
@@ -428,6 +901,7 @@ const Home: FC = () => {
               />
             </div>
           </div>
+          )}
 
           {/* Mobile Layout */}
           <div className="md:hidden w-full h-full px-2">
@@ -494,11 +968,16 @@ const Home: FC = () => {
                 viewPlayerId={viewPlayerId}
                 draftHistory={draftHistory}
                 viewRosterIdx={myPickNum-1}
-                listenerActive={listenerActive}
                 activeDraftListenerTitle={activeDraftListenerTitle}
+                draftCaptureState={draftCaptureState}
+                draftSourceHealth={draftSourceHealth}
+                draftSourceHealthFreshness={draftSourceHealthFreshness}
+                draftPersistence={draftPersistence}
+                onRetryDraftPersistence={retryDraftPersistence}
                 loadCurrentRankings={loadCurrentRankings}
                 rankings={rankings}
                 latestRankings={latestRankings}
+                rankingProfileControls={rankingProfileControls}
                 removePlayerTargets={removePlayerTargets}
                 playerTargets={playerTargets}
                 customAndLatestRankingsDiffs={customAndLatestRankingsDiffs}
@@ -530,6 +1009,22 @@ const Home: FC = () => {
               />
             )}
 
+            {mobileView === MobileView.ANALYSIS && (
+              <div className="w-full pb-16">
+              <AnalysisWorkspace
+                  activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
+                  boardSettings={boardSettings}
+                  players={Object.values(playerLib)}
+                rankingSummaries={rankingSummaries}
+                settings={settings}
+                advisorViewSuggestion={{
+                  view: recommendations.preferredView,
+                  explanation: recommendations.viewExplanation,
+                  revision: currPick,
+                }}
+              />
+              </div>
+            )}
 
           </div>
         </div>

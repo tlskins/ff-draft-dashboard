@@ -56,19 +56,27 @@ const PickHistoryFooter: React.FC<PickHistoryFooterProps> = ({
                 const pickNum = roundIdx * settings.numTeams + (i + 1)
                 return (
                   <td
-                    className={`flex flex-col p-1 m-1 rounded ${myPickStyle} ${hover} cursor-pointer text-sm ${bgColor} items-center`}
-                    onClick={pickedPlayerId ? () => onRemovePick(pickNum) : () => setCurrPick(pickNum)}
                     key={i}
-                    onMouseEnter={() => {
-                      if (pickedPlayerId) {
-                        setViewPlayerId(pickedPlayerId)
-                      }
-                    }}
                   >
-                    <p className="font-semibold">
-                      {`#${pickNum}`} {pickedPlayerId ? ` | Rd ${roundIdx + 1} Pick ${i + 1}` : ""}
-                    </p>
-                    {player && <p> {player.fullName} </p>}
+                    <button
+                      aria-label={pickedPlayerId
+                        ? `Remove ${player?.fullName || "player"} from pick ${pickNum}`
+                        : `Set current pick to ${pickNum}`}
+                      className={`flex flex-col p-1 m-1 rounded ${myPickStyle} ${hover} cursor-pointer text-sm ${bgColor} items-center focus:outline-none focus:ring-2 focus:ring-indigo-700`}
+                      onClick={pickedPlayerId ? () => onRemovePick(pickNum) : () => setCurrPick(pickNum)}
+                      onFocus={() => {
+                        if (pickedPlayerId) setViewPlayerId(pickedPlayerId)
+                      }}
+                      onMouseEnter={() => {
+                        if (pickedPlayerId) setViewPlayerId(pickedPlayerId)
+                      }}
+                      type="button"
+                    >
+                      <span className="font-semibold">
+                        {`#${pickNum}`} {pickedPlayerId ? ` | Rd ${roundIdx + 1} Pick ${i + 1}` : ""}
+                      </span>
+                      {player && <span> {player.fullName} </span>}
+                    </button>
                   </td>
                 )
               })}
@@ -80,4 +88,4 @@ const PickHistoryFooter: React.FC<PickHistoryFooterProps> = ({
   )
 }
 
-export default PickHistoryFooter 
+export default PickHistoryFooter

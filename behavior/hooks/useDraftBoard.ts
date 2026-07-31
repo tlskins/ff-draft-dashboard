@@ -9,6 +9,11 @@ interface UseDraftBoardProps {
 
 interface UseDraftBoardReturn {
   settings: FantasySettings;
+  replaceSettings: (settings: FantasySettings) => void;
+  /** Applies metadata from an accepted, authoritative live draft source. */
+  applyAuthoritativeDraftSettings: (
+    metadata: Partial<Pick<FantasySettings, "numTeams" | "ppr">>,
+  ) => void;
   setIsPpr: (isPpr: boolean) => void;
   draftStarted: boolean;
   setDraftStarted: Dispatch<SetStateAction<boolean>>;
@@ -67,6 +72,18 @@ export const useDraftBoard = ({
   const setIsPpr = (isPpr: boolean) => {
     setSettings({ ...settings, ppr: isPpr })
   }
+  const replaceSettings = (nextSettings: FantasySettings) => {
+    if (draftStarted) return
+    setSettings({ ...nextSettings })
+  }
+  // Manual controls remain locked once drafting begins. A snapshot accepted by
+  // the user is different: ESPN is the authority for its league format, and
+  // this functional update keeps its related fields in one state transition.
+  const applyAuthoritativeDraftSettings = (
+    metadata: Partial<Pick<FantasySettings, "numTeams" | "ppr">>,
+  ) => {
+    setSettings(current => ({ ...current, ...metadata }))
+  }
 
   // board navigation
 
@@ -114,6 +131,8 @@ export const useDraftBoard = ({
 
   return {
     settings,
+    replaceSettings,
+    applyAuthoritativeDraftSettings,
     setNumTeams,
     setIsPpr,
     draftStarted,

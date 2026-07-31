@@ -1,0 +1,275 @@
+import React, { useEffect, useMemo, useState } from "react"
+import {
+  HistoricalComparisonResponse,
+  loadHistoricalComparison,
+  ScoringProfileId,
+} from "../behavior/api/historical"
+import { FantasySettings, Player } from "../types"
+
+
+interface HistoricalComparisonProps {
+  player: Player | null
+  players: Player[]
+  settings: FantasySettings
+}
+
+const COLORS = ["#2563eb", "#dc2626"]
+const CHART_WIDTH = 360
+const CHART_HEIGHT = 150
+const CHART_PADDING = 20
+const COMPLETED_SEASONS = [2021, 2022, 2023, 2024, 2025]
+
+const pointsForPlayer = (
+  player: HistoricalComparisonResponse["players"][number],
+  maximum: number,
+  maximumGames: number,
+): string => player.weeks.map((week, index) => {
+  const x = CHART_PADDING
+    + (index / Math.max(1, maximumGames - 1))
+    * (CHART_WIDTH - CHART_PADDING * 2)
+  const y = CHART_HEIGHT - CHART_PADDING
+    - (week.points / maximum)
+    * (CHART_HEIGHT - CHART_PADDING * 2)
+  return `${x},${y}`
+}).join(" ")
+
+const format = (value: number): string => value.toFixed(1)
+
+const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
+  player,
+  players,
+  settings,
+}) => {
+  const enabled =
+    process.env.NEXT_PUBLIC_HISTORICAL_COMPARISON_ENABLED === "true"
+  const eligiblePlayers = useMemo(
+    () => players
+      .filter((candidate) =>
+        ["QB", "RB", "WR", "TE"].includes(candidate.position)),
+    [players],
+  )
+  const [primaryId, setPrimaryId] = useState("")
+  const primaryPlayer = eligiblePlayers.find(
+    (candidate) => candidate.id === primaryId,
+  ) || null
+  const candidates = useMemo(
+    () => eligiblePlayers
+      .filter((candidate) =>
+        candidate.id !== primaryPlayer?.id
+        && candidate.position === primaryPlayer?.position),
+    [eligiblePlayers, primaryPlayer],
+  )
+  const [comparisonId, setComparisonId] = useState("")
+  const [profile, setProfile] = useState<ScoringProfileId>(
+    settings.ppr ? "ppr" : "standard",
+  )
+  const [seasonWindow, setSeasonWindow] = useState(5)
+  const [comparison, setComparison] =
+    useState<HistoricalComparisonResponse | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (player) {
+      setPrimaryId(player.id)
+    } else if (!primaryId && eligiblePlayers.length > 0) {
+      setPrimaryId(eligiblePlayers[0].id)
+    }
+  }, [eligiblePlayers, player, primaryId])
+
+  useEffect(() => {
+    setComparisonId(candidates[0]?.id || "")
+  }, [candidates])
+
+  useEffect(() => {
+    setProfile(settings.ppr ? "ppr" : "standard")
+  }, [settings.ppr])
+
+  useEffect(() => {
+    if (!enabled || !primaryPlayer || !comparisonId) {
+      setComparison(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    loadHistoricalComparison({
+      playerIds: [primaryPlayer.id, comparisonId],
+      seasons: COMPLETED_SEASONS.slice(-seasonWindow),
+      scoringProfile: profile,
+    })
+      .then((result) => {
+        if (!cancelled) {
+          setComparison(result)
+        }
+      })
+      .catch((requestError: Error) => {
+        if (!cancelled) {
+          setError(requestError.message)
+          setComparison(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [
+    comparisonId,
+    enabled,
+    primaryPlayer,
+    profile,
+    seasonWindow,
+  ])
+
+  if (!enabled) {
+    return null
+  }
+
+  const maximum = Math.max(
+    1,
+    ...(comparison?.players.flatMap((item) =>
+      item.weeks.map((week) => week.points)) || []),
+  )
+  const maximumGames = Math.max(
+    1,
+    ...(comparison?.players.map((item) => item.weeks.length) || []),
+  )
+  const selectedSeasons = COMPLETED_SEASONS.slice(-seasonWindow)
+
+  return (
+    <section className="mx-4 my-3 rounded border border-slate-300 bg-white p-3 text-xs shadow-sm">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="font-semibold">
+          {selectedSeasons[0]}–
+          {selectedSeasons[selectedSeasons.length - 1]} weekly comparison
+        </h2>
+        <div className="flex gap-1">
+          <select
+            aria-label="Historical season window"
+            className="rounded border border-slate-400 p-1"
+            value={seasonWindow}
+            onChange={(event) =>
+              setSeasonWindow(Number(event.target.value))}
+          >
+            <option value={1}>1 yr</option>
+            <option value={3}>3 yr</option>
+            <option value={5}>5 yr</option>
+          </select>
+          <select
+            aria-label="Scoring profile"
+            className="rounded border border-slate-400 p-1"
+            value={profile}
+            onChange={(event) =>
+              setProfile(event.target.value as ScoringProfileId)}
+          >
+            <option value="standard">Standard</option>
+            <option value="half_ppr">Half PPR</option>
+            <option value="ppr">PPR</option>
+          </select>
+        </div>
+      </div>
+      <label className="mb-2 block">
+        Player A
+        <select
+          aria-label="Primary comparison player"
+          className="mt-1 w-full rounded border border-slate-400 p-1"
+          value={primaryId}
+          onChange={(event) => setPrimaryId(event.target.value)}
+        >
+          {eligiblePlayers.map((candidate) => (
+            <option key={candidate.id} value={candidate.id}>
+              {candidate.fullName} ({candidate.position})
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="mb-2 block">
+        Player B
+        <select
+          aria-label="Comparison player"
+          className="mt-1 w-full rounded border border-slate-400 p-1"
+          value={comparisonId}
+          onChange={(event) => setComparisonId(event.target.value)}
+        >
+          {candidates.map((candidate) => (
+            <option key={candidate.id} value={candidate.id}>
+              {candidate.fullName}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {loading && <p>Loading weekly distributions…</p>}
+      {error && (
+        <p className="rounded bg-amber-50 p-2 text-amber-900">
+          Historical comparison unavailable: {error}
+        </p>
+      )}
+      {comparison && (
+        <>
+          <svg
+            aria-label="Weekly fantasy points comparison"
+            className="h-auto w-full rounded bg-slate-50"
+            viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+            role="img"
+          >
+            <line
+              x1={CHART_PADDING}
+              x2={CHART_WIDTH - CHART_PADDING}
+              y1={CHART_HEIGHT - CHART_PADDING}
+              y2={CHART_HEIGHT - CHART_PADDING}
+              stroke="#94a3b8"
+            />
+            {comparison.players.map((item, index) => (
+              <polyline
+                key={item.player_id}
+                fill="none"
+                points={pointsForPlayer(
+                  item,
+                  maximum,
+                  maximumGames,
+                )}
+                stroke={COLORS[index]}
+                strokeWidth="2.5"
+              />
+            ))}
+          </svg>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {comparison.players.map((item, index) => (
+              <div
+                className="rounded border border-slate-200 p-2"
+                key={item.player_id}
+              >
+                <p
+                  className="font-semibold"
+                  style={{ color: COLORS[index] }}
+                >
+                  {item.player_name}
+                </p>
+                <p>
+                  Avg {format(item.distribution.mean)} · P10{" "}
+                  {format(item.distribution.p10)} · P90{" "}
+                  {format(item.distribution.p90)}
+                </p>
+                <p>
+                  σ {format(item.distribution.std_dev)} across{" "}
+                  {item.distribution.games} games
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-slate-500">
+            Recomputed from nflverse · {comparison.identity_miss_count}{" "}
+            unmatched source players in the review queue
+          </p>
+        </>
+      )}
+    </section>
+  )
+}
+
+export default HistoricalComparison

@@ -2,6 +2,7 @@ import { PlayerRanks, Roster } from '../behavior/draft'
 import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, PlayerTarget, Tier } from './index'
 import { SortOption } from '../pages'
 import { HighlightOption } from '../behavior/hooks/usePredictions'
+import type { RankingProfileControls } from '../behavior/hooks/useRankingProfiles'
 
 export type DraftBoardTitleCard = {
   bgColor: string
@@ -85,6 +86,7 @@ export interface EditRankingsViewProps extends SharedViewProps {
   // Rankings data for timestamp comparison
   rankings: Rankings
   latestRankings: Rankings | null
+  rankingProfileControls: RankingProfileControls
 }
 
 // Props for best available by round view

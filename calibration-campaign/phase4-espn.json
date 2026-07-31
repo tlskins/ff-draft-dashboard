@@ -1,0 +1,66 @@
+{
+  "campaignVersion": 1,
+  "id": "phase4-espn-live-mocks",
+  "coverageTargets": {
+    "draftSlots": [1, 3, 6, 9],
+    "teamSizes": [10, 12],
+    "scoringFormats": ["PPR", "STANDARD"]
+  },
+  "evidence": [
+    {
+      "id": "espn-36954084-slot-9",
+      "fixturePath": "__tests__/fixtures/recorded-espn-2026-slot-9.json",
+      "fixtureFingerprint": "99b0c9ac2497b67252391ba210f1492c34a556f0f0ae47856a0678ac01efcbeb",
+      "declaredProvenance": {
+        "platform": "ESPN",
+        "kind": "completed_mock",
+        "captureMethod": "extension_board_export",
+        "captureVersion": 1
+      }
+    },
+    {
+      "id": "espn-236942237-slot-3",
+      "fixturePath": "__tests__/fixtures/recorded-espn-2026-slot-3-12-team-standard.json",
+      "fixtureFingerprint": "f6c33b28c2f86091ab84c6253b10fc18adffb093013428ce2e4de51514216896",
+      "declaredProvenance": {
+        "platform": "ESPN",
+        "kind": "completed_mock",
+        "captureMethod": "extension_board_export",
+        "captureVersion": 1
+      }
+    },
+    {
+      "id": "espn-682877722-slot-6",
+      "fixturePath": "__tests__/fixtures/recorded-espn-2026-slot-6-10-team-standard.json",
+      "fixtureFingerprint": "2949817ece2eedfd8ff5492784052dd3bf1d748f5a57514fc9fab9f17b95e867",
+      "declaredProvenance": {
+        "platform": "ESPN",
+        "kind": "completed_mock",
+        "captureMethod": "extension_board_export",
+        "captureVersion": 1
+      }
+    },
+    {
+      "id": "espn-1788370838-slot-1",
+      "fixturePath": "__tests__/fixtures/recorded-espn-2026-07-31-league-1788370838-slot-1.json",
+      "fixtureFingerprint": "c0890f3ee05f8797fb056e9b011bc25c75062d5acec3707a3f23ca86c57e51b2",
+      "declaredProvenance": {
+        "platform": "ESPN",
+        "kind": "completed_mock",
+        "captureMethod": "extension_board_export",
+        "captureVersion": 1
+      }
+    },
+    {
+      "id": "espn-510719609-slot-8",
+      "fixturePath": "__tests__/fixtures/recorded-espn-2026-07-31-league-510719609-slot-8.json",
+      "fixtureFingerprint": "7d2cb041841a715a39c02fe3c6180019e6cc62740f904f690ee93bfb0d345509",
+      "declaredProvenance": {
+        "platform": "ESPN",
+        "kind": "completed_mock",
+        "captureMethod": "extension_board_export",
+        "captureVersion": 1
+      }
+    }
+  ]
+}

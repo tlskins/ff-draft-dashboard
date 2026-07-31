@@ -4,12 +4,22 @@
     "node": "22.x"
   },
   "scripts": {
+    "api:types": "node scripts/generate-api-types.mjs",
+    "api:types:check": "node scripts/generate-api-types.mjs --check",
+    "calibrate:espn": "node scripts/create-espn-replay-fixture.mjs",
+    "calibration:campaign": "node scripts/run-calibration-campaign.cjs",
+    "e2e:espn": "PHASE7_LIVE_API=1 jest --runInBand __e2e__/espnMockDraft.e2e.test.ts",
+    "a11y:phase7": "jest --runInBand __tests__/accessibility.test.tsx",
+    "resilience:phase7": "jest --runInBand __tests__/useDraftListener.test.ts __tests__/useRealtimeConversation.test.ts __tests__/draftBoundaryStatus.test.tsx",
+    "portability:phase7": "jest --runInBand __tests__/portableData.test.tsx __tests__/useRealtimeAdvisor.test.tsx",
     "dev": "next dev",
     "lint": "next lint",
     "lint:build": "node scripts/postbuild.mjs",
     "build": "next build && npm run lint:build",
     "start": "next start",
-    "test": "jest"
+    "test": "jest",
+    "eval": "jest --runInBand --testPathPattern=__evals__",
+    "eval:phase7": "npm run api:types:check && npm run eval && (cd ../ff-draft-dashboard-python-api && .venv/bin/python -m unittest tests.test_realtime_eval)"
   },
   "dependencies": {
     "lodash": "^4.17.21",
@@ -35,6 +45,7 @@
     "eslint-config-next": "13.4.19",
     "jest": "^29.6.4",
     "jest-environment-jsdom": "^29.6.4",
+    "openapi-typescript": "7.13.0",
     "postcss": "^8.3.6",
     "tailwindcss": "^2.2.7",
     "typescript": "^5.8.3"

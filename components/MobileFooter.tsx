@@ -3,7 +3,8 @@ import React from 'react'
 export enum MobileView {
   OVERVIEW = 'overview',
   RANKINGS = 'rankings', 
-  ADP = 'adp'
+  ADP = 'adp',
+  ANALYSIS = 'analysis',
 }
 
 interface MobileFooterProps {
@@ -39,6 +40,15 @@ const MobileFooter: React.FC<MobileFooterProps> = ({ currentView, onViewChange }
         </svg>
       ),
       label: 'ADP'
+    },
+    {
+      view: MobileView.ANALYSIS,
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 19V9m5 10V5m5 14v-7m5 7V3" />
+        </svg>
+      ),
+      label: 'Analysis'
     }
   ]
 
@@ -66,4 +76,4 @@ const MobileFooter: React.FC<MobileFooterProps> = ({ currentView, onViewChange }
   )
 }
 
-export default MobileFooter 
+export default MobileFooter

@@ -1,0 +1,163 @@
+{
+  "fixtureVersion": 1,
+  "name": "Deterministic opponent-model calibration replay",
+  "cases": [
+    {
+      "id": "starter-need-overrides-adp",
+      "targetRosterIndex": 0,
+      "context": {
+        "schemaVersion": 1,
+        "league": {"numTeams": 4, "ppr": true},
+        "currentPick": 2,
+        "upcomingSlots": [
+          {"overallPick": 2, "rosterIndex": 1},
+          {"overallPick": 3, "rosterIndex": 2},
+          {"overallPick": 4, "rosterIndex": 0}
+        ],
+        "teams": [
+          {"rosterIndex": 0, "draftedPlayerIds": [], "needs": []},
+          {
+            "rosterIndex": 1,
+            "draftedPlayerIds": [],
+            "needs": [
+              {"position": "QB", "openStarterSpots": 0},
+              {"position": "RB", "openStarterSpots": 2},
+              {"position": "WR", "openStarterSpots": 0},
+              {"position": "TE", "openStarterSpots": 0}
+            ]
+          },
+          {
+            "rosterIndex": 2,
+            "draftedPlayerIds": [],
+            "needs": [
+              {"position": "QB", "openStarterSpots": 0},
+              {"position": "RB", "openStarterSpots": 2},
+              {"position": "WR", "openStarterSpots": 0},
+              {"position": "TE", "openStarterSpots": 0}
+            ]
+          }
+        ],
+        "availablePlayers": [
+          {"id": "wr-adp", "name": "WR ADP", "position": "WR", "team": "FA", "adp": 2, "positionRank": 1, "userTier": 1},
+          {"id": "rb-need-1", "name": "RB Need One", "position": "RB", "team": "FA", "adp": 10, "positionRank": 1, "userTier": 1},
+          {"id": "rb-need-2", "name": "RB Need Two", "position": "RB", "team": "FA", "adp": 11, "positionRank": 2, "userTier": 1},
+          {"id": "qb-later", "name": "QB Later", "position": "QB", "team": "FA", "adp": 30, "positionRank": 1, "userTier": 1},
+          {"id": "te-later", "name": "TE Later", "position": "TE", "team": "FA", "adp": 31, "positionRank": 1, "userTier": 1}
+        ],
+        "recentPicks": []
+      },
+      "actualPicks": [
+        {"overallPick": 2, "playerId": "rb-need-1", "position": "RB"},
+        {"overallPick": 3, "playerId": "rb-need-2", "position": "RB"}
+      ]
+    },
+    {
+      "id": "adp-breaks-equal-needs",
+      "targetRosterIndex": 0,
+      "context": {
+        "schemaVersion": 1,
+        "league": {"numTeams": 4, "ppr": true},
+        "currentPick": 5,
+        "upcomingSlots": [
+          {"overallPick": 5, "rosterIndex": 2},
+          {"overallPick": 6, "rosterIndex": 0}
+        ],
+        "teams": [
+          {"rosterIndex": 0, "draftedPlayerIds": [], "needs": []},
+          {
+            "rosterIndex": 2,
+            "draftedPlayerIds": [],
+            "needs": [
+              {"position": "QB", "openStarterSpots": 1},
+              {"position": "RB", "openStarterSpots": 1},
+              {"position": "WR", "openStarterSpots": 1},
+              {"position": "TE", "openStarterSpots": 1}
+            ]
+          }
+        ],
+        "availablePlayers": [
+          {"id": "wr-adp-1", "name": "WR ADP One", "position": "WR", "team": "FA", "adp": 5, "positionRank": 1, "userTier": 1},
+          {"id": "rb-later", "name": "RB Later", "position": "RB", "team": "FA", "adp": 24, "positionRank": 1, "userTier": 1},
+          {"id": "qb-later-2", "name": "QB Later Two", "position": "QB", "team": "FA", "adp": 25, "positionRank": 1, "userTier": 1},
+          {"id": "te-later-2", "name": "TE Later Two", "position": "TE", "team": "FA", "adp": 26, "positionRank": 1, "userTier": 1}
+        ],
+        "recentPicks": []
+      },
+      "actualPicks": [
+        {"overallPick": 5, "playerId": "wr-adp-1", "position": "WR"}
+      ]
+    },
+    {
+      "id": "recent-run-breaks-equal-signals",
+      "targetRosterIndex": 0,
+      "context": {
+        "schemaVersion": 1,
+        "league": {"numTeams": 4, "ppr": true},
+        "currentPick": 10,
+        "upcomingSlots": [
+          {"overallPick": 10, "rosterIndex": 1},
+          {"overallPick": 11, "rosterIndex": 2},
+          {"overallPick": 12, "rosterIndex": 3},
+          {"overallPick": 13, "rosterIndex": 3},
+          {"overallPick": 14, "rosterIndex": 0}
+        ],
+        "teams": [
+          {"rosterIndex": 0, "draftedPlayerIds": [], "needs": []},
+          {
+            "rosterIndex": 1,
+            "draftedPlayerIds": [],
+            "needs": [
+              {"position": "QB", "openStarterSpots": 1},
+              {"position": "RB", "openStarterSpots": 1},
+              {"position": "WR", "openStarterSpots": 1},
+              {"position": "TE", "openStarterSpots": 1}
+            ]
+          },
+          {
+            "rosterIndex": 2,
+            "draftedPlayerIds": [],
+            "needs": [
+              {"position": "QB", "openStarterSpots": 1},
+              {"position": "RB", "openStarterSpots": 1},
+              {"position": "WR", "openStarterSpots": 1},
+              {"position": "TE", "openStarterSpots": 1}
+            ]
+          },
+          {
+            "rosterIndex": 3,
+            "draftedPlayerIds": [],
+            "needs": [
+              {"position": "QB", "openStarterSpots": 1},
+              {"position": "RB", "openStarterSpots": 1},
+              {"position": "WR", "openStarterSpots": 1},
+              {"position": "TE", "openStarterSpots": 1}
+            ]
+          }
+        ],
+        "availablePlayers": [
+          {"id": "rb-run-1", "name": "RB Run One", "position": "RB", "team": "FA", "adp": 10, "positionRank": 1, "userTier": 1},
+          {"id": "rb-run-2", "name": "RB Run Two", "position": "RB", "team": "FA", "adp": 11, "positionRank": 2, "userTier": 1},
+          {"id": "rb-run-3", "name": "RB Run Three", "position": "RB", "team": "FA", "adp": 12, "positionRank": 3, "userTier": 1},
+          {"id": "rb-run-4", "name": "RB Run Four", "position": "RB", "team": "FA", "adp": 13, "positionRank": 4, "userTier": 1},
+          {"id": "qb-equal", "name": "QB Equal", "position": "QB", "team": "FA", "adp": 10, "positionRank": 1, "userTier": 1},
+          {"id": "wr-equal", "name": "WR Equal", "position": "WR", "team": "FA", "adp": 10, "positionRank": 1, "userTier": 1},
+          {"id": "te-equal", "name": "TE Equal", "position": "TE", "team": "FA", "adp": 10, "positionRank": 1, "userTier": 1}
+        ],
+        "recentPicks": [
+          {"overallPick": 4, "playerId": "rb-old-1", "name": "RB Old One", "position": "RB", "team": "FA"},
+          {"overallPick": 5, "playerId": "rb-old-2", "name": "RB Old Two", "position": "RB", "team": "FA"},
+          {"overallPick": 6, "playerId": "rb-old-3", "name": "RB Old Three", "position": "RB", "team": "FA"},
+          {"overallPick": 7, "playerId": "rb-old-4", "name": "RB Old Four", "position": "RB", "team": "FA"},
+          {"overallPick": 8, "playerId": "rb-old-5", "name": "RB Old Five", "position": "RB", "team": "FA"},
+          {"overallPick": 9, "playerId": "rb-old-6", "name": "RB Old Six", "position": "RB", "team": "FA"}
+        ]
+      },
+      "actualPicks": [
+        {"overallPick": 10, "playerId": "rb-run-1", "position": "RB"},
+        {"overallPick": 11, "playerId": "rb-run-2", "position": "RB"},
+        {"overallPick": 12, "playerId": "rb-run-3", "position": "RB"},
+        {"overallPick": 13, "playerId": "rb-run-4", "position": "RB"}
+      ]
+    }
+  ]
+}

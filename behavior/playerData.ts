@@ -1,11 +1,17 @@
 import { FantasyPosition, Rankings } from "types";
 import ranks from "./playerData.json";
 import { toCamelCase } from "./presenters";
+import type { components as ApiComponents } from "./api/schema";
 
+type RankingsApiResponse = ApiComponents["schemas"]["RankingsResponse"]
+
+const toDomainRankings = (rankings: RankingsApiResponse): Rankings => {
+  const skiplist = Object.values(FantasyPosition);
+  return toCamelCase(rankings, skiplist) as unknown as Rankings;
+}
 
 export const getEmbeddedPlayerData = (): Rankings => {
-  const skiplist = Object.values(FantasyPosition);
-  return toCamelCase(ranks, skiplist) as Rankings;
+  return toDomainRankings(ranks as unknown as RankingsApiResponse)
 }
 
 interface LoadPlayerDataOptions {
@@ -52,11 +58,8 @@ export const loadPlayerData = async ({
       throw new Error(`Rankings API returned ${response.status}`)
     }
 
-    const rankings = await response.json()
-    return toCamelCase(
-      rankings,
-      Object.values(FantasyPosition),
-    ) as Rankings
+    const rankings = await response.json() as RankingsApiResponse
+    return toDomainRankings(rankings)
   } catch (error) {
     console.warn("Using embedded rankings because the API is unavailable", error)
     return getEmbeddedPlayerData()
