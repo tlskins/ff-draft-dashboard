@@ -282,3 +282,30 @@ The live advisor visibly reports local capture state and shows a preflight
 before export. Preflight separates locally computable labels from authoritative
 ESPN campaign provenance; declared-local capture is not cryptographic source
 authentication.
+
+# Canonical static-window opponent backtest
+
+`npm run eval:static-window-backtest` scores the five recorded ESPN mocks without
+reading either live `forecastEvidence` or `empiricalBaseShadowEvidence`.
+
+The boundary policy is frozen in `staticWindowBacktest.ts`: for every target
+manager pick with an intervening opponent slot, the terminal horizon is that
+pick; the selected boundary is draft start for the first target pick and
+otherwise the preceding target pick. This is the widest available post-target
+window for each unique next-target horizon.
+Eligible QB/RB/WR/TE opponent pick labels are therefore non-overlapping and
+appear once; run windows are independent representatives rather than repeated
+rolling windows. The final opponent slots after the target's final pick are not
+covered.
+
+The primary learned-base result is leave-one-entire-draft-out. Each held-out
+fixture is predicted with a base softmax fit only on the other complete mocks.
+The immutable five-fixture artifact is printed only as a clearly marked,
+descriptive in-sample parity result. This report is offline-only and never
+promotes or changes the live model.
+
+It reports multiclass Brier, top-position accuracy, log loss, the existing
+conditional-player top-1/top-3 surface, top-label calibration bins/ECE, and
+run Brier plus the predeclared 0.25/0.50/0.75 precision-recall-F1 sweep.
+Calibration bins are `[lower, upper)`; only the final bin includes probability
+`1`, so an exact interior edge belongs to the following bin.

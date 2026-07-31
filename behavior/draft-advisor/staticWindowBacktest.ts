@@ -1,0 +1,616 @@
+import {
+  createRecordedDraftAdvisorContextAtBoundary,
+} from "./completedDraftReplay"
+import {
+  EMPIRICAL_BASE_SHADOW_ARTIFACT,
+} from "./empiricalBaseShadow"
+import {
+  createEmpiricalOpponentFeatureSurface,
+  EMPIRICAL_OPPONENT_POSITIONS,
+  fitEmpiricalOpponentSoftmax,
+  predictEmpiricalOpponentProbabilities,
+  prepareEmpiricalOpponentCorpus,
+} from "./opponentEmpiricalV2"
+import {
+  createOpponentForecast,
+  opponentPlayerProbabilities,
+  probabilityOfAtLeast,
+} from "./opponentModel"
+import { leagueFormatFor } from "./replayMetrics"
+import type {
+  EmpiricalSoftmaxModel,
+} from "./opponentEmpiricalV2"
+import type { RecordedCompletedDraftReplay } from "./completedDraftReplay"
+import type { DraftAdvisorContext, ForecastPlayerProbability, PositionProbability } from "./types"
+
+type ForecastPosition = typeof EMPIRICAL_OPPONENT_POSITIONS[number]
+type ModelName = "frozenV1" | "learnedBaseLodo" | "fullDataArtifactDescriptive"
+
+const POSITIONS = EMPIRICAL_OPPONENT_POSITIONS
+const EPSILON = 1e-12
+
+/** Fixed before scoring; these are descriptive operating points, not tuning. */
+export const STATIC_WINDOW_RUN_THRESHOLDS = [0.25, 0.5, 0.75] as const
+export const STATIC_WINDOW_CALIBRATION_EDGES = [0, 0.25, 0.5, 0.75, 1] as const
+
+/**
+ * A terminal horizon is the target manager's next actual pick. For every
+ * horizon with an intervening opponent slot we keep exactly its earliest
+ * possible post-target boundary: draft start for the first target pick, then
+ * the preceding target pick. Thus every forecastable opponent slot belongs to
+ * one and only one run window; we never use stored forecast/shadow evidence
+ * to choose boundaries.
+ */
+export const STATIC_WINDOW_BOUNDARY_POLICY = {
+  id: "earliest_post_target_boundary_per_next_target_pick_v1",
+  description: "For each non-empty target-pick horizon, use boundary 0 before the target's first pick, then each preceding target pick; terminal horizon is the next target pick.",
+  labels: "Only recorded QB/RB/WR/TE opponent selections are scored as pick labels; every opponent slot remains in the forecast/run horizon.",
+} as const
+
+export interface CanonicalStaticWindow {
+  observedThroughOverallPick: number
+  terminalTargetPick: number
+}
+
+export interface StaticWindowPickMetrics {
+  evaluatedPicks: number
+  positionBrierScore: number
+  topPositionAccuracy: number
+  logLoss: number
+  playerEvaluatedPicks: number
+  playerTopOneAccuracy: number
+  playerTopThreeAccuracy: number
+}
+
+export interface StaticWindowCalibrationBin {
+  lowerInclusive: number
+  /** The bin is [lowerInclusive, upperExclusive), except the final bin includes 1. */
+  upperExclusive: number
+  includesUpperBound: boolean
+  count: number
+  meanConfidence: number
+  empiricalAccuracy: number
+}
+
+export interface StaticWindowCalibration {
+  evaluatedPicks: number
+  expectedCalibrationError: number
+  bins: StaticWindowCalibrationBin[]
+}
+
+export interface StaticWindowRunMetrics {
+  evaluatedEvents: number
+  brierScore: number
+  thresholds: Array<{
+    threshold: number
+    truePositives: number
+    falsePositives: number
+    falseNegatives: number
+    predictedPositives: number
+    actualPositives: number
+    precision: number
+    recall: number
+    f1: number
+  }>
+}
+
+export interface StaticWindowModelSummary {
+  pickMetrics: StaticWindowPickMetrics
+  calibration: StaticWindowCalibration
+  runMetrics: StaticWindowRunMetrics
+}
+
+export interface StaticWindowModelComparison {
+  frozenV1: StaticWindowModelSummary
+  /** Primary leakage-safe learned-base estimate: the scored fixture was excluded from its fit. */
+  learnedBaseLodo: StaticWindowModelSummary
+  /** In-sample only; the immutable shipped artifact was fit on this five-fixture corpus. */
+  fullDataArtifactDescriptive: StaticWindowModelSummary
+}
+
+export interface StaticWindowGroup extends StaticWindowModelComparison {
+  key: string
+  fixtureCount: number
+  canonicalWindowCount: number
+  forecastSlotCount: number
+  labelCount: number
+}
+
+export interface StaticWindowFixtureReport extends StaticWindowModelComparison {
+  fixtureId: string
+  leagueFormat: string
+  targetRosterIndex: number
+  canonicalWindows: CanonicalStaticWindow[]
+  forecastSlotCount: number
+  labelCount: number
+  lodoTrainingFixtureIds: string[]
+  lodoTrainingExampleCount: number
+}
+
+export interface StaticWindowBacktestReport {
+  available: boolean
+  policy: typeof STATIC_WINDOW_BOUNDARY_POLICY
+  promotion: { promoted: false, reason: string }
+  primary: StaticWindowGroup
+  byFixture: StaticWindowFixtureReport[]
+  byLeagueFormat: StaticWindowGroup[]
+  byDraftPhase: StaticWindowGroup[]
+  byActualPosition: StaticWindowGroup[]
+  skippedFixtures: Array<{ fixtureId: string, reason: string }>
+  coverage: {
+    suppliedFixtureCount: number
+    usableFixtureCount: number
+    canonicalWindowCount: number
+    forecastSlotCount: number
+    labeledPickCount: number
+    repeatedPickLabels: 0
+    independentRepresentativeRunWindows: number
+    limitations: string[]
+  }
+}
+
+interface PickSample {
+  fixtureId: string
+  leagueFormat: string
+  phase: string
+  actual: ForecastPosition
+  playerId: string
+  predictions: Record<ModelName, {
+    probabilities: PositionProbability[]
+    playerProbabilities: ForecastPlayerProbability[]
+  }>
+}
+
+interface RunSample {
+  fixtureId: string
+  leagueFormat: string
+  phase: string
+  predictions: Record<ModelName, Array<{
+    position: ForecastPosition
+    probability: number
+    actual: boolean
+  }>>
+}
+
+interface FixtureSamples {
+  report: StaticWindowFixtureReport
+  picks: PickSample[]
+  runs: RunSample[]
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value)
+
+const phaseFor = (overallPick: number, totalPicks: number): string => {
+  const progress = (overallPick - 1) / Math.max(1, totalPicks - 1)
+  if (progress < 1 / 3) return "early (0-33%)"
+  if (progress < 2 / 3) return "middle (33-67%)"
+  return "late (67-100%)"
+}
+
+const probabilityFor = (probabilities: PositionProbability[], position: ForecastPosition): number =>
+  probabilities.find(candidate => candidate.position === position)?.probability || 0
+
+const normalized = (probabilities: number[]): number[] => {
+  const total = probabilities.reduce((sum, probability) => sum + probability, 0)
+  return total > 0 ? probabilities.map(probability => probability / total)
+    : probabilities.map(() => 1 / probabilities.length)
+}
+
+const topPosition = (probabilities: PositionProbability[]): ForecastPosition =>
+  [...probabilities].sort((left, right) => right.probability - left.probability
+    || left.position.localeCompare(right.position))[0].position as ForecastPosition
+
+const topPlayers = (probabilities: ForecastPlayerProbability[], limit: number): string[] =>
+  [...probabilities].sort((left, right) => right.overallProbability - left.overallProbability
+    || left.playerId.localeCompare(right.playerId)).slice(0, limit).map(player => player.playerId)
+
+const modelForArtifact = (): EmpiricalSoftmaxModel => ({
+  featureSet: "base",
+  featureNames: [...EMPIRICAL_BASE_SHADOW_ARTIFACT.featureNames],
+  coefficients: EMPIRICAL_BASE_SHADOW_ARTIFACT.coefficients.map(row => [...row]),
+  diagnostics: { examples: 656, initialLoss: 0, finalLoss: 0, iterations: 350, runtimeMs: 0 },
+})
+
+/** Returns only policy-derived boundaries and is deliberately independent of evidence envelopes. */
+export const canonicalStaticWindowBoundaries = (
+  fixture: RecordedCompletedDraftReplay,
+): CanonicalStaticWindow[] => {
+  const targets = [...fixture.actualPicks].filter(pick =>
+    pick.rosterIndex === fixture.targetRosterIndex)
+    .sort((left, right) => left.overallPick - right.overallPick)
+  return targets.map((target, index) => ({
+    observedThroughOverallPick: index === 0 ? 0 : targets[index - 1].overallPick,
+    terminalTargetPick: target.overallPick,
+  })).filter(window => window.terminalTargetPick > window.observedThroughOverallPick + 1)
+}
+
+const fixtureError = (value: unknown): string | null => {
+  if (!isRecord(value)) return "fixture is absent or not an object"
+  if (typeof value.id !== "string" || !value.id) return "fixture id is absent"
+  if (!isRecord(value.settings) || !Number.isInteger(value.settings.numTeams)
+    || (value.settings.numTeams as number) < 2 || typeof value.settings.ppr !== "boolean") {
+    return "fixture settings are malformed"
+  }
+  if (!Number.isInteger(value.targetRosterIndex)
+    || (value.targetRosterIndex as number) < 0
+    || (value.targetRosterIndex as number) >= (value.settings.numTeams as number)) {
+    return "fixture target roster is malformed"
+  }
+  if (!Array.isArray(value.players) || !Array.isArray(value.actualPicks) || !value.actualPicks.length) {
+    return "fixture players or picks are absent"
+  }
+  if (value.actualPicks.some(pick => !isRecord(pick) || !Number.isInteger(pick.overallPick)
+    || !Number.isInteger(pick.rosterIndex))) return "fixture pick is malformed"
+  return null
+}
+
+const emptyPickMetrics = (): StaticWindowPickMetrics => ({
+  evaluatedPicks: 0, positionBrierScore: 0, topPositionAccuracy: 0, logLoss: 0,
+  playerEvaluatedPicks: 0, playerTopOneAccuracy: 0, playerTopThreeAccuracy: 0,
+})
+
+const summarizePicks = (samples: PickSample[], model: ModelName): {
+  metrics: StaticWindowPickMetrics, calibration: StaticWindowCalibration
+} => {
+  if (!samples.length) {
+    return {
+      metrics: emptyPickMetrics(),
+      calibration: { evaluatedPicks: 0, expectedCalibrationError: 0,
+        bins: STATIC_WINDOW_CALIBRATION_EDGES.slice(0, -1).map((lowerInclusive, index) => ({
+          lowerInclusive, upperExclusive: STATIC_WINDOW_CALIBRATION_EDGES[index + 1],
+          includesUpperBound: index === STATIC_WINDOW_CALIBRATION_EDGES.length - 2, count: 0,
+          meanConfidence: 0, empiricalAccuracy: 0,
+        })) },
+    }
+  }
+  let brier = 0
+  let hits = 0
+  let loss = 0
+  let playerOne = 0
+  let playerThree = 0
+  const bins = STATIC_WINDOW_CALIBRATION_EDGES.slice(0, -1).map((lowerInclusive, index) => ({
+    lowerInclusive, upperExclusive: STATIC_WINDOW_CALIBRATION_EDGES[index + 1],
+    includesUpperBound: index === STATIC_WINDOW_CALIBRATION_EDGES.length - 2, values: [] as Array<{
+      confidence: number, hit: number
+    }>,
+  }))
+  samples.forEach(sample => {
+    const prediction = sample.predictions[model]
+    const probabilities = POSITIONS.map(position => probabilityFor(prediction.probabilities, position))
+    const labelIndex = POSITIONS.indexOf(sample.actual)
+    brier += probabilities.reduce((sum, probability, index) =>
+      sum + (probability - (index === labelIndex ? 1 : 0)) ** 2, 0)
+    const selected = topPosition(prediction.probabilities)
+    const hit = selected === sample.actual ? 1 : 0
+    hits += hit
+    loss -= Math.log(Math.max(EPSILON, probabilities[labelIndex]))
+    const confidence = probabilityFor(prediction.probabilities, selected)
+    const binIndex = Math.min(bins.length - 1, Math.floor(confidence * bins.length))
+    bins[binIndex].values.push({ confidence, hit })
+    const top = topPlayers(prediction.playerProbabilities, 3)
+    playerOne += top[0] === sample.playerId ? 1 : 0
+    playerThree += top.includes(sample.playerId) ? 1 : 0
+  })
+  const calibrationBins = bins.map(bin => ({
+    lowerInclusive: bin.lowerInclusive,
+    upperExclusive: bin.upperExclusive,
+    includesUpperBound: bin.includesUpperBound,
+    count: bin.values.length,
+    meanConfidence: bin.values.length
+      ? bin.values.reduce((sum, value) => sum + value.confidence, 0) / bin.values.length : 0,
+    empiricalAccuracy: bin.values.length
+      ? bin.values.reduce((sum, value) => sum + value.hit, 0) / bin.values.length : 0,
+  }))
+  const ece = calibrationBins.reduce((sum, bin) => sum + bin.count / samples.length
+    * Math.abs(bin.meanConfidence - bin.empiricalAccuracy), 0)
+  return {
+    metrics: {
+      evaluatedPicks: samples.length,
+      positionBrierScore: brier / samples.length,
+      topPositionAccuracy: hits / samples.length,
+      logLoss: loss / samples.length,
+      playerEvaluatedPicks: samples.length,
+      playerTopOneAccuracy: playerOne / samples.length,
+      playerTopThreeAccuracy: playerThree / samples.length,
+    },
+    calibration: { evaluatedPicks: samples.length, expectedCalibrationError: ece, bins: calibrationBins },
+  }
+}
+
+const summarizeRuns = (samples: RunSample[], model: ModelName): StaticWindowRunMetrics => {
+  const events = samples.flatMap(sample => sample.predictions[model])
+  return {
+    evaluatedEvents: events.length,
+    brierScore: events.length ? events.reduce((sum, event) =>
+      sum + (event.probability - (event.actual ? 1 : 0)) ** 2, 0) / events.length : 0,
+    thresholds: STATIC_WINDOW_RUN_THRESHOLDS.map(threshold => {
+      const counts = events.reduce((result, event) => {
+        const predicted = event.probability >= threshold
+        if (predicted && event.actual) result.truePositives += 1
+        else if (predicted) result.falsePositives += 1
+        else if (event.actual) result.falseNegatives += 1
+        return result
+      }, { truePositives: 0, falsePositives: 0, falseNegatives: 0 })
+      const predictedPositives = counts.truePositives + counts.falsePositives
+      const actualPositives = counts.truePositives + counts.falseNegatives
+      const precision = predictedPositives ? counts.truePositives / predictedPositives : 0
+      const recall = actualPositives ? counts.truePositives / actualPositives : 0
+      return {
+        threshold, ...counts, predictedPositives, actualPositives, precision, recall,
+        f1: precision + recall ? 2 * precision * recall / (precision + recall) : 0,
+      }
+    }),
+  }
+}
+
+const summary = (picks: PickSample[], runs: RunSample[]): StaticWindowModelComparison => {
+  const forModel = (model: ModelName): StaticWindowModelSummary => {
+    const pick = summarizePicks(picks, model)
+    return { pickMetrics: pick.metrics, calibration: pick.calibration, runMetrics: summarizeRuns(runs, model) }
+  }
+  return {
+    frozenV1: forModel("frozenV1"),
+    learnedBaseLodo: forModel("learnedBaseLodo"),
+    fullDataArtifactDescriptive: forModel("fullDataArtifactDescriptive"),
+  }
+}
+
+const allForecastSlotsMatch = (
+  context: DraftAdvisorContext,
+  forecastPicks: Array<{ overallPick: number, rosterIndex: number }>,
+  fixture: RecordedCompletedDraftReplay,
+  window: CanonicalStaticWindow,
+): boolean => {
+  const expected = fixture.actualPicks.filter(pick => pick.overallPick > window.observedThroughOverallPick
+    && pick.overallPick < window.terminalTargetPick
+    && pick.rosterIndex !== fixture.targetRosterIndex)
+    .map(pick => ({ overallPick: pick.overallPick, rosterIndex: pick.rosterIndex }))
+  return context.recentPicks.every(pick => pick.overallPick <= window.observedThroughOverallPick)
+    && expected.length === forecastPicks.length
+    && expected.every((pick, index) => pick.overallPick === forecastPicks[index].overallPick
+      && pick.rosterIndex === forecastPicks[index].rosterIndex)
+}
+
+const createPredictions = (
+  context: DraftAdvisorContext,
+  overallPick: number,
+  rosterIndex: number,
+  model: EmpiricalSoftmaxModel,
+): { probabilities: PositionProbability[], playerProbabilities: ForecastPlayerProbability[] } => {
+  const values = normalized(predictEmpiricalOpponentProbabilities(model,
+    createEmpiricalOpponentFeatureSurface(context, overallPick, rosterIndex, context.totalDraftPicks)))
+  const probabilities = POSITIONS.map((position, index) => ({ position, probability: values[index] }))
+  return {
+    probabilities,
+    playerProbabilities: opponentPlayerProbabilities(context, overallPick, probabilities, 5),
+  }
+}
+
+const buildFixtureSamples = (
+  fixture: RecordedCompletedDraftReplay,
+  learnedModel: EmpiricalSoftmaxModel,
+  lodoTrainingFixtureIds: string[],
+  lodoTrainingExampleCount: number,
+): FixtureSamples => {
+  const windows = canonicalStaticWindowBoundaries(fixture)
+  const artifact = modelForArtifact()
+  const picks: PickSample[] = []
+  const runs: RunSample[] = []
+  let forecastSlotCount = 0
+  const playerById = new Map(fixture.players.map(player => [player.id, player]))
+  windows.forEach(window => {
+    const context = createRecordedDraftAdvisorContextAtBoundary(
+      fixture, window.observedThroughOverallPick,
+    )
+    const frozen = createOpponentForecast(context, {
+      model: "combined", targetRosterIndex: fixture.targetRosterIndex,
+    })
+    if (!allForecastSlotsMatch(context, frozen.picks, fixture, window)) {
+      throw new Error(`canonical horizon mismatch at boundary ${window.observedThroughOverallPick}`)
+    }
+    forecastSlotCount += frozen.picks.length
+    const actualByPick = new Map(fixture.actualPicks.map(pick => [pick.overallPick, pick]))
+    const learnedPicks = new Map(frozen.picks.map(pick => [pick.overallPick,
+      createPredictions(context, pick.overallPick, pick.rosterIndex, learnedModel)]))
+    const artifactPicks = new Map(frozen.picks.map(pick => [pick.overallPick,
+      createPredictions(context, pick.overallPick, pick.rosterIndex, artifact)]))
+    frozen.picks.forEach(frozenPick => {
+      const actual = actualByPick.get(frozenPick.overallPick)
+      const player = actual?.playerId ? playerById.get(actual.playerId) : undefined
+      if (!actual || !player || !POSITIONS.includes(player.position as ForecastPosition)) return
+      const frozenPrediction = {
+        probabilities: frozenPick.positionProbabilities,
+        playerProbabilities: frozenPick.playerProbabilities,
+      }
+      const learned = learnedPicks.get(frozenPick.overallPick)!
+      const descriptive = artifactPicks.get(frozenPick.overallPick)!
+      picks.push({
+        fixtureId: fixture.id, leagueFormat: leagueFormatFor(fixture),
+        phase: phaseFor(actual.overallPick, fixture.actualPicks.length),
+        actual: player.position as ForecastPosition, playerId: player.id,
+        predictions: {
+          frozenV1: frozenPrediction,
+          learnedBaseLodo: learned,
+          fullDataArtifactDescriptive: descriptive,
+        },
+      })
+    })
+    const labelled = frozen.picks.flatMap(forecastPick => {
+      const actual = actualByPick.get(forecastPick.overallPick)
+      const player = actual?.playerId ? playerById.get(actual.playerId) : undefined
+      return player && POSITIONS.includes(player.position as ForecastPosition)
+        ? [{ position: player.position as ForecastPosition }] : []
+    })
+    const toRunEvents = (probabilities: PositionProbability[]) => POSITIONS.map(position => ({
+      position,
+      probability: probabilityFor(probabilities, position),
+      actual: labelled.filter(label => label.position === position).length >= 3,
+    }))
+    const forecastRuns = new Map(frozen.runProbabilities.map(run => [run.position, run.probability]))
+    runs.push({
+      fixtureId: fixture.id,
+      leagueFormat: leagueFormatFor(fixture),
+      phase: phaseFor(window.terminalTargetPick, fixture.actualPicks.length),
+      predictions: {
+        frozenV1: POSITIONS.map(position => ({ position,
+          probability: forecastRuns.get(position) || 0,
+          actual: labelled.filter(label => label.position === position).length >= 3,
+        })),
+        learnedBaseLodo: toRunEvents(POSITIONS.map(position => ({ position,
+          probability: (() => {
+            const probabilities = frozen.picks.map(pick => learnedPicks.get(pick.overallPick)!.probabilities)
+            return probabilities.length < 3 ? 0 : probabilityOfAtLeast(probabilities.map(value =>
+              probabilityFor(value, position)), 3)
+          })(),
+        }))),
+        fullDataArtifactDescriptive: toRunEvents(POSITIONS.map(position => ({ position,
+          probability: (() => {
+            const probabilities = frozen.picks.map(pick => artifactPicks.get(pick.overallPick)!.probabilities)
+            return probabilities.length < 3 ? 0 : probabilityOfAtLeast(probabilities.map(value =>
+              probabilityFor(value, position)), 3)
+          })(),
+        }))),
+      },
+    })
+  })
+  const base = summary(picks, runs)
+  return {
+    report: {
+      fixtureId: fixture.id, leagueFormat: leagueFormatFor(fixture), targetRosterIndex: fixture.targetRosterIndex,
+      canonicalWindows: windows, forecastSlotCount, labelCount: picks.length,
+      lodoTrainingFixtureIds, lodoTrainingExampleCount, ...base,
+    }, picks, runs,
+  }
+}
+
+const group = (key: string, fixtures: FixtureSamples[]): StaticWindowGroup => {
+  const picks = fixtures.flatMap(fixture => fixture.picks)
+  const runs = fixtures.flatMap(fixture => fixture.runs)
+  return {
+    key, fixtureCount: fixtures.length,
+    canonicalWindowCount: fixtures.reduce((sum, fixture) => sum + fixture.report.canonicalWindows.length, 0),
+    forecastSlotCount: fixtures.reduce((sum, fixture) => sum + fixture.report.forecastSlotCount, 0),
+    labelCount: picks.length, ...summary(picks, runs),
+  }
+}
+
+const groupsBy = (
+  fixtures: FixtureSamples[],
+  keyForPick: (sample: PickSample) => string,
+  keyForRun?: (sample: RunSample) => string,
+): StaticWindowGroup[] => {
+  const keys = Array.from(new Set(fixtures.flatMap(fixture => fixture.picks.map(keyForPick)))).sort()
+  return keys.map(key => {
+    const matching = fixtures.map(fixture => ({
+      ...fixture,
+      picks: fixture.picks.filter(sample => keyForPick(sample) === key),
+      runs: keyForRun ? fixture.runs.filter(sample => keyForRun(sample) === key) : [],
+    }))
+    const picks = matching.flatMap(fixture => fixture.picks)
+    const runs = matching.flatMap(fixture => fixture.runs)
+    return {
+      key, fixtureCount: matching.filter(fixture => fixture.picks.length > 0).length,
+      canonicalWindowCount: runs.length,
+      forecastSlotCount: 0,
+      labelCount: picks.length,
+      ...summary(picks, runs),
+    }
+  })
+}
+
+/**
+ * Offline-only static-window replay.  The learned-base primary result always
+ * uses a model trained on other complete fixtures; no evidence envelope is
+ * read and no promotion/live state can be changed by this function.
+ */
+export const runStaticWindowBacktest = (fixtures: unknown[]): StaticWindowBacktestReport => {
+  const skippedFixtures: Array<{ fixtureId: string, reason: string }> = []
+  const valid: RecordedCompletedDraftReplay[] = []
+  const ids = new Set<string>()
+  fixtures.forEach((value, index) => {
+    const error = fixtureError(value)
+    const fixtureId = isRecord(value) && typeof value.id === "string" ? value.id : `fixture-${index + 1}`
+    if (error) { skippedFixtures.push({ fixtureId, reason: error }); return }
+    if (ids.has(fixtureId)) { skippedFixtures.push({ fixtureId, reason: "duplicate fixture id" }); return }
+    ids.add(fixtureId)
+    valid.push(value as RecordedCompletedDraftReplay)
+  })
+  // Materialize each candidate independently: one malformed nested replay must
+  // never prevent a valid fixture from participating in another fold.
+  const corpusParts = valid.flatMap(fixture => {
+    try {
+      const part = prepareEmpiricalOpponentCorpus([fixture])
+      part.skippedFixtures.forEach(skipped => skippedFixtures.push(skipped))
+      return part.fixtures.length ? [part] : []
+    } catch (error) {
+      skippedFixtures.push({ fixtureId: fixture.id, reason: `corpus preparation failed: ${String(error)}` })
+      return []
+    }
+  })
+  const corpus = {
+    examples: corpusParts.flatMap(part => part.examples),
+    fixtures: corpusParts.flatMap(part => part.fixtures),
+  }
+  const usable = valid.filter(fixture => corpus.fixtures.some(summary => summary.fixtureId === fixture.id))
+  if (usable.length < 2) return unavailable(fixtures.length, skippedFixtures)
+  const fixtureSamples: FixtureSamples[] = []
+  usable.forEach(fixture => {
+    try {
+      const training = corpus.examples.filter(example => example.fixtureId !== fixture.id)
+      const trainingIds = corpus.fixtures.filter(summary => summary.fixtureId !== fixture.id)
+        .map(summary => summary.fixtureId).sort()
+      if (trainingIds.includes(fixture.id)) throw new Error("LODO training includes held-out fixture")
+      const model = fitEmpiricalOpponentSoftmax(training, "base")
+      fixtureSamples.push(buildFixtureSamples(fixture, model, trainingIds, training.length))
+    } catch (error) {
+      skippedFixtures.push({ fixtureId: fixture.id, reason: String(error) })
+    }
+  })
+  if (fixtureSamples.length < 2) return unavailable(fixtures.length, skippedFixtures)
+  const primary = group("pick-weighted aggregate", fixtureSamples)
+  return {
+    available: true,
+    policy: STATIC_WINDOW_BOUNDARY_POLICY,
+    promotion: { promoted: false, reason: "Offline historical backtest only; prospective shadow validation remains required" },
+    primary,
+    byFixture: fixtureSamples.map(sample => sample.report)
+      .sort((left, right) => left.fixtureId.localeCompare(right.fixtureId)),
+    byLeagueFormat: groupsBy(fixtureSamples, sample => sample.leagueFormat,
+      sample => sample.leagueFormat),
+    byDraftPhase: groupsBy(fixtureSamples, sample => sample.phase,
+      sample => sample.phase),
+    byActualPosition: groupsBy(fixtureSamples, sample => sample.actual),
+    skippedFixtures,
+    coverage: {
+      suppliedFixtureCount: fixtures.length, usableFixtureCount: fixtureSamples.length,
+      canonicalWindowCount: fixtureSamples.reduce((sum, fixture) => sum + fixture.report.canonicalWindows.length, 0),
+      forecastSlotCount: fixtureSamples.reduce((sum, fixture) => sum + fixture.report.forecastSlotCount, 0),
+      labeledPickCount: primary.labelCount,
+      repeatedPickLabels: 0,
+      independentRepresentativeRunWindows: fixtureSamples.reduce((sum, fixture) => sum + fixture.runs.length, 0),
+      limitations: [
+        "Learned-base LODO fits exclude the scored draft but share a small five-mock corpus.",
+        "Full-data artifact numbers are in-sample descriptive parity only and are not promotion evidence.",
+        "Static windows exclude the trailing opponent slots after a target manager's final pick.",
+        "Run probabilities retain the current independent-pick assumption and fixed minimum run length of three.",
+      ],
+    },
+  }
+}
+
+const unavailable = (
+  suppliedFixtureCount: number,
+  skippedFixtures: Array<{ fixtureId: string, reason: string }>,
+): StaticWindowBacktestReport => ({
+  available: false,
+  policy: STATIC_WINDOW_BOUNDARY_POLICY,
+  promotion: { promoted: false, reason: "Offline historical backtest only; prospective shadow validation remains required" },
+  primary: group("pick-weighted aggregate", []),
+  byFixture: [], byLeagueFormat: [], byDraftPhase: [], byActualPosition: [], skippedFixtures,
+  coverage: {
+    suppliedFixtureCount, usableFixtureCount: 0, canonicalWindowCount: 0, forecastSlotCount: 0,
+    labeledPickCount: 0, repeatedPickLabels: 0, independentRepresentativeRunWindows: 0,
+    limitations: ["At least two usable complete fixtures are required for LODO evaluation."],
+  },
+})

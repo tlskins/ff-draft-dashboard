@@ -441,7 +441,12 @@ export const opponentPositionProbabilities = (
   combinedV2Config,
 )
 
-const playerProbabilities = (
+/**
+ * The frozen conditional player-selection heuristic.  Offline evaluators can
+ * pair a different positional distribution with this unchanged conditional
+ * surface without reimplementing or training a player model.
+ */
+export const opponentPlayerProbabilities = (
   context: DraftAdvisorContext,
   overallPick: number,
   positions: PositionProbability[],
@@ -579,7 +584,7 @@ export const createOpponentForecast = (
       overallPick: slot.overallPick,
       rosterIndex: slot.rosterIndex,
       positionProbabilities: positions,
-      playerProbabilities: playerProbabilities(
+      playerProbabilities: opponentPlayerProbabilities(
         context,
         slot.overallPick,
         positions,

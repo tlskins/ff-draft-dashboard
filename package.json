@@ -23,6 +23,7 @@
     "eval:opponent-v2-tuning": "V2_OPPONENT_TUNING_REPORT=1 jest --runInBand __evals__/opponentModelV2Tuning.eval.test.ts",
     "eval:opponent-empirical-v2": "EMPIRICAL_OPPONENT_V2_REPORT=1 jest --runInBand __evals__/opponentEmpiricalV2.eval.test.ts",
     "eval:opponent-empirical-base-shadow": "EMPIRICAL_BASE_SHADOW_REPORT=1 jest --runInBand __evals__/empiricalBaseShadow.eval.test.ts",
+    "eval:static-window-backtest": "STATIC_WINDOW_BACKTEST_REPORT=1 jest --runInBand __evals__/staticWindowBacktest.eval.test.ts",
     "eval:phase7": "npm run api:types:check && npm run eval && (cd ../ff-draft-dashboard-python-api && .venv/bin/python -m unittest tests.test_realtime_eval)"
   },
   "dependencies": {

@@ -1,0 +1,173 @@
+import slotOneFixtureJson from "./fixtures/recorded-espn-2026-07-31-league-1788370838-slot-1.json"
+import slotSixFixtureJson from "./fixtures/recorded-espn-2026-slot-6-10-team-standard.json"
+import {
+  createRecordedDraftAdvisorContextAtBoundary,
+} from "../behavior/draft-advisor/completedDraftReplay"
+import {
+  EMPIRICAL_BASE_SHADOW_ARTIFACT,
+} from "../behavior/draft-advisor/empiricalBaseShadow"
+import {
+  createEmpiricalOpponentFeatureSurface,
+  predictEmpiricalOpponentProbabilities,
+} from "../behavior/draft-advisor/opponentEmpiricalV2"
+import {
+  canonicalStaticWindowBoundaries,
+  runStaticWindowBacktest,
+  STATIC_WINDOW_CALIBRATION_EDGES,
+  STATIC_WINDOW_RUN_THRESHOLDS,
+} from "../behavior/draft-advisor/staticWindowBacktest"
+import { createOpponentForecast } from "../behavior/draft-advisor/opponentModel"
+import type { RecordedCompletedDraftReplay } from "../behavior/draft-advisor/completedDraftReplay"
+
+const fixtures = [slotOneFixtureJson, slotSixFixtureJson] as unknown as RecordedCompletedDraftReplay[]
+
+const withBrokenOpponentSlot = (
+  fixture: RecordedCompletedDraftReplay,
+): RecordedCompletedDraftReplay => {
+  const broken = JSON.parse(JSON.stringify(fixture)) as RecordedCompletedDraftReplay
+  broken.id = `${fixture.id}:broken-window`
+  const pick = broken.actualPicks.find(candidate =>
+    candidate.rosterIndex !== broken.targetRosterIndex)!
+  let replacement = (pick.rosterIndex + 1) % broken.settings.numTeams
+  if (replacement === broken.targetRosterIndex) {
+    replacement = (replacement + 1) % broken.settings.numTeams
+  }
+  pick.rosterIndex = replacement
+  return broken
+}
+
+describe("canonical static-window opponent backtest", () => {
+  it("uses non-overlapping earliest boundaries and scores each eligible opponent pick once", () => {
+    expect(canonicalStaticWindowBoundaries(fixtures[0])).toHaveLength(8)
+    expect(canonicalStaticWindowBoundaries(fixtures[1])).toHaveLength(16)
+    fixtures.forEach(fixture => {
+      const windows = canonicalStaticWindowBoundaries(fixture)
+      expect(windows).toEqual([...windows].sort((left, right) =>
+        left.terminalTargetPick - right.terminalTargetPick))
+      // A target drafting first has an empty start-to-first-target horizon,
+      // which is intentionally omitted rather than counted as an all-negative run.
+      expect(windows[0].observedThroughOverallPick).toBeLessThanOrEqual(1)
+      windows.slice(1).forEach((window, index) => {
+        expect(window.observedThroughOverallPick)
+          .toBeGreaterThanOrEqual(windows[index].terminalTargetPick)
+      })
+      const labels = windows.flatMap(window => fixture.actualPicks.filter(pick =>
+        pick.overallPick > window.observedThroughOverallPick
+        && pick.overallPick < window.terminalTargetPick
+        && pick.rosterIndex !== fixture.targetRosterIndex
+        && pick.playerId
+        && fixture.players.some(player => player.id === pick.playerId
+          && ["QB", "RB", "WR", "TE"].includes(player.position))))
+      expect(new Set(labels.map(label => label.overallPick)).size).toBe(labels.length)
+    })
+  })
+
+  it("does not look ahead when a future recorded pick changes", () => {
+    const fixture = fixtures[0]
+    const window = canonicalStaticWindowBoundaries(fixture)[0]
+    const later = fixture.actualPicks.find(pick =>
+      pick.overallPick > window.observedThroughOverallPick
+      && pick.overallPick < window.terminalTargetPick
+      && pick.playerId
+      && fixture.players.some(player => player.id === pick.playerId
+        && ["QB", "RB", "WR", "TE"].includes(player.position)))!
+    const changed = JSON.parse(JSON.stringify(fixture)) as RecordedCompletedDraftReplay
+    changed.actualPicks.find(pick => pick.overallPick === later.overallPick)!.playerId = null
+    const before = createRecordedDraftAdvisorContextAtBoundary(
+      fixture, window.observedThroughOverallPick,
+    )
+    const after = createRecordedDraftAdvisorContextAtBoundary(
+      changed, window.observedThroughOverallPick,
+    )
+    expect(after).toEqual(before)
+    const afterForecast = createOpponentForecast(after, {
+      model: "combined", targetRosterIndex: changed.targetRosterIndex,
+    })
+    const beforeForecast = createOpponentForecast(before, {
+      model: "combined", targetRosterIndex: fixture.targetRosterIndex,
+    })
+    expect(afterForecast).toEqual(beforeForecast)
+    const first = beforeForecast.picks[0]
+    const beforeSurface = createEmpiricalOpponentFeatureSurface(
+      before, first.overallPick, first.rosterIndex, before.totalDraftPicks,
+    )
+    const afterSurface = createEmpiricalOpponentFeatureSurface(
+      after, first.overallPick, first.rosterIndex, after.totalDraftPicks,
+    )
+    expect(afterSurface).toEqual(beforeSurface)
+    const immutableArtifactModel = {
+      featureSet: "base" as const,
+      featureNames: [...EMPIRICAL_BASE_SHADOW_ARTIFACT.featureNames],
+      coefficients: EMPIRICAL_BASE_SHADOW_ARTIFACT.coefficients.map(row => [...row]),
+      diagnostics: { examples: 656, initialLoss: 0, finalLoss: 0, iterations: 350, runtimeMs: 0 },
+    }
+    expect(predictEmpiricalOpponentProbabilities(immutableArtifactModel, afterSurface))
+      .toEqual(predictEmpiricalOpponentProbabilities(immutableArtifactModel, beforeSurface))
+  })
+
+  it("keeps model labels and horizons identical, aggregates pick metrics by count, and excludes the holdout fit", () => {
+    const report = runStaticWindowBacktest(fixtures)
+    expect(report.available).toBe(true)
+    expect(report.coverage.repeatedPickLabels).toBe(0)
+    expect(report.coverage.independentRepresentativeRunWindows)
+      .toBe(report.coverage.canonicalWindowCount)
+    expect(report.primary.frozenV1.pickMetrics.evaluatedPicks)
+      .toBe(report.primary.learnedBaseLodo.pickMetrics.evaluatedPicks)
+    expect(report.primary.learnedBaseLodo.pickMetrics.evaluatedPicks)
+      .toBe(report.primary.fullDataArtifactDescriptive.pickMetrics.evaluatedPicks)
+    report.byFixture.forEach(fixture => {
+      expect(fixture.lodoTrainingFixtureIds).not.toContain(fixture.fixtureId)
+      expect(fixture.frozenV1.pickMetrics.evaluatedPicks)
+        .toBe(fixture.learnedBaseLodo.pickMetrics.evaluatedPicks)
+    })
+    const total = report.byFixture.reduce((sum, fixture) =>
+      sum + fixture.frozenV1.pickMetrics.evaluatedPicks, 0)
+    const weightedBrier = report.byFixture.reduce((sum, fixture) => sum
+      + fixture.frozenV1.pickMetrics.positionBrierScore
+        * fixture.frozenV1.pickMetrics.evaluatedPicks, 0) / total
+    expect(report.primary.frozenV1.pickMetrics.positionBrierScore).toBeCloseTo(weightedBrier)
+  })
+
+  it("predeclares fixed thresholds and calibration bins and fails closed for absent or malformed fixtures", () => {
+    expect(STATIC_WINDOW_RUN_THRESHOLDS).toEqual([0.25, 0.5, 0.75])
+    expect(STATIC_WINDOW_CALIBRATION_EDGES).toEqual([0, 0.25, 0.5, 0.75, 1])
+    const report = runStaticWindowBacktest([])
+    expect(report.available).toBe(false)
+    const malformed = runStaticWindowBacktest([{ id: "broken" }])
+    expect(malformed.available).toBe(false)
+    expect(malformed.skippedFixtures[0]).toEqual({
+      fixtureId: "broken", reason: "fixture settings are malformed",
+    })
+  })
+
+  it("requires two successfully reconstructed holdouts after a canonical-window failure", () => {
+    const report = runStaticWindowBacktest([fixtures[0], withBrokenOpponentSlot(fixtures[1])])
+    expect(report.available).toBe(false)
+    expect(report.skippedFixtures.some(skipped =>
+      skipped.fixtureId === `${fixtures[1].id}:broken-window`
+      && skipped.reason.includes("canonical horizon mismatch"))).toBe(true)
+  })
+
+  it("does not read frozen or shadow evidence envelopes", () => {
+    const baseline = runStaticWindowBacktest(fixtures)
+    const withoutEvidence = fixtures.map((fixture, index) => {
+      const clone = JSON.parse(JSON.stringify(fixture)) as RecordedCompletedDraftReplay
+      if (index === 0) {
+        ;(clone as unknown as { forecastEvidence: unknown }).forecastEvidence = { invalid: true }
+      } else {
+        delete (clone as unknown as { forecastEvidence?: unknown }).forecastEvidence
+      }
+      delete (clone as unknown as { empiricalBaseShadowEvidence?: unknown }).empiricalBaseShadowEvidence
+      return clone
+    })
+    const replayed = runStaticWindowBacktest(withoutEvidence)
+    expect(replayed.primary).toEqual(baseline.primary)
+    expect(replayed.byFixture.map(fixture => ({
+      fixtureId: fixture.fixtureId,
+      canonicalWindows: fixture.canonicalWindows,
+    }))).toEqual(baseline.byFixture.map(fixture => ({
+      fixtureId: fixture.fixtureId,
+      canonicalWindows: fixture.canonicalWindows,
+    })))
+  })
+})

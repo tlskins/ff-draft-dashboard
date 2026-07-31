@@ -9,6 +9,9 @@ import type {
   ReplayEmpiricalBaseShadowEvidence,
   ReplayForecastEvidence,
 } from "../behavior/draft-advisor/completedDraftReplay"
+import {
+  EMPIRICAL_BASE_SHADOW_ARTIFACT,
+} from "../behavior/draft-advisor/empiricalBaseShadow"
 import type { EmpiricalBaseShadowForecast } from "../behavior/draft-advisor/empiricalBaseShadow"
 import type { ReplayCaptureStatus } from "../behavior/draft-advisor/replayCaptureStatus"
 import type { OpponentForecast } from "../behavior/draft-advisor/types"
@@ -34,7 +37,7 @@ const shadowForecast = (
   schemaVersion: 1,
   modelIdentity: "empirical_opponent_base_shadow_v1",
   artifactId: "empirical_opponent_base_shadow_v1",
-  trainingCorpusFingerprint: "campaign",
+  trainingCorpusFingerprint: EMPIRICAL_BASE_SHADOW_ARTIFACT.trainingCorpusFingerprint,
   targetRosterIndex: 0,
   phaseProvenance: { kind, totalDraftPicks: 160 },
   picks: [{ overallPick: 2, rosterIndex: 1, positionProbabilities: [] }],
@@ -84,7 +87,7 @@ const evidence = (): {
       observationFingerprint: "12345678",
       modelIdentity: "empirical_opponent_base_shadow_v1",
       artifactId: "empirical_opponent_base_shadow_v1",
-      trainingCorpusFingerprint: "campaign",
+      trainingCorpusFingerprint: EMPIRICAL_BASE_SHADOW_ARTIFACT.trainingCorpusFingerprint,
       targetRosterIndex: 0,
       phaseProvenance: { kind: "known_total", totalDraftPicks: 160 },
       forecast: shadowForecast(),
