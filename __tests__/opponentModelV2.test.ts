@@ -3,7 +3,10 @@ import fixture from "./fixtures/opponent-model-replay.json"
 import {
   createRecordedDraftAdvisorContextAtBoundary,
 } from "../behavior/draft-advisor/completedDraftReplay"
-import { createOpponentForecast } from "../behavior/draft-advisor/opponentModel"
+import {
+  createOpponentForecast,
+  marginalScarcityPositionResiduals,
+} from "../behavior/draft-advisor/opponentModel"
 import {
   replayRecordedOpponentModel,
   runRecordedOpponentModelReplay,
@@ -22,9 +25,20 @@ const recorded = recordedFixtureJson as unknown as RecordedCompletedDraftReplay
 const probabilityFor = (
   context: DraftAdvisorContext,
   position: FantasyPosition,
+  residual = false,
 ): number => createOpponentForecast(context, {
   model: "combined_v2",
   targetRosterIndex: 0,
+  ...(residual ? {
+    combinedV2Config: {
+      id: "test_marginal_scarcity",
+      adpWeight: 0.55,
+      directNeedWeight: 0.35,
+      formatFlexPressureWeight: 0,
+      recentRunWeight: 0.1,
+      formatAdjustment: { kind: "marginal_scarcity_v1", strength: 0.5 },
+    },
+  } : {}),
 }).picks[0].positionProbabilities.find(item => item.position === position)
   ?.probability || 0
 
@@ -74,8 +88,24 @@ describe("format-aware opponent challenger", () => {
       })),
     }
 
-    expect(probabilityFor(extraRb, FantasyPosition.RUNNING_BACK))
-      .toBeGreaterThan(probabilityFor(base, FantasyPosition.RUNNING_BACK))
+    expect(probabilityFor(extraRb, FantasyPosition.RUNNING_BACK, true))
+      .toBeGreaterThan(probabilityFor(base, FantasyPosition.RUNNING_BACK, true))
+  })
+
+  it("raises QB probability for 2QB direct demand", () => {
+    const base = formatContext()
+    const twoQb: DraftAdvisorContext = {
+      ...base,
+      rosterFormat: { ...base.rosterFormat!, startingQbs: 2 },
+      teams: base.teams.map(team => ({
+        ...team,
+        needs: team.needs.map(need => need.position === FantasyPosition.QUARTERBACK
+          ? { ...need, openStarterSpots: 2 }
+          : need),
+      })),
+    }
+    expect(probabilityFor(twoQb, FantasyPosition.QUARTERBACK, true))
+      .toBeGreaterThan(probabilityFor(base, FantasyPosition.QUARTERBACK, true))
   })
 
   it("assigns flex pressure only to RB, WR, and TE", () => {
@@ -124,6 +154,123 @@ describe("format-aware opponent challenger", () => {
     }).picks[0].positionProbabilities).toEqual(createOpponentForecast(withFlex, {
       model: "combined_v2", targetRosterIndex: 0,
     }).picks[0].positionProbabilities)
+  })
+
+  it("uses fixed PPR flex allocations without changing direct demand", () => {
+    const base = formatContext()
+    const flexOnly: DraftAdvisorContext = {
+      ...base,
+      rosterFormat: { ...base.rosterFormat!, flex: 2 },
+      teams: base.teams.map(team => ({
+        ...team,
+        draftedPositionCounts: [
+          { position: FantasyPosition.QUARTERBACK, count: 1 },
+          { position: FantasyPosition.RUNNING_BACK, count: 2 },
+          { position: FantasyPosition.WIDE_RECEIVER, count: 2 },
+          { position: FantasyPosition.TIGHT_END, count: 1 },
+        ],
+        needs: team.needs.map(need => ({ ...need, openStarterSpots: 0 })),
+      })),
+    }
+    const standard = { ...flexOnly, league: { ...flexOnly.league, ppr: false } }
+    const ppr = { ...flexOnly, league: { ...flexOnly.league, ppr: true } }
+    const forPosition = (context: DraftAdvisorContext, position: FantasyPosition) =>
+      marginalScarcityPositionResiduals(context).find(item => item.position === position)!
+
+    expect(forPosition(ppr, FantasyPosition.QUARTERBACK).allocatedFlexDemand).toBe(0)
+    expect(forPosition(ppr, FantasyPosition.WIDE_RECEIVER).allocatedFlexDemand)
+      .toBeGreaterThan(forPosition(standard, FantasyPosition.WIDE_RECEIVER).allocatedFlexDemand)
+    expect(forPosition(ppr, FantasyPosition.WIDE_RECEIVER).residual)
+      .toBeGreaterThan(forPosition(standard, FantasyPosition.WIDE_RECEIVER).residual)
+    expect(forPosition(ppr, FantasyPosition.RUNNING_BACK).allocatedFlexDemand)
+      .toBeLessThan(forPosition(standard, FantasyPosition.RUNNING_BACK).allocatedFlexDemand)
+    expect(forPosition(ppr, FantasyPosition.WIDE_RECEIVER).directDemand)
+      .toBe(forPosition(standard, FantasyPosition.WIDE_RECEIVER).directDemand)
+  })
+
+  it("increases RB scarcity pressure when available RB supply is reduced", () => {
+    const base = formatContext()
+    const reducedSupply: DraftAdvisorContext = {
+      ...base,
+      availablePlayers: base.availablePlayers.filter(player =>
+        player.position !== FantasyPosition.RUNNING_BACK),
+    }
+    const residualFor = (context: DraftAdvisorContext) => marginalScarcityPositionResiduals(context)
+      .find(item => item.position === FantasyPosition.RUNNING_BACK)!.residual
+    expect(residualFor(reducedSupply)).toBeGreaterThan(residualFor(base))
+  })
+
+  it("is exactly neutral after all direct and flex demand is filled", () => {
+    const base = formatContext()
+    const filled: DraftAdvisorContext = {
+      ...base,
+      rosterFormat: { ...base.rosterFormat!, flex: 1 },
+      teams: base.teams.map(team => ({
+        ...team,
+        draftedPositionCounts: [
+          { position: FantasyPosition.QUARTERBACK, count: 1 },
+          { position: FantasyPosition.RUNNING_BACK, count: 3 },
+          { position: FantasyPosition.WIDE_RECEIVER, count: 2 },
+          { position: FantasyPosition.TIGHT_END, count: 1 },
+        ],
+        needs: team.needs.map(need => ({ ...need, openStarterSpots: 0 })),
+      })),
+    }
+    const residual = marginalScarcityPositionResiduals(filled)
+    expect(residual.every(item => item.residual === 0)).toBe(true)
+    expect(createOpponentForecast(filled, {
+      model: "combined_v2", targetRosterIndex: 0,
+      combinedV2Config: {
+        id: "neutral", adpWeight: 0.55, directNeedWeight: 0.35,
+        formatFlexPressureWeight: 0, recentRunWeight: 0.1,
+        formatAdjustment: { kind: "marginal_scarcity_v1", strength: 0.5 },
+      },
+    }).picks).toEqual(createOpponentForecast(filled, {
+      model: "combined", targetRosterIndex: 0,
+    }).picks)
+  })
+
+  it("keeps residual forecasts bounded, normalized, and deterministic", () => {
+    const base = formatContext()
+    const first = createOpponentForecast(base, {
+      model: "combined_v2", targetRosterIndex: 0,
+      combinedV2Config: {
+        id: "bounded", adpWeight: 0.55, directNeedWeight: 0.35,
+        formatFlexPressureWeight: 0, recentRunWeight: 0.1,
+        formatAdjustment: { kind: "marginal_scarcity_v1", strength: 0.5 },
+      },
+    })
+    const repeated = createOpponentForecast(base, {
+      model: "combined_v2", targetRosterIndex: 0,
+      combinedV2Config: {
+        id: "bounded", adpWeight: 0.55, directNeedWeight: 0.35,
+        formatFlexPressureWeight: 0, recentRunWeight: 0.1,
+        formatAdjustment: { kind: "marginal_scarcity_v1", strength: 0.5 },
+      },
+    })
+    expect(first).toEqual(repeated)
+    first.picks.forEach(pick => {
+      expect(pick.positionProbabilities.reduce((sum, item) => sum + item.probability, 0))
+        .toBeCloseTo(1)
+      pick.positionProbabilities.forEach(item => {
+        expect(item.probability).toBeGreaterThanOrEqual(0)
+        expect(item.probability).toBeLessThanOrEqual(1)
+      })
+    })
+    const zeroStrength = createOpponentForecast(base, {
+      model: "combined_v2", targetRosterIndex: 0,
+      combinedV2Config: {
+        id: "zero", adpWeight: 0.55, directNeedWeight: 0.35,
+        formatFlexPressureWeight: 0, recentRunWeight: 0.1,
+        formatAdjustment: { kind: "marginal_scarcity_v1", strength: 0 },
+      },
+    })
+    const frozen = createOpponentForecast(base, {
+      model: "combined", targetRosterIndex: 0,
+    })
+    expect(zeroStrength.picks).toEqual(frozen.picks)
+    expect(zeroStrength.runProbabilities).toEqual(frozen.runProbabilities)
+    expect(zeroStrength.tierBoundaryProbabilities).toEqual(frozen.tierBoundaryProbabilities)
   })
 
   it("reconstructs an observation without reading future selected players", () => {

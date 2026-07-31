@@ -37,6 +37,22 @@ describe("opponent v2 tuning harness", () => {
       formatFlexPressureWeight: 0,
       recentRunWeight: 0,
     })).toThrow("invalid weights")
+    expect(() => validateOpponentModelBlendConfig({
+      id: "too-strong",
+      adpWeight: 1,
+      directNeedWeight: 0,
+      formatFlexPressureWeight: 0,
+      recentRunWeight: 0,
+      formatAdjustment: { kind: "marginal_scarcity_v1", strength: 0.51 },
+    })).toThrow("invalid format adjustment")
+    expect(() => validateOpponentModelBlendConfig({
+      id: "mixed-old-source",
+      adpWeight: 0.5,
+      directNeedWeight: 0.35,
+      formatFlexPressureWeight: 0.05,
+      recentRunWeight: 0.1,
+      formatAdjustment: { kind: "marginal_scarcity_v1", strength: 0.1 },
+    })).toThrow("requires v1-equivalent base weights")
   })
 
   it("reuses leakage-safe boundaries and reproduces the rebuilt v1 candidate", () => {
@@ -71,7 +87,7 @@ describe("opponent v2 tuning harness", () => {
   })
 
   it("has a bounded deterministic search and keeps fold labels out of selection", () => {
-    expect(OPPONENT_V2_SEARCH_CANDIDATES).toHaveLength(6)
+    expect(OPPONENT_V2_SEARCH_CANDIDATES).toHaveLength(9)
     const prepared = prepareRecordedOpponentReplay(fixtures)
     const standard = prepared.fixtures.filter(fixture => !fixture.ppr)
     const first = selectOpponentV2Candidate(standard)
@@ -89,5 +105,8 @@ describe("opponent v2 tuning harness", () => {
     expect(report.promotion.reason).toBe(
       "no promotion: both folds selected the v1-equivalent abstention; no league-aware candidate met the training selection rule",
     )
+    expect(report.legacySearchCandidateCount).toBe(6)
+    expect(report.residualSearchCandidateCount).toBe(3)
+    expect(report.residualAblations).toHaveLength(3)
   })
 })

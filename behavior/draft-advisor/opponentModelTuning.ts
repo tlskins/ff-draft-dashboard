@@ -8,6 +8,7 @@ import type {
 } from "./completedDraftReplay"
 import {
   createOpponentForecast,
+  hasLeagueAwareOpponentConfig,
   INITIAL_V2_OPPONENT_CONFIG,
   V1_EQUIVALENT_OPPONENT_CONFIG,
 } from "./opponentModel"
@@ -102,11 +103,39 @@ export const OPPONENT_V2_ABLATION_CANDIDATES: TunedOpponentCandidate[] = [
   },
 ]
 
+/** Residual-only ablations retain the frozen v1 blend and vary no constants. */
+export const OPPONENT_V2_RESIDUAL_ABLATION_CANDIDATES: TunedOpponentCandidate[] = [
+  {
+    id: "marginal_scarcity_light",
+    config: {
+      ...V1_EQUIVALENT_OPPONENT_CONFIG,
+      id: "marginal_scarcity_light",
+      formatAdjustment: { kind: "marginal_scarcity_v1", strength: 0.1 },
+    },
+  },
+  {
+    id: "marginal_scarcity_balanced",
+    config: {
+      ...V1_EQUIVALENT_OPPONENT_CONFIG,
+      id: "marginal_scarcity_balanced",
+      formatAdjustment: { kind: "marginal_scarcity_v1", strength: 0.25 },
+    },
+  },
+  {
+    id: "marginal_scarcity_capped",
+    config: {
+      ...V1_EQUIVALENT_OPPONENT_CONFIG,
+      id: "marginal_scarcity_capped",
+      formatAdjustment: { kind: "marginal_scarcity_v1", strength: 0.5 },
+    },
+  },
+]
+
 /**
  * This intentionally small grid searches blend weights, not PPR/standard
  * multipliers. The format-pressure source remains interpretable and fixed.
  */
-export const OPPONENT_V2_SEARCH_CANDIDATES: TunedOpponentCandidate[] = [
+export const OPPONENT_V2_LEGACY_SEARCH_CANDIDATES: TunedOpponentCandidate[] = [
   { id: "v1_equivalent", config: V1_EQUIVALENT_OPPONENT_CONFIG },
   { id: "initial_v2", config: INITIAL_V2_OPPONENT_CONFIG },
   {
@@ -125,6 +154,12 @@ export const OPPONENT_V2_SEARCH_CANDIDATES: TunedOpponentCandidate[] = [
     id: "format_pressure",
     config: { id: "format_pressure", adpWeight: 0.5, directNeedWeight: 0.25, formatFlexPressureWeight: 0.15, recentRunWeight: 0.1 },
   },
+]
+
+/** Fixed bounded grid; PPR/Standard allocations are feature hypotheses, not tuned. */
+export const OPPONENT_V2_SEARCH_CANDIDATES: TunedOpponentCandidate[] = [
+  ...OPPONENT_V2_LEGACY_SEARCH_CANDIDATES,
+  ...OPPONENT_V2_RESIDUAL_ABLATION_CANDIDATES,
 ]
 
 export const V1_EQUIVALENT_CANDIDATE = OPPONENT_V2_SEARCH_CANDIDATES[0]
@@ -389,7 +424,10 @@ export interface OpponentV2TuningReport {
   preparationMs: number
   evaluationMs: number
   searchCandidateCount: number
+  legacySearchCandidateCount: number
+  residualSearchCandidateCount: number
   ablations: CandidateAggregateEvaluation[]
+  residualAblations: CandidateAggregateEvaluation[]
   folds: OpponentV2TuningFold[]
   aggregateHoldout: OpponentForecastMetrics
   aggregateHoldoutBaseline: OpponentForecastMetrics
@@ -462,7 +500,7 @@ export const runOpponentV2Tuning = (
   const gates = {
     selectionsAgreeOnOneCandidate: selectionIds.size === 1,
     selectedCandidateIsLeagueAware: selectionIds.size === 1
-      && selectedCandidate.config.formatFlexPressureWeight > 0,
+      && hasLeagueAwareOpponentConfig(selectedCandidate.config),
     everyFoldPositionBrierNonRegressing: everyFold(deltas =>
       deltas.positionBrierScore <= 0),
     everyFoldTopPositionNonRegressing: everyFold(deltas =>
@@ -490,13 +528,18 @@ export const runOpponentV2Tuning = (
   const fullDataSelection = selectOpponentV2Candidate(prepared)
   const ablations = OPPONENT_V2_ABLATION_CANDIDATES.map(candidate =>
     evaluatePreparedOpponentCandidate(prepared, candidate))
+  const residualAblations = OPPONENT_V2_RESIDUAL_ABLATION_CANDIDATES.map(candidate =>
+    evaluatePreparedOpponentCandidate(prepared, candidate))
   const evaluationMs = performance.now() - startedAt
   return {
     available: true,
     preparationMs: prepared.preparationMs,
     evaluationMs,
     searchCandidateCount: OPPONENT_V2_SEARCH_CANDIDATES.length,
+    legacySearchCandidateCount: OPPONENT_V2_LEGACY_SEARCH_CANDIDATES.length,
+    residualSearchCandidateCount: OPPONENT_V2_RESIDUAL_ABLATION_CANDIDATES.length,
     ablations,
+    residualAblations,
     folds,
     aggregateHoldout,
     aggregateHoldoutBaseline,

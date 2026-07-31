@@ -43,7 +43,21 @@ export interface OpponentModelBlendConfig {
   directNeedWeight: number
   formatFlexPressureWeight: number
   recentRunWeight: number
+  /**
+   * Offline-only residual applied after the frozen v1-equivalent blend.  This
+   * is deliberately not another normalized source: it can only nudge the
+   * existing ADP/team-need distribution.
+   */
+  formatAdjustment?: MarginalScarcityFormatAdjustment
 }
+
+export interface MarginalScarcityFormatAdjustment {
+  kind: "marginal_scarcity_v1"
+  /** A bounded logit multiplier; zero is exactly the frozen base model. */
+  strength: number
+}
+
+export const MAX_MARGINAL_SCARCITY_STRENGTH = 0.5
 
 export const V1_EQUIVALENT_OPPONENT_CONFIG: OpponentModelBlendConfig = {
   id: "v1_equivalent",
@@ -76,14 +90,41 @@ export const validateOpponentModelBlendConfig = (
   }
   const total = weights.reduce((sum, weight) => sum + weight, 0)
   if (total <= 0) throw new Error("Opponent model blend config has no active source")
-  return {
-    ...config,
+  const adjustment = config.formatAdjustment
+  if (adjustment && (adjustment.kind !== "marginal_scarcity_v1"
+    || !Number.isFinite(adjustment.strength)
+    || adjustment.strength < 0
+    || adjustment.strength > MAX_MARGINAL_SCARCITY_STRENGTH)) {
+    throw new Error("Opponent model blend config has invalid format adjustment")
+  }
+  const normalized = {
     adpWeight: config.adpWeight / total,
     directNeedWeight: config.directNeedWeight / total,
     formatFlexPressureWeight: config.formatFlexPressureWeight / total,
     recentRunWeight: config.recentRunWeight / total,
   }
+  if (adjustment && (
+    Math.abs(normalized.adpWeight - V1_EQUIVALENT_OPPONENT_CONFIG.adpWeight) > 1e-12
+    || Math.abs(normalized.directNeedWeight - V1_EQUIVALENT_OPPONENT_CONFIG.directNeedWeight) > 1e-12
+    || Math.abs(normalized.formatFlexPressureWeight
+      - V1_EQUIVALENT_OPPONENT_CONFIG.formatFlexPressureWeight) > 1e-12
+    || Math.abs(normalized.recentRunWeight - V1_EQUIVALENT_OPPONENT_CONFIG.recentRunWeight) > 1e-12
+  )) {
+    throw new Error("Marginal scarcity format adjustment requires v1-equivalent base weights")
+  }
+  return {
+    ...config,
+    ...normalized,
+    ...(adjustment ? { formatAdjustment: { ...adjustment } } : {}),
+  }
 }
+
+/** A positive residual is league-aware without re-opening the old blend. */
+export const hasLeagueAwareOpponentConfig = (
+  config: OpponentModelBlendConfig,
+): boolean => config.formatFlexPressureWeight > 0
+  || (config.formatAdjustment?.kind === "marginal_scarcity_v1"
+    && config.formatAdjustment.strength > 0)
 
 const normalize = (
   scores: Array<{ position: ForecastPosition; score: number }>,
@@ -232,6 +273,95 @@ const v2FormatNeedScores = (
   }))
 }
 
+const flexAllocation = (ppr: boolean): Record<ForecastPosition, number> => ppr
+  ? { QB: 0, RB: 0.3, WR: 0.5, TE: 0.2 }
+  : { QB: 0, RB: 0.5, WR: 0.35, TE: 0.15 }
+
+export interface MarginalScarcityPositionResidual {
+  position: ForecastPosition
+  directDemand: number
+  allocatedFlexDemand: number
+  availableSupply: number
+  nearHorizonSupply: number
+  residual: number
+}
+
+/**
+ * A fixed, league-wide residual for the challenger.  It uses only the
+ * reconstructed current context: open direct slots, open flex slots, and the
+ * available board.  The raw pressure is smoothed by both total and near-board
+ * supply, capped, then mean-centered across positions.  A shrinking remaining
+ * lineup-demand phase factor makes it exactly neutral after all starter/flex
+ * demand is satisfied.
+ */
+export const marginalScarcityPositionResiduals = (
+  context: DraftAdvisorContext,
+): MarginalScarcityPositionResidual[] => {
+  const directDemand = new Map(POSITIONS.map(position => [position,
+    context.teams.reduce((total, team) => total + Math.max(0,
+      team.needs.find(need => need.position === position)?.openStarterSpots || 0), 0)]))
+  const remainingFlexDemand = context.teams.reduce((total, team) =>
+    total + openFlexSpots(context, team.rosterIndex), 0)
+  const remainingDirectDemand = Array.from(directDemand.values())
+    .reduce((total, demand) => total + demand, 0)
+  const remainingLineupDemand = remainingDirectDemand + remainingFlexDemand
+  if (remainingLineupDemand === 0) return POSITIONS.map(position => ({
+    position,
+    directDemand: 0,
+    allocatedFlexDemand: 0,
+    availableSupply: playersAtPosition(context, position).length,
+    nearHorizonSupply: 0,
+    residual: 0,
+  }))
+
+  const format = formatFor(context)
+  const leagueLineupCapacity = context.teams.length * (
+    format.startingQbs + format.startingRbs + format.startingWrs
+    + format.startingTes + format.flex)
+  const phase = Math.min(1, remainingLineupDemand / Math.max(1, leagueLineupCapacity))
+  const horizon = Math.min(context.availablePlayers.length, Math.max(
+    POSITIONS.length,
+    Math.ceil(remainingLineupDemand),
+  ))
+  const nearBoard = [...context.availablePlayers].sort((left, right) =>
+    (left.adp ?? Number.MAX_SAFE_INTEGER) - (right.adp ?? Number.MAX_SAFE_INTEGER)
+    || left.positionRank - right.positionRank
+    || left.id.localeCompare(right.id)).slice(0, horizon)
+  const allocation = flexAllocation(context.league.ppr)
+  const uncentered = POSITIONS.map(position => {
+    const direct = directDemand.get(position) || 0
+    const allocatedFlex = remainingFlexDemand * allocation[position]
+    const availableSupply = playersAtPosition(context, position).length
+    const nearHorizonSupply = nearBoard.filter(player => player.position === position).length
+    // The +1 and capped numerator prevent zero supply from becoming infinite.
+    const smoothedSupply = 1 + availableSupply * 0.35 + nearHorizonSupply
+    const pressure = Math.min(3, phase * (direct + allocatedFlex) / smoothedSupply)
+    return { position, directDemand: direct, allocatedFlexDemand: allocatedFlex,
+      availableSupply, nearHorizonSupply, pressure }
+  })
+  const center = uncentered.reduce((total, item) => total + item.pressure, 0)
+    / uncentered.length
+  return uncentered.map(item => ({
+    ...item,
+    residual: Math.max(-0.75, Math.min(0.75, item.pressure - center)),
+  }))
+}
+
+const applyMarginalScarcityAdjustment = (
+  base: PositionProbability[],
+  context: DraftAdvisorContext,
+  adjustment: MarginalScarcityFormatAdjustment | undefined,
+): PositionProbability[] => {
+  if (!adjustment || adjustment.strength === 0) return base
+  const residuals = marginalScarcityPositionResiduals(context)
+  if (residuals.every(item => item.residual === 0)) return base
+  return normalize(base.map(item => ({
+    position: item.position as ForecastPosition,
+    score: item.probability * Math.exp(adjustment.strength
+      * (residuals.find(residual => residual.position === item.position)?.residual || 0)),
+  })))
+}
+
 const blendPositionSources = (
   sources: {
     adp: PositionProbability[]
@@ -283,10 +413,12 @@ const positionProbabilities = (
   if (model === "adp_only") return adp
   if (model === "need_only") return need
   if (model === "combined_v2") {
-    return blendPositionSources(
+    const config = combinedV2Config || INITIAL_V2_OPPONENT_CONFIG
+    const base = blendPositionSources(
       sources,
-      combinedV2Config || INITIAL_V2_OPPONENT_CONFIG,
+      config,
     )
+    return applyMarginalScarcityAdjustment(base, context, config.formatAdjustment)
   }
   return blendPositionSources(sources, V1_EQUIVALENT_OPPONENT_CONFIG)
 }

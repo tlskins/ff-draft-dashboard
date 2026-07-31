@@ -19,14 +19,23 @@ describe("opponent-model v2 tuning", () => {
           total: report.preparationMs + report.evaluationMs,
         },
         searchCandidateCount: report.searchCandidateCount,
+        legacySearchCandidateCount: report.legacySearchCandidateCount,
+        residualSearchCandidateCount: report.residualSearchCandidateCount,
         ablations: report.ablations.map(result => ({
           id: result.candidate.id,
+          config: result.candidate.config,
+          metrics: result.metrics,
+        })),
+        residualAblations: report.residualAblations.map(result => ({
+          id: result.candidate.id,
+          config: result.candidate.config,
           metrics: result.metrics,
         })),
         folds: report.folds.map(fold => ({
           trainingFormat: fold.trainingFormat,
           holdoutFormat: fold.holdoutFormat,
           selectedCandidate: fold.selection.selected.candidate.id,
+          selectedConfig: fold.selection.selected.candidate.config,
           trainingDeltas: opponentMetricDeltas(
             fold.selection.baseline.metrics,
             fold.selection.selected.metrics,
@@ -39,6 +48,7 @@ describe("opponent-model v2 tuning", () => {
         aggregateHoldoutDeltas: report.aggregateHoldoutDeltas,
         descriptiveFullData: {
           selectedCandidate: report.descriptiveFullData.candidate.id,
+          selectedConfig: report.descriptiveFullData.candidate.config,
           metrics: report.descriptiveFullData.metrics,
           deltas: opponentMetricDeltas(
             report.fullDataSelection.baseline.metrics,
@@ -48,8 +58,9 @@ describe("opponent-model v2 tuning", () => {
         promotion: report.promotion,
       }, null, 2))
     }
-    expect(report.searchCandidateCount).toBe(6)
+    expect(report.searchCandidateCount).toBe(9)
     expect(report.ablations).toHaveLength(4)
+    expect(report.residualAblations).toHaveLength(3)
     expect(report.folds).toHaveLength(2)
     expect(report.folds.map(fold => fold.holdout.labeledPickCount).reduce((a, b) => a + b, 0))
       .toBe(191)
