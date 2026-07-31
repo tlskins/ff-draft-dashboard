@@ -29,6 +29,10 @@ import type {
   ReplayCaptureStatus,
   ReplayExportPreflight,
 } from "../behavior/draft-advisor/replayCaptureStatus"
+import type {
+  EmpiricalBaseShadowCaptureStatus,
+} from "../behavior/draft-advisor/empiricalBaseShadowCaptureStatus"
+import EmpiricalBaseShadowCaptureReadiness from "./EmpiricalBaseShadowCaptureReadiness"
 import { useDialogAccessibility } from "../behavior/hooks/useDialogAccessibility"
 
 interface LiveAdvisorPanelProps {
@@ -39,6 +43,7 @@ interface LiveAdvisorPanelProps {
   onExportReplay?: () => void
   onExportRosterOnly?: () => void
   replayCaptureStatus?: ReplayCaptureStatus
+  empiricalBaseShadowCaptureStatus?: EmpiricalBaseShadowCaptureStatus
   replayExportPreflight?: ReplayExportPreflight
   draftPlan?: DraftPlanDocument | null
   realtimeProposals?: AdvisorProposal[]
@@ -76,6 +81,7 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
   onExportReplay,
   onExportRosterOnly,
   replayCaptureStatus,
+  empiricalBaseShadowCaptureStatus,
   replayExportPreflight,
   draftPlan,
   realtimeProposals = [],
@@ -108,7 +114,39 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
     initialFocusRef: confirmRef,
     onClose: () => setPreflightOpen(false),
   })
-  if (!draftStarted) return null
+  const completedCaptureVisible = replayCaptureStatus?.state === "completed_preserved"
+    || replayCaptureStatus?.state === "completed_without_labels"
+    || empiricalBaseShadowCaptureStatus?.state === "completed_usable"
+    || empiricalBaseShadowCaptureStatus?.state === "completed_without_comparable_labels"
+  const preDraftCaptureVisible = empiricalBaseShadowCaptureStatus?.reasonCode
+    === "not_started"
+  // Some providers clear their active-draft flag immediately on the final
+  // selection. Preserve only the compact local-capture handoff in that case;
+  // a selected waiting room may also show its readiness before the first pick.
+  // The advisor and recommendations remain absent until a draft is active.
+  if (!draftStarted) {
+    if (!completedCaptureVisible && !preDraftCaptureVisible) return null
+    return (
+      <section
+        aria-label={completedCaptureVisible
+          ? "Completed local capture"
+          : "Shadow capture readiness"}
+        className="mb-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-left shadow-sm"
+      >
+        {(replayCaptureStatus?.state === "completed_preserved"
+          || replayCaptureStatus?.state === "completed_without_labels") && (
+          <p aria-live="polite" className="mb-2 text-xs text-violet-900" role="status">
+            {replayCaptureStatus.message}
+          </p>
+        )}
+        {empiricalBaseShadowCaptureStatus && (
+          <EmpiricalBaseShadowCaptureReadiness
+            status={empiricalBaseShadowCaptureStatus}
+          />
+        )}
+      </section>
+    )
+  }
 
   return (
     <section
@@ -155,6 +193,11 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
           {replayCaptureStatus.latestObservedThroughOverallPick !== null
             && `; latest board boundary ${replayCaptureStatus.latestObservedThroughOverallPick}.`}
         </p>
+      )}
+      {empiricalBaseShadowCaptureStatus && (
+        <EmpiricalBaseShadowCaptureReadiness
+          status={empiricalBaseShadowCaptureStatus}
+        />
       )}
       {preflightOpen && replayExportPreflight && (
         <div

@@ -223,6 +223,7 @@ const Home: FC = () => {
     replayForecastEvidence,
     empiricalBaseShadowEvidence,
     replayCaptureStatus,
+    empiricalBaseShadowCaptureStatus,
   } = usePredictions({
     rosters,
     playerRanks,
@@ -716,6 +717,9 @@ const Home: FC = () => {
                 }
                 onExportRosterOnly={canExportReplay ? () => exportReplay(true) : undefined}
                 replayCaptureStatus={replayCaptureStatus}
+                empiricalBaseShadowCaptureStatus={
+                  empiricalBaseShadowCaptureStatus
+                }
                 replayExportPreflight={replayExportPreflight}
                 recommendations={recommendations}
                 playerStatus={playerStatus}

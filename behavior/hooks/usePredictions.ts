@@ -46,6 +46,9 @@ import type {
 } from "../draft-advisor/completedDraftReplay";
 import { deriveReplayCaptureStatus } from "../draft-advisor/replayCaptureStatus";
 import {
+  deriveEmpiricalBaseShadowCaptureStatus,
+} from "../draft-advisor/empiricalBaseShadowCaptureStatus";
+import {
   EMPIRICAL_BASE_SHADOW_ARTIFACT,
   createEmpiricalBaseShadowForecast,
 } from "../draft-advisor/empiricalBaseShadow";
@@ -518,6 +521,17 @@ export const usePredictions = ({
     inputFingerprint: replayForecastInputFingerprint,
     historyAhead,
   })
+  const empiricalBaseShadowCaptureStatus = deriveEmpiricalBaseShadowCaptureStatus({
+    sessionId: draftSessionId,
+    draftStarted,
+    complete: sourceComplete,
+    historyAhead,
+    frozenEvidence: replayForecastEvidence,
+    shadowEvidence: empiricalBaseShadowEvidence,
+    frozenForecast: opponentForecast,
+    shadowForecast: empiricalBaseShadowForecast,
+    frozenCaptureStatus: replayCaptureStatus,
+  })
 
   const recommendations = useMemo(() => createDraftRecommendations({
     settings,
@@ -556,5 +570,6 @@ export const usePredictions = ({
     replayForecastEvidence,
     empiricalBaseShadowEvidence,
     replayCaptureStatus,
+    empiricalBaseShadowCaptureStatus,
   };
 };
