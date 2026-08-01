@@ -44,6 +44,15 @@ current work, and establish a stable integration baseline. Phase 8B owns the
 integration, merge, and tag of that baseline; Phase 8A is documentation-only
 and does not merge or push.
 
+Phase 8A documentation reset is complete at
+`993af66426a44c32407c2566cbe8ba85a36b75b6`, whose expected parent is
+`a447eadd041a23f8a7c6461899430560a81df4e9`.
+
+The Phase 8B integration-baseline candidate is verified on
+`codex/phase-8b-integration-baseline`. Root-orchestrator review, fast-forward
+integration into `refactor/realtime-foundation`, and annotated-tag approval
+remain pending; Phase 8 is not yet complete.
+
 Exit gate: the integration baseline is agreed, reproducible, and tagged or
 otherwise recorded; the roadmap and session-packet workflow are the active
 planning references; and no application behavior is changed by the reset.
