@@ -136,6 +136,24 @@ require a small aggregate probabilistic improvement. Passing means only that a
 candidate may be captured beside v1 in future shadow data; it never promotes a
 model from this five-mock corpus.
 
+The report also evaluates a nested-tuned challenger separately. For each final
+outer holdout draft, every inner validation draft is selected from only the
+remaining outer-training drafts; each residual fit therefore excludes both the
+outer holdout and its current inner validation draft. The fixed candidate
+family is deliberately compact: exact frozen-v1 identity, half-strength
+unweighted, half-strength square-root balance, and the original full-strength
+inverse-frequency balanced residual. Inner selection rejects accuracy, macro-recall, or any
+position-recall regression beyond its published tolerance, requires a small
+probabilistic gain, then sorts by Brier, log loss, accuracy, macro recall, and
+stable candidate ID. If none qualify, it uses exact v1. The chosen candidate
+is refit on all four outer-training drafts and scores only the untouched outer
+draft's static windows. Both inner validation and outer scoring replay the
+same canonical earliest-boundary static horizons and eligible opponent pick
+labels; cached validation contexts are a performance optimization only. This
+is development-only nested validation, not a
+promotion search; even a passing tuned gate still requires prospective shadow
+validation on more varied league formats.
+
 ### Immutable learned-base shadow capture
 
 ```sh

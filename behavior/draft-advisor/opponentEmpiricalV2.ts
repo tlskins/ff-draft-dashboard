@@ -305,6 +305,8 @@ export interface EmpiricalBalancedResidualModel {
   featureNames: string[]
   coefficients: number[][]
   classWeights: number[]
+  correctionStrength?: number
+  classBalanceExponent?: number
   diagnostics: {
     examples: number
     initialLoss: number
@@ -312,6 +314,13 @@ export interface EmpiricalBalancedResidualModel {
     iterations: number
     runtimeMs: number
   }
+}
+
+/** Fixed-family candidate parameters for offline nested validation only. */
+export interface EmpiricalBalancedResidualFitConfig {
+  correctionStrength: number
+  /** 0 is unweighted, 0.5 is square-root balance, 1 is inverse-frequency. */
+  classBalanceExponent: number
 }
 
 const residualFeatureValues = (
@@ -332,16 +341,19 @@ const boundedResidual = (value: number): number => Number.isFinite(value)
 export const applyBoundedOpponentResidual = (
   baselineProbabilities: number[],
   residualLogits: number[],
+  correctionStrength: number = EMPIRICAL_BALANCED_RESIDUAL_CONFIG.correctionStrength,
 ): number[] => {
   if (baselineProbabilities.length !== EMPIRICAL_OPPONENT_POSITIONS.length
     || residualLogits.length !== EMPIRICAL_OPPONENT_POSITIONS.length) {
     throw new Error("Bounded opponent residual requires one value per position")
   }
+  if (!Number.isFinite(correctionStrength) || correctionStrength < 0 || correctionStrength > 1) {
+    throw new Error("Bounded opponent residual has invalid correction strength")
+  }
   const baseline = normalized(baselineProbabilities)
   return stableSoftmax(baseline.map((probability, position) =>
     Math.log(Math.max(EMPIRICAL_BALANCED_RESIDUAL_CONFIG.probabilityFloor, probability))
-      + EMPIRICAL_BALANCED_RESIDUAL_CONFIG.correctionStrength
-        * boundedResidual(residualLogits[position])))
+      + correctionStrength * boundedResidual(residualLogits[position])))
 }
 
 const residualLogitsFor = (
@@ -358,19 +370,29 @@ export const predictEmpiricalBalancedResidualProbabilities = (
 ): number[] => applyBoundedOpponentResidual(
   baselineProbabilities,
   residualLogitsFor(model, example),
+  model.correctionStrength,
 )
 
-const classBalancedWeights = (examples: EmpiricalOpponentExample[]): number[] => {
+const classBalancedWeights = (
+  examples: EmpiricalOpponentExample[],
+  classBalanceExponent: number,
+): number[] => {
   const counts = EMPIRICAL_OPPONENT_POSITIONS.map(position => examples.filter(example =>
     example.label === position).length)
-  return counts.map(count => count > 0
+  const raw = counts.map(count => count > 0
     ? examples.length / (EMPIRICAL_OPPONENT_POSITIONS.length * count) : 0)
+  if (raw.some(weight => weight === 0)) return raw
+  const powered = raw.map(weight => weight ** classBalanceExponent)
+  const meanWeight = examples.reduce((sum, example) => sum + powered[positionIndex(example.label)], 0)
+    / examples.length
+  return powered.map(weight => weight / meanWeight)
 }
 
 const residualLoss = (
   examples: EmpiricalOpponentExample[],
   coefficients: number[][],
   classWeights: number[],
+  correctionStrength: number,
 ): number => {
   if (!examples.length) return 0
   const dataLoss = examples.reduce((sum, example) => {
@@ -380,6 +402,7 @@ const residualLoss = (
       EMPIRICAL_OPPONENT_POSITIONS.map((_, position) => coefficients[position]
         .reduce((score, coefficient, featureIndex) => score
           + coefficient * residualFeatureValues(example, position)[featureIndex], 0)),
+      correctionStrength,
     )
     return sum - classWeights[label] * Math.log(Math.max(1e-12, probabilities[label]))
   }, 0) / examples.length
@@ -394,16 +417,27 @@ const residualLoss = (
  */
 export const fitEmpiricalBalancedOpponentResidual = (
   examples: EmpiricalOpponentExample[],
+  config: Partial<EmpiricalBalancedResidualFitConfig> = {},
 ): EmpiricalBalancedResidualModel => {
   if (!examples.length) throw new Error("Cannot fit balanced opponent residual without examples")
   const startedAt = performance.now()
+  const candidate = {
+    correctionStrength: config.correctionStrength
+      ?? EMPIRICAL_BALANCED_RESIDUAL_CONFIG.correctionStrength,
+    classBalanceExponent: config.classBalanceExponent ?? 1,
+  }
+  if (!Number.isFinite(candidate.correctionStrength) || candidate.correctionStrength <= 0
+    || candidate.correctionStrength > 1 || !Number.isFinite(candidate.classBalanceExponent)
+    || candidate.classBalanceExponent < 0 || candidate.classBalanceExponent > 1) {
+    throw new Error("Balanced opponent residual has invalid fit config")
+  }
   const names = featureNamesFor("base")
-  const weights = classBalancedWeights(examples)
+  const weights = classBalancedWeights(examples, candidate.classBalanceExponent)
   if (weights.some(weight => weight === 0)) {
     throw new Error("Balanced opponent residual requires every forecast position in training")
   }
   const coefficients = EMPIRICAL_OPPONENT_POSITIONS.map(() => names.map(() => 0))
-  const initialLoss = residualLoss(examples, coefficients, weights)
+  const initialLoss = residualLoss(examples, coefficients, weights, candidate.correctionStrength)
   const trainingFeatures = examples.map(example => EMPIRICAL_OPPONENT_POSITIONS.map((_, position) =>
     residualFeatureValues(example, position)))
 
@@ -414,12 +448,15 @@ export const fitEmpiricalBalancedOpponentResidual = (
       const rawResiduals = EMPIRICAL_OPPONENT_POSITIONS.map((_, position) => coefficients[position]
         .reduce((sum, coefficient, featureIndex) => sum
           + coefficient * trainingFeatures[exampleIndex][position][featureIndex], 0))
-      const probabilities = applyBoundedOpponentResidual(example.baselineProbabilities, rawResiduals)
+      const probabilities = applyBoundedOpponentResidual(
+        example.baselineProbabilities, rawResiduals, candidate.correctionStrength,
+      )
       EMPIRICAL_OPPONENT_POSITIONS.forEach((_, position) => {
         // A hard clamp has zero derivative outside its safe range.  This is
         // intentional: fitting cannot escape the published correction bound.
         if (Math.abs(rawResiduals[position]) >= EMPIRICAL_BALANCED_RESIDUAL_CONFIG.residualLogitBound) return
-        const error = weights[label] * (probabilities[position] - (position === label ? 1 : 0))
+        const error = candidate.correctionStrength * weights[label]
+          * (probabilities[position] - (position === label ? 1 : 0))
         trainingFeatures[exampleIndex][position].forEach((value, featureIndex) => {
           gradients[position][featureIndex] += error * value
         })
@@ -437,10 +474,12 @@ export const fitEmpiricalBalancedOpponentResidual = (
     featureNames: names,
     coefficients,
     classWeights: weights,
+    correctionStrength: candidate.correctionStrength,
+    classBalanceExponent: candidate.classBalanceExponent,
     diagnostics: {
       examples: examples.length,
       initialLoss,
-      finalLoss: residualLoss(examples, coefficients, weights),
+      finalLoss: residualLoss(examples, coefficients, weights, candidate.correctionStrength),
       iterations: EMPIRICAL_BALANCED_RESIDUAL_CONFIG.iterations,
       runtimeMs: performance.now() - startedAt,
     },

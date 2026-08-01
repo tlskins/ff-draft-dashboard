@@ -41,6 +41,7 @@ describe("offline canonical static-window backtest", () => {
             frozenV1: compactModel(report.primary.frozenV1),
             learnedBaseLodo: compactModel(report.primary.learnedBaseLodo),
             learnedResidualLodo: compactModel(report.primary.learnedResidualLodo),
+            nestedTunedResidualLodo: compactModel(report.primary.nestedTunedResidualLodo),
           },
           byActualPosition: report.byActualPosition.map(group => ({
             position: group.key,
@@ -49,6 +50,8 @@ describe("offline canonical static-window backtest", () => {
             learnedResidualRecall: group.learnedResidualLodo.pickMetrics.topPositionAccuracy,
           })),
           residualGate: report.residualGate,
+          nestedTunedResidualGate: report.nestedTunedResidualGate,
+          nestedTuning: report.nestedTuning,
         }, null, 2))
       } else {
         const compact = (group: typeof report.primary) => ({
@@ -59,6 +62,7 @@ describe("offline canonical static-window backtest", () => {
           frozenV1: group.frozenV1.pickMetrics,
           learnedBaseLodo: group.learnedBaseLodo.pickMetrics,
           learnedResidualLodo: group.learnedResidualLodo.pickMetrics,
+          nestedTunedResidualLodo: group.nestedTunedResidualLodo.pickMetrics,
           fullDataArtifactDescriptive: group.fullDataArtifactDescriptive.pickMetrics,
         })
         console.log(JSON.stringify({
@@ -74,12 +78,16 @@ describe("offline canonical static-window backtest", () => {
             frozenV1: fixture.frozenV1.pickMetrics,
             learnedBaseLodo: fixture.learnedBaseLodo.pickMetrics,
             learnedResidualLodo: fixture.learnedResidualLodo.pickMetrics,
+            nestedTunedResidualLodo: fixture.nestedTunedResidualLodo.pickMetrics,
+            nestedTunedSelection: fixture.nestedTunedSelection,
           })),
           byLeagueFormat: report.byLeagueFormat.map(compact),
           byDraftPhase: report.byDraftPhase.map(compact),
           byActualPosition: report.byActualPosition.map(compact),
           skippedFixtures: report.skippedFixtures,
           residualGate: report.residualGate,
+          nestedTunedResidualGate: report.nestedTunedResidualGate,
+          nestedTuning: report.nestedTuning,
           promotion: report.promotion,
         }, null, 2))
       }
@@ -90,10 +98,26 @@ describe("offline canonical static-window backtest", () => {
       .toBe(report.primary.frozenV1.pickMetrics.evaluatedPicks)
     expect(report.primary.learnedResidualLodo.pickMetrics.evaluatedPicks)
       .toBe(report.primary.frozenV1.pickMetrics.evaluatedPicks)
+    expect(report.primary.nestedTunedResidualLodo.pickMetrics.evaluatedPicks)
+      .toBe(report.primary.frozenV1.pickMetrics.evaluatedPicks)
     expect(report.primary.learnedResidualLodo.positionDiagnostics.predictedCounts)
       .toEqual(expect.objectContaining({ QB: expect.any(Number), RB: expect.any(Number), WR: expect.any(Number), TE: expect.any(Number) }))
     expect(report.byFixture.every(fixture =>
       !fixture.lodoTrainingFixtureIds.includes(fixture.fixtureId))).toBe(true)
+    report.nestedTuning.selections.forEach(selection => {
+      expect(selection.outerTrainingFixtureIds).not.toContain(selection.outerHoldoutFixtureId)
+      expect(selection.outerRefitFixtureIds).not.toContain(selection.outerHoldoutFixtureId)
+      selection.innerFolds.forEach(inner => {
+        expect(inner.validationFixtureId).not.toBe(selection.outerHoldoutFixtureId)
+        expect(inner.trainingFixtureIds).not.toContain(selection.outerHoldoutFixtureId)
+        expect(inner.trainingFixtureIds).not.toContain(inner.validationFixtureId)
+        const canonical = report.byFixture.find(fixture =>
+          fixture.fixtureId === inner.validationFixtureId)!
+        expect(inner.canonicalWindowCount).toBe(canonical.canonicalWindows.length)
+        expect(inner.forecastSlotCount).toBe(canonical.forecastSlotCount)
+        expect(inner.scoredPickCount).toBe(canonical.labelCount)
+      })
+    })
     expect(report.promotion.promoted).toBe(false)
     const withMalformed = runStaticWindowBacktest([
       ...fixtures,

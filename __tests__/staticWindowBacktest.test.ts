@@ -16,7 +16,9 @@ import {
 import {
   canonicalStaticWindowBoundaries,
   evaluateStaticWindowResidualGate,
+  NESTED_RESIDUAL_CANDIDATES,
   runStaticWindowBacktest,
+  selectNestedResidualCandidate,
   STATIC_WINDOW_CALIBRATION_EDGES,
   STATIC_WINDOW_RUN_THRESHOLDS,
 } from "../behavior/draft-advisor/staticWindowBacktest"
@@ -147,6 +149,9 @@ describe("canonical static-window opponent backtest", () => {
       .toBe(report.primary.fullDataArtifactDescriptive.pickMetrics.evaluatedPicks)
     expect(report.primary.learnedResidualLodo.pickMetrics.evaluatedPicks)
       .toBe(report.primary.frozenV1.pickMetrics.evaluatedPicks)
+    // Two fixtures cannot supply inner whole-draft folds, so nested tuning
+    // must use its exact frozen-v1 fallback rather than leak or fit anyway.
+    expect(report.primary.nestedTunedResidualLodo).toEqual(report.primary.frozenV1)
     report.byFixture.forEach(fixture => {
       expect(fixture.lodoTrainingFixtureIds).not.toContain(fixture.fixtureId)
       expect(fixture.frozenV1.pickMetrics.evaluatedPicks)
@@ -219,5 +224,33 @@ describe("canonical static-window opponent backtest", () => {
       "QB recall regressed by more than 0.05",
       "TE recall regressed by more than 0.05",
     ]))
+  })
+
+  it("selects nested candidates deterministically and falls back to frozen v1", () => {
+    expect(NESTED_RESIDUAL_CANDIDATES.map(candidate => candidate.id)).toEqual([
+      "frozen_v1_identity",
+      "residual_half_unweighted",
+      "residual_half_sqrt_balance",
+      "residual_full_balanced_reference",
+    ])
+    const score = (candidateId: string, eligible: boolean) => ({
+      candidateId,
+      positionBrierScore: 0.6,
+      logLoss: 1.1,
+      topPositionAccuracy: 0.4,
+      macroRecall: 0.4,
+      perPositionRecall: { QB: 0.4, RB: 0.4, WR: 0.4, TE: 0.4 },
+      eligible,
+      failures: eligible ? [] : ["guard failed"],
+    })
+    expect(selectNestedResidualCandidate([
+      score("residual_b", true),
+      score("residual_a", true),
+      score("frozen_v1_identity", true),
+    ])).toBe("residual_a")
+    expect(selectNestedResidualCandidate([
+      score("residual_a", false),
+      score("frozen_v1_identity", true),
+    ])).toBe("frozen_v1_identity")
   })
 })
