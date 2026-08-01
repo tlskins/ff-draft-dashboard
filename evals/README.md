@@ -111,6 +111,31 @@ recorder; even a passing decision is only eligible for a new shadow-validation
 slice. Sparse alternate roster shapes remain a coverage limitation, not
 evidence of generalization.
 
+### Canonical static-window residual challenger
+
+```sh
+npm run eval:static-window-backtest
+```
+
+The static-window report keeps frozen v1 and the unconstrained learned-base
+LODO result as reference points, then evaluates a separate **offline-only**
+position challenger. It begins from each frozen-v1 probability, applies a
+class-balanced learned correction in log-probability space, and clamps each
+position's correction to ±0.55 logits before renormalizing. A zero correction
+is exactly frozen v1; the bound caps any pairwise odds adjustment at `exp(1.1)`.
+This is distinct from the deterministic marginal-scarcity adjustment and does
+not alter the live forecast, recorder, artifact, or player-selection heuristic.
+
+The primary result is still leave-one-entire-draft-out and reports aggregate,
+fixture, format, phase, and actual-position results. The actual-position
+top-choice score is recall for that position, making a model that raises its
+aggregate score by always preferring WR visible. Fixed offline eligibility
+gates reject aggregate Brier/log-loss/accuracy and run regressions, reject a
+decline greater than five percentage points in **any** QB/RB/WR/TE recall, and
+require a small aggregate probabilistic improvement. Passing means only that a
+candidate may be captured beside v1 in future shadow data; it never promotes a
+model from this five-mock corpus.
+
 ### Immutable learned-base shadow capture
 
 ```sh

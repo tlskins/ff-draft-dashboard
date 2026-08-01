@@ -7,11 +7,15 @@ import {
   EMPIRICAL_BASE_SHADOW_ARTIFACT,
 } from "../behavior/draft-advisor/empiricalBaseShadow"
 import {
+  applyBoundedOpponentResidual,
   createEmpiricalOpponentFeatureSurface,
+  EMPIRICAL_BALANCED_RESIDUAL_CONFIG,
+  predictEmpiricalBalancedResidualProbabilities,
   predictEmpiricalOpponentProbabilities,
 } from "../behavior/draft-advisor/opponentEmpiricalV2"
 import {
   canonicalStaticWindowBoundaries,
+  evaluateStaticWindowResidualGate,
   runStaticWindowBacktest,
   STATIC_WINDOW_CALIBRATION_EDGES,
   STATIC_WINDOW_RUN_THRESHOLDS,
@@ -103,6 +107,32 @@ describe("canonical static-window opponent backtest", () => {
     }
     expect(predictEmpiricalOpponentProbabilities(immutableArtifactModel, afterSurface))
       .toEqual(predictEmpiricalOpponentProbabilities(immutableArtifactModel, beforeSurface))
+    const frozenPositions = beforeForecast.picks[0].positionProbabilities.map(item => item.probability)
+    const zeroResidualModel = {
+      featureNames: ["intercept", "adp_log_probability", "direct_need_log_probability", "recent_run_log_probability", "draft_phase"],
+      coefficients: Array.from({ length: 4 }, () => Array(5).fill(0)),
+      classWeights: [1, 1, 1, 1],
+      diagnostics: { examples: 0, initialLoss: 0, finalLoss: 0, iterations: 0, runtimeMs: 0 },
+    }
+    expect(predictEmpiricalBalancedResidualProbabilities(
+      zeroResidualModel, frozenPositions, afterSurface,
+    )).toEqual(predictEmpiricalBalancedResidualProbabilities(
+      zeroResidualModel, frozenPositions, beforeSurface,
+    ))
+  })
+
+  it("anchors bounded residuals to frozen v1 and limits their relative odds", () => {
+    const baseline = [0.4, 0.3, 0.2, 0.1]
+    applyBoundedOpponentResidual(baseline, [0, 0, 0, 0]).forEach((value, index) => {
+      expect(value).toBeCloseTo(baseline[index])
+    })
+    const corrected = applyBoundedOpponentResidual(baseline, [100, -100, 0, 0])
+    expect(corrected.reduce((sum, value) => sum + value, 0)).toBeCloseTo(1)
+    expect(corrected.every(value => value > 0 && value < 1)).toBe(true)
+    const relativeOdds = (corrected[0] / corrected[1]) / (baseline[0] / baseline[1])
+    expect(relativeOdds).toBeCloseTo(Math.exp(2
+      * EMPIRICAL_BALANCED_RESIDUAL_CONFIG.residualLogitBound
+      * EMPIRICAL_BALANCED_RESIDUAL_CONFIG.correctionStrength))
   })
 
   it("keeps model labels and horizons identical, aggregates pick metrics by count, and excludes the holdout fit", () => {
@@ -115,6 +145,8 @@ describe("canonical static-window opponent backtest", () => {
       .toBe(report.primary.learnedBaseLodo.pickMetrics.evaluatedPicks)
     expect(report.primary.learnedBaseLodo.pickMetrics.evaluatedPicks)
       .toBe(report.primary.fullDataArtifactDescriptive.pickMetrics.evaluatedPicks)
+    expect(report.primary.learnedResidualLodo.pickMetrics.evaluatedPicks)
+      .toBe(report.primary.frozenV1.pickMetrics.evaluatedPicks)
     report.byFixture.forEach(fixture => {
       expect(fixture.lodoTrainingFixtureIds).not.toContain(fixture.fixtureId)
       expect(fixture.frozenV1.pickMetrics.evaluatedPicks)
@@ -169,5 +201,23 @@ describe("canonical static-window opponent backtest", () => {
       fixtureId: fixture.fixtureId,
       canonicalWindows: fixture.canonicalWindows,
     })))
+  })
+
+  it("fails the class gate when a challenger collapses QB and TE recall", () => {
+    const report = runStaticWindowBacktest(fixtures)
+    const collapsedPrimary = {
+      ...report.primary,
+      learnedResidualLodo: report.primary.learnedBaseLodo,
+    }
+    const collapsedByPosition = report.byActualPosition.map(group => ({
+      ...group,
+      learnedResidualLodo: group.learnedBaseLodo,
+    }))
+    const gate = evaluateStaticWindowResidualGate(collapsedPrimary, collapsedByPosition)
+    expect(gate.eligibleForShadow).toBe(false)
+    expect(gate.failures).toEqual(expect.arrayContaining([
+      "QB recall regressed by more than 0.05",
+      "TE recall regressed by more than 0.05",
+    ]))
   })
 })

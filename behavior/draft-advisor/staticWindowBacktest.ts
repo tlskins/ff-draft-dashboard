@@ -7,7 +7,9 @@ import {
 import {
   createEmpiricalOpponentFeatureSurface,
   EMPIRICAL_OPPONENT_POSITIONS,
+  fitEmpiricalBalancedOpponentResidual,
   fitEmpiricalOpponentSoftmax,
+  predictEmpiricalBalancedResidualProbabilities,
   predictEmpiricalOpponentProbabilities,
   prepareEmpiricalOpponentCorpus,
 } from "./opponentEmpiricalV2"
@@ -18,13 +20,14 @@ import {
 } from "./opponentModel"
 import { leagueFormatFor } from "./replayMetrics"
 import type {
+  EmpiricalBalancedResidualModel,
   EmpiricalSoftmaxModel,
 } from "./opponentEmpiricalV2"
 import type { RecordedCompletedDraftReplay } from "./completedDraftReplay"
 import type { DraftAdvisorContext, ForecastPlayerProbability, PositionProbability } from "./types"
 
 type ForecastPosition = typeof EMPIRICAL_OPPONENT_POSITIONS[number]
-type ModelName = "frozenV1" | "learnedBaseLodo" | "fullDataArtifactDescriptive"
+type ModelName = "frozenV1" | "learnedBaseLodo" | "learnedResidualLodo" | "fullDataArtifactDescriptive"
 
 const POSITIONS = EMPIRICAL_OPPONENT_POSITIONS
 const EPSILON = 1e-12
@@ -78,6 +81,15 @@ export interface StaticWindowCalibration {
   bins: StaticWindowCalibrationBin[]
 }
 
+export interface StaticWindowPositionDiagnostics {
+  /** The top-position confusion matrix: actual row → predicted column. */
+  topPositionConfusion: Record<ForecastPosition, Record<ForecastPosition, number>>
+  actualCounts: Record<ForecastPosition, number>
+  predictedCounts: Record<ForecastPosition, number>
+  /** The observed WR base rate, i.e. a deliberately simple always-WR reference. */
+  alwaysWideReceiverAccuracy: number
+}
+
 export interface StaticWindowRunMetrics {
   evaluatedEvents: number
   brierScore: number
@@ -98,14 +110,35 @@ export interface StaticWindowModelSummary {
   pickMetrics: StaticWindowPickMetrics
   calibration: StaticWindowCalibration
   runMetrics: StaticWindowRunMetrics
+  positionDiagnostics: StaticWindowPositionDiagnostics
 }
 
 export interface StaticWindowModelComparison {
   frozenV1: StaticWindowModelSummary
   /** Primary leakage-safe learned-base estimate: the scored fixture was excluded from its fit. */
   learnedBaseLodo: StaticWindowModelSummary
+  /**
+   * Leakage-safe, class-balanced correction bounded around frozen v1. This is
+   * the position-only challenger; its player probabilities remain the frozen
+   * conditional player surface and are not a promotion target.
+   */
+  learnedResidualLodo: StaticWindowModelSummary
   /** In-sample only; the immutable shipped artifact was fit on this five-fixture corpus. */
   fullDataArtifactDescriptive: StaticWindowModelSummary
+}
+
+export interface StaticWindowResidualGate {
+  /** Passing only means eligible for prospective shadow capture, never live promotion. */
+  eligibleForShadow: boolean
+  aggregate: {
+    brierDelta: number
+    logLossDelta: number
+    topPositionAccuracyDelta: number
+    runBrierDelta: number
+    runF1AtHalfDelta: number
+  }
+  perPositionRecallDeltas: Array<{ position: ForecastPosition, frozenV1: number, residual: number, delta: number }>
+  failures: string[]
 }
 
 export interface StaticWindowGroup extends StaticWindowModelComparison {
@@ -136,6 +169,7 @@ export interface StaticWindowBacktestReport {
   byLeagueFormat: StaticWindowGroup[]
   byDraftPhase: StaticWindowGroup[]
   byActualPosition: StaticWindowGroup[]
+  residualGate: StaticWindowResidualGate
   skippedFixtures: Array<{ fixtureId: string, reason: string }>
   coverage: {
     suppliedFixtureCount: number
@@ -250,8 +284,22 @@ const emptyPickMetrics = (): StaticWindowPickMetrics => ({
   playerEvaluatedPicks: 0, playerTopOneAccuracy: 0, playerTopThreeAccuracy: 0,
 })
 
+const emptyPositionDiagnostics = (): StaticWindowPositionDiagnostics => {
+  const counts = (): Record<ForecastPosition, number> => ({ QB: 0, RB: 0, WR: 0, TE: 0 })
+  const confusion = {} as Record<ForecastPosition, Record<ForecastPosition, number>>
+  POSITIONS.forEach(position => { confusion[position] = counts() })
+  return {
+    topPositionConfusion: confusion,
+    actualCounts: counts(),
+    predictedCounts: counts(),
+    alwaysWideReceiverAccuracy: 0,
+  }
+}
+
 const summarizePicks = (samples: PickSample[], model: ModelName): {
-  metrics: StaticWindowPickMetrics, calibration: StaticWindowCalibration
+  metrics: StaticWindowPickMetrics
+  calibration: StaticWindowCalibration
+  positionDiagnostics: StaticWindowPositionDiagnostics
 } => {
   if (!samples.length) {
     return {
@@ -262,6 +310,7 @@ const summarizePicks = (samples: PickSample[], model: ModelName): {
           includesUpperBound: index === STATIC_WINDOW_CALIBRATION_EDGES.length - 2, count: 0,
           meanConfidence: 0, empiricalAccuracy: 0,
         })) },
+      positionDiagnostics: emptyPositionDiagnostics(),
     }
   }
   let brier = 0
@@ -269,6 +318,7 @@ const summarizePicks = (samples: PickSample[], model: ModelName): {
   let loss = 0
   let playerOne = 0
   let playerThree = 0
+  const positionDiagnostics = emptyPositionDiagnostics()
   const bins = STATIC_WINDOW_CALIBRATION_EDGES.slice(0, -1).map((lowerInclusive, index) => ({
     lowerInclusive, upperExclusive: STATIC_WINDOW_CALIBRATION_EDGES[index + 1],
     includesUpperBound: index === STATIC_WINDOW_CALIBRATION_EDGES.length - 2, values: [] as Array<{
@@ -282,6 +332,9 @@ const summarizePicks = (samples: PickSample[], model: ModelName): {
     brier += probabilities.reduce((sum, probability, index) =>
       sum + (probability - (index === labelIndex ? 1 : 0)) ** 2, 0)
     const selected = topPosition(prediction.probabilities)
+    positionDiagnostics.actualCounts[sample.actual] += 1
+    positionDiagnostics.predictedCounts[selected] += 1
+    positionDiagnostics.topPositionConfusion[sample.actual][selected] += 1
     const hit = selected === sample.actual ? 1 : 0
     hits += hit
     loss -= Math.log(Math.max(EPSILON, probabilities[labelIndex]))
@@ -315,6 +368,10 @@ const summarizePicks = (samples: PickSample[], model: ModelName): {
       playerTopThreeAccuracy: playerThree / samples.length,
     },
     calibration: { evaluatedPicks: samples.length, expectedCalibrationError: ece, bins: calibrationBins },
+    positionDiagnostics: {
+      ...positionDiagnostics,
+      alwaysWideReceiverAccuracy: positionDiagnostics.actualCounts.WR / samples.length,
+    },
   }
 }
 
@@ -347,11 +404,17 @@ const summarizeRuns = (samples: RunSample[], model: ModelName): StaticWindowRunM
 const summary = (picks: PickSample[], runs: RunSample[]): StaticWindowModelComparison => {
   const forModel = (model: ModelName): StaticWindowModelSummary => {
     const pick = summarizePicks(picks, model)
-    return { pickMetrics: pick.metrics, calibration: pick.calibration, runMetrics: summarizeRuns(runs, model) }
+    return {
+      pickMetrics: pick.metrics,
+      calibration: pick.calibration,
+      runMetrics: summarizeRuns(runs, model),
+      positionDiagnostics: pick.positionDiagnostics,
+    }
   }
   return {
     frozenV1: forModel("frozenV1"),
     learnedBaseLodo: forModel("learnedBaseLodo"),
+    learnedResidualLodo: forModel("learnedResidualLodo"),
     fullDataArtifactDescriptive: forModel("fullDataArtifactDescriptive"),
   }
 }
@@ -387,9 +450,32 @@ const createPredictions = (
   }
 }
 
+const createResidualPredictions = (
+  context: DraftAdvisorContext,
+  overallPick: number,
+  rosterIndex: number,
+  frozenProbabilities: PositionProbability[],
+  model: EmpiricalBalancedResidualModel,
+): { probabilities: PositionProbability[], playerProbabilities: ForecastPlayerProbability[] } => {
+  const surface = createEmpiricalOpponentFeatureSurface(
+    context, overallPick, rosterIndex, context.totalDraftPicks,
+  )
+  const values = predictEmpiricalBalancedResidualProbabilities(
+    model,
+    POSITIONS.map(position => probabilityFor(frozenProbabilities, position)),
+    surface,
+  )
+  const probabilities = POSITIONS.map((position, index) => ({ position, probability: values[index] }))
+  return {
+    probabilities,
+    playerProbabilities: opponentPlayerProbabilities(context, overallPick, probabilities, 5),
+  }
+}
+
 const buildFixtureSamples = (
   fixture: RecordedCompletedDraftReplay,
   learnedModel: EmpiricalSoftmaxModel,
+  residualModel: EmpiricalBalancedResidualModel,
   lodoTrainingFixtureIds: string[],
   lodoTrainingExampleCount: number,
 ): FixtureSamples => {
@@ -413,6 +499,14 @@ const buildFixtureSamples = (
     const actualByPick = new Map(fixture.actualPicks.map(pick => [pick.overallPick, pick]))
     const learnedPicks = new Map(frozen.picks.map(pick => [pick.overallPick,
       createPredictions(context, pick.overallPick, pick.rosterIndex, learnedModel)]))
+    const residualPicks = new Map(frozen.picks.map(pick => [pick.overallPick,
+      createResidualPredictions(
+        context,
+        pick.overallPick,
+        pick.rosterIndex,
+        pick.positionProbabilities,
+        residualModel,
+      )]))
     const artifactPicks = new Map(frozen.picks.map(pick => [pick.overallPick,
       createPredictions(context, pick.overallPick, pick.rosterIndex, artifact)]))
     frozen.picks.forEach(frozenPick => {
@@ -424,6 +518,7 @@ const buildFixtureSamples = (
         playerProbabilities: frozenPick.playerProbabilities,
       }
       const learned = learnedPicks.get(frozenPick.overallPick)!
+      const residual = residualPicks.get(frozenPick.overallPick)!
       const descriptive = artifactPicks.get(frozenPick.overallPick)!
       picks.push({
         fixtureId: fixture.id, leagueFormat: leagueFormatFor(fixture),
@@ -432,6 +527,7 @@ const buildFixtureSamples = (
         predictions: {
           frozenV1: frozenPrediction,
           learnedBaseLodo: learned,
+          learnedResidualLodo: residual,
           fullDataArtifactDescriptive: descriptive,
         },
       })
@@ -460,6 +556,13 @@ const buildFixtureSamples = (
         learnedBaseLodo: toRunEvents(POSITIONS.map(position => ({ position,
           probability: (() => {
             const probabilities = frozen.picks.map(pick => learnedPicks.get(pick.overallPick)!.probabilities)
+            return probabilities.length < 3 ? 0 : probabilityOfAtLeast(probabilities.map(value =>
+              probabilityFor(value, position)), 3)
+          })(),
+        }))),
+        learnedResidualLodo: toRunEvents(POSITIONS.map(position => ({ position,
+          probability: (() => {
+            const probabilities = frozen.picks.map(pick => residualPicks.get(pick.overallPick)!.probabilities)
             return probabilities.length < 3 ? 0 : probabilityOfAtLeast(probabilities.map(value =>
               probabilityFor(value, position)), 3)
           })(),
@@ -519,6 +622,50 @@ const groupsBy = (
   })
 }
 
+const runAtHalf = (summary: StaticWindowModelSummary) => summary.runMetrics.thresholds.find(metric =>
+  metric.threshold === 0.5)!
+
+/**
+ * Fixed, conservative offline guardrails.  They prevent an aggregate gain
+ * driven by sacrificing a minority position from being called a viable
+ * challenger.  Passing is only eligibility for new prospective shadow data.
+ */
+export const evaluateStaticWindowResidualGate = (
+  primary: StaticWindowGroup,
+  byActualPosition: StaticWindowGroup[],
+): StaticWindowResidualGate => {
+  const frozen = primary.frozenV1
+  const residual = primary.learnedResidualLodo
+  const aggregate = {
+    brierDelta: residual.pickMetrics.positionBrierScore - frozen.pickMetrics.positionBrierScore,
+    logLossDelta: residual.pickMetrics.logLoss - frozen.pickMetrics.logLoss,
+    topPositionAccuracyDelta: residual.pickMetrics.topPositionAccuracy - frozen.pickMetrics.topPositionAccuracy,
+    runBrierDelta: residual.runMetrics.brierScore - frozen.runMetrics.brierScore,
+    runF1AtHalfDelta: runAtHalf(residual).f1 - runAtHalf(frozen).f1,
+  }
+  const perPositionRecallDeltas = POSITIONS.map(position => {
+    const group = byActualPosition.find(candidate => candidate.key === position)
+    const baseline = group?.frozenV1.pickMetrics.topPositionAccuracy || 0
+    const challenger = group?.learnedResidualLodo.pickMetrics.topPositionAccuracy || 0
+    return { position, frozenV1: baseline, residual: challenger, delta: challenger - baseline }
+  })
+  const failures: string[] = []
+  if (aggregate.brierDelta > 0.005) failures.push("aggregate Brier regressed by more than 0.005")
+  if (aggregate.logLossDelta > 0.01) failures.push("aggregate log loss regressed by more than 0.01")
+  if (aggregate.topPositionAccuracyDelta < -0.02) failures.push("aggregate top-position accuracy regressed by more than 0.02")
+  if (aggregate.runBrierDelta > 0.01) failures.push("run Brier regressed by more than 0.01")
+  if (aggregate.runF1AtHalfDelta < -0.05) failures.push("run F1 at 0.50 regressed by more than 0.05")
+  perPositionRecallDeltas.forEach(item => {
+    if (item.delta < -0.05) failures.push(`${item.position} recall regressed by more than 0.05`)
+  })
+  // A challenger must offer a small probabilistic benefit in addition to not
+  // harming a class. This keeps numerical parity from consuming shadow time.
+  if (aggregate.brierDelta > -0.002 && aggregate.logLossDelta > -0.002) {
+    failures.push("no material aggregate probabilistic improvement over frozen v1")
+  }
+  return { eligibleForShadow: failures.length === 0, aggregate, perPositionRecallDeltas, failures }
+}
+
 /**
  * Offline-only static-window replay.  The learned-base primary result always
  * uses a model trained on other complete fixtures; no evidence envelope is
@@ -562,17 +709,25 @@ export const runStaticWindowBacktest = (fixtures: unknown[]): StaticWindowBackte
         .map(summary => summary.fixtureId).sort()
       if (trainingIds.includes(fixture.id)) throw new Error("LODO training includes held-out fixture")
       const model = fitEmpiricalOpponentSoftmax(training, "base")
-      fixtureSamples.push(buildFixtureSamples(fixture, model, trainingIds, training.length))
+      const residual = fitEmpiricalBalancedOpponentResidual(training)
+      fixtureSamples.push(buildFixtureSamples(fixture, model, residual, trainingIds, training.length))
     } catch (error) {
       skippedFixtures.push({ fixtureId: fixture.id, reason: String(error) })
     }
   })
   if (fixtureSamples.length < 2) return unavailable(fixtures.length, skippedFixtures)
   const primary = group("pick-weighted aggregate", fixtureSamples)
+  const byActualPosition = groupsBy(fixtureSamples, sample => sample.actual)
+  const residualGate = evaluateStaticWindowResidualGate(primary, byActualPosition)
   return {
     available: true,
     policy: STATIC_WINDOW_BOUNDARY_POLICY,
-    promotion: { promoted: false, reason: "Offline historical backtest only; prospective shadow validation remains required" },
+    promotion: {
+      promoted: false,
+      reason: residualGate.eligibleForShadow
+        ? "Offline gates passed, but prospective shadow validation remains required before any promotion"
+        : "Offline residual gates did not pass; prospective shadow validation and a redesign remain required",
+    },
     primary,
     byFixture: fixtureSamples.map(sample => sample.report)
       .sort((left, right) => left.fixtureId.localeCompare(right.fixtureId)),
@@ -580,7 +735,8 @@ export const runStaticWindowBacktest = (fixtures: unknown[]): StaticWindowBackte
       sample => sample.leagueFormat),
     byDraftPhase: groupsBy(fixtureSamples, sample => sample.phase,
       sample => sample.phase),
-    byActualPosition: groupsBy(fixtureSamples, sample => sample.actual),
+    byActualPosition,
+    residualGate,
     skippedFixtures,
     coverage: {
       suppliedFixtureCount: fixtures.length, usableFixtureCount: fixtureSamples.length,
@@ -608,6 +764,12 @@ const unavailable = (
   promotion: { promoted: false, reason: "Offline historical backtest only; prospective shadow validation remains required" },
   primary: group("pick-weighted aggregate", []),
   byFixture: [], byLeagueFormat: [], byDraftPhase: [], byActualPosition: [], skippedFixtures,
+  residualGate: {
+    eligibleForShadow: false,
+    aggregate: { brierDelta: 0, logLossDelta: 0, topPositionAccuracyDelta: 0, runBrierDelta: 0, runF1AtHalfDelta: 0 },
+    perPositionRecallDeltas: [],
+    failures: ["At least two usable complete fixtures are required for LODO evaluation."],
+  },
   coverage: {
     suppliedFixtureCount, usableFixtureCount: 0, canonicalWindowCount: 0, forecastSlotCount: 0,
     labeledPickCount: 0, repeatedPickLabels: 0, independentRepresentativeRunWindows: 0,

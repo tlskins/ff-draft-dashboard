@@ -45,6 +45,23 @@ export const EMPIRICAL_OPPONENT_CONFIG = {
   logitClamp: 30,
 } as const
 
+/**
+ * Offline-only challenger settings.  This model deliberately starts at the
+ * frozen-v1 distribution and can only apply a small, class-balanced logit
+ * correction.  These values are fixed design constraints, not selected from
+ * the static-window holdouts.
+ */
+export const EMPIRICAL_BALANCED_RESIDUAL_CONFIG = {
+  iterations: 250,
+  learningRate: 0.035,
+  l2: 0.05,
+  /** Each class's learned correction is restricted to this logit interval. */
+  residualLogitBound: 0.55,
+  /** Fixed offline correction strength; retained explicitly for auditability. */
+  correctionStrength: 1,
+  probabilityFloor: 1e-6,
+} as const
+
 export interface EmpiricalOpponentExample {
   fixtureId: string
   leagueFormat: string
@@ -283,6 +300,152 @@ export const predictEmpiricalOpponentProbabilities = (
 ): number[] => stableSoftmax(EMPIRICAL_OPPONENT_POSITIONS.map((_, position) =>
   model.coefficients[position].reduce((sum, coefficient, featureIndex) =>
     sum + coefficient * featureValues(example, position, model.featureSet)[featureIndex], 0)))
+
+export interface EmpiricalBalancedResidualModel {
+  featureNames: string[]
+  coefficients: number[][]
+  classWeights: number[]
+  diagnostics: {
+    examples: number
+    initialLoss: number
+    finalLoss: number
+    iterations: number
+    runtimeMs: number
+  }
+}
+
+const residualFeatureValues = (
+  example: EmpiricalOpponentFeatureSurface,
+  position: number,
+): number[] => featureValues(example, position, "base")
+
+const boundedResidual = (value: number): number => Number.isFinite(value)
+  ? Math.max(-EMPIRICAL_BALANCED_RESIDUAL_CONFIG.residualLogitBound,
+    Math.min(EMPIRICAL_BALANCED_RESIDUAL_CONFIG.residualLogitBound, value))
+  : 0
+
+/**
+ * Applies a bounded residual in log-probability space.  A zero residual is
+ * exactly the supplied frozen distribution; the bound limits the relative
+ * odds between any two positions to exp(2 * residualLogitBound).
+ */
+export const applyBoundedOpponentResidual = (
+  baselineProbabilities: number[],
+  residualLogits: number[],
+): number[] => {
+  if (baselineProbabilities.length !== EMPIRICAL_OPPONENT_POSITIONS.length
+    || residualLogits.length !== EMPIRICAL_OPPONENT_POSITIONS.length) {
+    throw new Error("Bounded opponent residual requires one value per position")
+  }
+  const baseline = normalized(baselineProbabilities)
+  return stableSoftmax(baseline.map((probability, position) =>
+    Math.log(Math.max(EMPIRICAL_BALANCED_RESIDUAL_CONFIG.probabilityFloor, probability))
+      + EMPIRICAL_BALANCED_RESIDUAL_CONFIG.correctionStrength
+        * boundedResidual(residualLogits[position])))
+}
+
+const residualLogitsFor = (
+  model: Pick<EmpiricalBalancedResidualModel, "coefficients">,
+  example: EmpiricalOpponentFeatureSurface,
+): number[] => EMPIRICAL_OPPONENT_POSITIONS.map((_, position) => boundedResidual(
+  model.coefficients[position].reduce((sum, coefficient, featureIndex) => sum
+    + coefficient * residualFeatureValues(example, position)[featureIndex], 0)))
+
+export const predictEmpiricalBalancedResidualProbabilities = (
+  model: EmpiricalBalancedResidualModel,
+  baselineProbabilities: number[],
+  example: EmpiricalOpponentFeatureSurface,
+): number[] => applyBoundedOpponentResidual(
+  baselineProbabilities,
+  residualLogitsFor(model, example),
+)
+
+const classBalancedWeights = (examples: EmpiricalOpponentExample[]): number[] => {
+  const counts = EMPIRICAL_OPPONENT_POSITIONS.map(position => examples.filter(example =>
+    example.label === position).length)
+  return counts.map(count => count > 0
+    ? examples.length / (EMPIRICAL_OPPONENT_POSITIONS.length * count) : 0)
+}
+
+const residualLoss = (
+  examples: EmpiricalOpponentExample[],
+  coefficients: number[][],
+  classWeights: number[],
+): number => {
+  if (!examples.length) return 0
+  const dataLoss = examples.reduce((sum, example) => {
+    const label = positionIndex(example.label)
+    const probabilities = applyBoundedOpponentResidual(
+      example.baselineProbabilities,
+      EMPIRICAL_OPPONENT_POSITIONS.map((_, position) => coefficients[position]
+        .reduce((score, coefficient, featureIndex) => score
+          + coefficient * residualFeatureValues(example, position)[featureIndex], 0)),
+    )
+    return sum - classWeights[label] * Math.log(Math.max(1e-12, probabilities[label]))
+  }, 0) / examples.length
+  const penalty = coefficients.reduce((sum, row) => sum + row.slice(1)
+    .reduce((rowSum, value) => rowSum + value * value, 0), 0)
+  return dataLoss + EMPIRICAL_BALANCED_RESIDUAL_CONFIG.l2 * penalty / 2
+}
+
+/**
+ * Fixed-order, class-balanced residual fit.  Unlike the free softmax model,
+ * its zero point is frozen v1 and output odds remain explicitly bounded.
+ */
+export const fitEmpiricalBalancedOpponentResidual = (
+  examples: EmpiricalOpponentExample[],
+): EmpiricalBalancedResidualModel => {
+  if (!examples.length) throw new Error("Cannot fit balanced opponent residual without examples")
+  const startedAt = performance.now()
+  const names = featureNamesFor("base")
+  const weights = classBalancedWeights(examples)
+  if (weights.some(weight => weight === 0)) {
+    throw new Error("Balanced opponent residual requires every forecast position in training")
+  }
+  const coefficients = EMPIRICAL_OPPONENT_POSITIONS.map(() => names.map(() => 0))
+  const initialLoss = residualLoss(examples, coefficients, weights)
+  const trainingFeatures = examples.map(example => EMPIRICAL_OPPONENT_POSITIONS.map((_, position) =>
+    residualFeatureValues(example, position)))
+
+  for (let iteration = 0; iteration < EMPIRICAL_BALANCED_RESIDUAL_CONFIG.iterations; iteration += 1) {
+    const gradients = EMPIRICAL_OPPONENT_POSITIONS.map(() => names.map(() => 0))
+    examples.forEach((example, exampleIndex) => {
+      const label = positionIndex(example.label)
+      const rawResiduals = EMPIRICAL_OPPONENT_POSITIONS.map((_, position) => coefficients[position]
+        .reduce((sum, coefficient, featureIndex) => sum
+          + coefficient * trainingFeatures[exampleIndex][position][featureIndex], 0))
+      const probabilities = applyBoundedOpponentResidual(example.baselineProbabilities, rawResiduals)
+      EMPIRICAL_OPPONENT_POSITIONS.forEach((_, position) => {
+        // A hard clamp has zero derivative outside its safe range.  This is
+        // intentional: fitting cannot escape the published correction bound.
+        if (Math.abs(rawResiduals[position]) >= EMPIRICAL_BALANCED_RESIDUAL_CONFIG.residualLogitBound) return
+        const error = weights[label] * (probabilities[position] - (position === label ? 1 : 0))
+        trainingFeatures[exampleIndex][position].forEach((value, featureIndex) => {
+          gradients[position][featureIndex] += error * value
+        })
+      })
+    })
+    coefficients.forEach((row, position) => row.forEach((coefficient, featureIndex) => {
+      const regularization = featureIndex === 0 ? 0
+        : EMPIRICAL_BALANCED_RESIDUAL_CONFIG.l2 * coefficient
+      const gradient = gradients[position][featureIndex] / examples.length + regularization
+      const updated = coefficient - EMPIRICAL_BALANCED_RESIDUAL_CONFIG.learningRate * gradient
+      coefficients[position][featureIndex] = Number.isFinite(updated) ? updated : 0
+    }))
+  }
+  return {
+    featureNames: names,
+    coefficients,
+    classWeights: weights,
+    diagnostics: {
+      examples: examples.length,
+      initialLoss,
+      finalLoss: residualLoss(examples, coefficients, weights),
+      iterations: EMPIRICAL_BALANCED_RESIDUAL_CONFIG.iterations,
+      runtimeMs: performance.now() - startedAt,
+    },
+  }
+}
 
 const regularizedLoss = (
   examples: EmpiricalOpponentExample[],
