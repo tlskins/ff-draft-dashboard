@@ -48,14 +48,19 @@ Phase 8A documentation reset is complete at
 `993af66426a44c32407c2566cbe8ba85a36b75b6`, whose expected parent is
 `a447eadd041a23f8a7c6461899430560a81df4e9`.
 
-The Phase 8B integration-baseline candidate is verified on
-`codex/phase-8b-integration-baseline`. Root-orchestrator review, fast-forward
-integration into `refactor/realtime-foundation`, and annotated-tag approval
-remain pending; Phase 8 is not yet complete.
+The verified Phase 8B integration-baseline candidate on
+`codex/phase-8b-integration-baseline` received root-orchestrator review and
+was fast-forward integrated into `refactor/realtime-foundation`. The annotated
+baseline tag `phase8-integration-baseline-2026-08-01` is created as part of
+this closeout, so Phase 8 is complete. The remaining credentialed and manual
+operational checks remain unverified as recorded in the
+[Phase 8 integration baseline](baselines/phase8-integration.md); no
+application behavior changed.
 
-Exit gate: the integration baseline is agreed, reproducible, and tagged or
-otherwise recorded; the roadmap and session-packet workflow are the active
-planning references; and no application behavior is changed by the reset.
+Exit gate: complete. The integration baseline is root-orchestrator reviewed,
+reproducible, fast-forward integrated, and annotated-tagged; the roadmap and
+session-packet workflow are the active planning references; and no application
+behavior was changed by the reset.
 
 ### Phase 9: Prospective positional-run shadow validation
 

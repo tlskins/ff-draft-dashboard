@@ -1,7 +1,7 @@
-# Phase 8 integration baseline candidate
+# Phase 8 integration baseline
 
-This record establishes a reproducible Phase 8 integration-baseline candidate
-for the dashboard, embedded Chrome extension, and companion Flask API. It is
+This record establishes a reproducible Phase 8 integration baseline for the
+dashboard, embedded Chrome extension, and companion Flask API. It is
 documentation and verification only; it changes no application behavior.
 
 ## Provenance
@@ -54,13 +54,13 @@ The following remain unverified and are not silently treated as passed:
 - Four-view visual review.
 - Manual screen-reader and narrow-viewport audit.
 
-## Integration handoff
+## Integration closeout
 
-The root orchestrator must review this candidate, fast-forward/integrate it
-into `refactor/realtime-foundation`, and create the baseline tag. Integration
-and tag approval are not complete in this worktree, and no tag is claimed as
-created here.
+The root orchestrator reviewed the candidate and fast-forward integrated it
+into `refactor/realtime-foundation`. The annotated baseline tag is created as
+part of this closeout; Phase 8 integration is complete. This closeout does not
+change the operationally unverified checks above or promote a model.
 
-- Recommended annotated tag: `phase8-integration-baseline-2026-08-01`.
-- Rollback target until integration is approved: dashboard `a447ead` plus API
+- Annotated baseline tag: `phase8-integration-baseline-2026-08-01`.
+- Rollback boundary: dashboard `a447ead` plus API
   `2a07eb3fb2d9650cfc7b7216f745a3756b59eb36`.
