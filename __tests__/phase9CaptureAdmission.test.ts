@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import {
@@ -69,8 +69,32 @@ const realFileSystem = (): Phase9CaptureAdmissionFileSystem => ({
   exists: path => {
     try { readFileSync(path); return true } catch { return false }
   },
+  lstat: path => {
+    try {
+      const stat = lstatSync(path)
+      if (stat.isSymbolicLink()) return "symlink"
+      if (stat.isFile()) return "file"
+      if (stat.isDirectory()) return "directory"
+      return "other"
+    } catch { return "missing" }
+  },
+  readDirectory: path => readdirSync(path),
   mkdir: path => require("node:fs").mkdirSync(path, { recursive: true }),
   readFile: path => readFileSync(path),
+  fileIdentity: path => {
+    try {
+      const stat = lstatSync(path)
+      return stat.isSymbolicLink() ? null : `${stat.dev}:${stat.ino}`
+    } catch { return null }
+  },
+  removeIfIdentity: (path, identity) => {
+    try {
+      const stat = lstatSync(path)
+      if (stat.isSymbolicLink() || `${stat.dev}:${stat.ino}` !== identity) return false
+      require("node:fs").unlinkSync(path)
+      return true
+    } catch { return false }
+  },
   remove: path => { try { require("node:fs").unlinkSync(path) } catch { /* absent */ } },
   rename: (from, to) => require("node:fs").renameSync(from, to),
   writeExclusive: (path, content) => writeFileSync(path, content, { flag: "wx" }),
@@ -97,6 +121,31 @@ const admissionOptions = (fixture = createSyntheticProspectiveFixture()) => {
       fileSystem: realFileSystem(),
     },
   }
+}
+
+const admissionOptionsWithExistingBytes = (existingBytes: Uint8Array) => {
+  const admission = admissionOptions()
+  const existingPath = join(admission.options.fixtureDirectory, "existing.json")
+  mkdirSync(admission.options.fixtureDirectory, { recursive: true })
+  writeFileSync(existingPath, existingBytes)
+  const manifest = cloneCampaign()
+  manifest.evidence = [{
+    id: "existing-evidence",
+    fixturePath: "prospective-campaign/fixtures/existing.json",
+    fixtureId: "existing-fixture",
+    contentSha256: createRawFixtureSha256(existingBytes),
+    baselineCommit: manifest.baseline.commit,
+    baselineTag: manifest.baseline.tag,
+    declaredProvenance: {
+      platform: "ESPN",
+      kind: "completed_mock",
+      captureMethod: "extension_board_export",
+      captureVersion: 1,
+    },
+  }]
+  writeFileSync(admission.options.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8")
+  admission.options.manifest = manifest
+  return admission
 }
 
 describe("Phase 9B capture admission", () => {
@@ -132,6 +181,113 @@ describe("Phase 9B capture admission", () => {
       contentSha256: preview.contentSha256,
       fixturePath: preview.destinationPath,
     }))
+  })
+
+  it("blocks a candidate when declared existing evidence is missing", () => {
+    const existing = createSyntheticProspectiveFixture({ id: "existing-missing" })
+    const options = addDeclaration(optionsFor(), existing)
+    options.existingInputs = []
+    const preview = previewPhase9CaptureAdmission(options)
+    expect(preview.classification).toBe("invalid")
+    expect(preview.reasonCodes).toEqual(expect.arrayContaining([
+      "existing_campaign_evidence_invalid",
+      "fixture_not_found",
+    ]))
+  })
+
+  it("discovers and blocks an undeclared fixture file", () => {
+    const admission = admissionOptions()
+    const unlisted = createSyntheticProspectiveFixture({ id: "unlisted-on-disk" })
+    mkdirSync(admission.options.fixtureDirectory, { recursive: true })
+    writeFileSync(join(admission.options.fixtureDirectory, "unlisted.json"), rawFixtureBytes(unlisted))
+    try {
+      const result = admitPhase9Capture(admission.options)
+      expect(result.admitted).toBe(false)
+      expect(result.preview.reasonCodes).toEqual(expect.arrayContaining([
+        "existing_campaign_evidence_invalid",
+        "unlisted_evidence",
+      ]))
+      expect(JSON.parse(readFileSync(admission.options.manifestPath, "utf8")).evidence).toEqual([])
+    } finally {
+      rmSync(admission.temporaryRoot, { recursive: true, force: true })
+    }
+  })
+
+  it("blocks unreadable and invalid-UTF-8 declared evidence", () => {
+    const valid = createSyntheticProspectiveFixture({ id: "existing-unreadable" })
+    const unreadable = admissionOptionsWithExistingBytes(rawFixtureBytes(valid))
+    const unreadableFs: Phase9CaptureAdmissionFileSystem = {
+      ...unreadable.options.fileSystem,
+      readFile: path => {
+        if (path.endsWith("/existing.json")) throw new Error("injected unreadable fixture")
+        return unreadable.options.fileSystem.readFile(path)
+      },
+    }
+    try {
+      const unreadableResult = admitPhase9Capture({ ...unreadable.options, fileSystem: unreadableFs })
+      expect(unreadableResult.admitted).toBe(false)
+      expect(unreadableResult.preview.reasonCodes).toContain("existing_campaign_evidence_invalid")
+    } finally {
+      rmSync(unreadable.temporaryRoot, { recursive: true, force: true })
+    }
+
+    const invalidUtf8 = admissionOptionsWithExistingBytes(Uint8Array.from([0xc3, 0x28]))
+    try {
+      const result = admitPhase9Capture(invalidUtf8.options)
+      expect(result.admitted).toBe(false)
+      expect(result.preview.reasonCodes).toContain("existing_campaign_evidence_invalid")
+    } finally {
+      rmSync(invalidUtf8.temporaryRoot, { recursive: true, force: true })
+    }
+  })
+
+  it("blocks invalid, excluded, and unlisted existing evidence", () => {
+    const candidate = createSyntheticProspectiveFixture({ id: "candidate-integrity" })
+    const tampered = createSyntheticProspectiveFixture({ id: "existing-tampered" })
+    const tamperedOptions = addDeclaration(optionsFor(candidate), tampered, { contentSha256: "0".repeat(64) })
+    expect(previewPhase9CaptureAdmission(tamperedOptions).reasonCodes).toEqual(expect.arrayContaining([
+      "existing_campaign_evidence_invalid",
+      "fixture_hash_mismatch",
+    ]))
+
+    const retrospective = createSyntheticProspectiveFixture({
+      id: "existing-retrospective",
+      capturedAt: Date.parse("2026-07-31T10:06:00-04:00"),
+    })
+    const retrospectiveOptions = addDeclaration(optionsFor(candidate), retrospective)
+    expect(previewPhase9CaptureAdmission(retrospectiveOptions).reasonCodes).toEqual(expect.arrayContaining([
+      "existing_campaign_evidence_invalid",
+      "retrospective_evidence",
+    ]))
+
+    const unlisted = optionsFor(candidate, {
+      existingInputs: [{
+        path: "prospective-campaign/fixtures/unlisted.json",
+        rawContent: Buffer.from(rawFixtureBytes(tampered)).toString("utf8"),
+      }],
+    })
+    expect(previewPhase9CaptureAdmission(unlisted).reasonCodes).toEqual(expect.arrayContaining([
+      "existing_campaign_evidence_invalid",
+      "unlisted_evidence",
+    ]))
+  })
+
+  it("allows valid informational evidence and ordinary coverage insufficiency", () => {
+    const candidate = createSyntheticProspectiveFixture({ id: "candidate-valid" })
+    const informational = createSyntheticProspectiveFixture({ id: "existing-informational", rosterShape: "wr3" })
+    const informationalOptions = addDeclaration(optionsFor(candidate), informational)
+    expect(previewPhase9CaptureAdmission(informationalOptions).classification).toBe("calibrated_eligible")
+
+    const existing = createSyntheticProspectiveFixture({ id: "existing-valid" })
+    const incompleteCampaign = addDeclaration(optionsFor(candidate), existing)
+    expect(previewPhase9CaptureAdmission(incompleteCampaign).classification).toBe("calibrated_eligible")
+  })
+
+  it("fails closed when raw bytes and raw content are not identical", () => {
+    const options = optionsFor(undefined, { rawContent: "{}" })
+    const preview = previewPhase9CaptureAdmission(options)
+    expect(preview.classification).toBe("invalid")
+    expect(preview.reasonCodes).toContain("raw_fixture_changed")
   })
 
   it.each([
@@ -239,6 +395,130 @@ describe("Phase 9B capture admission", () => {
       const manifest = JSON.parse(readFileSync(options.manifestPath, "utf8"))
       expect(manifest.evidence).toHaveLength(1)
       expect(manifest.evidence[0]).toEqual(result.preview.manifestEntry)
+      expect(() => readFileSync(`${options.manifestPath}.phase9-lock`)).toThrow()
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true })
+    }
+  })
+
+  it("refuses a pre-existing lock without changing campaign artifacts", () => {
+    const { temporaryRoot, options } = admissionOptions()
+    const lockPath = `${options.manifestPath}.phase9-lock`
+    writeFileSync(lockPath, "operator-lock\n", "utf8")
+    try {
+      const result = admitPhase9Capture(options)
+      expect(result.admitted).toBe(false)
+      expect(result.failureReason).toBe("admission_lock_exists")
+      expect(readFileSync(lockPath, "utf8")).toBe("operator-lock\n")
+      expect(JSON.parse(readFileSync(options.manifestPath, "utf8")).evidence).toEqual([])
+      expect(() => readdirSync(options.fixtureDirectory)).toThrow()
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true })
+    }
+  })
+
+  it("reloads the locked manifest so stale snapshots cannot lose prior admission", () => {
+    const first = admissionOptions(createSyntheticProspectiveFixture({ id: "first-admission" }))
+    const secondFixture = createSyntheticProspectiveFixture({ id: "second-admission", targetRosterIndex: 2 })
+    try {
+      expect(admitPhase9Capture(first.options).admitted).toBe(true)
+      const secondOptions = {
+        ...first.options,
+        rawBytes: rawFixtureBytes(secondFixture),
+        rawContent: Buffer.from(rawFixtureBytes(secondFixture)).toString("utf8"),
+        fileState: undefined,
+      }
+      const secondResult = admitPhase9Capture(secondOptions)
+      expect(secondResult.admitted).toBe(true)
+      const manifest = JSON.parse(readFileSync(first.options.manifestPath, "utf8"))
+      expect(manifest.evidence.map((entry: { fixtureId: string }) => entry.fixtureId)).toEqual(expect.arrayContaining([
+        "first-admission",
+        "second-admission",
+      ]))
+      expect(manifest.evidence).toHaveLength(2)
+      expect(manifest.evidence.map((entry: { id: string }) => entry.id)).toEqual(expect.arrayContaining([
+        secondResult.preview.evidenceId,
+      ]))
+    } finally {
+      rmSync(first.temporaryRoot, { recursive: true, force: true })
+    }
+  })
+
+  it("preserves a changed manifest and removes only its own fixture", () => {
+    const { temporaryRoot, options } = admissionOptions()
+    const originalManifestBytes = readFileSync(options.manifestPath)
+    const changingFileSystem: Phase9CaptureAdmissionFileSystem = {
+      ...options.fileSystem,
+      writeExclusive: (path, content) => {
+        options.fileSystem.writeExclusive(path, content)
+        if (path.includes("/prospective-campaign/fixtures/") && path.endsWith(".json")) {
+          writeFileSync(options.manifestPath, Buffer.concat([originalManifestBytes, Buffer.from(" ")]))
+        }
+      },
+    }
+    try {
+      const result = admitPhase9Capture({ ...options, fileSystem: changingFileSystem })
+      expect(result.admitted).toBe(false)
+      expect(result.failureReason).toBe("manifest_changed_during_admission")
+      expect(readFileSync(options.manifestPath)).toEqual(Buffer.concat([originalManifestBytes, Buffer.from(" ")]))
+      expect(() => readFileSync(resolve(options.workspaceRoot, result.preview.destinationPath!))).toThrow()
+      expect(() => readFileSync(`${options.manifestPath}.phase9-lock`)).toThrow()
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true })
+    }
+  })
+
+  it("does not overwrite or remove a destination that appears after preview", () => {
+    const { temporaryRoot, options } = admissionOptions()
+    const preview = previewPhase9CaptureAdmission(options)
+    const destination = resolve(options.workspaceRoot, preview.destinationPath!)
+    mkdirSync(options.fixtureDirectory, { recursive: true })
+    const sentinel = Buffer.from("pre-existing destination", "utf8")
+    writeFileSync(destination, sentinel)
+    try {
+      const result = admitPhase9Capture(options)
+      expect(result.admitted).toBe(false)
+      expect(result.preview.reasonCodes).toContain("destination_exists")
+      expect(readFileSync(destination)).toEqual(sentinel)
+      expect(JSON.parse(readFileSync(options.manifestPath, "utf8")).evidence).toEqual([])
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true })
+    }
+  })
+
+  it.each([
+    ["fixture directory", "fixture-directory"],
+    ["manifest", "manifest"],
+    ["lock", "lock"],
+    ["manifest partial", "manifest-partial"],
+  ])("rejects %s symlink confinement violations", (_label, kind) => {
+    const { temporaryRoot, options } = admissionOptions()
+    const outside = join(temporaryRoot, "outside")
+    mkdirSync(outside, { recursive: true })
+    const marker = join(outside, "marker")
+    writeFileSync(marker, "outside-marker\n", "utf8")
+    try {
+      if (kind === "fixture-directory") {
+        symlinkSync(outside, options.fixtureDirectory)
+      } else if (kind === "manifest") {
+        const target = join(outside, "manifest.json")
+        writeFileSync(target, readFileSync(options.manifestPath))
+        unlinkSync(options.manifestPath)
+        symlinkSync(target, options.manifestPath)
+      } else if (kind === "lock") {
+        const target = join(outside, "lock")
+        writeFileSync(target, "outside-lock\n")
+        symlinkSync(target, `${options.manifestPath}.phase9-lock`)
+      } else {
+        mkdirSync(options.fixtureDirectory, { recursive: true })
+        const target = join(outside, "partial")
+        writeFileSync(target, "outside-partial\n")
+        symlinkSync(target, `${options.manifestPath}.phase9-partial`)
+      }
+      const result = admitPhase9Capture(options)
+      expect(result.admitted).toBe(false)
+      expect(result.failureReason).toBe("unsafe_destination_path")
+      expect(readFileSync(marker, "utf8")).toBe("outside-marker\n")
     } finally {
       rmSync(temporaryRoot, { recursive: true, force: true })
     }
@@ -281,13 +561,19 @@ describe("Phase 9B capture admission", () => {
     const { temporaryRoot, options } = admissionOptions()
     const failingFileSystem: Phase9CaptureAdmissionFileSystem = {
       ...options.fileSystem,
-      writeExclusive: () => { throw new Error("injected fixture failure") },
+      writeExclusive: (path, content) => {
+        if (path.includes("/prospective-campaign/fixtures/") && path.endsWith(".json")) {
+          throw new Error("injected fixture failure")
+        }
+        options.fileSystem.writeExclusive(path, content)
+      },
     }
     try {
       const result = admitPhase9Capture({ ...options, fileSystem: failingFileSystem })
       expect(result.admitted).toBe(false)
       expect(result.failureReason).toContain("fixture_write_failed")
       expect(JSON.parse(readFileSync(options.manifestPath, "utf8")).evidence).toEqual([])
+      expect(() => readFileSync(`${options.manifestPath}.phase9-lock`)).toThrow()
     } finally {
       rmSync(temporaryRoot, { recursive: true, force: true })
     }

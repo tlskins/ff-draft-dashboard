@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
-import { isAbsolute, relative, resolve, sep } from "node:path"
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path"
+import { TextDecoder } from "node:util"
 import {
   createProspectiveFixtureContentSha256,
   runProspectiveRunShadowCampaign,
@@ -15,12 +16,17 @@ export const PHASE9_CAPTURE_FIXTURES_DIRECTORY = "prospective-campaign/fixtures"
 
 export const PHASE9_CAPTURE_ADMISSION_REASON_CODES = {
   campaignInvalid: "campaign_invalid",
+  existingCampaignEvidenceInvalid: "existing_campaign_evidence_invalid",
   unsafeDestinationPath: "unsafe_destination_path",
   duplicateEvidenceId: "duplicate_evidence_id",
   fixtureIdCollision: "fixture_id_collision",
   duplicateContent: "duplicate_content",
   destinationPathCollision: "destination_path_collision",
   destinationExists: "destination_exists",
+  admissionLockExists: "admission_lock_exists",
+  admissionLockFailed: "admission_lock_failed",
+  manifestChangedDuringAdmission: "manifest_changed_during_admission",
+  stalePartialArtifact: "stale_partial_artifact",
   invalidRawEncoding: "invalid_raw_encoding",
   manifestWriteFailed: "manifest_write_failed",
   fixtureWriteFailed: "fixture_write_failed",
@@ -32,6 +38,8 @@ export const PHASE9_CAPTURE_ADMISSION_REASON_CODES = {
 export type Phase9CaptureAdmissionReasonCode =
   typeof PHASE9_CAPTURE_ADMISSION_REASON_CODES[keyof typeof PHASE9_CAPTURE_ADMISSION_REASON_CODES]
 
+export type Phase9CapturePathKind = "missing" | "file" | "directory" | "symlink" | "other"
+
 export type Phase9CaptureAdmissionClassification =
   | "calibrated_eligible"
   | "uncalibrated_informational"
@@ -41,6 +49,20 @@ export interface Phase9CaptureAdmissionFileState {
   destinationExists?: boolean
   destinationPathAlreadyUsed?: boolean
   existingContentHashes?: string[]
+  existingContentScanFailed?: boolean
+}
+
+export interface Phase9CaptureAdmissionFileSystem {
+  exists(path: string): boolean
+  lstat(path: string): Phase9CapturePathKind
+  readDirectory(path: string): string[]
+  readFile(path: string): Uint8Array
+  fileIdentity(path: string): string | null
+  removeIfIdentity(path: string, identity: string): boolean
+  remove(path: string): void
+  rename(from: string, to: string): void
+  writeExclusive(path: string, content: Uint8Array): void
+  mkdir(path: string): void
 }
 
 export interface Phase9CaptureAdmissionPreviewOptions {
@@ -49,8 +71,10 @@ export interface Phase9CaptureAdmissionPreviewOptions {
   rawContent: string
   workspaceRoot: string
   fixtureDirectory: string
+  manifestPath?: string
   existingInputs?: ProspectiveFixtureInput[]
   fileState?: Phase9CaptureAdmissionFileState
+  fileSystem?: Phase9CaptureAdmissionFileSystem
   captureMethod?: "extension_board_export" | "cli_board_export"
   additionalReasonCodes?: string[]
 }
@@ -89,15 +113,6 @@ export interface Phase9CaptureAdmissionPreview {
   evaluatorReport: ProspectiveRunShadowReport
 }
 
-export interface Phase9CaptureAdmissionFileSystem {
-  exists(path: string): boolean
-  mkdir(path: string): void
-  readFile(path: string): Uint8Array
-  remove(path: string): void
-  rename(from: string, to: string): void
-  writeExclusive(path: string, content: Uint8Array): void
-}
-
 export interface Phase9CaptureAdmissionOptions extends Phase9CaptureAdmissionPreviewOptions {
   manifestPath: string
   fileSystem: Phase9CaptureAdmissionFileSystem
@@ -119,6 +134,21 @@ const clone = <Value>(value: Value): Value =>
 const sha256Bytes = (bytes: Uint8Array): string =>
   createHash("sha256").update(bytes).digest("hex")
 
+const bytesEqual = (left: Uint8Array, right: Uint8Array): boolean =>
+  left.length === right.length && left.every((value, index) => value === right[index])
+
+const decodeUtf8 = (bytes: Uint8Array): string =>
+  new TextDecoder("utf-8", { fatal: true }).decode(bytes)
+
+const rawContentMatchesBytes = (rawContent: string, rawBytes: Uint8Array): boolean => {
+  try {
+    const decoded = decodeUtf8(rawBytes)
+    return decoded === rawContent && bytesEqual(Buffer.from(rawContent, "utf8"), rawBytes)
+  } catch {
+    return false
+  }
+}
+
 const toPosix = (path: string): string => path.split(sep).join("/")
 
 const pathWithin = (root: string, candidate: string): boolean => {
@@ -129,6 +159,25 @@ const pathWithin = (root: string, candidate: string): boolean => {
     || (!candidateRelative.startsWith(`..${sep}`)
       && candidateRelative !== ".."
       && !isAbsolute(candidateRelative))
+}
+
+const pathHasSymlink = (
+  fileSystem: Phase9CaptureAdmissionFileSystem,
+  path: string,
+  stopRoot: string,
+): boolean => {
+  const rootResolved = resolve(stopRoot)
+  let current = resolve(path)
+  if (!pathWithin(rootResolved, current)) return true
+  while (pathWithin(rootResolved, current)) {
+    const kind = fileSystem.lstat(current)
+    if (kind === "symlink") return true
+    if (current === rootResolved) return false
+    const parent = dirname(current)
+    if (parent === current) return false
+    current = parent
+  }
+  return true
 }
 
 const safeRelativePath = (path: string): boolean => {
@@ -158,6 +207,139 @@ const candidateDestination = (
   const destination = resolve(fixtureDirectory, `phase9-${contentSha256}.json`)
   if (!pathWithin(fixtureDirectory, destination)) return null
   return pathFromWorkspace(workspaceRoot, destination)
+}
+
+const safeDeclaredPath = (
+  workspaceRoot: string,
+  fixtureDirectory: string,
+  fixturePath: unknown,
+): string | null => {
+  if (typeof fixturePath !== "string" || !safeRelativePath(fixturePath)) return null
+  const absolutePath = resolve(workspaceRoot, fixturePath)
+  return pathWithin(fixtureDirectory, absolutePath) ? absolutePath : null
+}
+
+export interface Phase9CaptureLoadedInputs {
+  inputs: ProspectiveFixtureInput[]
+  unsafePaths: string[]
+  missingPaths: string[]
+  unreadablePaths: string[]
+  invalidUtf8Paths: string[]
+}
+
+export const loadedInputHasFailures = (loaded: Phase9CaptureLoadedInputs): boolean =>
+  loaded.unsafePaths.length > 0
+    || loaded.missingPaths.length > 0
+    || loaded.unreadablePaths.length > 0
+    || loaded.invalidUtf8Paths.length > 0
+
+export const loadPhase9CaptureInputs = ({
+  manifest,
+  workspaceRoot,
+  fixtureDirectory,
+  fileSystem,
+}: {
+  manifest: unknown
+  workspaceRoot: string
+  fixtureDirectory: string
+  fileSystem: Phase9CaptureAdmissionFileSystem
+}): Phase9CaptureLoadedInputs => {
+  const loaded: Phase9CaptureLoadedInputs = {
+    inputs: [],
+    unsafePaths: [],
+    missingPaths: [],
+    unreadablePaths: [],
+    invalidUtf8Paths: [],
+  }
+  if (!isRecord(manifest) || !Array.isArray(manifest.evidence)) return loaded
+  const loadedPaths = new Set<string>()
+  const loadPath = (fixturePath: string, absolutePath: string): void => {
+    const kind = fileSystem.lstat(absolutePath)
+    if (kind === "missing") {
+      loaded.missingPaths.push(fixturePath)
+      return
+    }
+    if (kind !== "file") {
+      loaded.unreadablePaths.push(fixturePath)
+      return
+    }
+    let rawBytes: Uint8Array
+    try {
+      rawBytes = fileSystem.readFile(absolutePath)
+    } catch {
+      loaded.unreadablePaths.push(fixturePath)
+      return
+    }
+    let rawContent: string
+    try {
+      rawContent = decodeUtf8(rawBytes)
+    } catch {
+      loaded.invalidUtf8Paths.push(fixturePath)
+      return
+    }
+    loaded.inputs.push({ path: fixturePath, rawContent })
+    loadedPaths.add(fixturePath)
+  }
+  manifest.evidence.forEach(entry => {
+    if (!isRecord(entry)) return
+    const fixturePath = entry.fixturePath
+    const absolutePath = safeDeclaredPath(workspaceRoot, fixtureDirectory, fixturePath)
+    if (!absolutePath || pathHasSymlink(fileSystem, absolutePath, workspaceRoot)) {
+      if (typeof fixturePath === "string") loaded.unsafePaths.push(fixturePath)
+      return
+    }
+    if (typeof fixturePath === "string") loadPath(fixturePath, absolutePath)
+  })
+  if (fileSystem.lstat(fixtureDirectory) === "directory") {
+    let names: string[] = []
+    try { names = fileSystem.readDirectory(fixtureDirectory) } catch {
+      loaded.unreadablePaths.push(fixtureDirectory)
+    }
+    names.filter(name => name.endsWith(".json")).sort((left, right) => left.localeCompare(right)).forEach(name => {
+      const absolutePath = resolve(fixtureDirectory, name)
+      const fixturePath = pathFromWorkspace(workspaceRoot, absolutePath)
+      if (loadedPaths.has(fixturePath)) return
+      if (pathHasSymlink(fileSystem, absolutePath, workspaceRoot)) {
+        loaded.unsafePaths.push(fixturePath)
+        return
+      }
+      loadPath(fixturePath, absolutePath)
+    })
+  }
+  return loaded
+}
+
+export const phase9CaptureFileState = ({
+  workspaceRoot,
+  fixtureDirectory,
+  destinationPath,
+  fileSystem,
+}: {
+  workspaceRoot: string
+  fixtureDirectory: string
+  destinationPath: string | null
+  fileSystem: Phase9CaptureAdmissionFileSystem
+}): Phase9CaptureAdmissionFileState => {
+  const existingContentHashes: string[] = []
+  let existingContentScanFailed = false
+  if (fileSystem.lstat(fixtureDirectory) === "directory") {
+    try {
+      fileSystem.readDirectory(fixtureDirectory).forEach(name => {
+        const path = resolve(fixtureDirectory, name)
+        if (!name.endsWith(".json") || fileSystem.lstat(path) !== "file") return
+        try { existingContentHashes.push(sha256Bytes(fileSystem.readFile(path))) } catch { /* unreadable files cannot be duplicates */ }
+      })
+    } catch {
+      existingContentScanFailed = true
+    }
+  }
+  return {
+    existingContentHashes: existingContentHashes.sort(),
+    existingContentScanFailed,
+    destinationExists: destinationPath
+      ? fileSystem.lstat(resolve(workspaceRoot, destinationPath)) !== "missing"
+      : false,
+  }
 }
 
 const manifestEntryFor = ({
@@ -235,15 +417,42 @@ const localPathReasons = (
   workspaceRoot: string,
   fixtureDirectory: string,
   destinationPath: string | null,
+  manifestPath: string | undefined,
+  fileSystem: Phase9CaptureAdmissionFileSystem | undefined,
 ): Phase9CaptureAdmissionReasonCode[] => {
   const reasons = new Set<Phase9CaptureAdmissionReasonCode>()
   if (!pathWithin(workspaceRoot, fixtureDirectory)
     || (destinationPath && !safeRelativePath(destinationPath))
+    || (manifestPath && !pathWithin(workspaceRoot, manifestPath))
     || manifest.evidence.some(entry => !safeRelativePath(entry.fixturePath)
-      || !pathWithin(fixtureDirectory, resolve(workspaceRoot, entry.fixturePath)))) {
+      || !pathWithin(fixtureDirectory, resolve(workspaceRoot, entry.fixturePath)))
+    || (fileSystem && (pathHasSymlink(fileSystem, fixtureDirectory, workspaceRoot)
+      || (manifestPath && pathHasSymlink(fileSystem, manifestPath, workspaceRoot))
+      || (destinationPath && pathHasSymlink(
+        fileSystem,
+        resolve(workspaceRoot, destinationPath),
+        workspaceRoot,
+      ))
+      || manifest.evidence.some(entry => {
+        const path = safeDeclaredPath(workspaceRoot, fixtureDirectory, entry.fixturePath)
+        return Boolean(path && pathHasSymlink(fileSystem, path, workspaceRoot))
+      })))) {
     reasons.add(PHASE9_CAPTURE_ADMISSION_REASON_CODES.unsafeDestinationPath)
   }
   return Array.from(reasons)
+}
+
+const existingCampaignIntegrityReasons = (
+  report: ProspectiveRunShadowReport,
+): string[] => {
+  const failures = report.evidence.filter(item =>
+    item.disposition === "invalid" || item.disposition === "excluded")
+  if (!failures.length) return []
+  const reasons = new Set<string>([
+    PHASE9_CAPTURE_ADMISSION_REASON_CODES.existingCampaignEvidenceInvalid,
+  ])
+  failures.flatMap(item => item.reasonCodes).forEach(reason => reasons.add(reason))
+  return Array.from(reasons).sort()
 }
 
 const collisionReasons = (
@@ -266,6 +475,9 @@ const collisionReasons = (
   if (manifest.evidence.some(entry => entry.contentSha256 === candidate.contentSha256)
     || fileState.existingContentHashes?.includes(candidate.contentSha256)) {
     reasons.add(PHASE9_CAPTURE_ADMISSION_REASON_CODES.duplicateContent)
+  }
+  if (fileState.existingContentScanFailed) {
+    reasons.add(PHASE9_CAPTURE_ADMISSION_REASON_CODES.existingCampaignEvidenceInvalid)
   }
   if (fileState.destinationExists) reasons.add(PHASE9_CAPTURE_ADMISSION_REASON_CODES.destinationExists)
   return Array.from(reasons)
@@ -325,11 +537,17 @@ export const previewPhase9CaptureAdmission = (
     contentSha256,
     captureMethod: options.captureMethod || "extension_board_export",
   })
+  const rawBindingReasons = rawContentMatchesBytes(options.rawContent, options.rawBytes)
+    ? []
+    : [PHASE9_CAPTURE_ADMISSION_REASON_CODES.rawFixtureChanged]
+  const currentIntegrityReasons = existingCampaignIntegrityReasons(fallbackReport)
   const localReasons = localPathReasons(
     manifest,
     options.workspaceRoot,
     options.fixtureDirectory,
     destinationPath,
+    options.manifestPath,
+    options.fileSystem,
   )
   const collisions = collisionReasons(manifest, manifestEntry, options.fileState || {})
   const evaluatorReport = manifestEntry
@@ -342,6 +560,8 @@ export const previewPhase9CaptureAdmission = (
   const evaluatorDisposition = evaluatorDecision?.disposition || null
   const evaluatorReasons = evaluatorDecision?.reasonCodes || []
   const reasons = Array.from(new Set([
+    ...currentIntegrityReasons,
+    ...rawBindingReasons,
     ...localReasons,
     ...collisions,
     ...evaluatorReasons,
@@ -378,6 +598,50 @@ const serializeManifest = (manifest: ProspectiveCampaignManifest): Uint8Array =>
       left.id.localeCompare(right.id) || left.fixturePath.localeCompare(right.fixturePath)),
   }, null, 2)}\n`, "utf8")
 
+const PHASE9_CAPTURE_LOCK_CONTENT = Buffer.from(
+  "phase9-capture-admission-lock-v1\n",
+  "utf8",
+)
+
+const lockPathFor = (manifestPath: string): string => `${manifestPath}.phase9-lock`
+
+const partialPathFor = (path: string): string => `${path}.phase9-partial`
+
+const parseManifestBytes = (bytes: Uint8Array): unknown =>
+  JSON.parse(decodeUtf8(bytes)) as unknown
+
+const failurePreview = (
+  options: Phase9CaptureAdmissionPreviewOptions,
+  reason: string,
+): Phase9CaptureAdmissionPreview => {
+  const preview = previewPhase9CaptureAdmission(options)
+  return {
+    ...preview,
+    classification: "invalid",
+    reasonCodes: Array.from(new Set([...preview.reasonCodes, reason])).sort(),
+  }
+}
+
+const removeOwned = (
+  fileSystem: Phase9CaptureAdmissionFileSystem,
+  path: string,
+  identity: string | null,
+): void => {
+  if (identity) fileSystem.removeIfIdentity(path, identity)
+}
+
+const manifestSnapshotStillMatches = (
+  options: Phase9CaptureAdmissionOptions,
+  lockedManifestBytes: Uint8Array,
+): boolean => {
+  if (pathHasSymlink(options.fileSystem, options.manifestPath, options.workspaceRoot)) return false
+  try {
+    return bytesEqual(options.fileSystem.readFile(options.manifestPath), lockedManifestBytes)
+  } catch {
+    return false
+  }
+}
+
 const previewWithFileState = (
   options: Phase9CaptureAdmissionOptions,
 ): Phase9CaptureAdmissionPreview => {
@@ -404,88 +668,242 @@ const previewWithFileState = (
 export const admitPhase9Capture = (
   options: Phase9CaptureAdmissionOptions,
 ): Phase9CaptureAdmissionResult => {
-  const preview = previewWithFileState(options)
-  if (preview.classification !== "calibrated_eligible") {
-    const reason = preview.classification === "uncalibrated_informational"
-      ? "Fixture is structurally valid but prospectively uncalibrated; informational admission is not enabled."
-      : "Fixture failed the canonical Phase 9 admission validation."
-    return { admitted: false, preview, failureReason: reason }
-  }
-  if (!preview.manifestEntry || !preview.destinationPath) {
-    return { admitted: false, preview, failureReason: "Fixture destination could not be safely derived." }
-  }
-
-  const manifestValidation = validateProspectiveCampaignManifest(options.manifest)
-  if (!manifestValidation.manifest) {
-    return { admitted: false, preview, failureReason: "Campaign manifest is invalid." }
-  }
-  const destinationAbsolutePath = resolve(options.workspaceRoot, preview.destinationPath)
-  const manifestWithCandidate = clone(manifestValidation.manifest)
-  manifestWithCandidate.evidence = [
-    ...manifestWithCandidate.evidence,
-    preview.manifestEntry,
-  ]
-  const fixturePartialPath = `${destinationAbsolutePath}.phase9-partial`
-  const manifestPartialPath = `${options.manifestPath}.phase9-partial`
-  if (options.fileSystem.exists(fixturePartialPath)
-    || options.fileSystem.exists(manifestPartialPath)) {
-    return { admitted: false, preview, failureReason: "A stale partial admission artifact exists; recover it before retrying." }
-  }
-
-  try {
-    options.fileSystem.mkdir(options.fixtureDirectory)
-  } catch (error) {
+  const lockPath = lockPathFor(options.manifestPath)
+  if (pathHasSymlink(options.fileSystem, options.manifestPath, options.workspaceRoot)
+    || pathHasSymlink(options.fileSystem, lockPath, options.workspaceRoot)
+    || pathHasSymlink(options.fileSystem, options.fixtureDirectory, options.workspaceRoot)) {
     return {
       admitted: false,
-      preview,
-      failureReason: `${PHASE9_CAPTURE_ADMISSION_REASON_CODES.fixtureWriteFailed}: ${error instanceof Error ? error.message : String(error)}`,
+      preview: failurePreview(options, PHASE9_CAPTURE_ADMISSION_REASON_CODES.unsafeDestinationPath),
+      failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.unsafeDestinationPath,
     }
   }
-  try {
-    options.fileSystem.writeExclusive(fixturePartialPath, options.rawBytes)
-    options.fileSystem.rename(fixturePartialPath, destinationAbsolutePath)
-    const storedBytes = options.fileSystem.readFile(destinationAbsolutePath)
-    if (sha256Bytes(storedBytes) !== preview.contentSha256
-      || storedBytes.length !== options.rawBytes.length
-      || !storedBytes.every((value, index) => value === options.rawBytes[index])) {
-      options.fileSystem.remove(destinationAbsolutePath)
-      return { admitted: false, preview, failureReason: "Admitted fixture bytes did not round-trip exactly." }
-    }
-  } catch (error) {
-    try { options.fileSystem.remove(fixturePartialPath) } catch { /* best effort cleanup */ }
+  if (options.fileSystem.lstat(lockPath) !== "missing") {
     return {
       admitted: false,
-      preview,
-      failureReason: `${PHASE9_CAPTURE_ADMISSION_REASON_CODES.fixtureWriteFailed}: ${error instanceof Error ? error.message : String(error)}`,
+      preview: failurePreview(options, PHASE9_CAPTURE_ADMISSION_REASON_CODES.admissionLockExists),
+      failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.admissionLockExists,
     }
   }
 
+  let lockIdentity: string | null = null
   try {
-    options.fileSystem.writeExclusive(manifestPartialPath, serializeManifest(manifestWithCandidate))
-    options.fileSystem.rename(manifestPartialPath, options.manifestPath)
+    options.fileSystem.writeExclusive(lockPath, PHASE9_CAPTURE_LOCK_CONTENT)
+    lockIdentity = options.fileSystem.fileIdentity(lockPath)
+    if (!lockIdentity) {
+      return {
+        admitted: false,
+        preview: failurePreview(options, PHASE9_CAPTURE_ADMISSION_REASON_CODES.admissionLockFailed),
+        failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.admissionLockFailed,
+      }
+    }
   } catch (error) {
-    try { options.fileSystem.remove(manifestPartialPath) } catch { /* best effort cleanup */ }
-    try { options.fileSystem.remove(destinationAbsolutePath) } catch { /* best effort cleanup */ }
+    const lockKind = options.fileSystem.lstat(lockPath)
+    const reason = lockKind === "symlink"
+      ? PHASE9_CAPTURE_ADMISSION_REASON_CODES.unsafeDestinationPath
+      : lockKind !== "missing"
+        ? PHASE9_CAPTURE_ADMISSION_REASON_CODES.admissionLockExists
+        : PHASE9_CAPTURE_ADMISSION_REASON_CODES.admissionLockFailed
     return {
       admitted: false,
-      preview,
-      failureReason: `${PHASE9_CAPTURE_ADMISSION_REASON_CODES.manifestWriteFailed}: ${error instanceof Error ? error.message : String(error)}`,
+      preview: failurePreview(options, reason),
+      failureReason: `${reason}: ${error instanceof Error ? error.message : String(error)}`,
     }
   }
 
-  const postReport = runProspectiveRunShadowCampaign(manifestWithCandidate, [
-    ...(options.existingInputs || []),
-    { path: preview.destinationPath, rawContent: options.rawContent },
-  ])
-  const postAdmissionPreview: Phase9CaptureAdmissionPreview = {
-    ...preview,
-    classification: "calibrated_eligible",
-    reasonCodes: [],
-    evaluatorDisposition: "eligible",
-    campaign: campaignSummary(postReport),
-    evaluatorReport: postReport,
+  let fixtureIdentity: string | null = null
+  let manifestPartialIdentity: string | null = null
+  const destinationPath = candidateDestination(
+    options.workspaceRoot,
+    options.fixtureDirectory,
+    sha256Bytes(options.rawBytes),
+  )
+  const destinationAbsolutePath = destinationPath
+    ? resolve(options.workspaceRoot, destinationPath)
+    : null
+  const fixturePartialPath = destinationAbsolutePath
+    ? partialPathFor(destinationAbsolutePath)
+    : null
+  const manifestPartialPath = partialPathFor(options.manifestPath)
+  try {
+    let lockedManifestBytes: Uint8Array
+    let lockedManifest: unknown
+    try {
+      lockedManifestBytes = options.fileSystem.readFile(options.manifestPath)
+      lockedManifest = parseManifestBytes(lockedManifestBytes)
+    } catch {
+      const preview = failurePreview(options, PHASE9_CAPTURE_ADMISSION_REASON_CODES.campaignInvalid)
+      return { admitted: false, preview, failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.campaignInvalid }
+    }
+    const loaded = loadPhase9CaptureInputs({
+      manifest: lockedManifest,
+      workspaceRoot: options.workspaceRoot,
+      fixtureDirectory: options.fixtureDirectory,
+      fileSystem: options.fileSystem,
+    })
+    const lockedOptions: Phase9CaptureAdmissionOptions = {
+      ...options,
+      manifest: lockedManifest,
+      manifestPath: options.manifestPath,
+      existingInputs: loaded.inputs,
+      additionalReasonCodes: [
+        ...(options.additionalReasonCodes || []),
+        ...(loadedInputHasFailures(loaded)
+          ? [PHASE9_CAPTURE_ADMISSION_REASON_CODES.existingCampaignEvidenceInvalid]
+          : []),
+      ],
+      fileState: phase9CaptureFileState({
+        workspaceRoot: options.workspaceRoot,
+        fixtureDirectory: options.fixtureDirectory,
+        destinationPath,
+        fileSystem: options.fileSystem,
+      }),
+    }
+    const preview = previewWithFileState(lockedOptions)
+    if (preview.classification !== "calibrated_eligible") {
+      const reason = preview.classification === "uncalibrated_informational"
+        ? "Fixture is structurally valid but prospectively uncalibrated; informational admission is not enabled."
+        : "Fixture failed the canonical Phase 9 admission validation."
+      return { admitted: false, preview, failureReason: reason }
+    }
+    if (!preview.manifestEntry || !preview.destinationPath || !destinationAbsolutePath) {
+      return { admitted: false, preview, failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.unsafeDestinationPath }
+    }
+    if (pathHasSymlink(options.fileSystem, fixturePartialPath!, options.workspaceRoot)
+      || pathHasSymlink(options.fileSystem, manifestPartialPath, options.workspaceRoot)) {
+      return {
+        admitted: false,
+        preview: { ...preview, classification: "invalid", reasonCodes: [PHASE9_CAPTURE_ADMISSION_REASON_CODES.unsafeDestinationPath] },
+        failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.unsafeDestinationPath,
+      }
+    }
+    if (options.fileSystem.lstat(fixturePartialPath!) !== "missing"
+      || options.fileSystem.lstat(manifestPartialPath) !== "missing") {
+      return {
+        admitted: false,
+        preview: { ...preview, classification: "invalid", reasonCodes: [PHASE9_CAPTURE_ADMISSION_REASON_CODES.stalePartialArtifact] },
+        failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.stalePartialArtifact,
+      }
+    }
+    if (!rawContentMatchesBytes(options.rawContent, options.rawBytes)
+      || createProspectiveFixtureContentSha256(options.rawContent) !== preview.contentSha256) {
+      return {
+        admitted: false,
+        preview: { ...preview, classification: "invalid", reasonCodes: [PHASE9_CAPTURE_ADMISSION_REASON_CODES.rawFixtureChanged] },
+        failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.rawFixtureChanged,
+      }
+    }
+    if (!manifestSnapshotStillMatches(options, lockedManifestBytes)) {
+      return {
+        admitted: false,
+        preview: { ...preview, classification: "invalid", reasonCodes: [PHASE9_CAPTURE_ADMISSION_REASON_CODES.manifestChangedDuringAdmission] },
+        failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.manifestChangedDuringAdmission,
+      }
+    }
+
+    const manifestValidation = validateProspectiveCampaignManifest(lockedManifest)
+    if (!manifestValidation.manifest) {
+      return { admitted: false, preview, failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.campaignInvalid }
+    }
+    const manifestWithCandidate = clone(manifestValidation.manifest)
+    manifestWithCandidate.evidence = [...manifestWithCandidate.evidence, preview.manifestEntry]
+    const serializedManifest = serializeManifest(manifestWithCandidate)
+
+    try {
+      options.fileSystem.mkdir(options.fixtureDirectory)
+      if (pathHasSymlink(options.fileSystem, options.fixtureDirectory, options.workspaceRoot)
+        || pathHasSymlink(options.fileSystem, destinationAbsolutePath, options.workspaceRoot)
+        || options.fileSystem.lstat(destinationAbsolutePath) !== "missing") {
+        return {
+          admitted: false,
+          preview: { ...preview, classification: "invalid", reasonCodes: [PHASE9_CAPTURE_ADMISSION_REASON_CODES.destinationExists] },
+          failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.destinationExists,
+        }
+      }
+      options.fileSystem.writeExclusive(destinationAbsolutePath, options.rawBytes)
+      fixtureIdentity = options.fileSystem.fileIdentity(destinationAbsolutePath)
+      if (!fixtureIdentity) throw new Error("created fixture identity is unavailable")
+      const storedBytes = options.fileSystem.readFile(destinationAbsolutePath)
+      if (!bytesEqual(storedBytes, options.rawBytes)
+        || sha256Bytes(storedBytes) !== preview.contentSha256
+        || createProspectiveFixtureContentSha256(options.rawContent) !== preview.contentSha256) {
+        removeOwned(options.fileSystem, destinationAbsolutePath, fixtureIdentity)
+        fixtureIdentity = null
+        return {
+          admitted: false,
+          preview: { ...preview, classification: "invalid", reasonCodes: [PHASE9_CAPTURE_ADMISSION_REASON_CODES.rawFixtureChanged] },
+          failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.rawFixtureChanged,
+        }
+      }
+    } catch (error) {
+      return {
+        admitted: false,
+        preview,
+        failureReason: `${PHASE9_CAPTURE_ADMISSION_REASON_CODES.fixtureWriteFailed}: ${error instanceof Error ? error.message : String(error)}`,
+      }
+    }
+
+    if (!manifestSnapshotStillMatches(options, lockedManifestBytes)) {
+      removeOwned(options.fileSystem, destinationAbsolutePath, fixtureIdentity)
+      fixtureIdentity = null
+      return {
+        admitted: false,
+        preview: { ...preview, classification: "invalid", reasonCodes: [PHASE9_CAPTURE_ADMISSION_REASON_CODES.manifestChangedDuringAdmission] },
+        failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.manifestChangedDuringAdmission,
+      }
+    }
+    try {
+      options.fileSystem.writeExclusive(manifestPartialPath, serializedManifest)
+      manifestPartialIdentity = options.fileSystem.fileIdentity(manifestPartialPath)
+      if (!manifestPartialIdentity) throw new Error("created manifest partial identity is unavailable")
+      if (!manifestSnapshotStillMatches(options, lockedManifestBytes)) {
+        removeOwned(options.fileSystem, manifestPartialPath, manifestPartialIdentity)
+        manifestPartialIdentity = null
+        removeOwned(options.fileSystem, destinationAbsolutePath, fixtureIdentity)
+        fixtureIdentity = null
+        return {
+          admitted: false,
+          preview: { ...preview, classification: "invalid", reasonCodes: [PHASE9_CAPTURE_ADMISSION_REASON_CODES.manifestChangedDuringAdmission] },
+          failureReason: PHASE9_CAPTURE_ADMISSION_REASON_CODES.manifestChangedDuringAdmission,
+        }
+      }
+      if (pathHasSymlink(options.fileSystem, options.manifestPath, options.workspaceRoot)) {
+        throw new Error(PHASE9_CAPTURE_ADMISSION_REASON_CODES.unsafeDestinationPath)
+      }
+      options.fileSystem.rename(manifestPartialPath, options.manifestPath)
+      manifestPartialIdentity = null
+    } catch (error) {
+      removeOwned(options.fileSystem, manifestPartialPath, manifestPartialIdentity)
+      manifestPartialIdentity = null
+      removeOwned(options.fileSystem, destinationAbsolutePath, fixtureIdentity)
+      fixtureIdentity = null
+      const message = error instanceof Error ? error.message : String(error)
+      const reason = message === PHASE9_CAPTURE_ADMISSION_REASON_CODES.unsafeDestinationPath
+        ? PHASE9_CAPTURE_ADMISSION_REASON_CODES.unsafeDestinationPath
+        : PHASE9_CAPTURE_ADMISSION_REASON_CODES.manifestWriteFailed
+      return {
+        admitted: false,
+        preview,
+        failureReason: `${reason}: ${message}`,
+      }
+    }
+
+    const postReport = runProspectiveRunShadowCampaign(manifestWithCandidate, [
+      ...loaded.inputs,
+      { path: preview.destinationPath, rawContent: options.rawContent },
+    ])
+    const postAdmissionPreview: Phase9CaptureAdmissionPreview = {
+      ...preview,
+      classification: "calibrated_eligible",
+      reasonCodes: [],
+      evaluatorDisposition: "eligible",
+      campaign: campaignSummary(postReport),
+      evaluatorReport: postReport,
+    }
+    return { admitted: true, preview, postAdmissionPreview }
+  } finally {
+    removeOwned(options.fileSystem, lockPath, lockIdentity)
   }
-  return { admitted: true, preview, postAdmissionPreview }
 }
 
 export const createRawFixtureSha256 = sha256Bytes
@@ -521,4 +939,5 @@ export const createProspectiveFixtureInput = (
 })
 
 export const verifyRawContentHash = (rawContent: string, rawBytes: Uint8Array): boolean =>
-  createProspectiveFixtureContentSha256(rawContent) === sha256Bytes(rawBytes)
+  rawContentMatchesBytes(rawContent, rawBytes)
+    && createProspectiveFixtureContentSha256(rawContent) === sha256Bytes(rawBytes)

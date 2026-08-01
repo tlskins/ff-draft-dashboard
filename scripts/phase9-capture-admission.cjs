@@ -1,15 +1,14 @@
 const {
-  existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
   renameSync,
-  statSync,
   unlinkSync,
   writeFileSync,
 } = require("node:fs")
 const { createHash } = require("node:crypto")
-const { isAbsolute, relative, resolve, dirname, sep } = require("node:path")
+const { relative, resolve, dirname, sep } = require("node:path")
 const Module = require("node:module")
 const ts = require("typescript")
 
@@ -32,7 +31,10 @@ require.extensions[".ts"] = (module, filename) => {
 
 const {
   admitPhase9Capture,
+  loadPhase9CaptureInputs,
+  loadedInputHasFailures,
   PHASE9_CAPTURE_ADMISSION_REASON_CODES,
+  phase9CaptureFileState,
   previewPhase9CaptureAdmission,
 } = require(resolve(__dirname, "../behavior/draft-advisor/phase9CaptureAdmission.ts"))
 
@@ -58,12 +60,6 @@ const parseArgs = argv => {
 
 const sha256 = bytes => createHash("sha256").update(bytes).digest("hex")
 
-const isWithin = (root, candidate) => {
-  const relativePath = relative(resolve(root), resolve(candidate))
-  return relativePath === ""
-    || (!relativePath.startsWith(`..${sep}`) && relativePath !== ".." && !isAbsolute(relativePath))
-}
-
 const decodeUtf8 = bytes => new TextDecoder("utf-8", { fatal: true }).decode(bytes)
 
 const readManifest = manifestPath => {
@@ -74,41 +70,35 @@ const readManifest = manifestPath => {
   }
 }
 
-const safeDeclaredPath = (workspaceRoot, fixtureDirectory, fixturePath) => {
-  if (typeof fixturePath !== "string" || !fixturePath || isAbsolute(fixturePath)) return null
-  const normalized = fixturePath.replaceAll("\\", "/")
-  if (normalized.split("/").some(part => !part || part === "." || part === "..")) return null
-  const absolutePath = resolve(workspaceRoot, fixturePath)
-  return isWithin(fixtureDirectory, absolutePath) ? absolutePath : null
-}
-
-const loadExistingInputs = (manifest, workspaceRoot, fixtureDirectory) => {
-  if (!manifest || !Array.isArray(manifest.evidence)) return []
-  return manifest.evidence.flatMap(declaration => {
-    const absolutePath = safeDeclaredPath(workspaceRoot, fixtureDirectory, declaration.fixturePath)
-    if (!absolutePath || !existsSync(absolutePath)) return []
-    try {
-      return [{ path: declaration.fixturePath, rawContent: decodeUtf8(readFileSync(absolutePath)) }]
-    } catch {
-      return []
-    }
-  })
-}
-
-const loadExistingContentHashes = (fixtureDirectory) => {
-  if (!existsSync(fixtureDirectory)) return []
-  return readdirSync(fixtureDirectory).flatMap(name => {
-    const path = resolve(fixtureDirectory, name)
-    if (!name.endsWith(".json") || !statSync(path).isFile()) return []
-    try { return [sha256(readFileSync(path))] } catch { return [] }
-  }).sort()
-}
-
 const nodeFileSystem = {
-  exists: path => existsSync(path),
+  exists: path => lstatSync(path, { throwIfNoEntry: false }) !== undefined,
+  lstat: path => {
+    try {
+      const stat = lstatSync(path)
+      if (stat.isSymbolicLink()) return "symlink"
+      if (stat.isFile()) return "file"
+      if (stat.isDirectory()) return "directory"
+      return "other"
+    } catch { return "missing" }
+  },
+  readDirectory: path => readdirSync(path),
   mkdir: path => mkdirSync(path, { recursive: true }),
   readFile: path => readFileSync(path),
-  remove: path => { if (existsSync(path)) unlinkSync(path) },
+  fileIdentity: path => {
+    try {
+      const stat = lstatSync(path)
+      return stat.isSymbolicLink() ? null : `${stat.dev}:${stat.ino}`
+    } catch { return null }
+  },
+  removeIfIdentity: (path, identity) => {
+    try {
+      const stat = lstatSync(path)
+      if (stat.isSymbolicLink() || `${stat.dev}:${stat.ino}` !== identity) return false
+      unlinkSync(path)
+      return true
+    } catch { return false }
+  },
+  remove: path => { if (lstatSync(path, { throwIfNoEntry: false })) unlinkSync(path) },
   rename: (from, to) => renameSync(from, to),
   writeExclusive: (path, content) => writeFileSync(path, content, { flag: "wx" }),
 }
@@ -144,7 +134,22 @@ const main = () => {
   } catch (error) {
     additionalReasonCodes = [PHASE9_CAPTURE_ADMISSION_REASON_CODES.invalidRawEncoding]
   }
-  const existingInputs = loadExistingInputs(manifest, workspaceRoot, fixtureDirectory)
+  const fileSystem = nodeFileSystem
+  const loadedInputs = loadPhase9CaptureInputs({
+    manifest,
+    workspaceRoot,
+    fixtureDirectory,
+    fileSystem,
+  })
+  const existingInputs = loadedInputs.inputs
+  if (loadedInputHasFailures(loadedInputs)) {
+    additionalReasonCodes.push(PHASE9_CAPTURE_ADMISSION_REASON_CODES.existingCampaignEvidenceInvalid)
+  }
+  const contentSha256 = sha256(rawBytes)
+  const destinationPath = relative(
+    workspaceRoot,
+    resolve(fixtureDirectory, `phase9-${contentSha256}.json`),
+  ).split(sep).join("/")
   const options = {
     manifest,
     manifestPath,
@@ -153,15 +158,14 @@ const main = () => {
     workspaceRoot,
     fixtureDirectory,
     existingInputs,
-    fileState: {
-      existingContentHashes: loadExistingContentHashes(fixtureDirectory),
-      destinationExists: existsSync(resolve(
-        fixtureDirectory,
-        `phase9-${sha256(rawBytes)}.json`,
-      )),
-    },
+    fileState: phase9CaptureFileState({
+      workspaceRoot,
+      fixtureDirectory,
+      destinationPath,
+      fileSystem,
+    }),
     additionalReasonCodes,
-    fileSystem: nodeFileSystem,
+    fileSystem,
   }
   if (args.mode === "admit") {
     const result = admitPhase9Capture(options)
