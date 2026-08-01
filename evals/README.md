@@ -154,6 +154,22 @@ is development-only nested validation, not a
 promotion search; even a passing tuned gate still requires prospective shadow
 validation on more varied league formats.
 
+Run probabilities have a separate nested selector and never replace the
+per-pick position distribution shown by the advisor. Its fixed candidates are
+the exact frozen-v1 run calculation, the learned-base per-slot probabilities
+aggregated into the same ≥3-pick event, the bounded-residual aggregation, and
+two fixed 50/50 frozen-v1/challenger run-probability blends. Blends reuse the
+already-scored run outputs: they add no fit and cannot alter a per-pick
+position forecast.
+Inner and outer scoring use the same canonical windows. Selection prioritizes
+run Brier and binary log loss while guarding the fixed 0.50 precision, recall,
+and F1 plus supported per-position run behavior; positions without observed
+run positives report null recall and do not silently pass a recall guard. Any
+failure returns exact v1. Run aggregation always covers every opponent forecast
+slot in the fixed horizon (including eventual K/DST selections), while run
+labels count only QB/RB/WR/TE picks. This run-only result remains offline development
+evidence and cannot promote the live forecast or recorder.
+
 ### Immutable learned-base shadow capture
 
 ```sh

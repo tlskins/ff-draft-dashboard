@@ -52,6 +52,7 @@ describe("offline canonical static-window backtest", () => {
           residualGate: report.residualGate,
           nestedTunedResidualGate: report.nestedTunedResidualGate,
           nestedTuning: report.nestedTuning,
+          nestedRunTuning: report.nestedRunTuning,
         }, null, 2))
       } else {
         const compact = (group: typeof report.primary) => ({
@@ -88,6 +89,7 @@ describe("offline canonical static-window backtest", () => {
           residualGate: report.residualGate,
           nestedTunedResidualGate: report.nestedTunedResidualGate,
           nestedTuning: report.nestedTuning,
+          nestedRunTuning: report.nestedRunTuning,
           promotion: report.promotion,
         }, null, 2))
       }
@@ -118,6 +120,21 @@ describe("offline canonical static-window backtest", () => {
         expect(inner.scoredPickCount).toBe(canonical.labelCount)
       })
     })
+    report.nestedRunTuning.selections.forEach(selection => {
+      expect(selection.outerTrainingFixtureIds).not.toContain(selection.outerHoldoutFixtureId)
+      selection.innerFolds.forEach(inner => {
+        expect(inner.validationFixtureId).not.toBe(selection.outerHoldoutFixtureId)
+        expect(inner.trainingFixtureIds).not.toContain(selection.outerHoldoutFixtureId)
+        expect(inner.trainingFixtureIds).not.toContain(inner.validationFixtureId)
+        const canonical = report.byFixture.find(fixture =>
+          fixture.fixtureId === inner.validationFixtureId)!
+        expect(inner.canonicalWindowCount).toBe(canonical.canonicalWindows.length)
+        expect(inner.forecastSlotCount).toBe(canonical.forecastSlotCount)
+        expect(inner.runForecastSlotCount).toBe(inner.forecastSlotCount)
+        expect(inner.scoredRunEvents).toBe(inner.canonicalWindowCount * 4)
+      })
+    })
+    expect(report.byFixture.some(fixture => fixture.forecastSlotCount > fixture.labelCount)).toBe(true)
     expect(report.promotion.promoted).toBe(false)
     const withMalformed = runStaticWindowBacktest([
       ...fixtures,
