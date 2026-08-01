@@ -96,6 +96,22 @@ describe("offline canonical static-window backtest", () => {
     }
     expect(report.available).toBe(true)
     expect(report.byFixture).toHaveLength(5)
+    expect(report.coverage.forecastSlotCount).toBe(730)
+    expect(report.coverage.labeledPickCount).toBe(650)
+    expect(report.nestedRunTuning.selectionCounts).toEqual(expect.arrayContaining([
+      { candidateId: "bounded_residual_run", count: 5 },
+    ]))
+    expect(report.nestedRunTuning.gate.eligibleForShadow).toBe(true)
+    expect(report.nestedRunTuning.primary.runMetrics.brierScore).toBeCloseTo(0.14201441971874956, 12)
+    expect(report.nestedRunTuning.primary.runMetrics.evaluatedEvents).toBe(288)
+    const nestedRunAtHalf = report.nestedRunTuning.primary.runMetrics.thresholds
+      .find(metric => metric.threshold === 0.5)!
+    expect(nestedRunAtHalf).toEqual(expect.objectContaining({
+      truePositives: 90, falsePositives: 44, falseNegatives: 11,
+    }))
+    expect(nestedRunAtHalf.precision).toBeCloseTo(0.6716417910447762, 12)
+    expect(nestedRunAtHalf.recall).toBeCloseTo(0.8910891089108911, 12)
+    expect(nestedRunAtHalf.f1).toBeCloseTo(0.7659574468085107, 12)
     expect(report.primary.learnedBaseLodo.pickMetrics.evaluatedPicks)
       .toBe(report.primary.frozenV1.pickMetrics.evaluatedPicks)
     expect(report.primary.learnedResidualLodo.pickMetrics.evaluatedPicks)

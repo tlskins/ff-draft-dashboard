@@ -16,9 +16,23 @@ import {
 import {
   createOpponentForecast,
   opponentPlayerProbabilities,
-  probabilityOfAtLeast,
 } from "./opponentModel"
 import { leagueFormatFor } from "./replayMetrics"
+import {
+  NESTED_RUN_CANDIDATES,
+  blendRunProbabilities,
+  evaluateNestedRunGate,
+  frozenRunGroupsByPosition,
+  nestedRunGroup,
+  nestedRunGroupsBy,
+  offlinePromotionReason,
+  runAtHalf,
+  runProbabilityFromSlotProbabilities,
+  scoreNestedRunCandidate,
+  scoreNestedRunEvents,
+  selectNestedRunCandidate,
+  summarizeRunEvents,
+} from "./staticWindowRunTuning"
 import type {
   EmpiricalBalancedResidualModel,
   EmpiricalBalancedResidualFitConfig,
@@ -27,41 +41,43 @@ import type {
 } from "./opponentEmpiricalV2"
 import type { RecordedCompletedDraftReplay } from "./completedDraftReplay"
 import type { DraftAdvisorContext, ForecastPlayerProbability, PositionProbability } from "./types"
+import type {
+  NestedRunCandidate,
+  NestedRunCandidateScore,
+  NestedRunSelection,
+  RunEvaluationSample,
+  RunEvent,
+  RunPosition,
+  StaticWindowNestedRunGate,
+  StaticWindowRunMetrics,
+  StaticWindowRunOnlyGroup,
+} from "./staticWindowRunTuning"
 
-type ForecastPosition = typeof EMPIRICAL_OPPONENT_POSITIONS[number]
+export {
+  NESTED_RUN_CANDIDATES,
+  STATIC_WINDOW_RUN_THRESHOLDS,
+  blendRunProbabilities,
+  evaluateNestedRunGate,
+  offlinePromotionReason,
+  runAtHalf,
+  runProbabilityFromSlotProbabilities,
+  scoreNestedRunCandidate,
+  selectNestedRunCandidate,
+} from "./staticWindowRunTuning"
+export type {
+  NestedRunCandidateScore,
+  NestedRunSelection,
+  StaticWindowNestedRunGate,
+  StaticWindowRunMetrics,
+  StaticWindowRunOnlyGroup,
+} from "./staticWindowRunTuning"
+
+type ForecastPosition = RunPosition
 type ModelName = "frozenV1" | "learnedBaseLodo" | "learnedResidualLodo" | "nestedTunedResidualLodo" | "fullDataArtifactDescriptive"
 
 const POSITIONS = EMPIRICAL_OPPONENT_POSITIONS
 const EPSILON = 1e-12
 
-/**
- * The run event is deliberately independent from pick classification: it is
- * the chance of at least `minimumPickCount` picks of one position across the
- * already-fixed opponent-slot horizon.  Bound inputs defensively so every
- * offline candidate retains a valid probability even if a future model emits
- * a numerically imperfect value.
- */
-export const runProbabilityFromSlotProbabilities = (
-  probabilities: number[],
-  minimumPickCount = 3,
-): number => {
-  if (probabilities.length < minimumPickCount) return 0
-  const bounded = probabilities.map(probability => Number.isFinite(probability)
-    ? Math.min(1, Math.max(0, probability))
-    : 0)
-  return Math.min(1, Math.max(0, probabilityOfAtLeast(bounded, minimumPickCount)))
-}
-
-/** A run-output blend only; it cannot alter per-pick position probabilities. */
-export const blendRunProbabilities = (frozenV1: number, challenger: number): number => {
-  const bounded = (probability: number) => Number.isFinite(probability)
-    ? Math.min(1, Math.max(0, probability))
-    : 0
-  return (bounded(frozenV1) + bounded(challenger)) / 2
-}
-
-/** Fixed before scoring; these are descriptive operating points, not tuning. */
-export const STATIC_WINDOW_RUN_THRESHOLDS = [0.25, 0.5, 0.75] as const
 export const STATIC_WINDOW_CALIBRATION_EDGES = [0, 0.25, 0.5, 0.75, 1] as const
 
 /**
@@ -78,17 +94,7 @@ export const NESTED_RESIDUAL_CANDIDATES = [
     config: { correctionStrength: 1, classBalanceExponent: 1 } },
 ] as const
 
-/** Run-only candidates; these never replace a displayed pick-position forecast. */
-export const NESTED_RUN_CANDIDATES = [
-  { id: "frozen_v1_run_identity", kind: "identity" as const },
-  { id: "learned_base_run", kind: "learned_base" as const },
-  { id: "bounded_residual_run", kind: "bounded_residual" as const },
-  { id: "v1_learned_base_half_blend", kind: "v1_learned_base_half_blend" as const },
-  { id: "v1_bounded_residual_half_blend", kind: "v1_bounded_residual_half_blend" as const },
-] as const
-
 type NestedResidualCandidate = typeof NESTED_RESIDUAL_CANDIDATES[number]
-type NestedRunCandidate = typeof NESTED_RUN_CANDIDATES[number]
 
 export interface NestedResidualCandidateScore {
   candidateId: string
@@ -115,43 +121,6 @@ export interface NestedResidualSelection {
     scoredPickCount: number
   }>
   candidateScores: NestedResidualCandidateScore[]
-}
-
-export interface NestedRunCandidateScore {
-  candidateId: string
-  brierScore: number
-  logLoss: number
-  precisionAtHalf: number
-  recallAtHalf: number
-  f1AtHalf: number
-  evaluatedEvents: number
-  positiveEvents: number
-  perPosition: Array<{
-    position: ForecastPosition
-    evaluatedEvents: number
-    positiveEvents: number
-    brierScore: number
-    recallAtHalf: number | null
-  }>
-  eligible: boolean
-  failures: string[]
-}
-
-export interface NestedRunSelection {
-  outerHoldoutFixtureId: string
-  selectedCandidateId: string
-  usedFrozenV1Fallback: boolean
-  outerTrainingFixtureIds: string[]
-  outerRefitFixtureIds: string[]
-  innerFolds: Array<{
-    validationFixtureId: string
-    trainingFixtureIds: string[]
-    canonicalWindowCount: number
-    forecastSlotCount: number
-    runForecastSlotCount: number
-    scoredRunEvents: number
-  }>
-  candidateScores: NestedRunCandidateScore[]
 }
 
 /**
@@ -208,23 +177,6 @@ export interface StaticWindowPositionDiagnostics {
   alwaysWideReceiverAccuracy: number
 }
 
-export interface StaticWindowRunMetrics {
-  evaluatedEvents: number
-  brierScore: number
-  logLoss: number
-  thresholds: Array<{
-    threshold: number
-    truePositives: number
-    falsePositives: number
-    falseNegatives: number
-    predictedPositives: number
-    actualPositives: number
-    precision: number
-    recall: number
-    f1: number
-  }>
-}
-
 export interface StaticWindowModelSummary {
   pickMetrics: StaticWindowPickMetrics
   calibration: StaticWindowCalibration
@@ -259,34 +211,6 @@ export interface StaticWindowResidualGate {
     runF1AtHalfDelta: number
   }
   perPositionRecallDeltas: Array<{ position: ForecastPosition, frozenV1: number, residual: number, delta: number }>
-  failures: string[]
-}
-
-export interface StaticWindowRunOnlyGroup {
-  key: string
-  fixtureCount: number
-  canonicalWindowCount: number
-  runMetrics: StaticWindowRunMetrics
-}
-
-export interface StaticWindowNestedRunGate {
-  eligibleForShadow: boolean
-  brierDelta: number
-  logLossDelta: number
-  precisionAtHalfDelta: number
-  recallAtHalfDelta: number
-  f1AtHalfDelta: number
-  perPosition: Array<{
-    position: ForecastPosition
-    support: number
-    positiveEvents: number
-    frozenV1BrierScore: number
-    challengerBrierScore: number
-    brierDelta: number
-    frozenV1RecallAtHalf: number | null
-    challengerRecallAtHalf: number | null
-    recallAtHalfDelta: number | null
-  }>
   failures: string[]
 }
 
@@ -364,20 +288,12 @@ interface PickSample {
   }>
 }
 
-interface RunSample {
-  fixtureId: string
-  leagueFormat: string
-  phase: string
+interface RunSample extends RunEvaluationSample {
   predictions: Record<ModelName, Array<{
-    position: ForecastPosition
+    position: RunPosition
     probability: number
     actual: boolean
   }>>
-  nestedRunPredictions: Array<{
-    position: ForecastPosition
-    probability: number
-    actual: boolean
-  }>
 }
 
 interface FixtureSamples {
@@ -549,43 +465,13 @@ const summarizePicks = (samples: PickSample[], model: ModelName): {
   }
 }
 
-const summarizeRuns = (samples: RunSample[], model: ModelName): StaticWindowRunMetrics => {
-  const events = samples.flatMap(sample => sample.predictions[model])
-  return {
-    evaluatedEvents: events.length,
-    brierScore: events.length ? events.reduce((sum, event) =>
-      sum + (event.probability - (event.actual ? 1 : 0)) ** 2, 0) / events.length : 0,
-    logLoss: events.length ? events.reduce((sum, event) => sum - Math.log(Math.max(
-      EPSILON,
-      event.actual ? event.probability : 1 - event.probability,
-    )), 0) / events.length : 0,
-    thresholds: STATIC_WINDOW_RUN_THRESHOLDS.map(threshold => {
-      const counts = events.reduce((result, event) => {
-        const predicted = event.probability >= threshold
-        if (predicted && event.actual) result.truePositives += 1
-        else if (predicted) result.falsePositives += 1
-        else if (event.actual) result.falseNegatives += 1
-        return result
-      }, { truePositives: 0, falsePositives: 0, falseNegatives: 0 })
-      const predictedPositives = counts.truePositives + counts.falsePositives
-      const actualPositives = counts.truePositives + counts.falseNegatives
-      const precision = predictedPositives ? counts.truePositives / predictedPositives : 0
-      const recall = actualPositives ? counts.truePositives / actualPositives : 0
-      return {
-        threshold, ...counts, predictedPositives, actualPositives, precision, recall,
-        f1: precision + recall ? 2 * precision * recall / (precision + recall) : 0,
-      }
-    }),
-  }
-}
-
 const summary = (picks: PickSample[], runs: RunSample[]): StaticWindowModelComparison => {
   const forModel = (model: ModelName): StaticWindowModelSummary => {
     const pick = summarizePicks(picks, model)
     return {
       pickMetrics: pick.metrics,
       calibration: pick.calibration,
-      runMetrics: summarizeRuns(runs, model),
+      runMetrics: summarizeRunEvents(runs.flatMap(run => run.predictions[model])),
       positionDiagnostics: pick.positionDiagnostics,
     }
   }
@@ -890,18 +776,12 @@ const tuneNestedResidualForOuterFold = (
   }
 }
 
-interface NestedRunEvent {
-  position: ForecastPosition
-  probability: number
-  actual: boolean
-}
-
 const runEventsForCandidate = (
   validation: CanonicalValidationFixture,
   candidate: NestedRunCandidate,
   baseModel?: EmpiricalSoftmaxModel,
   residualModel?: EmpiricalBalancedResidualModel,
-): NestedRunEvent[] => validation.windows.flatMap(window => POSITIONS.map(position => {
+): RunEvent[] => validation.windows.flatMap(window => POSITIONS.map(position => {
   const frozen = blendRunProbabilities(window.frozenRunProbabilities[position], window.frozenRunProbabilities[position])
   const learned = () => runProbabilityFromSlotProbabilities(window.forecastSlots.map(slot =>
     predictEmpiricalOpponentProbabilities(baseModel!, slot.surface)[POSITIONS.indexOf(position)]), 3)
@@ -918,98 +798,6 @@ const runEventsForCandidate = (
           : blendRunProbabilities(frozen, residual())
   return { position, probability, actual: window.actualRuns[position] }
 }))
-
-const scoreNestedRunEvents = (events: NestedRunEvent[]): Omit<NestedRunCandidateScore,
-  "candidateId" | "eligible" | "failures"> => {
-  const atHalf = (items: NestedRunEvent[]) => items.reduce((counts, event) => {
-    const predicted = event.probability >= 0.5
-    if (predicted && event.actual) counts.truePositives += 1
-    else if (predicted) counts.falsePositives += 1
-    else if (event.actual) counts.falseNegatives += 1
-    return counts
-  }, { truePositives: 0, falsePositives: 0, falseNegatives: 0 })
-  const counts = atHalf(events)
-  const predicted = counts.truePositives + counts.falsePositives
-  const positives = counts.truePositives + counts.falseNegatives
-  const precision = predicted ? counts.truePositives / predicted : 0
-  const recall = positives ? counts.truePositives / positives : 0
-  const perPosition = POSITIONS.map(position => {
-    const subset = events.filter(event => event.position === position)
-    const support = subset.filter(event => event.actual).length
-    const positionCounts = atHalf(subset)
-    return {
-      position,
-      evaluatedEvents: subset.length,
-      positiveEvents: support,
-      brierScore: subset.length ? subset.reduce((sum, event) => sum
-        + (event.probability - (event.actual ? 1 : 0)) ** 2, 0) / subset.length : 0,
-      recallAtHalf: support ? positionCounts.truePositives / support : null,
-    }
-  })
-  return {
-    brierScore: events.length ? events.reduce((sum, event) => sum
-      + (event.probability - (event.actual ? 1 : 0)) ** 2, 0) / events.length : 0,
-    logLoss: events.length ? events.reduce((sum, event) => sum - Math.log(Math.max(
-      EPSILON,
-      event.actual ? event.probability : 1 - event.probability,
-    )), 0) / events.length : 0,
-    precisionAtHalf: precision,
-    recallAtHalf: recall,
-    f1AtHalf: precision + recall ? 2 * precision * recall / (precision + recall) : 0,
-    evaluatedEvents: events.length,
-    positiveEvents: positives,
-    perPosition,
-  }
-}
-
-export const selectNestedRunCandidate = (scores: NestedRunCandidateScore[]): string => {
-  const eligible = scores.filter(score => score.eligible
-    && score.candidateId !== "frozen_v1_run_identity")
-  if (!eligible.length) return "frozen_v1_run_identity"
-  return [...eligible].sort((left, right) => left.brierScore - right.brierScore
-    || left.logLoss - right.logLoss
-    || right.f1AtHalf - left.f1AtHalf
-    || right.precisionAtHalf - left.precisionAtHalf
-    || right.recallAtHalf - left.recallAtHalf
-    || left.candidateId.localeCompare(right.candidateId))[0].candidateId
-}
-
-export const scoreNestedRunCandidate = (
-  candidateId: string,
-  events: NestedRunEvent[],
-  identity: Omit<NestedRunCandidateScore, "candidateId" | "eligible" | "failures">,
-): NestedRunCandidateScore => {
-  const metrics = scoreNestedRunEvents(events)
-  if (candidateId === "frozen_v1_run_identity") {
-    return { candidateId, ...metrics, eligible: true, failures: [] }
-  }
-  const failures: string[] = []
-  if (metrics.brierScore > identity.brierScore - 0.002
-    && metrics.logLoss > identity.logLoss - 0.002) {
-    failures.push("no material inner run probabilistic improvement over frozen v1")
-  }
-  if (metrics.precisionAtHalf < identity.precisionAtHalf - 0.05) {
-    failures.push("inner run precision at 0.50 regressed by more than 0.05")
-  }
-  if (metrics.recallAtHalf < identity.recallAtHalf - 0.05) {
-    failures.push("inner run recall at 0.50 regressed by more than 0.05")
-  }
-  if (metrics.f1AtHalf < identity.f1AtHalf - 0.04) {
-    failures.push("inner run F1 at 0.50 regressed by more than 0.04")
-  }
-  metrics.perPosition.forEach(position => {
-    const frozen = identity.perPosition.find(item => item.position === position.position)!
-    if (position.positiveEvents > 0 && frozen.positiveEvents > 0
-      && position.recallAtHalf !== null && frozen.recallAtHalf !== null
-      && position.recallAtHalf < frozen.recallAtHalf - 0.1) {
-      failures.push(`inner ${position.position} run recall regressed by more than 0.10`)
-    }
-    if (position.brierScore > frozen.brierScore + 0.02) {
-      failures.push(`inner ${position.position} run Brier regressed by more than 0.02`)
-    }
-  })
-  return { candidateId, ...metrics, eligible: failures.length === 0, failures }
-}
 
 const baseModelForRunCandidate = (
   examples: EmpiricalOpponentExample[],
@@ -1053,7 +841,7 @@ const tuneNestedRunForOuterFold = (
     }
   })
   const events = new Map(NESTED_RUN_CANDIDATES.map(candidate => [candidate.id,
-    [] as NestedRunEvent[]]))
+    [] as RunEvent[]]))
   innerFolds.forEach(inner => {
     const training = examples.filter(example => inner.trainingFixtureIds.includes(example.fixtureId))
     const validation = validationCache.get(inner.validationFixtureId)!
@@ -1266,6 +1054,7 @@ const buildFixtureSamples = (
           })(),
         }))),
       },
+      frozenRunPredictions: frozenRunEvents,
       nestedRunPredictions: nestedRunEvents.get(nestedRunSelection.selectedCandidateId) || frozenRunEvents,
     })
   })
@@ -1315,67 +1104,6 @@ const groupsBy = (
   })
 }
 
-const nestedRunGroup = (
-  key: string,
-  fixtures: FixtureSamples[],
-  predicate?: (sample: RunSample, event: RunSample["nestedRunPredictions"][number]) => boolean,
-): StaticWindowRunOnlyGroup => {
-  const filtered = fixtures.map(fixture => ({
-    ...fixture,
-    runs: fixture.runs.map(run => ({
-      ...run,
-      nestedRunPredictions: predicate
-        ? run.nestedRunPredictions.filter(event => predicate(run, event))
-        : run.nestedRunPredictions,
-    })).filter(run => run.nestedRunPredictions.length > 0),
-  }))
-  const events = filtered.flatMap(fixture => fixture.runs.flatMap(run => run.nestedRunPredictions))
-  const synthetic = events.map(event => ({
-    fixtureId: "nested",
-    leagueFormat: "nested",
-    phase: "nested",
-    predictions: { frozenV1: [event] },
-    nestedRunPredictions: [event],
-  })) as RunSample[]
-  return {
-    key,
-    fixtureCount: filtered.filter(fixture => fixture.runs.length > 0).length,
-    canonicalWindowCount: filtered.reduce((sum, fixture) => sum + fixture.runs.length, 0),
-    runMetrics: summarizeRuns(synthetic, "frozenV1"),
-  }
-}
-
-const nestedRunGroupsBy = (
-  fixtures: FixtureSamples[],
-  keyFor: (sample: RunSample, event: RunSample["nestedRunPredictions"][number]) => string,
-): StaticWindowRunOnlyGroup[] => {
-  const keys = Array.from(new Set(fixtures.flatMap(fixture => fixture.runs.flatMap(run =>
-    run.nestedRunPredictions.map(event => keyFor(run, event)))))).sort()
-  return keys.map(key => nestedRunGroup(key, fixtures, (run, event) => keyFor(run, event) === key))
-}
-
-const frozenRunGroupsByPosition = (fixtures: FixtureSamples[]): StaticWindowRunOnlyGroup[] => POSITIONS.map(position => {
-  const events = fixtures.flatMap(fixture => fixture.runs.flatMap(run => run.predictions.frozenV1
-    .filter(event => event.position === position)))
-  const synthetic = events.map(event => ({
-    fixtureId: "frozen",
-    leagueFormat: "frozen",
-    phase: "frozen",
-    predictions: { frozenV1: [event] },
-    nestedRunPredictions: [event],
-  })) as RunSample[]
-  return {
-    key: position,
-    fixtureCount: fixtures.filter(fixture => fixture.runs.length > 0).length,
-    canonicalWindowCount: events.length,
-    runMetrics: summarizeRuns(synthetic, "frozenV1"),
-  }
-})
-
-const runAtHalf = (summary: { runMetrics: StaticWindowRunMetrics }) => {
-  return summary.runMetrics.thresholds.find(metric => metric.threshold === 0.5)!
-}
-
 /**
  * Fixed, conservative offline guardrails.  They prevent an aggregate gain
  * driven by sacrificing a minority position from being called a viable
@@ -1416,83 +1144,6 @@ export const evaluateStaticWindowResidualGate = (
     failures.push("no material aggregate probabilistic improvement over frozen v1")
   }
   return { eligibleForShadow: failures.length === 0, aggregate, perPositionRecallDeltas, failures }
-}
-
-export const evaluateNestedRunGate = (
-  frozen: Pick<StaticWindowModelSummary, "runMetrics">,
-  nested: StaticWindowRunOnlyGroup,
-  byPosition: StaticWindowRunOnlyGroup[],
-  frozenByPosition: StaticWindowRunOnlyGroup[],
-): StaticWindowNestedRunGate => {
-  const baselineAtHalf = runAtHalf(frozen)
-  const challengerAtHalf = runAtHalf(nested)
-  const brierDelta = nested.runMetrics.brierScore - frozen.runMetrics.brierScore
-  const logLossDelta = nested.runMetrics.logLoss - frozen.runMetrics.logLoss
-  const precisionAtHalfDelta = challengerAtHalf.precision - baselineAtHalf.precision
-  const recallAtHalfDelta = challengerAtHalf.recall - baselineAtHalf.recall
-  const f1AtHalfDelta = challengerAtHalf.f1 - baselineAtHalf.f1
-  const failures: string[] = []
-  if (brierDelta > -0.002 && logLossDelta > -0.002) {
-    failures.push("no material nested run probabilistic improvement over frozen v1")
-  }
-  if (precisionAtHalfDelta < -0.05) failures.push("nested run precision at 0.50 regressed by more than 0.05")
-  if (recallAtHalfDelta < -0.05) failures.push("nested run recall at 0.50 regressed by more than 0.05")
-  if (f1AtHalfDelta < -0.04) failures.push("nested run F1 at 0.50 regressed by more than 0.04")
-  const perPosition = POSITIONS.map(position => {
-    const challenger = byPosition.find(group => group.key === position)!
-    const baseline = frozenByPosition.find(group => group.key === position)!
-    const challengerThreshold = runAtHalf(challenger)
-    const frozenThreshold = runAtHalf(baseline)
-    const positiveEvents = frozenThreshold.actualPositives
-    const frozenRecallAtHalf = positiveEvents ? frozenThreshold.recall : null
-    const challengerRecallAtHalf = positiveEvents ? challengerThreshold.recall : null
-    return {
-      position,
-      support: baseline.runMetrics.evaluatedEvents,
-      positiveEvents,
-      frozenV1BrierScore: baseline.runMetrics.brierScore,
-      challengerBrierScore: challenger.runMetrics.brierScore,
-      brierDelta: challenger.runMetrics.brierScore - baseline.runMetrics.brierScore,
-      frozenV1RecallAtHalf: frozenRecallAtHalf,
-      challengerRecallAtHalf,
-      recallAtHalfDelta: frozenRecallAtHalf === null || challengerRecallAtHalf === null
-        ? null : challengerRecallAtHalf - frozenRecallAtHalf,
-    }
-  })
-  perPosition.forEach(position => {
-    if (position.brierDelta > 0.02) {
-      failures.push(`${position.position} nested run Brier regressed by more than 0.02`)
-    }
-    if (position.recallAtHalfDelta !== null && position.recallAtHalfDelta < -0.1) {
-      failures.push(`${position.position} nested run recall regressed by more than 0.10`)
-    }
-  })
-  return {
-    eligibleForShadow: failures.length === 0,
-    brierDelta,
-    logLossDelta,
-    precisionAtHalfDelta,
-    recallAtHalfDelta,
-    f1AtHalfDelta,
-    perPosition,
-    failures,
-  }
-}
-
-export const offlinePromotionReason = (
-  pickPositionEligibleForShadow: boolean,
-  runOnlyEligibleForShadow: boolean,
-): string => {
-  if (runOnlyEligibleForShadow && !pickPositionEligibleForShadow) {
-    return "Run-only offline gates passed; pick-position prediction remains frozen v1. Prospective shadow validation is still required; no live promotion has occurred."
-  }
-  if (pickPositionEligibleForShadow && runOnlyEligibleForShadow) {
-    return "Offline run-only and pick-position gates passed. Prospective shadow validation is still required; no live promotion has occurred."
-  }
-  if (pickPositionEligibleForShadow) {
-    return "Pick-position offline gates passed, but run-only gates did not. Prospective shadow validation is still required; no live promotion has occurred."
-  }
-  return "Offline gates did not pass; pick-position prediction remains frozen v1 and prospective shadow validation is still required."
 }
 
 /**
@@ -1599,9 +1250,10 @@ export const runStaticWindowBacktest = (fixtures: unknown[]): StaticWindowBackte
   }))
   const nestedRunSelections = fixtureSamples.map(sample => sample.report.nestedRunSelection)
     .sort((left, right) => left.outerHoldoutFixtureId.localeCompare(right.outerHoldoutFixtureId))
-  const nestedRunPrimary = nestedRunGroup("canonical-window aggregate", fixtureSamples)
-  const nestedRunByPosition = nestedRunGroupsBy(fixtureSamples, (_run, event) => event.position)
-  const frozenRunByPosition = frozenRunGroupsByPosition(fixtureSamples)
+  const runSamples = fixtureSamples.flatMap(sample => sample.runs)
+  const nestedRunPrimary = nestedRunGroup("canonical-window aggregate", runSamples)
+  const nestedRunByPosition = nestedRunGroupsBy(runSamples, (_run, event) => event.position)
+  const frozenRunByPosition = frozenRunGroupsByPosition(runSamples)
   const nestedRunGate = evaluateNestedRunGate(
     primary.frozenV1,
     nestedRunPrimary,
@@ -1637,8 +1289,8 @@ export const runStaticWindowBacktest = (fixtures: unknown[]): StaticWindowBackte
     nestedRunTuning: {
       candidates: NESTED_RUN_CANDIDATES,
       primary: nestedRunPrimary,
-      byLeagueFormat: nestedRunGroupsBy(fixtureSamples, (run, _event) => run.leagueFormat),
-      byDraftPhase: nestedRunGroupsBy(fixtureSamples, (run, _event) => run.phase),
+      byLeagueFormat: nestedRunGroupsBy(runSamples, (run, _event) => run.leagueFormat),
+      byDraftPhase: nestedRunGroupsBy(runSamples, (run, _event) => run.phase),
       byRunPosition: nestedRunByPosition,
       selections: nestedRunSelections,
       selectionCounts: NESTED_RUN_CANDIDATES.map(candidate => ({
@@ -1697,7 +1349,7 @@ const unavailable = (
   nestedRunTuning: {
     candidates: NESTED_RUN_CANDIDATES,
     primary: { key: "canonical-window aggregate", fixtureCount: 0, canonicalWindowCount: 0,
-      runMetrics: summarizeRuns([], "frozenV1") },
+      runMetrics: summarizeRunEvents([]) },
     byLeagueFormat: [], byDraftPhase: [], byRunPosition: [], selections: [],
     selectionCounts: NESTED_RUN_CANDIDATES.map(candidate => ({ candidateId: candidate.id, count: 0 })),
     frozenV1FallbackCount: 0,
