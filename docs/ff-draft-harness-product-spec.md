@@ -1165,6 +1165,11 @@ Metrics:
 
 ## 14. Implementation roadmap
 
+The product specification remains product and architecture truth. Current
+execution status, operational checks, and post-Phase-7 work are maintained in
+[docs/roadmap-2026.md](roadmap-2026.md); reusable bounded-session structure is
+in [docs/session-packets/TEMPLATE.md](session-packets/TEMPLATE.md).
+
 ### Phase 0: Contracts and replay foundation
 
 Deliver:
@@ -1265,8 +1270,10 @@ Exit criteria:
 
 ### Phase 4: Deterministic live advisor
 
-Status: implementation complete; recorded calibration in progress as of July
-30, 2026. The first five live-advisor slices are implemented. A pure, versioned
+Status: implementation and recorded calibration complete. The campaign has
+5/5 qualifying recorded mocks and 5/4 distinct target slots, with no remaining
+qualification or coverage gaps. The first five live-advisor slices are
+implemented. A pure, versioned
 three-candidate recommendation kernel now
 enforces positional-rank ordering and roster capacity, optimizes starter and
 flex assignment, discounts bench upside, exposes projection/replacement/tier
@@ -1537,79 +1544,11 @@ Mitigation:
 - Selector probes and recorded DOM fixtures.
 - Cumulative snapshots and deduplication.
 
-## 16. Immediate next implementation slice
+## 16. Completed-foundation historical note
 
-Execute the foundation in three independently reversible slices.
-
-### Slice 1: Contract and pure session core
-
-1. Describe the current `/players/latest` payload in OpenAPI without changing
-   its wire format.
-2. Generate TypeScript API types.
-3. Define the canonical draft-event schema.
-4. Extract the platform snapshot application logic from `useDraftListener` into
-   a pure TypeScript reducer.
-5. Make the React hook a side-effect adapter.
-6. Replay a recorded cumulative ESPN snapshot fixture in Jest.
-
-Acceptance:
-
-- The fixture produces the same ordered picks, current pick, and roster
-  ownership as the current live path.
-- Replaying the same cumulative snapshot creates no duplicate events.
-- Existing extension and manual drafting tests remain green.
-
-### Slice 2: Canonical API ingest and baselines
-
-1. Add SQLite-backed draft-session and event persistence.
-2. Add versioned event write/read endpoints.
-3. Validate generated TypeScript events against the OpenAPI contract.
-4. Test duplicate event submission and lossless round-tripping.
-5. Freeze the existing greedy predictor output on the replay fixture as the
-   first opponent-model baseline.
-6. Add the eval-runner skeleton.
-
-Acceptance:
-
-- The API never receives or parses raw ESPN snapshots.
-- Canonical event replay is idempotent.
-- API unavailability does not prevent the local dashboard from tracking a
-  draft.
-
-### Slice 3: One-season historical vertical
-
-Status: implemented and verified locally on July 30, 2026.
-
-1. Import one nflverse season with a versioned source snapshot.
-2. Add canonical player mapping and a visible missing-ID queue.
-3. Add the scoring-profile engine and auditable contribution breakdown.
-4. Preserve `standard_deviation_v1` with golden replacement and tier fixtures.
-5. Expose one historical comparison endpoint.
-6. Render one manual weekly-distribution comparison using generated types.
-
-Acceptance:
-
-- Historical fantasy totals reproduce golden fixtures.
-- Identity misses are queued rather than silently discarded.
-- The comparison works without an LLM.
-- The historical UI remains feature-flagged until the full window is loaded.
-
-### Slice 4: Five-season analytical store
-
-Status: implemented and verified locally on July 30, 2026.
-
-1. Import the nflverse player catalog as the GSIS-centered identity layer.
-2. Preserve GSIS, ESPN, Yahoo when available, and PFR identifiers.
-3. Store five completed weekly seasons as versioned compressed Parquet.
-4. Query bounded player windows with DuckDB while retaining SQLite metadata.
-5. Add combined and per-season distributions with P10/P50/P90 percentiles.
-6. Add manual one-, three-, and five-season comparison controls.
-
-Acceptance:
-
-- All fantasy-active canonical stat rows are retained independent of the
-  current draft-ranking universe.
-- Identity misses represent missing identifiers rather than ranking absence.
-- Multi-season queries read multiple Parquet partitions without loading the
-  dataset into the browser.
-- The feature-flagged UI can switch windows without an LLM.
+The former “Immediate next implementation slice” described the contract/replay
+core, canonical API ingest and baselines, the one-season historical vertical,
+and the five-season analytical store. Those foundation slices were completed
+through Phases 0-3 and are retained here only as historical context; they are
+not pending work. Current execution and status truth is in
+[docs/roadmap-2026.md](roadmap-2026.md).

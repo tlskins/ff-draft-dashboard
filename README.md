@@ -4,6 +4,12 @@ A Next.js draft board with a Chrome extension that reads ESPN and NFL draft
 rooms. The app can run entirely from its embedded rankings or load the latest
 snapshot from the companion Flask API.
 
+Current implementation status and post-Phase-7 execution live in
+[docs/roadmap-2026.md](docs/roadmap-2026.md). Use
+[docs/session-packets/TEMPLATE.md](docs/session-packets/TEMPLATE.md) for
+bounded Codex sessions; the main planning thread owns integration and
+promotion decisions.
+
 ## Local setup
 
 Requires Node 22.
