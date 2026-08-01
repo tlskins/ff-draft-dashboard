@@ -846,7 +846,7 @@ const validateManifestShape = (value: unknown): string[] => {
   if (typeof value.policyFingerprint !== "string" || value.policyFingerprint !== PHASE9_POLICY_FINGERPRINT) errors.push("campaign policy fingerprint is invalid")
   if (isRecord(policy)) {
     try {
-      if (createPhase9PolicyFingerprint(policy as unknown as ProspectiveCampaignPolicy) !== PHASE9_POLICY_FINGERPRINT) errors.push("campaign policy contents are not the immutable version-1 policy")
+      if (createPhase9PolicyFingerprint(policy as unknown as ProspectiveCampaignPolicy) !== PHASE9_POLICY_FINGERPRINT) errors.push("campaign policy contents are not the immutable version-2 policy")
     } catch { errors.push("campaign policy contents are malformed") }
   }
   const sufficiency = isRecord(policy) ? policy.evidenceSufficiency : undefined
