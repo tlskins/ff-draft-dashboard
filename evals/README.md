@@ -170,6 +170,13 @@ slot in the fixed horizon (including eventual K/DST selections), while run
 labels count only QB/RB/WR/TE picks. This run-only result remains offline development
 evidence and cannot promote the live forecast or recorder.
 
+The bounded-residual run shadow is a separate prospective capture contract.
+It uses one immutable full-five-fixture residual artifact beside frozen v1 at
+the same live boundary and records only full-horizon run probabilities; it
+does not reuse LODO evidence, advice, alerts, or promotion state. Its artifact
+fit is descriptive deployment parity, not prospective accuracy: no accuracy
+claim is valid until a newly completed draft supplies matching run labels.
+
 ### Immutable learned-base shadow capture
 
 ```sh

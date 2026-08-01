@@ -222,6 +222,8 @@ const Home: FC = () => {
     advisorContext,
     replayForecastEvidence,
     empiricalBaseShadowEvidence,
+    runOnlyShadowEvidence,
+    runOnlyShadowCaptureStatus,
     replayCaptureStatus,
     empiricalBaseShadowCaptureStatus,
   } = usePredictions({
@@ -316,12 +318,14 @@ const Home: FC = () => {
       ...(rosterOnly ? {} : {
         forecastEvidence: replayForecastEvidence,
         empiricalBaseShadowEvidence,
+        runOnlyShadowEvidence,
       }),
     })
   }, [
     activeDraftSessionId, activeDraftSnapshot, boardSettings, draftHistory,
     empiricalBaseShadowEvidence, myPickNum, playerLib, rankingSummaries,
     replayForecastEvidence, settings,
+    runOnlyShadowEvidence,
   ])
   const replayExportPreflight = useMemo(() => {
     if (!canExportReplay) return undefined
@@ -720,6 +724,7 @@ const Home: FC = () => {
                 empiricalBaseShadowCaptureStatus={
                   empiricalBaseShadowCaptureStatus
                 }
+                runOnlyShadowCaptureStatus={runOnlyShadowCaptureStatus}
                 replayExportPreflight={replayExportPreflight}
                 recommendations={recommendations}
                 playerStatus={playerStatus}

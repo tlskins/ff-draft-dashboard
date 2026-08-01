@@ -4,9 +4,12 @@ import type {
   ReplayForecastObservation,
   ReplayEmpiricalBaseShadowEvidence,
   ReplayEmpiricalBaseShadowObservation,
+  ReplayRunOnlyShadowEvidence,
+  ReplayRunOnlyShadowObservation,
 } from "./completedDraftReplay"
 import type { OpponentForecast, OpponentModelKind } from "./types"
 import type { EmpiricalBaseShadowForecast } from "./empiricalBaseShadow"
+import type { RunOnlyShadowForecast } from "./boundedResidualRunShadow"
 
 export const REPLAY_FORECAST_EVIDENCE_VERSION = 1 as const
 export const REPLAY_FORECAST_MODEL_IDENTITY =
@@ -63,6 +66,10 @@ export const createEmpiricalBaseShadowObservationFingerprint = (
     | "phaseProvenance"
     | "forecast"
   >,
+): string => createDeterministicFingerprint(value)
+
+export const createRunOnlyShadowObservationFingerprint = (
+  value: Pick<ReplayRunOnlyShadowObservation, "observedThroughOverallPick" | "modelIdentity" | "artifactId" | "artifactFingerprint" | "trainingCorpusFingerprint" | "targetRosterIndex" | "phaseProvenance" | "forecast">,
 ): string => createDeterministicFingerprint(value)
 
 export interface RecordReplayForecastParams {
@@ -209,5 +216,47 @@ export class ReplayEmpiricalBaseShadowEvidenceRecorder {
       observations: Array.from(this.observations.values()).sort((left, right) =>
         left.observedThroughOverallPick - right.observedThroughOverallPick),
     }
+  }
+}
+
+export interface RecordRunOnlyShadowParams {
+  sessionId: string
+  observedThroughOverallPick: number
+  forecast: RunOnlyShadowForecast
+  targetRosterIndex: number
+  inputFingerprint: string
+}
+
+/** Parallel bounded storage for immutable bounded-residual run observations. */
+export class ReplayRunOnlyShadowEvidenceRecorder {
+  private sessionId: string | null = null
+  private observations = new Map<number, ReplayRunOnlyShadowObservation>()
+
+  reset(sessionId: string | null = null): void { this.sessionId = sessionId; this.observations.clear() }
+
+  record(params: RecordRunOnlyShadowParams): ReplayRunOnlyShadowEvidence | undefined {
+    if (this.sessionId !== params.sessionId) this.reset(params.sessionId)
+    const { sessionId, observedThroughOverallPick, forecast, targetRosterIndex, inputFingerprint } = params
+    if (!sessionId || !Number.isInteger(observedThroughOverallPick) || observedThroughOverallPick < 0
+      || forecast.targetRosterIndex !== targetRosterIndex
+      || forecast.modelIdentity !== "bounded_residual_run_shadow_v1"
+      || forecast.artifactId !== "bounded_residual_run_shadow_v1"
+      || !/^[a-f0-9]{8}$/.test(inputFingerprint)
+      || forecast.horizon.length === 0
+      || forecast.horizon.some(slot => slot.overallPick <= observedThroughOverallPick)
+      || forecast.frozenRunProbabilities.length !== 4 || forecast.challengerRunProbabilities.length !== 4) return this.snapshot()
+    const base = { observedThroughOverallPick, modelIdentity: forecast.modelIdentity, artifactId: forecast.artifactId, artifactFingerprint: forecast.artifactFingerprint,
+      trainingCorpusFingerprint: forecast.trainingCorpusFingerprint, targetRosterIndex,
+      phaseProvenance: forecast.phaseProvenance, forecast } as const
+    this.observations.set(observedThroughOverallPick, { ...base, inputFingerprint,
+      observationFingerprint: createRunOnlyShadowObservationFingerprint(base) })
+    while (this.observations.size > MAX_REPLAY_FORECAST_OBSERVATIONS) this.observations.delete(this.observations.keys().next().value!)
+    return this.snapshot()
+  }
+
+  snapshot(expectedSessionId?: string): ReplayRunOnlyShadowEvidence | undefined {
+    if (!this.sessionId || (expectedSessionId && expectedSessionId !== this.sessionId) || !this.observations.size) return undefined
+    return { schemaVersion: REPLAY_FORECAST_EVIDENCE_VERSION, sessionId: this.sessionId,
+      observations: Array.from(this.observations.values()).sort((a, b) => a.observedThroughOverallPick - b.observedThroughOverallPick) }
   }
 }

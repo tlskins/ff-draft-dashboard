@@ -33,6 +33,7 @@ import type {
   OpponentModelKind,
 } from "./types"
 import type { EmpiricalBaseShadowForecast } from "./empiricalBaseShadow"
+import type { RunOnlyShadowForecast } from "./boundedResidualRunShadow"
 
 type ReplayPosition =
   | FantasyPosition.QUARTERBACK
@@ -118,6 +119,26 @@ export interface ReplayEmpiricalBaseShadowEvidence {
   observations: ReplayEmpiricalBaseShadowObservation[]
 }
 
+/** Additive run-only shadow labels; never inferred from older evidence. */
+export interface ReplayRunOnlyShadowObservation {
+  observedThroughOverallPick: number
+  inputFingerprint: string
+  observationFingerprint: string
+  modelIdentity: "bounded_residual_run_shadow_v1"
+  artifactId: "bounded_residual_run_shadow_v1"
+  artifactFingerprint: string
+  trainingCorpusFingerprint: string
+  targetRosterIndex: number
+  phaseProvenance: RunOnlyShadowForecast["phaseProvenance"]
+  forecast: RunOnlyShadowForecast
+}
+
+export interface ReplayRunOnlyShadowEvidence {
+  schemaVersion: 1
+  sessionId: string
+  observations: ReplayRunOnlyShadowObservation[]
+}
+
 export interface RecordedCompletedDraftReplay {
   fixtureVersion: 1
   id: string
@@ -149,6 +170,7 @@ export interface RecordedCompletedDraftReplay {
   forecastEvidence?: ReplayForecastEvidence
   /** Optional parallel challenger labels; absent from all historical fixtures. */
   empiricalBaseShadowEvidence?: ReplayEmpiricalBaseShadowEvidence
+  runOnlyShadowEvidence?: ReplayRunOnlyShadowEvidence
 }
 
 export interface FinalRosterQuality {

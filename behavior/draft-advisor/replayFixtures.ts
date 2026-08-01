@@ -18,6 +18,7 @@ import {
   getAdvisorRosterCapacity,
 } from "./recommendations"
 import { validateEmpiricalBaseShadowEvidence } from "./empiricalBaseShadowMetrics"
+import { validateRunOnlyShadowEvidence } from "./runOnlyShadowMetrics"
 import {
   DraftSnapshot,
   EspnDraftPick,
@@ -27,6 +28,7 @@ import type {
   RecordedReplayPlayer,
   ReplayEmpiricalBaseShadowEvidence,
   ReplayForecastEvidence,
+  ReplayRunOnlyShadowEvidence,
 } from "./completedDraftReplay"
 
 interface CaptureCompletedDraftReplayParams {
@@ -40,6 +42,7 @@ interface CaptureCompletedDraftReplayParams {
   sourceSnapshot?: DraftSnapshot | null
   forecastEvidence?: ReplayForecastEvidence
   empiricalBaseShadowEvidence?: ReplayEmpiricalBaseShadowEvidence
+  runOnlyShadowEvidence?: ReplayRunOnlyShadowEvidence
 }
 
 const projectionSummary = (
@@ -210,7 +213,7 @@ export const validateCompletedDraftReplay = (
       `expected ${expectedTargetAdvisorPicks} advisor picks for the target roster, received ${targetAdvisorPicks}`,
     )
   }
-  return [...errors, ...validateEmpiricalBaseShadowEvidence(fixture)]
+  return [...errors, ...validateEmpiricalBaseShadowEvidence(fixture), ...validateRunOnlyShadowEvidence(fixture)]
 }
 
 const rankablePosition = (position: string): FantasyPosition | null => {
@@ -304,6 +307,7 @@ export const captureCompletedDraftReplay = ({
   sourceSnapshot,
   forecastEvidence,
   empiricalBaseShadowEvidence,
+  runOnlyShadowEvidence,
 }: CaptureCompletedDraftReplayParams): RecordedCompletedDraftReplay => {
   const completion = sourceSnapshot?.completion
   const targetRosterIndexFromSource =
@@ -412,6 +416,14 @@ export const captureCompletedDraftReplay = ({
         throw new Error("Replay empirical-base shadow evidence belongs to a different draft session or target roster")
       }
       return { empiricalBaseShadowEvidence }
+    })() : {}),
+    ...(runOnlyShadowEvidence ? (() => {
+      if (runOnlyShadowEvidence.sessionId !== id
+        || runOnlyShadowEvidence.observations.some(observation =>
+          observation.targetRosterIndex !== targetRosterIndexFromSource)) {
+        throw new Error("Replay run-only shadow evidence belongs to a different draft session or target roster")
+      }
+      return { runOnlyShadowEvidence }
     })() : {}),
   }
   const errors = validateCompletedDraftReplay(fixture)

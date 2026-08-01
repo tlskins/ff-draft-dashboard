@@ -33,6 +33,7 @@ import type {
   EmpiricalBaseShadowCaptureStatus,
 } from "../behavior/draft-advisor/empiricalBaseShadowCaptureStatus"
 import EmpiricalBaseShadowCaptureReadiness from "./EmpiricalBaseShadowCaptureReadiness"
+import type { RunOnlyShadowCaptureStatus } from "../behavior/draft-advisor/runOnlyShadowCaptureStatus"
 import { useDialogAccessibility } from "../behavior/hooks/useDialogAccessibility"
 
 interface LiveAdvisorPanelProps {
@@ -44,6 +45,7 @@ interface LiveAdvisorPanelProps {
   onExportRosterOnly?: () => void
   replayCaptureStatus?: ReplayCaptureStatus
   empiricalBaseShadowCaptureStatus?: EmpiricalBaseShadowCaptureStatus
+  runOnlyShadowCaptureStatus?: RunOnlyShadowCaptureStatus
   replayExportPreflight?: ReplayExportPreflight
   draftPlan?: DraftPlanDocument | null
   realtimeProposals?: AdvisorProposal[]
@@ -82,6 +84,7 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
   onExportRosterOnly,
   replayCaptureStatus,
   empiricalBaseShadowCaptureStatus,
+  runOnlyShadowCaptureStatus,
   replayExportPreflight,
   draftPlan,
   realtimeProposals = [],
@@ -144,6 +147,9 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
             status={empiricalBaseShadowCaptureStatus}
           />
         )}
+        <p className="mt-1 text-xs text-violet-800" aria-live="polite">
+          Run-only residual shadow: {runOnlyShadowCaptureStatus?.message || "waiting for capture status"} ({runOnlyShadowCaptureStatus?.comparableObservationCount || 0} comparable boundaries; observation only).
+        </p>
       </section>
     )
   }
@@ -199,6 +205,9 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
           status={empiricalBaseShadowCaptureStatus}
         />
       )}
+      <p className="mb-2 text-xs text-violet-800" aria-live="polite">
+        Run-only residual shadow: {runOnlyShadowCaptureStatus?.message || "waiting for capture status"} ({runOnlyShadowCaptureStatus?.comparableObservationCount || 0} comparable boundaries; observation only).
+      </p>
       {preflightOpen && replayExportPreflight && (
         <div
           aria-label="Replay export preflight"

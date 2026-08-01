@@ -38,11 +38,13 @@ import {
   createReplayForecastInputFingerprint,
   ReplayEmpiricalBaseShadowEvidenceRecorder,
   ReplayForecastEvidenceRecorder,
+  ReplayRunOnlyShadowEvidenceRecorder,
 } from '../draft-advisor/replayForecastEvidence';
 import { Player, RankingSummary } from 'types';
 import type {
   ReplayEmpiricalBaseShadowEvidence,
   ReplayForecastEvidence,
+  ReplayRunOnlyShadowEvidence,
 } from "../draft-advisor/completedDraftReplay";
 import { deriveReplayCaptureStatus } from "../draft-advisor/replayCaptureStatus";
 import {
@@ -52,6 +54,11 @@ import {
   EMPIRICAL_BASE_SHADOW_ARTIFACT,
   createEmpiricalBaseShadowForecast,
 } from "../draft-advisor/empiricalBaseShadow";
+import {
+  BOUNDED_RESIDUAL_RUN_SHADOW_ARTIFACT,
+  createBoundedResidualRunShadowForecast,
+} from "../draft-advisor/boundedResidualRunShadow";
+import { deriveRunOnlyShadowCaptureStatus } from "../draft-advisor/runOnlyShadowCaptureStatus";
 
 export enum HighlightOption {
   PREDICTED_TAKEN = "Highlight Next Taken",
@@ -186,11 +193,14 @@ export const usePredictions = ({
   const empiricalBaseShadowEvidenceRecorder = useRef(
     new ReplayEmpiricalBaseShadowEvidenceRecorder(),
   );
+  const runOnlyShadowEvidenceRecorder = useRef(new ReplayRunOnlyShadowEvidenceRecorder());
   const forecastEvidenceSessionId = useRef<string | null>(null);
   const [replayForecastEvidence, setReplayForecastEvidence] =
     useState<ReplayForecastEvidence | undefined>(undefined);
   const [empiricalBaseShadowEvidence, setEmpiricalBaseShadowEvidence] =
     useState<ReplayEmpiricalBaseShadowEvidence | undefined>(undefined);
+  const [runOnlyShadowEvidence, setRunOnlyShadowEvidence] =
+    useState<ReplayRunOnlyShadowEvidence | undefined>(undefined);
 
   const predictOptimalGreedyRoster = useCallback(() => {
     // When draft hasn't started, predict from pick 1. When started, predict from current pick
@@ -449,6 +459,11 @@ export const usePredictions = ({
     opponentForecast,
     sourceTotalPicks,
   ), [advisorContext, opponentForecast, sourceTotalPicks]);
+  const runOnlyShadowForecast = useMemo(() => createBoundedResidualRunShadowForecast(
+    advisorContext,
+    opponentForecast,
+    sourceTotalPicks,
+  ), [advisorContext, opponentForecast, sourceTotalPicks]);
   const observedThroughOverallPick = Math.max(0, currPick - 1, sourceObservedThroughOverallPick || 0)
   const replayForecastInputFingerprint = useMemo(() => createReplayForecastInputFingerprint({
     schemaVersion: advisorContext.schemaVersion, observedThroughOverallPick,
@@ -463,6 +478,12 @@ export const usePredictions = ({
     context: advisorContext,
     sourceTotalPicks,
   }), [advisorContext, myPickNum, observedThroughOverallPick, sourceTotalPicks])
+  const runOnlyShadowInputFingerprint = useMemo(() => createReplayForecastInputFingerprint({
+    schemaVersion: advisorContext.schemaVersion, observedThroughOverallPick,
+    modelIdentity: BOUNDED_RESIDUAL_RUN_SHADOW_ARTIFACT.id,
+    artifact: BOUNDED_RESIDUAL_RUN_SHADOW_ARTIFACT,
+    targetRosterIndex: myPickNum - 1, context: advisorContext, sourceTotalPicks,
+  }), [advisorContext, myPickNum, observedThroughOverallPick, sourceTotalPicks])
   const historyAhead = draftHistory.slice(observedThroughOverallPick).some(Boolean)
 
   useEffect(() => {
@@ -472,8 +493,10 @@ export const usePredictions = ({
       forecastEvidenceSessionId.current = draftSessionId || null
       forecastEvidenceRecorder.current.reset(draftSessionId || null)
       empiricalBaseShadowEvidenceRecorder.current.reset(draftSessionId || null)
+      runOnlyShadowEvidenceRecorder.current.reset(draftSessionId || null)
       setReplayForecastEvidence(undefined)
       setEmpiricalBaseShadowEvidence(undefined)
+      setRunOnlyShadowEvidence(undefined)
     }
     if (!draftSessionId) {
       return
@@ -498,6 +521,13 @@ export const usePredictions = ({
       targetRosterIndex: myPickNum - 1,
       inputFingerprint: empiricalBaseShadowInputFingerprint,
     }))
+    setRunOnlyShadowEvidence(runOnlyShadowEvidenceRecorder.current.record({
+      sessionId: draftSessionId,
+      observedThroughOverallPick,
+      forecast: runOnlyShadowForecast,
+      targetRosterIndex: myPickNum - 1,
+      inputFingerprint: runOnlyShadowInputFingerprint,
+    }))
   }, [
     currPick,
     draftHistory,
@@ -507,11 +537,13 @@ export const usePredictions = ({
     myPickNum,
     opponentForecast,
     empiricalBaseShadowForecast,
+    runOnlyShadowForecast,
     sourceComplete,
     sourceObservedThroughOverallPick,
     observedThroughOverallPick,
     replayForecastInputFingerprint,
     empiricalBaseShadowInputFingerprint,
+    runOnlyShadowInputFingerprint,
     historyAhead,
   ])
   const replayCaptureStatus = deriveReplayCaptureStatus({
@@ -531,6 +563,12 @@ export const usePredictions = ({
     frozenForecast: opponentForecast,
     shadowForecast: empiricalBaseShadowForecast,
     frozenCaptureStatus: replayCaptureStatus,
+  })
+  const runOnlyShadowCaptureStatus = deriveRunOnlyShadowCaptureStatus({
+    sessionId: draftSessionId, draftStarted, complete: sourceComplete, historyAhead,
+    frozenEvidence: replayForecastEvidence, shadowEvidence: runOnlyShadowEvidence,
+    frozenForecast: opponentForecast, shadowForecast: runOnlyShadowForecast,
+    frozenRecording: replayCaptureStatus.state === "recording",
   })
 
   const recommendations = useMemo(() => createDraftRecommendations({
@@ -569,6 +607,8 @@ export const usePredictions = ({
     advisorContext,
     replayForecastEvidence,
     empiricalBaseShadowEvidence,
+    runOnlyShadowEvidence,
+    runOnlyShadowCaptureStatus,
     replayCaptureStatus,
     empiricalBaseShadowCaptureStatus,
   };
