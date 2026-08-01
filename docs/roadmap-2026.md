@@ -80,6 +80,15 @@ documented, and no invalid or retrospective labels are counted. If evidence
 is unavailable or fails, the result is explicitly evidence-blocked; v1 remains
 live.
 
+Phase 9A evaluator foundation is implemented and hardened: the immutable,
+hash-bound prospective campaign contract, canonical-validator-backed paired
+run-shadow evaluator, complete-window and marginal-coverage gates, deterministic
+report command, focused adversarial regression coverage, and capture-only
+handoff are in place. The checked-in campaign admits no new fixture, so Phase 9
+remains evidence-blocked pending varied completed mocks and a later promotion
+dossier; this foundation does not mark Phase 9 complete or change the live
+model.
+
 ### Phase 10: Decision-workspace UX refinement
 
 Dependency: the Phase 8 integration baseline and the existing Phase 2/3

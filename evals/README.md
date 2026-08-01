@@ -177,6 +177,30 @@ does not reuse LODO evidence, advice, alerts, or promotion state. Its artifact
 fit is descriptive deployment parity, not prospective accuracy: no accuracy
 claim is valid until a newly completed draft supplies matching run labels.
 
+### Phase 9A prospective run-shadow report
+
+Run the deterministic, provider-free report with:
+
+```sh
+npm run eval:phase9-prospective -- \
+  --manifest prospective-campaign/phase9-prospective-run-shadow.json \
+  --out /tmp/drafty-phase9-prospective-report.json
+```
+
+The checked-in manifest intentionally admits no new fixture, so the report is
+`evidence_blocked` with zero eligible fixtures, no aggregate metrics, explicit
+coverage/gate insufficiency, and `promotion.promoted: false`. It hashes raw
+fixture content before parsing, requires future completed ESPN evidence admitted
+by the manifest, pairs frozen v1 and bounded-residual observations at identical
+known-total boundaries/horizons, and scores only strictly future labels.
+Frozen-v1 position Brier/top-position/calibration is reported where available;
+the run-only challenger has no position vector, so challenger position metrics
+remain unavailable. Run Brier/log loss, calibration signal, and 0.50
+precision/recall/F1 are compared using the canonical three-pick run semantics.
+Exact-player metrics never participate in gates. See
+`docs/phase9-prospective-run-shadow.md` for the stable reason codes, policy
+threshold rationale, and the capture-only manifest handoff.
+
 ### Immutable learned-base shadow capture
 
 ```sh

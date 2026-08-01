@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "campaignId": "phase9a-prospective-run-shadow-2026-08-01",
+  "baseline": {
+    "commit": "1410d29fa17fd55a206bb7fc0cdaf16ec435d696",
+    "parent": "78b59bd33b7da79310519667acbcba1a14e181ce",
+    "tag": "phase8-integration-baseline-2026-08-01",
+    "committedAt": "2026-08-01T10:05:42-04:00"
+  },
+  "policy": {
+    "version": 1,
+    "baseline": {
+      "commit": "1410d29fa17fd55a206bb7fc0cdaf16ec435d696",
+      "parent": "78b59bd33b7da79310519667acbcba1a14e181ce",
+      "tag": "phase8-integration-baseline-2026-08-01",
+      "committedAt": "2026-08-01T10:05:42-04:00"
+    },
+    "evidenceSufficiency": {
+      "minimumEligibleFixtures": 5,
+      "minimumDistinctDraftSlots": 4,
+      "requiredTeamCounts": [10, 12],
+      "requiredScoringFormats": ["PPR", "STANDARD"],
+      "minimumDistinctRosterShapes": 2,
+      "requiredRosterShapes": [
+        "QB1-RB2-WR2-TE1-FLEX1-BENCH7",
+        "QB1-RB2-WR3-TE1-FLEX1-BENCH6"
+      ],
+      "minimumCompleteWindowsPerRequiredSubgroup": 2
+    },
+    "positionAcceptance": {
+      "mode": "frozen_v1_reference_only",
+      "challengerComparison": "not_available_in_run_only_schema"
+    },
+    "runAcceptance": {
+      "minimumPicks": 3,
+      "threshold": 0.5,
+      "maximumBrierRegression": 0.01,
+      "maximumLogLossRegression": 0.01,
+      "maximumPrecisionRegression": 0.05,
+      "maximumRecallRegression": 0.05,
+      "maximumF1Regression": 0.05,
+      "minimumMaterialBrierImprovement": 0.002,
+      "minimumMaterialLogLossImprovement": 0.002
+    },
+    "rationale": {
+      "sufficiency": "Five complete newly admitted fixtures, four draft slots, and two complete windows per required marginal subgroup preserve the existing Phase 4/8 fixture denominator while preventing partial drafts from satisfying Phase 9 evidence.",
+      "rosterCoverage": "Ten- and twelve-team PPR/Standard coverage and the two listed roster shapes are required marginal dimensions. The repository has no stronger prospective roster-shape denominator, so these explicit capture requirements remain evidence-blocking until varied complete captures exist.",
+      "position": "The bounded run-only envelope stores no challenger position vector. Frozen-v1 position Brier, top-position accuracy, and calibration are reference/integrity metrics only; no inactive numerical position threshold is a gate and exact-player metrics are excluded.",
+      "run": "Run Brier/log-loss and the 0.50 precision, recall, and F1 no-harm guardrails reuse the existing static-window residual tolerances. Aggregate run improvement is required, while each adequately supported required marginal subgroup must avoid material regression. Phase 9A never promotes a model."
+    }
+  },
+  "coverageTargets": {
+    "draftSlots": [1, 3, 6, 8, 9],
+    "teamCounts": [10, 12],
+    "scoringFormats": ["PPR", "STANDARD"],
+    "rosterShapes": [
+      "QB1-RB2-WR2-TE1-FLEX1-BENCH7",
+      "QB1-RB2-WR3-TE1-FLEX1-BENCH6",
+      "QB2-RB2-WR2-TE1-FLEX1-BENCH6"
+    ],
+    "superflex": "report_if_represented"
+  },
+  "policyFingerprint": "f6cac586811f0276f8066a563f5570d75d79e9a14a64f479627d6a7488797574",
+  "evidence": []
+}
