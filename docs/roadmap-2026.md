@@ -84,10 +84,13 @@ Phase 9A evaluator foundation is implemented and hardened: the immutable,
 hash-bound prospective campaign contract, canonical-validator-backed paired
 run-shadow evaluator, complete-window and marginal-coverage gates, deterministic
 report command, focused adversarial regression coverage, and capture-only
-handoff are in place. The checked-in campaign admits no new fixture, so Phase 9
-remains evidence-blocked pending varied completed mocks and a later promotion
-dossier; this foundation does not mark Phase 9 complete or change the live
-model.
+handoff are in place. The evidence-free policy amendment (policy v2) requires
+only the `QB1-RB2-WR2-TE1-FLEX1-BENCH7` roster shape. Other structurally valid
+shapes remain supported but prospectively uncalibrated and informational; they
+cannot satisfy calibrated fixture, subgroup, aggregate, or promotion-gate
+requirements. The checked-in campaign admits no new fixture, so Phase 9 remains
+evidence-blocked pending completed mocks and a later promotion dossier; this
+foundation does not mark Phase 9 complete or change the live model.
 
 ### Phase 10: Decision-workspace UX refinement
 

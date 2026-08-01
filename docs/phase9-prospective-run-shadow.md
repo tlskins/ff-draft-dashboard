@@ -19,8 +19,8 @@ eligible fixtures and no aggregate metrics. Missing metrics are omitted rather
 than zero-filled. The report is deterministic JSON with stable fixture,
 coverage, reason-code, and metric ordering.
 
-Version 1 is pinned to policy SHA-256
-`f6cac586811f0276f8066a563f5570d75d79e9a14a64f479627d6a7488797574`. The
+Version 2 is pinned to policy SHA-256
+`c4d950474e7dd6aae37cc18ba18b356dba2668cd6d626aaa4b5048e5fd29aad7`. The
 manifest baseline, policy contents, and fingerprint must all match this
 binding; adding evidence entries does not change it. A policy change requires a
 new policy version and fingerprint.
@@ -66,15 +66,23 @@ cannot affect any gate.
 
 ## Predeclared policy
 
-The campaign requires five eligible new fixtures, four distinct draft slots,
-both 10- and 12-team coverage, both PPR and Standard, the two predeclared
-roster shapes (`QB1-RB2-WR2-TE1-FLEX1-BENCH7` and
-`QB1-RB2-WR3-TE1-FLEX1-BENCH6`), and at least two complete windows in every
-required marginal subgroup. The five-fixture/four-slot counts reuse the
-existing Phase 4/8 campaign sufficiency semantics. The complete-window
+The campaign requires five eligible calibrated fixtures, four distinct draft
+slots, both 10- and 12-team coverage, both PPR and Standard, the calibrated
+roster shape `QB1-RB2-WR2-TE1-FLEX1-BENCH7`, and at least two complete windows
+in every required marginal subgroup. The five-fixture/four-slot counts reuse
+the existing Phase 4/8 campaign sufficiency semantics. The complete-window
 support guard is explicit because fixture count alone could otherwise admit
-partial drafts; the repository provides no stronger prospective roster-shape
-denominator, so varied complete captures remain required.
+partial drafts.
+
+Other structurally valid roster configurations remain supported but are not
+prospectively calibrated. They continue through structural validation and
+their roster metadata is reported as informational evidence, but they do not
+count toward the five calibrated fixtures, calibrated aggregates, promotion
+gates, or required subgroups, and they cannot replace a calibrated-shape
+fixture. No numeric confidence penalty is assigned. A future runtime slice
+may use roster settings for deterministic demand adjustments; this evaluator
+does not. The product should eventually show an “unvalidated league format”
+warning when predictions are used outside the calibrated shape.
 
 The position policy is reference-only in this run-only slice: frozen-v1
 position Brier, top-position accuracy, and calibration verify the frozen
@@ -111,12 +119,8 @@ report's `evidence`, per-fixture/aggregate `windowCoverage`, `stratified`,
 `coverage`, `gates`, `nextCaptureNeeds`, and `promotion.promoted: false` fields
 are the inputs for the later Phase 9 dossier.
 
-Before collecting the campaign, Phase 9B must verify that the intended mock
-workflow can produce the second required roster shape:
-`QB1-RB2-WR3-TE1-FLEX1-BENCH6`. All five prior recorded ESPN mocks used
-`QB1-RB2-WR2-TE1-FLEX1-BENCH7`. If the second shape is unavailable, stop before
-collecting evidence and return to the orchestrator for a versioned policy
-decision; do not silently change policy v1.
+Phase 9B may resume capture against this amended policy. The calibrated
+campaign requires only `QB1-RB2-WR2-TE1-FLEX1-BENCH7`.
 
 Important reason codes include `fixture_hash_mismatch`,
 `unlisted_evidence`, `retrospective_evidence`, `fixture_incomplete`,
@@ -125,5 +129,6 @@ Important reason codes include `fixture_hash_mismatch`,
 `frozen_probability_mismatch`, `challenger_model_identity_mismatch`,
 `challenger_artifact_fingerprint_mismatch`, `policy_fingerprint_mismatch`,
 `malformed_fixture_json`, `malformed_probability`,
-`canonical_window_incomplete`, `required_subgroup_insufficient`,
+`canonical_window_incomplete`, `uncalibrated_roster_shape`,
+`required_subgroup_insufficient`,
 `zero_eligible_fixtures`, `coverage_insufficient`, and `run_gate_insufficient`.

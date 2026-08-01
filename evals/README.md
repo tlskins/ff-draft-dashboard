@@ -109,7 +109,9 @@ least 3 of 5 whole-draft folds. This keeps a one-pick or numerical edge from
 being called format value. Neither result changes `combined` or the live
 recorder; even a passing decision is only eligible for a new shadow-validation
 slice. Sparse alternate roster shapes remain a coverage limitation, not
-evidence of generalization.
+evidence of generalization. Phase 9 prospective calibration likewise makes
+no accuracy claim for structurally valid roster shapes outside its calibrated
+roster shape; such captures are informational only.
 
 ### Canonical static-window residual challenger
 

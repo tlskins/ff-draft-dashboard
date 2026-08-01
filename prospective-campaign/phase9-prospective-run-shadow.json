@@ -8,7 +8,7 @@
     "committedAt": "2026-08-01T10:05:42-04:00"
   },
   "policy": {
-    "version": 1,
+    "version": 2,
     "baseline": {
       "commit": "1410d29fa17fd55a206bb7fc0cdaf16ec435d696",
       "parent": "78b59bd33b7da79310519667acbcba1a14e181ce",
@@ -20,10 +20,9 @@
       "minimumDistinctDraftSlots": 4,
       "requiredTeamCounts": [10, 12],
       "requiredScoringFormats": ["PPR", "STANDARD"],
-      "minimumDistinctRosterShapes": 2,
+      "minimumDistinctRosterShapes": 1,
       "requiredRosterShapes": [
-        "QB1-RB2-WR2-TE1-FLEX1-BENCH7",
-        "QB1-RB2-WR3-TE1-FLEX1-BENCH6"
+        "QB1-RB2-WR2-TE1-FLEX1-BENCH7"
       ],
       "minimumCompleteWindowsPerRequiredSubgroup": 2
     },
@@ -44,7 +43,7 @@
     },
     "rationale": {
       "sufficiency": "Five complete newly admitted fixtures, four draft slots, and two complete windows per required marginal subgroup preserve the existing Phase 4/8 fixture denominator while preventing partial drafts from satisfying Phase 9 evidence.",
-      "rosterCoverage": "Ten- and twelve-team PPR/Standard coverage and the two listed roster shapes are required marginal dimensions. The repository has no stronger prospective roster-shape denominator, so these explicit capture requirements remain evidence-blocking until varied complete captures exist.",
+      "rosterCoverage": "Ten- and twelve-team PPR/Standard coverage and the calibrated QB1-RB2-WR2-TE1-FLEX1-BENCH7 roster shape are required marginal dimensions. Other structurally valid roster shapes remain supported but prospectively uncalibrated: they are reported as informational evidence and cannot satisfy fixture, subgroup, aggregate, or promotion-gate requirements. No numeric confidence penalty is assigned.",
       "position": "The bounded run-only envelope stores no challenger position vector. Frozen-v1 position Brier, top-position accuracy, and calibration are reference/integrity metrics only; no inactive numerical position threshold is a gate and exact-player metrics are excluded.",
       "run": "Run Brier/log-loss and the 0.50 precision, recall, and F1 no-harm guardrails reuse the existing static-window residual tolerances. Aggregate run improvement is required, while each adequately supported required marginal subgroup must avoid material regression. Phase 9A never promotes a model."
     }
@@ -54,12 +53,10 @@
     "teamCounts": [10, 12],
     "scoringFormats": ["PPR", "STANDARD"],
     "rosterShapes": [
-      "QB1-RB2-WR2-TE1-FLEX1-BENCH7",
-      "QB1-RB2-WR3-TE1-FLEX1-BENCH6",
-      "QB2-RB2-WR2-TE1-FLEX1-BENCH6"
+      "QB1-RB2-WR2-TE1-FLEX1-BENCH7"
     ],
     "superflex": "report_if_represented"
   },
-  "policyFingerprint": "f6cac586811f0276f8066a563f5570d75d79e9a14a64f479627d6a7488797574",
+  "policyFingerprint": "c4d950474e7dd6aae37cc18ba18b356dba2668cd6d626aaa4b5048e5fd29aad7",
   "evidence": []
 }

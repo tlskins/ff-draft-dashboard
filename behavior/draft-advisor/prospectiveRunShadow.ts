@@ -13,7 +13,9 @@ import type {
 import type { RunEvent, RunPosition, StaticWindowRunMetrics } from "./staticWindowRunTuning"
 
 export const PHASE9_PROSPECTIVE_CAMPAIGN_SCHEMA_VERSION = 1 as const
-export const PHASE9_PROSPECTIVE_POLICY_VERSION = 1 as const
+export const PHASE9_PROSPECTIVE_POLICY_VERSION = 2 as const
+export const PHASE9_CALIBRATED_ROSTER_SHAPE =
+  "QB1-RB2-WR2-TE1-FLEX1-BENCH7" as const
 export const PHASE9_BASELINE_COMMIT =
   "1410d29fa17fd55a206bb7fc0cdaf16ec435d696" as const
 export const PHASE9_BASELINE_PARENT =
@@ -59,6 +61,7 @@ export const PROSPECTIVE_RUN_SHADOW_REASON_CODES = {
   missingLabel: "missing_label",
   canonicalWindowMissing: "canonical_window_missing",
   canonicalWindowIncomplete: "canonical_window_incomplete",
+  uncalibratedRosterShape: "uncalibrated_roster_shape",
   noEligibleFixtures: "zero_eligible_fixtures",
   coverageInsufficient: "coverage_insufficient",
   subgroupInsufficient: "required_subgroup_insufficient",
@@ -165,7 +168,8 @@ export interface ProspectiveEvidenceDecision {
   fixturePath: string
   fixtureId?: string
   contentSha256?: string
-  disposition: "eligible" | "excluded" | "invalid"
+  disposition: "eligible" | "informational" | "excluded" | "invalid"
+  calibrationStatus?: "calibrated" | "uncalibrated"
   reasonCodes: ProspectiveRunShadowReasonCode[]
   coverage?: LeagueFormatCoverage
 }
@@ -304,6 +308,7 @@ export interface ProspectiveRunShadowReport {
   evidence: ProspectiveEvidenceDecision[]
   eligibleFixtureCount: number
   excludedEvidenceCount: number
+  informationalEvidenceCount: number
   invalidEvidenceCount: number
   coverage: {
     eligibleFixtureCount: number
@@ -381,20 +386,17 @@ const baseline = {
   committedAt: PHASE9_BASELINE_COMMITTED_AT,
 } as const
 
-/** Version 1 is an immutable contract, not caller-supplied tuning input. */
+/** Version 2 is an immutable contract, not caller-supplied tuning input. */
 const CANONICAL_PHASE9_POLICY: ProspectiveCampaignPolicy = {
-  version: 1,
+  version: 2,
   baseline,
   evidenceSufficiency: {
     minimumEligibleFixtures: 5,
     minimumDistinctDraftSlots: 4,
     requiredTeamCounts: [10, 12],
     requiredScoringFormats: ["PPR", "STANDARD"],
-    minimumDistinctRosterShapes: 2,
-    requiredRosterShapes: [
-      "QB1-RB2-WR2-TE1-FLEX1-BENCH7",
-      "QB1-RB2-WR3-TE1-FLEX1-BENCH6",
-    ],
+    minimumDistinctRosterShapes: 1,
+    requiredRosterShapes: [PHASE9_CALIBRATED_ROSTER_SHAPE],
     // Two complete topology windows per required marginal subgroup is the
     // smallest explicit support guard derived from complete-window evidence.
     minimumCompleteWindowsPerRequiredSubgroup: 2,
@@ -416,7 +418,7 @@ const CANONICAL_PHASE9_POLICY: ProspectiveCampaignPolicy = {
   },
   rationale: {
     sufficiency: "Five complete newly admitted fixtures, four draft slots, and two complete windows per required marginal subgroup preserve the existing Phase 4/8 fixture denominator while preventing partial drafts from satisfying Phase 9 evidence.",
-    rosterCoverage: "Ten- and twelve-team PPR/Standard coverage and the two listed roster shapes are required marginal dimensions. The repository has no stronger prospective roster-shape denominator, so these explicit capture requirements remain evidence-blocking until varied complete captures exist.",
+    rosterCoverage: "Ten- and twelve-team PPR/Standard coverage and the calibrated QB1-RB2-WR2-TE1-FLEX1-BENCH7 roster shape are required marginal dimensions. Other structurally valid roster shapes remain supported but prospectively uncalibrated: they are reported as informational evidence and cannot satisfy fixture, subgroup, aggregate, or promotion-gate requirements. No numeric confidence penalty is assigned.",
     position: "The bounded run-only envelope stores no challenger position vector. Frozen-v1 position Brier, top-position accuracy, and calibration are reference/integrity metrics only; no inactive numerical position threshold is a gate and exact-player metrics are excluded.",
     run: "Run Brier/log-loss and the 0.50 precision, recall, and F1 no-harm guardrails reuse the existing static-window residual tolerances. Aggregate run improvement is required, while each adequately supported required marginal subgroup must avoid material regression. Phase 9A never promotes a model.",
   },
@@ -428,7 +430,7 @@ export const createPhase9PolicyFingerprint = (policy: ProspectiveCampaignPolicy)
 // the policy contract is finalized. Keeping the comparison here makes policy
 // edits fail closed even if a caller recomputes a new fingerprint.
 export const PHASE9_POLICY_FINGERPRINT =
-  "f6cac586811f0276f8066a563f5570d75d79e9a14a64f479627d6a7488797574"
+  "c4d950474e7dd6aae37cc18ba18b356dba2668cd6d626aaa4b5048e5fd29aad7"
 
 export const createProspectiveFixtureContentSha256 = (rawContent: string): string =>
   createHash("sha256").update(rawContent, "utf8").digest("hex")
@@ -839,7 +841,7 @@ const validateManifestShape = (value: unknown): string[] => {
   const manifestBaseline = value.baseline
   if (!isRecord(manifestBaseline) || manifestBaseline.commit !== PHASE9_BASELINE_COMMIT || manifestBaseline.parent !== PHASE9_BASELINE_PARENT || manifestBaseline.tag !== PHASE9_BASELINE_TAG || manifestBaseline.committedAt !== PHASE9_BASELINE_COMMITTED_AT) errors.push("campaign baseline provenance is invalid")
   const policy = value.policy
-  if (!isRecord(policy) || policy.version !== 1) errors.push("campaign policy version is invalid")
+  if (!isRecord(policy) || policy.version !== PHASE9_PROSPECTIVE_POLICY_VERSION) errors.push("campaign policy version is invalid")
   if (!isRecord(policy) || !isRecord(policy.baseline) || policy.baseline.commit !== PHASE9_BASELINE_COMMIT || policy.baseline.parent !== PHASE9_BASELINE_PARENT || policy.baseline.tag !== PHASE9_BASELINE_TAG || policy.baseline.committedAt !== PHASE9_BASELINE_COMMITTED_AT) errors.push("campaign policy baseline provenance is invalid")
   if (typeof value.policyFingerprint !== "string" || value.policyFingerprint !== PHASE9_POLICY_FINGERPRINT) errors.push("campaign policy fingerprint is invalid")
   if (isRecord(policy)) {
@@ -898,12 +900,12 @@ const manifestReasonCodes = (value: unknown): ProspectiveRunShadowReasonCode[] =
   return Array.from(reasons).sort()
 }
 
-const decision = (declaration: ProspectiveCampaignEvidenceDeclaration, disposition: ProspectiveEvidenceDecision["disposition"], reasonCodes: ProspectiveRunShadowReasonCode[], fixture?: RecordedCompletedDraftReplay, contentSha256?: string): ProspectiveEvidenceDecision => {
+const decision = (declaration: ProspectiveCampaignEvidenceDeclaration, disposition: ProspectiveEvidenceDecision["disposition"], reasonCodes: ProspectiveRunShadowReasonCode[], fixture?: RecordedCompletedDraftReplay, contentSha256?: string, calibrationStatus?: ProspectiveEvidenceDecision["calibrationStatus"]): ProspectiveEvidenceDecision => {
   let details: Pick<ProspectiveEvidenceDecision, "fixtureId" | "coverage"> = {}
   if (fixture && typeof fixture.id === "string") {
     try { details = { fixtureId: fixture.id, coverage: coverageFor(fixture) } } catch { details = { fixtureId: fixture.id } }
   }
-  return { id: declaration.id, fixturePath: declaration.fixturePath, ...details, ...(contentSha256 ? { contentSha256 } : {}), disposition, reasonCodes: Array.from(new Set(reasonCodes)).sort() }
+  return { id: declaration.id, fixturePath: declaration.fixturePath, ...details, ...(contentSha256 ? { contentSha256 } : {}), disposition, ...(calibrationStatus ? { calibrationStatus } : {}), reasonCodes: Array.from(new Set(reasonCodes)).sort() }
 }
 
 const safePairedReasons = (fixture: RecordedCompletedDraftReplay): ProspectiveRunShadowReasonCode[] => {
@@ -1048,13 +1050,14 @@ export const runProspectiveRunShadowCampaign = (manifest: unknown, inputs: unkno
     schemaVersion: 1 as const,
     reportKind: "phase9_prospective_run_shadow" as const,
     campaignId: typeof manifestRecord?.campaignId === "string" ? manifestRecord.campaignId : "invalid",
-    campaignPolicyVersion: 1 as const,
+    campaignPolicyVersion: PHASE9_PROSPECTIVE_POLICY_VERSION,
     policy,
     policyFingerprint: manifestValidation.manifest?.policyFingerprint || PHASE9_POLICY_FINGERPRINT,
     baseline: manifestValidation.manifest?.baseline || baseline,
     evidence: [] as ProspectiveEvidenceDecision[],
     eligibleFixtureCount: 0,
     excludedEvidenceCount: 0,
+    informationalEvidenceCount: 0,
     invalidEvidenceCount: 0,
     coverage: { eligibleFixtureCount: 0, distinctDraftSlots: [] as number[], teamCounts: [] as number[], scoringFormats: [] as Array<"PPR" | "STANDARD">, rosterShapes: [] as string[], superflex: "absent" as const, missing: [] as string[] },
     stratified: emptyStratified(),
@@ -1113,8 +1116,12 @@ export const runProspectiveRunShadowCampaign = (manifest: unknown, inputs: unkno
     if (uniqueReasons.length) {
       evidence.push(decision(declaration, uniqueReasons.includes(PROSPECTIVE_RUN_SHADOW_REASON_CODES.retrospectiveEvidence) ? "excluded" : "invalid", uniqueReasons, fixture, actualHash)); return
     }
+    const coverage = coverageFor(fixture)
+    if (!policy.evidenceSufficiency.requiredRosterShapes.includes(coverage.rosterShape)) {
+      evidence.push(decision(declaration, "informational", [PROSPECTIVE_RUN_SHADOW_REASON_CODES.uncalibratedRosterShape], fixture, actualHash, "uncalibrated")); return
+    }
     scored.push(scoreFixture(fixture, declaration, policy.runAcceptance))
-    evidence.push(decision(declaration, "eligible", [], fixture, actualHash))
+    evidence.push(decision(declaration, "eligible", [], fixture, actualHash, "calibrated"))
   })
   const fixtures = scored.map(item => item.report).sort((left, right) => left.fixtureId.localeCompare(right.fixtureId))
   const sufficiency = evaluateSufficiency(manifestValidation.manifest!, fixtures)
@@ -1141,6 +1148,7 @@ export const runProspectiveRunShadowCampaign = (manifest: unknown, inputs: unkno
     evidence: finalEvidence,
     eligibleFixtureCount: fixtures.length,
     excludedEvidenceCount: finalEvidence.filter(item => item.disposition === "excluded").length,
+    informationalEvidenceCount: finalEvidence.filter(item => item.disposition === "informational").length,
     invalidEvidenceCount: finalEvidence.filter(item => item.disposition === "invalid").length,
     coverage,
     aggregate,

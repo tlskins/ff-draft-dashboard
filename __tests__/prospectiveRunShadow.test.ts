@@ -17,6 +17,8 @@ import {
 } from "../behavior/draft-advisor/opponentModel"
 import {
   createPhase9PolicyFingerprint,
+  PHASE9_CALIBRATED_ROSTER_SHAPE,
+  PHASE9_POLICY_FINGERPRINT,
   createProspectiveFixtureContentSha256,
   runProspectiveRunShadowCampaign,
 } from "../behavior/draft-advisor/prospectiveRunShadow"
@@ -32,9 +34,14 @@ const baseCampaign = campaignJson as unknown as ProspectiveCampaignManifest
 
 const clone = <Value>(value: Value): Value => JSON.parse(JSON.stringify(value)) as Value
 
-const futurePairedFixture = (options: { id?: string, omitBoundary?: number, extraBoundaries?: number[] } = {}): RecordedCompletedDraftReplay => {
+const futurePairedFixture = (options: { id?: string, targetRosterIndex?: number, rosterShape?: "standard" | "wr3", omitBoundary?: number, extraBoundaries?: number[] } = {}): RecordedCompletedDraftReplay => {
   const fixture = clone(sourceFixture)
   if (options.id) fixture.id = options.id
+  if (options.targetRosterIndex !== undefined) fixture.targetRosterIndex = options.targetRosterIndex
+  if (options.rosterShape === "wr3") {
+    fixture.settings.numStartingWrs = 3
+    fixture.settings.numBenchPlayers = 6
+  }
   fixture.source!.capturedAt = Date.parse("2026-08-01T10:06:00-04:00")
   const frozenRecorder = new ReplayForecastEvidenceRecorder()
   const shadowRecorder = new ReplayRunOnlyShadowEvidenceRecorder()
@@ -81,12 +88,64 @@ const campaignFor = (
   return { manifest, input: { path, rawContent } }
 }
 
+const campaignForFixtures = (fixtures: RecordedCompletedDraftReplay[]): { manifest: ProspectiveCampaignManifest, inputs: ProspectiveFixtureInput[] } => {
+  const manifest = clone(baseCampaign)
+  const declarations = fixtures.map((fixture, index) => {
+    const rawContent = JSON.stringify(fixture)
+    const path = `prospective-campaign/fixtures/future-${index + 1}.json`
+    return {
+      declaration: {
+        id: `future-fixture-${index + 1}`,
+        fixturePath: path,
+        fixtureId: fixture.id,
+        contentSha256: createProspectiveFixtureContentSha256(rawContent),
+        baselineCommit: manifest.baseline.commit,
+        baselineTag: manifest.baseline.tag,
+        declaredProvenance: {
+          platform: "ESPN" as const,
+          kind: "completed_mock" as const,
+          captureMethod: "extension_board_export" as const,
+          captureVersion: 1 as const,
+        },
+      },
+      input: { path, rawContent },
+    }
+  })
+  manifest.evidence = declarations.map(item => item.declaration)
+  return { manifest, inputs: declarations.map(item => item.input) }
+}
+
 const reportFor = (fixture = futurePairedFixture()) => {
   const campaign = campaignFor(fixture)
   return runProspectiveRunShadowCampaign(campaign.manifest, [campaign.input])
 }
 
 describe("Phase 9 prospective run-shadow evaluator", () => {
+  it("pins one calibrated roster shape and a deterministic amended policy fingerprint", () => {
+    expect(baseCampaign.policy.evidenceSufficiency.requiredRosterShapes).toEqual([PHASE9_CALIBRATED_ROSTER_SHAPE])
+    expect(baseCampaign.policy.evidenceSufficiency.minimumDistinctRosterShapes).toBe(1)
+    expect(baseCampaign.policyFingerprint).toBe(PHASE9_POLICY_FINGERPRINT)
+    expect(createPhase9PolicyFingerprint(baseCampaign.policy)).toBe(PHASE9_POLICY_FINGERPRINT)
+    expect(createPhase9PolicyFingerprint(clone(baseCampaign.policy))).toBe(PHASE9_POLICY_FINGERPRINT)
+    expect(PHASE9_POLICY_FINGERPRINT).not.toBe("f6cac586811f0276f8066a563f5570d75d79e9a14a64f479627d6a7488797574")
+  })
+
+  it("counts five valid calibrated-shape fixtures without requiring an unavailable shape", () => {
+    const fixtures = Array.from({ length: 5 }, (_, index) => futurePairedFixture({
+      id: `standard-fixture-${index + 1}`,
+      targetRosterIndex: index,
+    }))
+    const campaign = campaignForFixtures(fixtures)
+    const report = runProspectiveRunShadowCampaign(campaign.manifest, campaign.inputs)
+    expect(report.eligibleFixtureCount).toBe(5)
+    expect(report.informationalEvidenceCount).toBe(0)
+    expect(report.coverage.rosterShapes).toEqual([PHASE9_CALIBRATED_ROSTER_SHAPE])
+    expect(report.coverage.missing.some(need => need.includes("WR3"))).toBe(false)
+    expect(report.stratified.rosterShape).toEqual([
+      expect.objectContaining({ key: PHASE9_CALIBRATED_ROSTER_SHAPE, required: true }),
+    ])
+  })
+
   it("accepts a paired known-total boundary and scores only future labels", () => {
     const report = reportFor()
     expect(report.evidence[0].disposition).toBe("eligible")
@@ -186,12 +245,26 @@ describe("Phase 9 prospective run-shadow evaluator", () => {
   })
 
   it("fails closed for the empty checked-in campaign without zero-filled metrics", () => {
-    const report = runProspectiveRunShadowCampaign(baseCampaign, [])
-    expect(report.status).toBe("evidence_blocked")
-    expect(report.eligibleFixtureCount).toBe(0)
-    expect(report.aggregate).toBeUndefined()
-    expect(report.gates.evidenceSufficiency.reasonCodes).toContain("zero_eligible_fixtures")
-    expect(report.promotion.promoted).toBe(false)
+    const first = runProspectiveRunShadowCampaign(baseCampaign, [])
+    const second = runProspectiveRunShadowCampaign(baseCampaign, [])
+    expect(JSON.stringify(first)).toBe(JSON.stringify(second))
+    expect(first.status).toBe("evidence_blocked")
+    expect(first.eligibleFixtureCount).toBe(0)
+    expect(first.informationalEvidenceCount).toBe(0)
+    expect(first.aggregate).toBeUndefined()
+    expect(first.gates.evidenceSufficiency.reasonCodes).toContain("zero_eligible_fixtures")
+    expect(first.promotion.promoted).toBe(false)
+    expect(first.policyFingerprint).toBe(PHASE9_POLICY_FINGERPRINT)
+    expect(first.policy.evidenceSufficiency.requiredRosterShapes).toEqual([PHASE9_CALIBRATED_ROSTER_SHAPE])
+    expect(first.nextCaptureNeeds.some(need => need.includes("WR3"))).toBe(false)
+    expect(first.nextCaptureNeeds).toEqual(expect.arrayContaining([
+      "capture 5 more eligible completed fixtures",
+      "capture 4 more distinct draft slots",
+      "capture a 10-team fixture",
+      "capture a 12-team fixture",
+      "capture a PPR fixture",
+      "capture a STANDARD fixture",
+    ]))
   })
 
   it("excludes legacy and unlisted inputs", () => {
@@ -420,8 +493,76 @@ describe("Phase 9 prospective run-shadow evaluator", () => {
     expect(report.nextCaptureNeeds).toEqual(expect.arrayContaining([
       "capture a 12-team fixture",
       "capture a STANDARD fixture",
-      "capture a complete QB1-RB2-WR3-TE1-FLEX1-BENCH6 roster-shape fixture",
     ]))
+    expect(report.nextCaptureNeeds.some(need => need.includes("WR3"))).toBe(false)
+    expect(report.coverage.rosterShapes).toEqual([PHASE9_CALIBRATED_ROSTER_SHAPE])
+  })
+
+  it("reports a valid nonstandard roster as informational without scoring or gating it", () => {
+    const standard = futurePairedFixture({ id: "calibrated-standard", targetRosterIndex: 0 })
+    const nonstandard = futurePairedFixture({ id: "uncalibrated-wr3", targetRosterIndex: 1, rosterShape: "wr3" })
+    const standardReport = reportFor(standard)
+    const campaign = campaignForFixtures([standard, nonstandard])
+    const report = runProspectiveRunShadowCampaign(campaign.manifest, campaign.inputs)
+    const informational = report.evidence.find(item => item.fixtureId === nonstandard.id)
+
+    expect(informational).toEqual(expect.objectContaining({
+      disposition: "informational",
+      calibrationStatus: "uncalibrated",
+      reasonCodes: ["uncalibrated_roster_shape"],
+      coverage: expect.objectContaining({ rosterShape: "QB1-RB2-WR3-TE1-FLEX1-BENCH6" }),
+    }))
+    expect(report.eligibleFixtureCount).toBe(1)
+    expect(report.informationalEvidenceCount).toBe(1)
+    expect(report.fixtures.map(fixture => fixture.fixtureId)).toEqual([standard.id])
+    expect(report.coverage.rosterShapes).toEqual([PHASE9_CALIBRATED_ROSTER_SHAPE])
+    expect(report.aggregate).toEqual(standardReport.aggregate)
+    expect(report.stratified).toEqual(standardReport.stratified)
+    expect(JSON.stringify(report.aggregate)).not.toContain("WR3")
+  })
+
+  it("does not let an otherwise valid nonstandard roster replace the calibrated fixture requirement", () => {
+    const nonstandard = futurePairedFixture({ id: "uncalibrated-only", rosterShape: "wr3" })
+    const campaign = campaignForFixtures([nonstandard])
+    const report = runProspectiveRunShadowCampaign(campaign.manifest, campaign.inputs)
+
+    expect(report.evidence[0].disposition).toBe("informational")
+    expect(report.eligibleFixtureCount).toBe(0)
+    expect(report.informationalEvidenceCount).toBe(1)
+    expect(report.aggregate).toBeUndefined()
+    expect(report.gates.evidenceSufficiency.failures).toEqual(expect.arrayContaining([
+      "eligible fixture count is below policy",
+      `required roster-shape coverage is missing: ${PHASE9_CALIBRATED_ROSTER_SHAPE}`,
+    ]))
+    expect(report.nextCaptureNeeds.some(need => need.includes("WR3"))).toBe(false)
+  })
+
+  it("does not create a required subgroup for an informational roster shape", () => {
+    const standard = futurePairedFixture({ id: "subgroup-standard" })
+    const nonstandard = futurePairedFixture({ id: "subgroup-wr3", rosterShape: "wr3", targetRosterIndex: 1 })
+    const campaign = campaignForFixtures([standard, nonstandard])
+    const report = runProspectiveRunShadowCampaign(campaign.manifest, campaign.inputs)
+
+    expect(report.stratified.rosterShape.map(group => group.key)).toEqual([PHASE9_CALIBRATED_ROSTER_SHAPE])
+    expect(report.stratified.rosterShape.every(group => group.required)).toBe(true)
+  })
+
+  it("keeps all non-roster evidence requirements and canonical topology blocking", () => {
+    const empty = runProspectiveRunShadowCampaign(baseCampaign, [])
+    expect(empty.nextCaptureNeeds).toEqual(expect.arrayContaining([
+      "capture a 10-team fixture",
+      "capture a 12-team fixture",
+      "capture a PPR fixture",
+      "capture a STANDARD fixture",
+      "capture 5 more eligible completed fixtures",
+    ]))
+
+    const omittedBoundary = canonicalStaticWindowBoundaries(sourceFixture)[0].observedThroughOverallPick
+    const incomplete = futurePairedFixture({ omitBoundary: omittedBoundary })
+    const incompleteReport = reportFor(incomplete)
+    expect(incompleteReport.evidence[0].reasonCodes).toContain("canonical_window_incomplete")
+    expect(incompleteReport.eligibleFixtureCount).toBe(0)
+    expect(incompleteReport.aggregate).toBeUndefined()
   })
 
   it("keeps frozen v1 live and makes no promotion or live-model decision", () => {
@@ -431,6 +572,29 @@ describe("Phase 9 prospective run-shadow evaluator", () => {
     expect(JSON.stringify(fixture.forecastEvidence)).toBe(before)
     expect(report.promotion).toEqual(expect.objectContaining({ promoted: false }))
     expect(report.baseline.commit).toBe("1410d29fa17fd55a206bb7fc0cdaf16ec435d696")
+  })
+
+  it("keeps position metrics reference-only and preserves the run thresholds", () => {
+    const report = reportFor()
+    expect(report.policy.positionAcceptance).toEqual({
+      mode: "frozen_v1_reference_only",
+      challengerComparison: "not_available_in_run_only_schema",
+    })
+    expect(report.policy.runAcceptance).toEqual({
+      minimumPicks: 3,
+      threshold: 0.5,
+      maximumBrierRegression: 0.01,
+      maximumLogLossRegression: 0.01,
+      maximumPrecisionRegression: 0.05,
+      maximumRecallRegression: 0.05,
+      maximumF1Regression: 0.05,
+      minimumMaterialBrierImprovement: 0.002,
+      minimumMaterialLogLossImprovement: 0.002,
+    })
+    expect(report.fixtures[0].frozenV1.position.available).toBe(true)
+    expect(report.fixtures[0].challenger.position.available).toBe(false)
+    expect(report.fixtures[0].deltas.position.available).toBe(false)
+    expect(report.fixtures[0].gates.position).toEqual(expect.objectContaining({ mode: "reference_only" }))
   })
 
   it("does not let exact-player probabilities enter metrics or gates", () => {
