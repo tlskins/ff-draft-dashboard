@@ -56,9 +56,36 @@ const players: Player[] = [
     team: NFLTeam.BUF,
     ranks: {},
   },
+  {
+    id: "qb-one",
+    firstName: "Quarterback",
+    lastName: "One",
+    fullName: "Quarterback One",
+    position: FantasyPosition.QUARTERBACK,
+    team: NFLTeam.ARI,
+    ranks: {},
+  },
+  {
+    id: "wr-one",
+    firstName: "Receiver",
+    lastName: "One",
+    fullName: "Receiver One",
+    position: FantasyPosition.WIDE_RECEIVER,
+    team: NFLTeam.BUF,
+    ranks: {},
+  },
+  {
+    id: "te-one",
+    firstName: "Tight End",
+    lastName: "One",
+    fullName: "Tight End One",
+    position: FantasyPosition.TIGHT_END,
+    team: NFLTeam.ARI,
+    ranks: {},
+  },
 ]
 
-describe("manual analysis workspace", () => {
+describe("decision analysis workspace navigation", () => {
   beforeEach(() => {
     localStorage.clear()
     mockedExecute.mockReset()
@@ -184,6 +211,150 @@ describe("manual analysis workspace", () => {
     expect(getByRole("dialog")).toBeTruthy()
   })
 
+  it("exposes all four views as selectable accessible controls", () => {
+    const view = render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    const labels = [
+      "Positional tier landscape",
+      "Realtime positional bests",
+      "Cross-position comparison",
+      "Intra-position comparison",
+    ]
+    labels.forEach(label => {
+      expect(view.getByRole("button", {name: label})).toBeTruthy()
+    })
+
+    const cross = view.getByRole("button", {
+      name: "Cross-position comparison",
+    })
+    expect(view.getByRole("group", {name: "Analysis views"})).toBeTruthy()
+    expect(cross.getAttribute("aria-pressed")).toBe("false")
+    fireEvent.click(cross)
+    expect(cross.getAttribute("aria-pressed")).toBe("true")
+    expect(view.container.textContent).toContain("Automatic navigation")
+    expect(view.getByText("Current view selected manually:")).toBeTruthy()
+  })
+
+  it("allows manual selection while pinned without leaving pinned mode", () => {
+    const view = render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    fireEvent.click(view.getByRole("button", {name: "Pin current view"}))
+    fireEvent.click(view.getByRole("button", {
+      name: "Intra-position comparison",
+    }))
+
+    expect(view.getByRole("button", {
+      name: "Return to automatic navigation",
+    })).toBeTruthy()
+    expect(view.getByRole("button", {
+      name: "Intra-position comparison",
+    }).getAttribute("aria-pressed")).toBe("true")
+    expect(view.container.textContent).toContain("Pinned navigation")
+    expect(view.getByText("Pinned: advisor cannot replace this view")).toBeTruthy()
+  })
+
+  it("applies automatic revisions once, preserves manual choices for stale advice, and accepts newer revisions", async () => {
+    const view = render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+
+    view.rerender(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        advisorViewSuggestion={{
+          view: "cross_position",
+          explanation: "Compare roster-adjusted value.",
+          revision: 10,
+        }}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    await waitFor(() => expect(view.getByRole("button", {
+      name: "Cross-position comparison",
+    }).getAttribute("aria-pressed")).toBe("true"))
+
+    fireEvent.click(view.getByRole("button", {
+      name: "Intra-position comparison",
+    }))
+    view.rerender(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        advisorViewSuggestion={{
+          view: "tier_landscape",
+          explanation: "The stale recommendation is ignored.",
+          revision: 10,
+        }}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    await waitFor(() => expect(view.getByRole("button", {
+      name: "Intra-position comparison",
+    }).getAttribute("aria-pressed")).toBe("true"))
+
+    view.rerender(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        advisorViewSuggestion={{
+          view: "positional_bests",
+          explanation: "Review the best available options.",
+          revision: 11,
+        }}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    await waitFor(() => expect(view.getByRole("button", {
+      name: "Realtime positional bests",
+    }).getAttribute("aria-pressed")).toBe("true"))
+    expect(view.container.textContent).toContain("Review the best available options.")
+  })
+
   it("persists a pinned manual view across workspace remounts", async () => {
     const props = {
       activePlayer: players[0],
@@ -196,7 +367,7 @@ describe("manual analysis workspace", () => {
       settings,
     }
     const first = render(<AnalysisWorkspace {...props} />)
-    fireEvent.click(first.getByRole("button", {name: "Pin view"}))
+    fireEvent.click(first.getByRole("button", {name: "Pin current view"}))
 
     await waitFor(() => expect(JSON.parse(
       localStorage.getItem("drafty-analysis-view-state") || "{}",
@@ -213,17 +384,204 @@ describe("manual analysis workspace", () => {
         }}
       />,
     )
-    expect(second.getByRole("button", {name: "Pinned"})).toBeTruthy()
+    expect(second.getByRole("button", {
+      name: "Return to automatic navigation",
+    })).toBeTruthy()
     expect(second.container.textContent).toContain(
-      "Advisor switching disabled",
+      "Pinned: advisor cannot replace this view",
     )
     await waitFor(() => expect(second.container.textContent).toContain(
-      "Your pick is approaching. Your pinned view was preserved.",
+      "Your pick is approaching. Your current pinned view was preserved.",
     ))
 
-    fireEvent.click(second.getByRole("button", {name: "Pinned"}))
+    fireEvent.click(second.getByRole("button", {
+      name: "Return to automatic navigation",
+    }))
     await waitFor(() => expect(second.container.textContent).toContain(
-      "Advisor view: Your pick is approaching.",
+      "Current view selected by advisor: Your pick is approaching.",
     ))
+  })
+
+  it("keeps only the newest pending pinned recommendation and reviews it without unpinning", async () => {
+    const view = render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    fireEvent.click(view.getByRole("button", {name: "Pin current view"}))
+    const props = {
+      activePlayer: players[0],
+      boardSettings: {
+        ranker: ThirdPartyRanker.HARRIS,
+        adpRanker: ThirdPartyADPRanker.ESPN,
+      },
+      players,
+      rankingSummaries: [],
+      settings,
+    }
+    view.rerender(
+      <AnalysisWorkspace
+        {...props}
+        advisorViewSuggestion={{
+          view: "cross_position",
+          explanation: "First pinned recommendation.",
+          revision: 20,
+        }}
+      />,
+    )
+    await waitFor(() => expect(view.container.textContent).toContain(
+      "First pinned recommendation.",
+    ))
+    view.rerender(
+      <AnalysisWorkspace
+        {...props}
+        advisorViewSuggestion={{
+          view: "positional_bests",
+          explanation: "Newest pinned recommendation.",
+          revision: 21,
+        }}
+      />,
+    )
+    await waitFor(() => expect(view.container.textContent).toContain(
+      "Newest pinned recommendation.",
+    ))
+    expect(view.container.textContent).not.toContain(
+      "First pinned recommendation.",
+    )
+
+    fireEvent.click(view.getByRole("button", {
+      name: "Review pending advisor recommendation",
+    }))
+    expect(view.getByRole("button", {
+      name: "Realtime positional bests",
+    }).getAttribute("aria-pressed")).toBe("true")
+    expect(view.getByRole("button", {
+      name: "Return to automatic navigation",
+    })).toBeTruthy()
+  })
+
+  it("announces advisor transitions politely and clears prior view state", async () => {
+    const view = render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    fireEvent.click(view.getByRole("button", {
+      name: "Intra-position comparison",
+    }))
+    fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
+    await waitFor(() => expect(view.container.querySelector("svg")).not.toBeNull())
+    fireEvent.click(view.getByRole("button", {name: "Inspect Player One"}))
+    expect(view.getByRole("dialog")).toBeTruthy()
+
+    view.rerender(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        advisorViewSuggestion={{
+          view: "cross_position",
+          explanation: "The pick is approaching; compare positions.",
+          revision: 40,
+        }}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    await waitFor(() => expect(view.getByRole("button", {
+      name: "Cross-position comparison",
+    }).getAttribute("aria-pressed")).toBe("true"))
+    expect(view.queryByRole("dialog")).toBeNull()
+    expect(view.container.querySelector("svg")).toBeNull()
+    expect(view.container.textContent).toContain(
+      "The pick is approaching; compare positions.",
+    )
+    const liveRegions = Array.from(
+      view.container.querySelectorAll("[aria-live='polite']"),
+    )
+    expect(liveRegions.length).toBeGreaterThan(0)
+    expect(liveRegions.some(region =>
+      region.textContent?.includes("Advisor selected cross position"),
+    )).toBe(true)
+  })
+
+  it("clears an analysis error when an advisor changes the active view", async () => {
+    mockedExecute.mockRejectedValueOnce(new Error("temporary analysis error"))
+    const view = render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    fireEvent.click(view.getByRole("button", {
+      name: "Intra-position comparison",
+    }))
+    fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
+    await waitFor(() => expect(view.container.textContent).toContain(
+      "temporary analysis error",
+    ))
+
+    view.rerender(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        advisorViewSuggestion={{
+          view: "cross_position",
+          explanation: "Switch to the current cross-position context.",
+          revision: 41,
+        }}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    await waitFor(() => expect(view.container.textContent).not.toContain(
+      "temporary analysis error",
+    ))
+  })
+
+  it("keeps returning to the draft board as an explicit manual action", () => {
+    const onClose = jest.fn()
+    const view = render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        onClose={onClose}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    fireEvent.click(view.getByRole("button", {name: "Return to draft board"}))
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })

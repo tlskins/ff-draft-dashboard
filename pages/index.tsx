@@ -261,6 +261,7 @@ const Home: FC = () => {
       | "intra_position"
     explanation: string
     revision: number
+    source: "manual"
   } | null>(null)
   const advisorPersistenceQueue = useRef(Promise.resolve())
   const sourceEventCount = draftHistory.filter(Boolean).length
@@ -272,6 +273,7 @@ const Home: FC = () => {
         view,
         explanation: proposal.explanation,
         revision: sourceEventCount,
+        source: "manual",
       })
       setAnalysisOpen(true)
     },

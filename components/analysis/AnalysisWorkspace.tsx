@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 
 import {
   AnalysisQueryResponse,
@@ -11,11 +17,13 @@ import {
 } from "../../behavior/analysis/presets"
 import {
   ANALYSIS_VIEW_DEFINITIONS,
+  AnalysisViewAction,
+  AnalysisViewSource,
   AnalysisViewState,
   DEFAULT_ANALYSIS_VIEW_STATE,
-  isAnalysisViewState,
-  setAnalysisViewPinned,
-  transitionAnalysisView,
+  restoreAnalysisViewState,
+  serializeAnalysisViewState,
+  transitionAnalysisViewState,
 } from "../../behavior/analysis/viewState"
 import {getPlayerMetrics} from "../../behavior/draft"
 import {
@@ -38,6 +46,7 @@ interface AnalysisWorkspaceProps {
     view: AnalysisViewState["view"]
     explanation: string
     revision: number
+    source?: AnalysisViewSource
   }
   onClose?: () => void
 }
@@ -48,17 +57,15 @@ const VIEW_STATE_STORAGE_KEY = "drafty-analysis-view-state"
 
 const loadViewState = (): AnalysisViewState => {
   if (typeof localStorage === "undefined") {
-    return DEFAULT_ANALYSIS_VIEW_STATE
+    return {...DEFAULT_ANALYSIS_VIEW_STATE}
   }
   try {
     const parsed = JSON.parse(
       localStorage.getItem(VIEW_STATE_STORAGE_KEY) || "null",
     )
-    return isAnalysisViewState(parsed)
-      ? parsed
-      : DEFAULT_ANALYSIS_VIEW_STATE
+    return restoreAnalysisViewState(parsed)
   } catch {
-    return DEFAULT_ANALYSIS_VIEW_STATE
+    return {...DEFAULT_ANALYSIS_VIEW_STATE}
   }
 }
 
@@ -105,11 +112,22 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   const [drawerPlayerId, setDrawerPlayerId] = useState<string | null>(
     null,
   )
-  const [blockedAdvisorExplanation, setBlockedAdvisorExplanation] =
-    useState<string | null>(null)
+  const [advisorAnnouncement, setAdvisorAnnouncement] = useState("")
+  const analysisRequestId = useRef(0)
+  const viewStateRef = useRef(viewState)
+  viewStateRef.current = viewState
   const advisorView = advisorViewSuggestion?.view
   const advisorExplanation = advisorViewSuggestion?.explanation
   const advisorRevision = advisorViewSuggestion?.revision
+  const advisorSource = advisorViewSuggestion?.source || "agent"
+
+  const clearAnalysisState = useCallback(() => {
+    analysisRequestId.current += 1
+    setResult(null)
+    setError(null)
+    setDrawerPlayerId(null)
+    setLoading(false)
+  }, [])
 
   useEffect(() => {
     const nextPrimary = activePlayer?.id || positionPlayers[0]?.id || ""
@@ -144,31 +162,57 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     if (typeof localStorage !== "undefined") {
       localStorage.setItem(
         VIEW_STATE_STORAGE_KEY,
-        JSON.stringify(viewState),
+        JSON.stringify(serializeAnalysisViewState(viewState)),
       )
     }
   }, [viewState])
 
   useEffect(() => {
-    if (!advisorView || !advisorExplanation) return
-    setViewState(current => {
-      const transition = transitionAnalysisView(current, {
-        view: advisorView,
-        source: "agent",
-        explanation: advisorExplanation,
-      })
-      setBlockedAdvisorExplanation(
-        transition.changed || !transition.blockedReason
-          ? null
-          : advisorExplanation,
+    if (
+      !advisorView
+      || !advisorExplanation
+      || typeof advisorRevision !== "number"
+    ) return
+    const transition = transitionAnalysisViewState(viewStateRef.current,
+      advisorSource === "manual"
+        ? {
+            type: "manual_select",
+            view: advisorView,
+            explanation: advisorExplanation,
+          }
+        : {
+            type: "advisor_recommendation",
+            recommendation: {
+              view: advisorView,
+              explanation: advisorExplanation,
+              revision: advisorRevision,
+            },
+          })
+    if (!transition.changed) return
+    setViewState(transition.state)
+    if (transition.viewChanged) clearAnalysisState()
+    if (advisorSource === "manual") {
+      setAdvisorAnnouncement(
+        `Selected ${advisorView.replace(/_/g, " ")} from a confirmed advisor `
+        + `recommendation. ${advisorExplanation}`,
       )
-      return transition.state
-    })
+    } else if (transition.advisorAction === "pending") {
+      setAdvisorAnnouncement(
+        `Advisor recommends ${advisorView.replace(/_/g, " ")}. `
+        + `${advisorExplanation} Your pinned view was preserved.`,
+      )
+    } else if (transition.advisorAction === "applied") {
+      setAdvisorAnnouncement(
+        `Advisor selected ${advisorView.replace(/_/g, " ")}. `
+        + advisorExplanation,
+      )
+    }
   }, [
     advisorExplanation,
     advisorRevision,
+    advisorSource,
     advisorView,
-    viewState.pinned,
+    clearAnalysisState,
   ])
 
   const selectedPlayerIds = [primaryId, secondaryId].filter(Boolean)
@@ -202,23 +246,65 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         : positionPlayers.length > 0
   )
 
+  const applyViewAction = (
+    action: AnalysisViewAction,
+    announcement = "",
+  ) => {
+    const transition = transitionAnalysisViewState(viewState, action)
+    if (!transition.changed) return
+    setViewState(transition.state)
+    if (transition.viewChanged) clearAnalysisState()
+    if (announcement) setAdvisorAnnouncement(announcement)
+  }
+
   const selectView = (
     view: AnalysisViewState["view"],
     explanation: string,
   ) => {
-    const transition = transitionAnalysisView(viewState, {
+    applyViewAction({
+      type: "manual_select",
       view,
-      source: "manual",
       explanation,
     })
+  }
+
+  const toggleNavigationMode = () => {
+    const transition = transitionAnalysisViewState(viewState, {
+      type: "set_pinned",
+      pinned: !viewState.pinned,
+    })
+    if (!transition.changed) return
     setViewState(transition.state)
-    setResult(null)
-    setError(null)
-    setDrawerPlayerId(null)
+    if (transition.viewChanged) clearAnalysisState()
+    if (transition.advisorAction === "applied" && transition.advisorRecommendation) {
+      const recommendation = transition.advisorRecommendation
+      setAdvisorAnnouncement(
+        `Automatic navigation restored. Applying the pending advisor `
+        + `recommendation for ${recommendation.view.replace(/_/g, " ")}. `
+        + recommendation.explanation,
+      )
+    }
+  }
+
+  const adoptPendingRecommendation = () => {
+    const recommendation = viewState.pendingAdvisorRecommendation
+    const transition = transitionAnalysisViewState(viewState, {
+      type: "adopt_pending_recommendation",
+    })
+    if (!transition.changed) return
+    setViewState(transition.state)
+    if (transition.viewChanged) clearAnalysisState()
+    if (recommendation) {
+      setAdvisorAnnouncement(
+        `Selected ${recommendation.view.replace(/_/g, " ")} manually from `
+        + `the advisor recommendation. ${recommendation.explanation}`,
+      )
+    }
   }
 
   const runAnalysis = async () => {
     if (!canRun) return
+    const requestId = ++analysisRequestId.current
     setLoading(true)
     setError(null)
     try {
@@ -231,16 +317,19 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         scoringProfile,
       })
       setDrawerPlayerId(null)
-      setResult(await executeHistoricalAnalysis(query))
+      const response = await executeHistoricalAnalysis(query)
+      if (analysisRequestId.current === requestId) setResult(response)
     } catch (requestError) {
-      setResult(null)
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Historical analysis failed",
-      )
+      if (analysisRequestId.current === requestId) {
+        setResult(null)
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Historical analysis failed",
+        )
+      }
     } finally {
-      setLoading(false)
+      if (analysisRequestId.current === requestId) setLoading(false)
     }
   }
 
@@ -249,7 +338,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
-            Manual mode
+            Decision workspace · {viewState.pinned
+              ? "Pinned navigation"
+              : "Automatic navigation"}
           </p>
           <h1 className="text-2xl font-bold text-slate-900">
             Historical analysis workspace
@@ -262,15 +353,19 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         <div className="flex flex-wrap gap-2">
           <button
             aria-pressed={viewState.pinned}
+            aria-label={viewState.pinned
+              ? "Return to automatic navigation"
+              : "Pin current view"}
             className={`rounded border px-3 py-2 text-sm font-semibold ${
               viewState.pinned
                 ? "border-indigo-600 bg-indigo-600 text-white"
                 : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
             }`}
-            onClick={() => setViewState(current =>
-              setAnalysisViewPinned(current, !current.pinned))}
+            onClick={toggleNavigationMode}
           >
-            {viewState.pinned ? "Pinned" : "Pin view"}
+            {viewState.pinned
+              ? "Return to automatic navigation"
+              : "Pin current view"}
           </button>
           {onClose && (
           <button
@@ -291,19 +386,53 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         }`}
       >
         <span className="font-semibold">
-          {viewState.source === "agent" ? "Advisor view: " : "Manual view: "}
+          {viewState.source === "agent"
+            ? "Current view selected by advisor: "
+            : "Current view selected manually: "}
         </span>
         {viewState.explanation}
-        {viewState.pinned && (
-          <span className="ml-2 rounded bg-white px-2 py-0.5 text-xs font-semibold">
-            Advisor switching disabled
-          </span>
-        )}
+        <span className="ml-2 rounded bg-white px-2 py-0.5 text-xs font-semibold">
+          {viewState.pinned
+            ? "Pinned: advisor cannot replace this view"
+            : "Automatic: advisor may change this view"}
+        </span>
       </div>
-      {blockedAdvisorExplanation && (
-        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-          <span className="font-semibold">Advisor update: </span>
-          {blockedAdvisorExplanation} Your pinned view was preserved.
+      <div
+        aria-atomic="true"
+        aria-live="polite"
+        className="sr-only"
+        role="status"
+      >
+        {advisorAnnouncement}
+      </div>
+
+      {viewState.pendingAdvisorRecommendation && (
+        <div
+          aria-atomic="true"
+          aria-live="polite"
+          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
+          role="status"
+        >
+          <div>
+            <p className="font-semibold">Pending advisor recommendation</p>
+            <p>
+              Advisor recommends{" "}
+              <span className="font-semibold">
+                {ANALYSIS_VIEW_DEFINITIONS.find(definition =>
+                  definition.id === viewState.pendingAdvisorRecommendation?.view,
+                )?.label}
+              </span>
+              . {viewState.pendingAdvisorRecommendation.explanation} Your
+              current pinned view was preserved.
+            </p>
+          </div>
+          <button
+            aria-label="Review pending advisor recommendation"
+            className="rounded border border-amber-700 bg-white px-3 py-2 font-semibold text-amber-900 hover:bg-amber-100"
+            onClick={adoptPendingRecommendation}
+          >
+            Review recommendation
+          </button>
         </div>
       )}
 
@@ -313,9 +442,15 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Analysis
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div
+              aria-label="Analysis views"
+              className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+              role="group"
+            >
               {ANALYSIS_VIEW_DEFINITIONS.map(candidate => (
                 <button
+                  aria-label={candidate.label}
+                  aria-pressed={viewState.view === candidate.id}
                   className={`rounded-lg border p-2 text-left transition ${
                     viewState.view === candidate.id
                       ? "border-indigo-500 bg-indigo-50 text-indigo-900"
