@@ -2,6 +2,7 @@ import {
   acknowledgeAnalysisViewEvent,
   arbitrateAnalysisViewEventsByLayout,
   createAnalysisViewEventArbitrationState,
+  MAX_ACKNOWLEDGED_CONFIRMED_EVENT_IDS,
   queueConfirmedAnalysisViewEvent,
 } from "../behavior/analysis/viewEventArbitration"
 import type {
@@ -124,6 +125,150 @@ describe("analysis view event arbitration", () => {
       duplicate,
       automatic(12),
     )).toEqual({desktop: null, mobile: null})
+  })
+
+  it("keeps A idempotent after acknowledging B and makes old acknowledgements no-ops", () => {
+    const initial = createAnalysisViewEventArbitrationState("draft-one")
+    const queuedA = queueConfirmedAnalysisViewEvent(
+      initial,
+      "draft-one",
+      {
+        eventId: "proposal-a",
+        view: "tier_landscape",
+        explanation: "Confirmed proposal A.",
+        supersedesAutomaticRevision: 20,
+      },
+    )
+    const eventA = queuedA.pendingConfirmedEvent!
+    const acknowledgedA = acknowledgeAnalysisViewEvent(queuedA, eventA)
+    const queuedB = queueConfirmedAnalysisViewEvent(
+      acknowledgedA,
+      "draft-one",
+      {
+        eventId: "proposal-b",
+        view: "cross_position",
+        explanation: "Confirmed proposal B.",
+        supersedesAutomaticRevision: 20,
+      },
+    )
+    const acknowledgedB = acknowledgeAnalysisViewEvent(
+      queuedB,
+      queuedB.pendingConfirmedEvent!,
+    )
+
+    expect(acknowledgedB.acknowledgedConfirmedEventIds).toEqual([
+      "proposal-a",
+      "proposal-b",
+    ])
+    expect(queueConfirmedAnalysisViewEvent(
+      acknowledgedB,
+      "draft-one",
+      {
+        eventId: "proposal-a",
+        view: "tier_landscape",
+        explanation: "Proposal A must not replay.",
+        supersedesAutomaticRevision: 20,
+      },
+    )).toBe(acknowledgedB)
+    expect(acknowledgeAnalysisViewEvent(
+      acknowledgedB,
+      eventA,
+    )).toBe(acknowledgedB)
+  })
+
+  it("bounds acknowledged confirmed-event identities to the newest 50", () => {
+    let state = createAnalysisViewEventArbitrationState("draft-one")
+    for (
+      let index = 0;
+      index <= MAX_ACKNOWLEDGED_CONFIRMED_EVENT_IDS;
+      index += 1
+    ) {
+      state = queueConfirmedAnalysisViewEvent(
+        state,
+        "draft-one",
+        {
+          eventId: `proposal-${index}`,
+          view: "tier_landscape",
+          explanation: `Confirmed proposal ${index}.`,
+          supersedesAutomaticRevision: 30,
+        },
+      )
+      state = acknowledgeAnalysisViewEvent(
+        state,
+        state.pendingConfirmedEvent!,
+      )
+    }
+
+    expect(state.acknowledgedConfirmedEventIds).toHaveLength(
+      MAX_ACKNOWLEDGED_CONFIRMED_EVENT_IDS,
+    )
+    expect(state.acknowledgedConfirmedEventIds[0]).toBe("proposal-1")
+    expect(state.acknowledgedConfirmedEventIds.at(-1)).toBe("proposal-50")
+    expect(state.acknowledgedConfirmedEventIds).not.toContain("proposal-0")
+  })
+
+  it("clears acknowledged confirmed identities when the stream changes", () => {
+    const queued = queueConfirmedAnalysisViewEvent(
+      createAnalysisViewEventArbitrationState("draft-one"),
+      "draft-one",
+      {
+        eventId: "proposal-a",
+        view: "tier_landscape",
+        explanation: "Confirmed in draft one.",
+        supersedesAutomaticRevision: 4,
+      },
+    )
+    const acknowledged = acknowledgeAnalysisViewEvent(
+      queued,
+      queued.pendingConfirmedEvent!,
+    )
+    const nextStream = queueConfirmedAnalysisViewEvent(
+      acknowledged,
+      "draft-two",
+      {
+        eventId: "proposal-b",
+        view: "cross_position",
+        explanation: "Confirmed in draft two.",
+        supersedesAutomaticRevision: 1,
+      },
+    )
+
+    expect(nextStream.streamId).toBe("draft-two")
+    expect(nextStream.acknowledgedConfirmedEventIds).toEqual([])
+    expect(nextStream.pendingConfirmedEvent?.eventId).toBe("proposal-b")
+  })
+
+  it("allows the same confirmed event ID in a genuinely different stream", () => {
+    const firstQueued = queueConfirmedAnalysisViewEvent(
+      createAnalysisViewEventArbitrationState("draft-one"),
+      "draft-one",
+      {
+        eventId: "proposal-shared",
+        view: "tier_landscape",
+        explanation: "Confirmed in draft one.",
+        supersedesAutomaticRevision: 8,
+      },
+    )
+    const firstAcknowledged = acknowledgeAnalysisViewEvent(
+      firstQueued,
+      firstQueued.pendingConfirmedEvent!,
+    )
+    const secondQueued = queueConfirmedAnalysisViewEvent(
+      firstAcknowledged,
+      "draft-two",
+      {
+        eventId: "proposal-shared",
+        view: "positional_bests",
+        explanation: "Confirmed independently in draft two.",
+        supersedesAutomaticRevision: 2,
+      },
+    )
+
+    expect(secondQueued.pendingConfirmedEvent).toMatchObject({
+      streamId: "draft-two",
+      eventId: "proposal-shared",
+      sequence: 1,
+    })
   })
 
   it("resets independent clocks when the draft event stream changes", () => {

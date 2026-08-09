@@ -47,6 +47,13 @@ automatic revision may navigate normally when unpinned or become the
 newest-only pending advice when pinned. A confirmed event clears stale pending
 advice even when the effective view does not change.
 
+The newest 50 acknowledged confirmed proposal IDs are retained within a
+bounded runtime window, matching the Realtime proposal collection limit. An
+acknowledged ID cannot be queued or acknowledged again while it remains in
+that window, including an `A → B → A` sequence. The collection is runtime-only
+and resets with the draft-session stream; an unacknowledged queued proposal is
+not recorded as consumed.
+
 The page owns the acknowledgement boundary and resolves one event object for
 both desktop and mobile render paths. Realtime confirmation opens the analysis
 surface appropriate to the active viewport; both paths therefore receive the

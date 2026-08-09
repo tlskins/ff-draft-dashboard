@@ -9,7 +9,7 @@ import {
 export interface AnalysisViewEventArbitrationState {
   streamId: string
   lastAcknowledgedAutomaticRevision: number | null
-  lastAcknowledgedConfirmedEventId: string | null
+  acknowledgedConfirmedEventIds: string[]
   nextConfirmedSequence: number
   pendingConfirmedEvent: ConfirmedManualAnalysisViewEvent | null
 }
@@ -26,12 +26,14 @@ export interface AnalysisViewEventsByLayout {
   mobile: AnalysisViewNavigationEvent | null
 }
 
+export const MAX_ACKNOWLEDGED_CONFIRMED_EVENT_IDS = 50
+
 export const createAnalysisViewEventArbitrationState = (
   streamId: string,
 ): AnalysisViewEventArbitrationState => ({
   streamId,
   lastAcknowledgedAutomaticRevision: null,
-  lastAcknowledgedConfirmedEventId: null,
+  acknowledgedConfirmedEventIds: [],
   nextConfirmedSequence: 1,
   pendingConfirmedEvent: null,
 })
@@ -63,7 +65,7 @@ export const queueConfirmedAnalysisViewEvent = (
     || !proposal.explanation
     || (
       state.pendingConfirmedEvent?.eventId === proposal.eventId
-      || state.lastAcknowledgedConfirmedEventId === proposal.eventId
+      || state.acknowledgedConfirmedEventIds.includes(proposal.eventId)
     )
   ) return state
 
@@ -132,10 +134,17 @@ export const acknowledgeAnalysisViewEvent = (
     || !isValidRevision(event.supersedesAutomaticRevision)
   ) return state
 
-  if (
-    state.lastAcknowledgedConfirmedEventId === event.eventId
-    && state.pendingConfirmedEvent?.eventId !== event.eventId
-  ) return state
+  const pendingMatches = state.pendingConfirmedEvent?.eventId === event.eventId
+  const alreadyAcknowledged = state.acknowledgedConfirmedEventIds.includes(
+    event.eventId,
+  )
+  if (alreadyAcknowledged && !pendingMatches) return state
+
+  const acknowledgedConfirmedEventIds = alreadyAcknowledged
+    ? state.acknowledgedConfirmedEventIds
+    : [...state.acknowledgedConfirmedEventIds, event.eventId].slice(
+        -MAX_ACKNOWLEDGED_CONFIRMED_EVENT_IDS,
+      )
 
   return {
     ...state,
@@ -143,8 +152,8 @@ export const acknowledgeAnalysisViewEvent = (
       state.lastAcknowledgedAutomaticRevision ?? -1,
       event.supersedesAutomaticRevision,
     ),
-    lastAcknowledgedConfirmedEventId: event.eventId,
-    pendingConfirmedEvent: state.pendingConfirmedEvent?.eventId === event.eventId
+    acknowledgedConfirmedEventIds,
+    pendingConfirmedEvent: pendingMatches
       ? null
       : state.pendingConfirmedEvent,
   }
