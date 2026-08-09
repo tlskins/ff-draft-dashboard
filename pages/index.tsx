@@ -71,6 +71,16 @@ import {
   getSnapshotObservedThroughOverallPick,
   isDraftCaptureComplete,
 } from "@/behavior/draft-feed/snapshots"
+import {
+  acknowledgeAnalysisViewEvent,
+  arbitrateAnalysisViewEventsByLayout,
+  createAnalysisViewEventArbitrationState,
+  queueConfirmedAnalysisViewEvent,
+} from "@/behavior/analysis/viewEventArbitration"
+import type {
+  AnalysisViewNavigationEvent,
+  AutomaticAnalysisViewEvent,
+} from "@/behavior/analysis/viewState"
 
 export enum DraftView {
   RANKING = "Rankings By Position",
@@ -254,29 +264,75 @@ const Home: FC = () => {
     ...(viewPlayerId ? [viewPlayerId] : []),
   ], [recommendations.candidates, viewPlayerId])
   const playerStatus = usePlayerStatusCache(statusPlayerIds)
-  const [confirmedRealtimeView, setConfirmedRealtimeView] = useState<{
-    view: "tier_landscape"
-      | "positional_bests"
-      | "cross_position"
-      | "intra_position"
-    explanation: string
-    revision: number
-    source: "manual"
-  } | null>(null)
   const advisorPersistenceQueue = useRef(Promise.resolve())
   const sourceEventCount = draftHistory.filter(Boolean).length
+  const analysisEventStreamId = activeDraftSessionId || "unscoped-draft"
+  const [analysisViewEventArbitration, setAnalysisViewEventArbitration] =
+    useState(() => createAnalysisViewEventArbitrationState(
+      analysisEventStreamId,
+    ))
+  useEffect(() => {
+    setAnalysisViewEventArbitration(current => (
+      current.streamId === analysisEventStreamId
+        ? current
+        : createAnalysisViewEventArbitrationState(analysisEventStreamId)
+    ))
+  }, [analysisEventStreamId])
+  const automaticAnalysisViewEvent = useMemo<AutomaticAnalysisViewEvent>(
+    () => ({
+      kind: "automatic",
+      streamId: analysisEventStreamId,
+      view: recommendations.preferredView,
+      explanation: recommendations.viewExplanation,
+      revision: currPick,
+    }),
+    [
+      analysisEventStreamId,
+      currPick,
+      recommendations.preferredView,
+      recommendations.viewExplanation,
+    ],
+  )
+  const analysisViewEvents = useMemo(() => (
+    arbitrateAnalysisViewEventsByLayout(
+      analysisViewEventArbitration,
+      automaticAnalysisViewEvent,
+    )
+  ), [analysisViewEventArbitration, automaticAnalysisViewEvent])
+  const acknowledgeAnalysisViewNavigation = useCallback((
+    event: AnalysisViewNavigationEvent,
+  ) => {
+    setAnalysisViewEventArbitration(current =>
+      acknowledgeAnalysisViewEvent(current, event))
+  }, [])
+  const applyConfirmedRealtimeView = useCallback((
+    view: AnalysisViewNavigationEvent["view"],
+    proposal: {id: string; explanation: string},
+  ) => {
+    setAnalysisViewEventArbitration(current =>
+      queueConfirmedAnalysisViewEvent(
+        current,
+        analysisEventStreamId,
+        {
+          eventId: proposal.id,
+          view,
+          explanation: proposal.explanation,
+          supersedesAutomaticRevision: currPick,
+        },
+      ))
+    if (
+      typeof window !== "undefined"
+      && window.matchMedia?.("(min-width: 768px)").matches
+    ) {
+      setAnalysisOpen(true)
+    } else {
+      setMobileView(MobileView.ANALYSIS)
+    }
+  }, [analysisEventStreamId, currPick])
   const realtimeAdvisor = useRealtimeAdvisor({
     draftSessionId: activeDraftSessionId,
     sourceEventCount,
-    onApplyView: (view, proposal) => {
-      setConfirmedRealtimeView({
-        view,
-        explanation: proposal.explanation,
-        revision: sourceEventCount,
-        source: "manual",
-      })
-      setAnalysisOpen(true)
-    },
+    onApplyView: applyConfirmedRealtimeView,
   })
   const realtimeToolContext = useMemo(() => (
     activeDraftSessionId && realtimeAdvisor.plan
@@ -776,11 +832,10 @@ const Home: FC = () => {
                 players={Object.values(playerLib)}
                 rankingSummaries={rankingSummaries}
                 settings={settings}
-                advisorViewSuggestion={confirmedRealtimeView || {
-                  view: recommendations.preferredView,
-                  explanation: recommendations.viewExplanation,
-                  revision: currPick,
-                }}
+                analysisViewEvent={analysisViewEvents.desktop}
+                onAnalysisViewEventHandled={
+                  acknowledgeAnalysisViewNavigation
+                }
               />
             </div>
           )}
@@ -1034,11 +1089,10 @@ const Home: FC = () => {
                   players={Object.values(playerLib)}
                 rankingSummaries={rankingSummaries}
                 settings={settings}
-                advisorViewSuggestion={{
-                  view: recommendations.preferredView,
-                  explanation: recommendations.viewExplanation,
-                  revision: currPick,
-                }}
+                analysisViewEvent={analysisViewEvents.mobile}
+                onAnalysisViewEventHandled={
+                  acknowledgeAnalysisViewNavigation
+                }
               />
               </div>
             )}

@@ -106,8 +106,9 @@ user pin.
 
 Bounded Phase 10A slice completed: the workspace now has explicit automatic
 and pinned navigation semantics, ordered/idempotent advisor transitions,
-newest-only pending recommendations while pinned, accessible selected-state
-and live announcements, and regression coverage. See
+bounded confirmed-manual Realtime arbitration with desktop/mobile parity,
+schema-enforced persistence, newest-only pending recommendations while pinned,
+accessible selected-state and live announcements, and regression coverage. See
 `docs/phase10a-decision-workspace-navigation.md`. Individual visualization
 enrichment and human visual/usability acceptance remain open.
 

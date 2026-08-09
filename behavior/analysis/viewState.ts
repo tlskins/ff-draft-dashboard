@@ -12,12 +12,33 @@ export interface AdvisorViewRecommendation {
   revision: number
 }
 
+export interface AutomaticAnalysisViewEvent extends AdvisorViewRecommendation {
+  kind: "automatic"
+  streamId: string
+}
+
+export interface ConfirmedManualAnalysisViewEvent {
+  kind: "confirmed_manual"
+  streamId: string
+  eventId: string
+  sequence: number
+  view: AnalysisViewId
+  explanation: string
+  supersedesAutomaticRevision: number
+}
+
+export type AnalysisViewNavigationEvent =
+  | AutomaticAnalysisViewEvent
+  | ConfirmedManualAnalysisViewEvent
+
 export interface AnalysisViewState {
   view: AnalysisViewId
   pinned: boolean
   source: AnalysisViewSource
   explanation: string
+  lastProcessedEventStreamId: string | null
   lastProcessedAdvisorRevision: number | null
+  lastProcessedConfirmedManualSequence: number | null
   pendingAdvisorRecommendation: AdvisorViewRecommendation | null
 }
 
@@ -35,7 +56,11 @@ export type AnalysisViewAction =
     }
   | {
       type: "advisor_recommendation"
-      recommendation: AdvisorViewRecommendation
+      recommendation: AutomaticAnalysisViewEvent
+    }
+  | {
+      type: "confirmed_manual_select"
+      event: ConfirmedManualAnalysisViewEvent
     }
   | {
       type: "set_pinned"
@@ -52,6 +77,7 @@ export interface AnalysisViewTransitionResult {
   blockedReason?: string
   advisorAction?: "applied" | "pending" | "adopted"
   advisorRecommendation?: AdvisorViewRecommendation
+  confirmedManualAction?: "applied"
 }
 
 export interface AnalysisViewDefinition {
@@ -98,7 +124,9 @@ export const DEFAULT_ANALYSIS_VIEW_STATE: AnalysisViewState = {
   pinned: false,
   source: "manual",
   explanation: "Explore positional density and scoring ranges.",
+  lastProcessedEventStreamId: null,
   lastProcessedAdvisorRevision: null,
+  lastProcessedConfirmedManualSequence: null,
   pendingAdvisorRecommendation: null,
 }
 
@@ -108,6 +136,12 @@ const VIEW_IDS: AnalysisViewId[] = [
   "cross_position",
   "intra_position",
 ]
+
+const isValidRevision = (value: unknown): value is number => (
+  typeof value === "number"
+  && Number.isSafeInteger(value)
+  && value >= 0
+)
 
 export const isAnalysisViewState = (
   value: unknown,
@@ -121,11 +155,16 @@ export const isAnalysisViewState = (
     ["manual", "agent"].includes(candidate.source || "") &&
     typeof candidate.explanation === "string" &&
     (
+      candidate.lastProcessedEventStreamId === null
+      || typeof candidate.lastProcessedEventStreamId === "string"
+    ) &&
+    (
       candidate.lastProcessedAdvisorRevision === null
-      || (
-        typeof candidate.lastProcessedAdvisorRevision === "number"
-        && Number.isFinite(candidate.lastProcessedAdvisorRevision)
-      )
+      || isValidRevision(candidate.lastProcessedAdvisorRevision)
+    ) &&
+    (
+      candidate.lastProcessedConfirmedManualSequence === null
+      || isValidRevision(candidate.lastProcessedConfirmedManualSequence)
     ) &&
     (
       pending === null
@@ -133,8 +172,7 @@ export const isAnalysisViewState = (
         !!pending &&
         VIEW_IDS.includes(pending.view) &&
         typeof pending.explanation === "string" &&
-        typeof pending.revision === "number" &&
-        Number.isFinite(pending.revision)
+        isValidRevision(pending.revision)
       )
     )
   )
@@ -157,25 +195,48 @@ const isAnalysisViewBase = (
   )
 }
 
+const restoreAnalysisViewBase = (
+  value: Pick<AnalysisViewState, "view" | "pinned" | "source" | "explanation">,
+): AnalysisViewState => ({
+  view: value.view,
+  pinned: value.pinned,
+  source: value.source,
+  explanation: value.explanation,
+  lastProcessedEventStreamId: null,
+  lastProcessedAdvisorRevision: null,
+  lastProcessedConfirmedManualSequence: null,
+  pendingAdvisorRecommendation: null,
+})
+
 /**
  * Restore only validated navigation state from the existing local-storage
  * boundary. Advisor revisions and pending advice are intentionally runtime
  * state so a new draft cannot replay an old draft's recommendation.
  */
 export const restoreAnalysisViewState = (value: unknown): AnalysisViewState => {
+  if (!value || typeof value !== "object") return cloneDefaultState()
+  const candidate = value as Record<string, unknown>
+  const hasSchemaVersion = Object.prototype.hasOwnProperty.call(
+    candidate,
+    "schemaVersion",
+  )
+  if (hasSchemaVersion && candidate.schemaVersion !== 1) {
+    return cloneDefaultState()
+  }
+  const hasRuntimeFields = [
+    "lastProcessedEventStreamId",
+    "lastProcessedAdvisorRevision",
+    "lastProcessedConfirmedManualSequence",
+    "pendingAdvisorRecommendation",
+  ].some(field => Object.prototype.hasOwnProperty.call(candidate, field))
+  if (hasRuntimeFields && !isAnalysisViewState(value)) {
+    return cloneDefaultState()
+  }
   if (isAnalysisViewState(value)) {
-    return {
-      ...value,
-      lastProcessedAdvisorRevision: null,
-      pendingAdvisorRecommendation: null,
-    }
+    return restoreAnalysisViewBase(value)
   }
   if (isAnalysisViewBase(value)) {
-    return {
-      ...value,
-      lastProcessedAdvisorRevision: null,
-      pendingAdvisorRecommendation: null,
-    }
+    return restoreAnalysisViewBase(value)
   }
   return cloneDefaultState()
 }
@@ -203,7 +264,7 @@ const unchanged = (
 const transitionResult = (
   current: AnalysisViewState,
   state: AnalysisViewState,
-  metadata: Pick<AnalysisViewTransitionResult, "blockedReason" | "advisorAction" | "advisorRecommendation"> = {},
+  metadata: Pick<AnalysisViewTransitionResult, "blockedReason" | "advisorAction" | "advisorRecommendation" | "confirmedManualAction"> = {},
 ): AnalysisViewTransitionResult => ({
   ...metadata,
   state,
@@ -212,7 +273,10 @@ const transitionResult = (
     || state.pinned !== current.pinned
     || state.source !== current.source
     || state.explanation !== current.explanation
+    || state.lastProcessedEventStreamId !== current.lastProcessedEventStreamId
     || state.lastProcessedAdvisorRevision !== current.lastProcessedAdvisorRevision
+    || state.lastProcessedConfirmedManualSequence
+      !== current.lastProcessedConfirmedManualSequence
     || state.pendingAdvisorRecommendation !== current.pendingAdvisorRecommendation
   ),
   viewChanged: state.view !== current.view,
@@ -236,11 +300,51 @@ export const transitionAnalysisViewState = (
     })
   }
 
+  if (action.type === "confirmed_manual_select") {
+    const event = action.event
+    if (
+      !event.eventId
+      || !isValidRevision(event.sequence)
+      || !isValidRevision(event.supersedesAutomaticRevision)
+    ) return unchanged(current)
+    const sameStream = current.lastProcessedEventStreamId === event.streamId
+    const lastSequence = sameStream
+      ? current.lastProcessedConfirmedManualSequence
+      : null
+    if (lastSequence !== null && event.sequence <= lastSequence) {
+      return unchanged(current)
+    }
+    return transitionResult(current, {
+      ...current,
+      view: event.view,
+      source: "manual",
+      explanation: event.explanation,
+      lastProcessedEventStreamId: event.streamId,
+      lastProcessedAdvisorRevision: Math.max(
+        sameStream ? current.lastProcessedAdvisorRevision ?? -1 : -1,
+        event.supersedesAutomaticRevision,
+      ),
+      lastProcessedConfirmedManualSequence: event.sequence,
+      pendingAdvisorRecommendation: null,
+    }, {
+      confirmedManualAction: "applied",
+    })
+  }
+
   if (action.type === "advisor_recommendation") {
     const recommendation = action.recommendation
-    const lastRevision = current.lastProcessedAdvisorRevision
+    const advisorRecommendation: AdvisorViewRecommendation = {
+      view: recommendation.view,
+      explanation: recommendation.explanation,
+      revision: recommendation.revision,
+    }
+    const sameStream = current.lastProcessedEventStreamId
+      === recommendation.streamId
+    const lastRevision = sameStream
+      ? current.lastProcessedAdvisorRevision
+      : null
     if (
-      !Number.isFinite(recommendation.revision)
+      !isValidRevision(recommendation.revision)
       || (
         lastRevision !== null
         && recommendation.revision <= lastRevision
@@ -251,15 +355,22 @@ export const transitionAnalysisViewState = (
 
     const withRevision = {
       ...current,
+      lastProcessedEventStreamId: recommendation.streamId,
       lastProcessedAdvisorRevision: recommendation.revision,
+      lastProcessedConfirmedManualSequence: sameStream
+        ? current.lastProcessedConfirmedManualSequence
+        : null,
+      pendingAdvisorRecommendation: sameStream
+        ? current.pendingAdvisorRecommendation
+        : null,
     }
     if (current.pinned) {
       return transitionResult(current, {
         ...withRevision,
-        pendingAdvisorRecommendation: recommendation,
+        pendingAdvisorRecommendation: advisorRecommendation,
       }, {
         advisorAction: "pending",
-        advisorRecommendation: recommendation,
+        advisorRecommendation,
         blockedReason: "The current analysis view is pinned",
       })
     }
@@ -271,7 +382,7 @@ export const transitionAnalysisViewState = (
       pendingAdvisorRecommendation: null,
     }, {
       advisorAction: "applied",
-      advisorRecommendation: recommendation,
+      advisorRecommendation,
     })
   }
 

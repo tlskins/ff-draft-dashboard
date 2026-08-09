@@ -17,6 +17,11 @@ does not complete the four visualization redesign.
   positional tier landscape, realtime positional bests, cross-position
   comparison, or intra-position comparison. A real view change clears the
   previous view's result, error, and comparison drawer state.
+- **Confirmed Realtime proposals** are bounded manual navigation events. A
+  confirmed event may change a pinned view without unpinning it, clears any
+  older pending advisor recommendation, and is acknowledged after the
+  workspace handles it. A same-view confirmation updates the manual context
+  without discarding a valid result.
 - Reviewing/adopting a pending recommendation is a manual transition and
   preserves pinned navigation. Returning to automatic navigation applies the
   newest pending recommendation once, then clears it.
@@ -32,6 +37,24 @@ event can be reviewed or applied after unpinning. An explanation-only update
 for the current view updates the explanation and announcement without
 invalidating the valid analysis result.
 
+Automatic recommendations and confirmed-manual proposals use separate event
+identities. Automatic events are ordered by revision within a draft-session
+stream. Confirmed events use the stable Realtime proposal ID plus a monotonic
+confirmed-event sequence. Accepting a confirmed event records the automatic
+revision it supersedes, so acknowledging the confirmation cannot expose that
+same automatic revision and immediately undo the manual choice. The next
+automatic revision may navigate normally when unpinned or become the
+newest-only pending advice when pinned. A confirmed event clears stale pending
+advice even when the effective view does not change.
+
+The page owns the acknowledgement boundary and resolves one event object for
+both desktop and mobile render paths. Realtime confirmation opens the analysis
+surface appropriate to the active viewport; both paths therefore receive the
+same event kind, identity, ordering, and acknowledgement behavior. Once an
+event is acknowledged, unrelated rerenders or workspace remounts do not turn
+it back into a live event. Starting a different draft session resets both
+runtime clocks without combining their numeric values.
+
 The workspace also invalidates an in-flight historical request when the active
 view changes. A response from that prior request cannot repopulate the new
 view.
@@ -41,10 +64,13 @@ view.
 The existing `drafty-analysis-view-state` local-storage key remains the only
 browser persistence boundary. It stores the validated navigation view, pin
 state, source label, and explanation under `schemaVersion: 1`. Advisor
-revision tracking and pending recommendations are runtime state and are not
-persisted, so a remounted workspace starts a fresh advisor event stream.
-Legacy valid state is normalized; bad, malformed, or unsupported state falls
-back to the default automatic workspace without throwing.
+revision tracking, confirmed-event identities, stream identity, and pending
+recommendations are runtime state and are not persisted. A valid version 1
+record restores its navigation base, and a valid legacy record with no
+`schemaVersion` remains supported. Any explicitly present version other than
+numeric `1`—including malformed versions—falls back to the default workspace.
+Malformed JSON, invalid runtime revisions, and invalid base state also fall
+back without throwing.
 
 ## Later Phase 10 work
 

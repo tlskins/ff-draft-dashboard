@@ -18,7 +18,7 @@ import {
 import {
   ANALYSIS_VIEW_DEFINITIONS,
   AnalysisViewAction,
-  AnalysisViewSource,
+  AnalysisViewNavigationEvent,
   AnalysisViewState,
   DEFAULT_ANALYSIS_VIEW_STATE,
   restoreAnalysisViewState,
@@ -42,12 +42,10 @@ interface AnalysisWorkspaceProps {
   settings: FantasySettings
   boardSettings: BoardSettings
   rankingSummaries: RankingSummary[]
-  advisorViewSuggestion?: {
-    view: AnalysisViewState["view"]
-    explanation: string
-    revision: number
-    source?: AnalysisViewSource
-  }
+  analysisViewEvent?: AnalysisViewNavigationEvent | null
+  onAnalysisViewEventHandled?: (
+    event: AnalysisViewNavigationEvent,
+  ) => void
   onClose?: () => void
 }
 
@@ -83,7 +81,8 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   settings,
   boardSettings,
   rankingSummaries,
-  advisorViewSuggestion,
+  analysisViewEvent,
+  onAnalysisViewEventHandled,
   onClose,
 }) => {
   const eligiblePlayers = useMemo(() => players
@@ -116,11 +115,6 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   const analysisRequestId = useRef(0)
   const viewStateRef = useRef(viewState)
   viewStateRef.current = viewState
-  const advisorView = advisorViewSuggestion?.view
-  const advisorExplanation = advisorViewSuggestion?.explanation
-  const advisorRevision = advisorViewSuggestion?.revision
-  const advisorSource = advisorViewSuggestion?.source || "agent"
-
   const clearAnalysisState = useCallback(() => {
     analysisRequestId.current += 1
     setResult(null)
@@ -168,51 +162,45 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   }, [viewState])
 
   useEffect(() => {
-    if (
-      !advisorView
-      || !advisorExplanation
-      || typeof advisorRevision !== "number"
-    ) return
-    const transition = transitionAnalysisViewState(viewStateRef.current,
-      advisorSource === "manual"
+    if (!analysisViewEvent) return
+    const transition = transitionAnalysisViewState(
+      viewStateRef.current,
+      analysisViewEvent.kind === "confirmed_manual"
         ? {
-            type: "manual_select",
-            view: advisorView,
-            explanation: advisorExplanation,
+            type: "confirmed_manual_select",
+            event: analysisViewEvent,
           }
         : {
             type: "advisor_recommendation",
-            recommendation: {
-              view: advisorView,
-              explanation: advisorExplanation,
-              revision: advisorRevision,
-            },
-          })
-    if (!transition.changed) return
-    setViewState(transition.state)
-    if (transition.viewChanged) clearAnalysisState()
-    if (advisorSource === "manual") {
-      setAdvisorAnnouncement(
-        `Selected ${advisorView.replace(/_/g, " ")} from a confirmed advisor `
-        + `recommendation. ${advisorExplanation}`,
-      )
-    } else if (transition.advisorAction === "pending") {
-      setAdvisorAnnouncement(
-        `Advisor recommends ${advisorView.replace(/_/g, " ")}. `
-        + `${advisorExplanation} Your pinned view was preserved.`,
-      )
-    } else if (transition.advisorAction === "applied") {
-      setAdvisorAnnouncement(
-        `Advisor selected ${advisorView.replace(/_/g, " ")}. `
-        + advisorExplanation,
-      )
+            recommendation: analysisViewEvent,
+          },
+    )
+    if (transition.changed) {
+      viewStateRef.current = transition.state
+      setViewState(transition.state)
+      if (transition.viewChanged) clearAnalysisState()
+      if (transition.confirmedManualAction === "applied") {
+        setAdvisorAnnouncement(
+          `Selected ${analysisViewEvent.view.replace(/_/g, " ")} from a `
+          + `confirmed advisor recommendation. ${analysisViewEvent.explanation}`,
+        )
+      } else if (transition.advisorAction === "pending") {
+        setAdvisorAnnouncement(
+          `Advisor recommends ${analysisViewEvent.view.replace(/_/g, " ")}. `
+          + `${analysisViewEvent.explanation} Your pinned view was preserved.`,
+        )
+      } else if (transition.advisorAction === "applied") {
+        setAdvisorAnnouncement(
+          `Advisor selected ${analysisViewEvent.view.replace(/_/g, " ")}. `
+          + analysisViewEvent.explanation,
+        )
+      }
     }
+    onAnalysisViewEventHandled?.(analysisViewEvent)
   }, [
-    advisorExplanation,
-    advisorRevision,
-    advisorSource,
-    advisorView,
+    analysisViewEvent,
     clearAnalysisState,
+    onAnalysisViewEventHandled,
   ])
 
   const selectedPlayerIds = [primaryId, secondaryId].filter(Boolean)

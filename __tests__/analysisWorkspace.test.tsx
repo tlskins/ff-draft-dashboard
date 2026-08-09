@@ -290,7 +290,9 @@ describe("decision analysis workspace navigation", () => {
     view.rerender(
       <AnalysisWorkspace
         activePlayer={players[0]}
-        advisorViewSuggestion={{
+        analysisViewEvent={{
+          kind: "automatic",
+          streamId: "draft-one",
           view: "cross_position",
           explanation: "Compare roster-adjusted value.",
           revision: 10,
@@ -314,7 +316,9 @@ describe("decision analysis workspace navigation", () => {
     view.rerender(
       <AnalysisWorkspace
         activePlayer={players[0]}
-        advisorViewSuggestion={{
+        analysisViewEvent={{
+          kind: "automatic",
+          streamId: "draft-one",
           view: "tier_landscape",
           explanation: "The stale recommendation is ignored.",
           revision: 10,
@@ -335,7 +339,9 @@ describe("decision analysis workspace navigation", () => {
     view.rerender(
       <AnalysisWorkspace
         activePlayer={players[0]}
-        advisorViewSuggestion={{
+        analysisViewEvent={{
+          kind: "automatic",
+          streamId: "draft-one",
           view: "positional_bests",
           explanation: "Review the best available options.",
           revision: 11,
@@ -353,6 +359,158 @@ describe("decision analysis workspace navigation", () => {
       name: "Realtime positional bests",
     }).getAttribute("aria-pressed")).toBe("true"))
     expect(view.container.textContent).toContain("Review the best available options.")
+  })
+
+  it("consumes a confirmed manual event once, preserves pinning, and supersedes stale advice", async () => {
+    const props = {
+      activePlayer: players[0],
+      boardSettings: {
+        ranker: ThirdPartyRanker.HARRIS,
+        adpRanker: ThirdPartyADPRanker.ESPN,
+      },
+      players,
+      rankingSummaries: [],
+      settings,
+    }
+    const view = render(<AnalysisWorkspace {...props} />)
+    fireEvent.click(view.getByRole("button", {
+      name: "Cross-position comparison",
+    }))
+    fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
+    await waitFor(() => expect(view.container.querySelector("svg")).not.toBeNull())
+    fireEvent.click(view.getByRole("button", {name: "Inspect Player One"}))
+    expect(view.getByRole("dialog")).toBeTruthy()
+    fireEvent.click(view.getByRole("button", {name: "Pin current view"}))
+    view.rerender(
+      <AnalysisWorkspace
+        {...props}
+        analysisViewEvent={{
+          kind: "automatic",
+          streamId: "draft-one",
+          view: "tier_landscape",
+          explanation: "Older pinned advice.",
+          revision: 50,
+        }}
+      />,
+    )
+    await waitFor(() => expect(view.container.textContent).toContain(
+      "Older pinned advice.",
+    ))
+
+    const confirmedEvent = {
+      kind: "confirmed_manual" as const,
+      streamId: "draft-one",
+      eventId: "proposal-view-1",
+      sequence: 1,
+      view: "intra_position" as const,
+      explanation: "The user confirmed this player comparison.",
+      supersedesAutomaticRevision: 50,
+    }
+    const onHandled = jest.fn()
+    view.rerender(
+      <AnalysisWorkspace
+        {...props}
+        analysisViewEvent={confirmedEvent}
+        onAnalysisViewEventHandled={onHandled}
+      />,
+    )
+    await waitFor(() => expect(view.getByRole("button", {
+      name: "Intra-position comparison",
+    }).getAttribute("aria-pressed")).toBe("true"))
+
+    expect(view.getByRole("button", {
+      name: "Return to automatic navigation",
+    })).toBeTruthy()
+    expect(view.queryByText("Pending advisor recommendation")).toBeNull()
+    expect(view.container.querySelector("svg")).toBeNull()
+    expect(view.queryByRole("dialog")).toBeNull()
+    expect(onHandled).toHaveBeenCalledTimes(1)
+    expect(onHandled).toHaveBeenCalledWith(confirmedEvent)
+    expect(Array.from(
+      view.container.querySelectorAll("[aria-live='polite']"),
+    ).some(region => region.textContent?.includes(
+      "Selected intra position from a confirmed advisor recommendation",
+    ))).toBe(true)
+
+    view.rerender(
+      <AnalysisWorkspace
+        {...props}
+        activePlayer={players[1]}
+        analysisViewEvent={confirmedEvent}
+        onAnalysisViewEventHandled={onHandled}
+      />,
+    )
+    expect(onHandled).toHaveBeenCalledTimes(1)
+
+    view.rerender(
+      <AnalysisWorkspace
+        {...props}
+        analysisViewEvent={{
+          kind: "automatic",
+          streamId: "draft-one",
+          view: "tier_landscape",
+          explanation: "The superseded revision must not undo the choice.",
+          revision: 50,
+        }}
+      />,
+    )
+    await waitFor(() => expect(view.getByRole("button", {
+      name: "Intra-position comparison",
+    }).getAttribute("aria-pressed")).toBe("true"))
+
+    view.rerender(
+      <AnalysisWorkspace
+        {...props}
+        analysisViewEvent={{
+          kind: "automatic",
+          streamId: "draft-one",
+          view: "positional_bests",
+          explanation: "Newer advice is pending while pinned.",
+          revision: 51,
+        }}
+      />,
+    )
+    await waitFor(() => expect(view.container.textContent).toContain(
+      "Newer advice is pending while pinned.",
+    ))
+    expect(view.getByRole("button", {
+      name: "Intra-position comparison",
+    }).getAttribute("aria-pressed")).toBe("true")
+  })
+
+  it("keeps valid analysis results for a same-view confirmed event", async () => {
+    const props = {
+      activePlayer: players[0],
+      boardSettings: {
+        ranker: ThirdPartyRanker.HARRIS,
+        adpRanker: ThirdPartyADPRanker.ESPN,
+      },
+      players,
+      rankingSummaries: [],
+      settings,
+    }
+    const view = render(<AnalysisWorkspace {...props} />)
+    fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
+    await waitFor(() => expect(view.container.querySelector("svg")).not.toBeNull())
+
+    view.rerender(
+      <AnalysisWorkspace
+        {...props}
+        analysisViewEvent={{
+          kind: "confirmed_manual",
+          streamId: "draft-one",
+          eventId: "proposal-view-same",
+          sequence: 1,
+          view: "tier_landscape",
+          explanation: "Stay on the confirmed tier landscape.",
+          supersedesAutomaticRevision: 60,
+        }}
+      />,
+    )
+    await waitFor(() => expect(view.container.textContent).toContain(
+      "Stay on the confirmed tier landscape.",
+    ))
+    expect(view.container.querySelector("svg")).not.toBeNull()
   })
 
   it("persists a pinned manual view across workspace remounts", async () => {
@@ -377,7 +535,9 @@ describe("decision analysis workspace navigation", () => {
     const second = render(
       <AnalysisWorkspace
         {...props}
-        advisorViewSuggestion={{
+        analysisViewEvent={{
+          kind: "automatic",
+          streamId: "draft-one",
           view: "cross_position",
           explanation: "Your pick is approaching.",
           revision: 10,
@@ -400,6 +560,23 @@ describe("decision analysis workspace navigation", () => {
     await waitFor(() => expect(second.container.textContent).toContain(
       "Current view selected by advisor: Your pick is approaching.",
     ))
+  })
+
+  it("falls back without throwing for malformed local-storage JSON", () => {
+    localStorage.setItem("drafty-analysis-view-state", "{")
+
+    expect(() => render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )).not.toThrow()
   })
 
   it("keeps only the newest pending pinned recommendation and reviews it without unpinning", async () => {
@@ -429,7 +606,9 @@ describe("decision analysis workspace navigation", () => {
     view.rerender(
       <AnalysisWorkspace
         {...props}
-        advisorViewSuggestion={{
+        analysisViewEvent={{
+          kind: "automatic",
+          streamId: "draft-one",
           view: "cross_position",
           explanation: "First pinned recommendation.",
           revision: 20,
@@ -442,7 +621,9 @@ describe("decision analysis workspace navigation", () => {
     view.rerender(
       <AnalysisWorkspace
         {...props}
-        advisorViewSuggestion={{
+        analysisViewEvent={{
+          kind: "automatic",
+          streamId: "draft-one",
           view: "positional_bests",
           explanation: "Newest pinned recommendation.",
           revision: 21,
@@ -491,7 +672,9 @@ describe("decision analysis workspace navigation", () => {
     view.rerender(
       <AnalysisWorkspace
         activePlayer={players[0]}
-        advisorViewSuggestion={{
+        analysisViewEvent={{
+          kind: "automatic",
+          streamId: "draft-one",
           view: "cross_position",
           explanation: "The pick is approaching; compare positions.",
           revision: 40,
@@ -547,7 +730,9 @@ describe("decision analysis workspace navigation", () => {
     view.rerender(
       <AnalysisWorkspace
         activePlayer={players[0]}
-        advisorViewSuggestion={{
+        analysisViewEvent={{
+          kind: "automatic",
+          streamId: "draft-one",
           view: "cross_position",
           explanation: "Switch to the current cross-position context.",
           revision: 41,
