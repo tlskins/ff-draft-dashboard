@@ -112,6 +112,15 @@ accessible selected-state and live announcements, and regression coverage. See
 `docs/phase10a-decision-workspace-navigation.md`. Individual visualization
 enrichment and human visual/usability acceptance remain open.
 
+Bounded Phase 10B candidate: enrich only the realtime positional-bests view
+with the existing ordered maximum-three deterministic recommendation set,
+honest active/custom rank and tier labels, projection-range comparison,
+actionable player-status context, and existing comparison-drawer access. Keep
+the historical positional drilldown manually runnable and independent of live
+updates; preserve Phase 10A navigation arbitration and all calculation
+ownership. See `docs/phase10b-realtime-positional-bests.md`. This candidate
+does not mark Phase 10 complete.
+
 Exit gate: the four views and their transitions have a coherent acceptance
 review, pinned and automatic navigation behave as specified, and manual
 usability/visual checks are recorded. UX work does not change calculation or

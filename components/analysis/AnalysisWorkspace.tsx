@@ -11,10 +11,19 @@ import {
   executeHistoricalAnalysis,
   ScoringProfileId,
 } from "../../behavior/api/historicalAnalysis"
+import type {
+  DraftRecommendationSet,
+} from "../../behavior/draft-advisor/recommendations"
+import type {
+  PlayerStatusCacheSnapshot,
+} from "../../behavior/api/playerStatusCache"
 import {
   AnalysisPosition,
   buildAnalysisViewQuery,
 } from "../../behavior/analysis/presets"
+import {
+  buildPositionalBestsPresentationModel,
+} from "../../behavior/analysis/positionalBests"
 import {
   ANALYSIS_VIEW_DEFINITIONS,
   AnalysisViewAction,
@@ -34,6 +43,7 @@ import {
 } from "../../types"
 import DeclarativeChart from "./DeclarativeChart"
 import PlayerComparisonDrawer from "./PlayerComparisonDrawer"
+import PositionalBestsLiveSurface from "./PositionalBestsLiveSurface"
 
 
 interface AnalysisWorkspaceProps {
@@ -42,6 +52,8 @@ interface AnalysisWorkspaceProps {
   settings: FantasySettings
   boardSettings: BoardSettings
   rankingSummaries: RankingSummary[]
+  recommendations?: DraftRecommendationSet | null
+  playerStatus?: PlayerStatusCacheSnapshot
   analysisViewEvent?: AnalysisViewNavigationEvent | null
   onAnalysisViewEventHandled?: (
     event: AnalysisViewNavigationEvent,
@@ -81,6 +93,8 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   settings,
   boardSettings,
   rankingSummaries,
+  recommendations = null,
+  playerStatus = {},
   analysisViewEvent,
   onAnalysisViewEventHandled,
   onClose,
@@ -112,6 +126,16 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     null,
   )
   const [advisorAnnouncement, setAdvisorAnnouncement] = useState("")
+  const positionalBestsModel = useMemo(() => (
+    recommendations
+      ? buildPositionalBestsPresentationModel({
+          recommendations,
+          boardSettings,
+          settings,
+          playerStatus,
+        })
+      : null
+  ), [boardSettings, playerStatus, recommendations, settings])
   const analysisRequestId = useRef(0)
   const viewStateRef = useRef(viewState)
   viewStateRef.current = viewState
@@ -223,9 +247,16 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   const activeView = ANALYSIS_VIEW_DEFINITIONS.find(
     definition => definition.id === viewState.view,
   ) || ANALYSIS_VIEW_DEFINITIONS[0]
-  const drawerPlayer = eligiblePlayers.find(
-    player => player.id === drawerPlayerId,
-  ) || null
+  const drawerPlayerIsValid = viewState.view !== "positional_bests"
+    || !recommendations
+    || Boolean(positionalBestsModel?.candidates.some(candidate =>
+      candidate.player.id === drawerPlayerId))
+  const drawerPlayer = drawerPlayerIsValid
+    ? eligiblePlayers.find(player => player.id === drawerPlayerId)
+      || positionalBestsModel?.candidates.find(candidate =>
+        candidate.player.id === drawerPlayerId)?.player
+      || null
+    : null
   const canRun = (
     viewState.view === "cross_position"
       ? crossPositionPlayerIds.length > 0
@@ -233,6 +264,16 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         ? selectedPlayerIds.length > 0
         : positionPlayers.length > 0
   )
+
+  useEffect(() => {
+    if (
+      viewState.view === "positional_bests"
+      && drawerPlayerId
+      && !drawerPlayerIsValid
+    ) {
+      setDrawerPlayerId(null)
+    }
+  }, [drawerPlayerId, drawerPlayerIsValid, viewState.view])
 
   const applyViewAction = (
     action: AnalysisViewAction,
@@ -544,8 +585,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
               viewState.view,
             ) && (
               <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-                Includes all mapped historical {position} players, then
-                applies the selected view’s deterministic ordering.
+                {viewState.view === "positional_bests"
+                  ? "The live comparison uses the supplied deterministic advisor candidates. Historical controls below remain a manual drilldown for the selected position."
+                  : `Includes all mapped historical ${position} players, then applies the selected view’s deterministic ordering.`}
               </p>
             )}
           </fieldset>
@@ -591,6 +633,23 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         </aside>
 
         <div className="space-y-3 lg:col-span-8">
+          {viewState.view === "positional_bests" && (
+            <PositionalBestsLiveSurface
+              model={positionalBestsModel}
+              onInspectPlayer={player => setDrawerPlayerId(player.id)}
+            />
+          )}
+          {viewState.view === "positional_bests" && (
+            <div className="rounded-lg border border-slate-200 bg-white p-3">
+              <h2 className="font-semibold text-slate-900">
+                Historical positional drilldown
+              </h2>
+              <p className="text-xs text-slate-500">
+                Run the existing bounded historical query independently of the
+                live recommendation surface.
+              </p>
+            </div>
+          )}
           {error && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
               Analysis unavailable: {error}

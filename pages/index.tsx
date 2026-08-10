@@ -831,7 +831,9 @@ const Home: FC = () => {
                 onClose={() => setAnalysisOpen(false)}
                 players={Object.values(playerLib)}
                 rankingSummaries={rankingSummaries}
+                recommendations={recommendations}
                 settings={settings}
+                playerStatus={playerStatus}
                 analysisViewEvent={analysisViewEvents.desktop}
                 onAnalysisViewEventHandled={
                   acknowledgeAnalysisViewNavigation
@@ -1087,13 +1089,15 @@ const Home: FC = () => {
                   activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
                   boardSettings={boardSettings}
                   players={Object.values(playerLib)}
-                rankingSummaries={rankingSummaries}
-                settings={settings}
-                analysisViewEvent={analysisViewEvents.mobile}
-                onAnalysisViewEventHandled={
-                  acknowledgeAnalysisViewNavigation
-                }
-              />
+                  rankingSummaries={rankingSummaries}
+                  recommendations={recommendations}
+                  settings={settings}
+                  playerStatus={playerStatus}
+                  analysisViewEvent={analysisViewEvents.mobile}
+                  onAnalysisViewEventHandled={
+                    acknowledgeAnalysisViewNavigation
+                  }
+                />
               </div>
             )}
 
