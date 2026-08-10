@@ -121,6 +121,15 @@ updates; preserve Phase 10A navigation arbitration and all calculation
 ownership. See `docs/phase10b-realtime-positional-bests.md`. This candidate
 does not mark Phase 10 complete.
 
+Bounded Phase 10C candidate: enrich only the positional tier-landscape view
+with an explicit currently available `PlayerRanks` surface, fixed QB/RB/WR/TE
+lanes, honest custom/active tier authority, bounded density and projection
+overlays, and supplied deterministic opponent-forecast evidence through the
+next user pick. Keep the historical positional drilldown manually runnable;
+preserve Phase 10A navigation and all ranking, recommendation, tier, and
+opponent-model ownership. See `docs/phase10c-positional-tier-landscape.md`.
+This candidate does not mark Phase 10 complete.
+
 Exit gate: the four views and their transitions have a coherent acceptance
 review, pinned and automatic navigation behave as specified, and manual
 usability/visual checks are recorded. UX work does not change calculation or

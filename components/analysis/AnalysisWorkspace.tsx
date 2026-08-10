@@ -25,6 +25,12 @@ import {
   buildPositionalBestsPresentationModel,
 } from "../../behavior/analysis/positionalBests"
 import {
+  buildTierLandscapePresentationModel,
+} from "../../behavior/analysis/tierLandscape"
+import type {
+  OpponentForecast,
+} from "../../behavior/draft-advisor/types"
+import {
   ANALYSIS_VIEW_DEFINITIONS,
   AnalysisViewAction,
   AnalysisViewNavigationEvent,
@@ -44,15 +50,19 @@ import {
 import DeclarativeChart from "./DeclarativeChart"
 import PlayerComparisonDrawer from "./PlayerComparisonDrawer"
 import PositionalBestsLiveSurface from "./PositionalBestsLiveSurface"
+import TierLandscapeLiveSurface from "./TierLandscapeLiveSurface"
 
 
 interface AnalysisWorkspaceProps {
   players: Player[]
+  /** Explicit live-board availability; never inferred from the player library. */
+  availablePlayers?: Player[]
   activePlayer?: Player | null
   settings: FantasySettings
   boardSettings: BoardSettings
   rankingSummaries: RankingSummary[]
   recommendations?: DraftRecommendationSet | null
+  opponentForecast?: OpponentForecast | null
   playerStatus?: PlayerStatusCacheSnapshot
   analysisViewEvent?: AnalysisViewNavigationEvent | null
   onAnalysisViewEventHandled?: (
@@ -89,11 +99,13 @@ const formatValue = (value: string | number | undefined) => (
 
 const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   players,
+  availablePlayers = [],
   activePlayer,
   settings,
   boardSettings,
   rankingSummaries,
   recommendations = null,
+  opponentForecast = null,
   playerStatus = {},
   analysisViewEvent,
   onAnalysisViewEventHandled,
@@ -125,6 +137,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   const [drawerPlayerId, setDrawerPlayerId] = useState<string | null>(
     null,
   )
+  const [drawerPlayerOrigin, setDrawerPlayerOrigin] = useState<
+    "historical" | "live" | null
+  >(null)
   const [advisorAnnouncement, setAdvisorAnnouncement] = useState("")
   const positionalBestsModel = useMemo(() => (
     recommendations
@@ -136,6 +151,23 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         })
       : null
   ), [boardSettings, playerStatus, recommendations, settings])
+  const tierLandscapeModel = useMemo(() => (
+    buildTierLandscapePresentationModel({
+      availablePlayers,
+      recommendations,
+      opponentForecast,
+      boardSettings,
+      settings,
+      rankingSummaries,
+    })
+  ), [
+    availablePlayers,
+    boardSettings,
+    opponentForecast,
+    rankingSummaries,
+    recommendations,
+    settings,
+  ])
   const analysisRequestId = useRef(0)
   const viewStateRef = useRef(viewState)
   viewStateRef.current = viewState
@@ -144,6 +176,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     setResult(null)
     setError(null)
     setDrawerPlayerId(null)
+    setDrawerPlayerOrigin(null)
     setLoading(false)
   }, [])
 
@@ -247,14 +280,25 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   const activeView = ANALYSIS_VIEW_DEFINITIONS.find(
     definition => definition.id === viewState.view,
   ) || ANALYSIS_VIEW_DEFINITIONS[0]
-  const drawerPlayerIsValid = viewState.view !== "positional_bests"
-    || !recommendations
-    || Boolean(positionalBestsModel?.candidates.some(candidate =>
-      candidate.player.id === drawerPlayerId))
+  const drawerPlayerIsValid = drawerPlayerOrigin !== "live"
+    || (
+      viewState.view === "positional_bests"
+      && Boolean(positionalBestsModel?.candidates.some(candidate =>
+        candidate.player.id === drawerPlayerId))
+    )
+    || (
+      viewState.view === "tier_landscape"
+      && Boolean(tierLandscapeModel.lanes.some(lane =>
+        lane.visibleTierBands.some(band => band.players.some(player =>
+          player.player.id === drawerPlayerId))))
+    )
   const drawerPlayer = drawerPlayerIsValid
     ? eligiblePlayers.find(player => player.id === drawerPlayerId)
       || positionalBestsModel?.candidates.find(candidate =>
         candidate.player.id === drawerPlayerId)?.player
+      || tierLandscapeModel.lanes.flatMap(lane =>
+        lane.visibleTierBands.flatMap(band => band.players))
+        .find(player => player.player.id === drawerPlayerId)?.player
       || null
     : null
   const canRun = (
@@ -267,13 +311,24 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
 
   useEffect(() => {
     if (
-      viewState.view === "positional_bests"
+      ["positional_bests", "tier_landscape"].includes(viewState.view)
       && drawerPlayerId
       && !drawerPlayerIsValid
     ) {
       setDrawerPlayerId(null)
+      setDrawerPlayerOrigin(null)
     }
   }, [drawerPlayerId, drawerPlayerIsValid, viewState.view])
+
+  const inspectLivePlayer = (player: Player) => {
+    setDrawerPlayerOrigin("live")
+    setDrawerPlayerId(player.id)
+  }
+
+  const inspectHistoricalPlayer = (playerId: string) => {
+    setDrawerPlayerOrigin("historical")
+    setDrawerPlayerId(playerId)
+  }
 
   const applyViewAction = (
     action: AnalysisViewAction,
@@ -346,6 +401,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         scoringProfile,
       })
       setDrawerPlayerId(null)
+      setDrawerPlayerOrigin(null)
       const response = await executeHistoricalAnalysis(query)
       if (analysisRequestId.current === requestId) setResult(response)
     } catch (requestError) {
@@ -587,7 +643,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
               <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
                 {viewState.view === "positional_bests"
                   ? "The live comparison uses the supplied deterministic advisor candidates. Historical controls below remain a manual drilldown for the selected position."
-                  : `Includes all mapped historical ${position} players, then applies the selected view’s deterministic ordering.`}
+                  : "The live landscape above uses only explicitly available draft-board players. Historical controls below remain a separate manual drilldown."}
               </p>
             )}
           </fieldset>
@@ -636,7 +692,13 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
           {viewState.view === "positional_bests" && (
             <PositionalBestsLiveSurface
               model={positionalBestsModel}
-              onInspectPlayer={player => setDrawerPlayerId(player.id)}
+              onInspectPlayer={inspectLivePlayer}
+            />
+          )}
+          {viewState.view === "tier_landscape" && (
+            <TierLandscapeLiveSurface
+              model={tierLandscapeModel}
+              onInspectPlayer={inspectLivePlayer}
             />
           )}
           {viewState.view === "positional_bests" && (
@@ -647,6 +709,17 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
               <p className="text-xs text-slate-500">
                 Run the existing bounded historical query independently of the
                 live recommendation surface.
+              </p>
+            </div>
+          )}
+          {viewState.view === "tier_landscape" && (
+            <div className="rounded-lg border border-slate-200 bg-white p-3">
+              <h2 className="font-semibold text-slate-900">
+                Historical positional tier drilldown
+              </h2>
+              <p className="text-xs text-slate-500">
+                Run the existing bounded historical query independently of the
+                live tier landscape.
               </p>
             </div>
           )}
@@ -680,7 +753,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                 )}
               </div>
               <DeclarativeChart
-                onSelectPlayer={setDrawerPlayerId}
+                onSelectPlayer={inspectHistoricalPlayer}
                 response={result}
               />
               <details className="rounded-lg border border-slate-200 bg-white">
@@ -715,7 +788,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                               typeof row.dimensions.player_id === "string" ? (
                                 <button
                                   className="font-semibold text-indigo-700 hover:underline"
-                                  onClick={() => setDrawerPlayerId(
+                                  onClick={() => inspectHistoricalPlayer(
                                     String(row.dimensions.player_id),
                                   )}
                                 >
@@ -746,7 +819,10 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
       {drawerPlayer && (
         <PlayerComparisonDrawer
           boardSettings={boardSettings}
-          onClose={() => setDrawerPlayerId(null)}
+          onClose={() => {
+            setDrawerPlayerId(null)
+            setDrawerPlayerOrigin(null)
+          }}
           player={drawerPlayer}
           rankingSummaries={rankingSummaries}
           response={result}

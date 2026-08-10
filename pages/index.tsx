@@ -252,6 +252,18 @@ const Home: FC = () => {
     sourceObservedThroughOverallPick,
     sourceTotalPicks: activeDraftSnapshot?.completion?.totalPicks,
   })
+  const analysisAvailablePlayers = useMemo(() => {
+    const availableById = new Map<string, Player>()
+    const available = [
+      ...playerRanks.QB,
+      ...playerRanks.RB,
+      ...playerRanks.WR,
+      ...playerRanks.TE,
+    ]
+    available.forEach(player => availableById.set(player.id, player))
+    return Array.from(availableById.values())
+      .sort((left, right) => left.id.localeCompare(right.id))
+  }, [playerRanks])
 
   const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
   const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
@@ -827,11 +839,13 @@ const Home: FC = () => {
             <div className="hidden w-screen px-4 pb-8 md:block">
               <AnalysisWorkspace
                 activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
+                availablePlayers={analysisAvailablePlayers}
                 boardSettings={boardSettings}
                 onClose={() => setAnalysisOpen(false)}
                 players={Object.values(playerLib)}
                 rankingSummaries={rankingSummaries}
                 recommendations={recommendations}
+                opponentForecast={opponentForecast}
                 settings={settings}
                 playerStatus={playerStatus}
                 analysisViewEvent={analysisViewEvents.desktop}
@@ -1087,10 +1101,12 @@ const Home: FC = () => {
               <div className="w-full pb-16">
               <AnalysisWorkspace
                   activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
+                  availablePlayers={analysisAvailablePlayers}
                   boardSettings={boardSettings}
                   players={Object.values(playerLib)}
                   rankingSummaries={rankingSummaries}
                   recommendations={recommendations}
+                  opponentForecast={opponentForecast}
                   settings={settings}
                   playerStatus={playerStatus}
                   analysisViewEvent={analysisViewEvents.mobile}
