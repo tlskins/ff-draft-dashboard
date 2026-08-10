@@ -30,6 +30,12 @@ import {
 import {
   buildTierLandscapePresentationModel,
 } from "../../behavior/analysis/tierLandscape"
+import {
+  buildIntraPositionPresentationModel,
+} from "../../behavior/analysis/intraPosition"
+import type {
+  IntraPosition,
+} from "../../behavior/analysis/intraPosition"
 import type {
   OpponentForecast,
 } from "../../behavior/draft-advisor/types"
@@ -52,6 +58,7 @@ import {
 } from "../../types"
 import DeclarativeChart from "./DeclarativeChart"
 import CrossPositionLiveSurface from "./CrossPositionLiveSurface"
+import IntraPositionLiveSurface from "./IntraPositionLiveSurface"
 import PlayerComparisonDrawer from "./PlayerComparisonDrawer"
 import PositionalBestsLiveSurface from "./PositionalBestsLiveSurface"
 import TierLandscapeLiveSurface from "./TierLandscapeLiveSurface"
@@ -180,6 +187,23 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     opponentForecast,
     rankingSummaries,
     recommendations,
+    settings,
+  ])
+  const intraPositionModel = useMemo(() => (
+    buildIntraPositionPresentationModel({
+      position: position as IntraPosition,
+      availablePlayers,
+      boardSettings,
+      settings,
+      rankingSummaries,
+      playerStatus,
+    })
+  ), [
+    availablePlayers,
+    boardSettings,
+    playerStatus,
+    position,
+    rankingSummaries,
     settings,
   ])
   const analysisRequestId = useRef(0)
@@ -311,14 +335,28 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
       && Boolean(crossPositionModel?.candidates.some(candidate =>
         candidate.player.id === drawerPlayerId))
     )
+    || (
+      viewState.view === "intra_position"
+      && Boolean(intraPositionModel.players.some(candidate =>
+        candidate.player.id === drawerPlayerId))
+    )
+  const liveIntraPositionDrawerPlayer = (
+    drawerPlayerOrigin === "live" && viewState.view === "intra_position"
+      ? intraPositionModel.players.find(candidate =>
+        candidate.player.id === drawerPlayerId)?.player || null
+      : null
+  )
   const drawerPlayer = drawerPlayerIsValid
-    ? eligiblePlayers.find(player => player.id === drawerPlayerId)
+    ? liveIntraPositionDrawerPlayer
+      || eligiblePlayers.find(player => player.id === drawerPlayerId)
       || positionalBestsModel?.candidates.find(candidate =>
         candidate.player.id === drawerPlayerId)?.player
       || tierLandscapeModel.lanes.flatMap(lane =>
         lane.visibleTierBands.flatMap(band => band.players))
         .find(player => player.player.id === drawerPlayerId)?.player
       || crossPositionModel?.candidates.find(candidate =>
+        candidate.player.id === drawerPlayerId)?.player
+      || intraPositionModel.players.find(candidate =>
         candidate.player.id === drawerPlayerId)?.player
       || null
     : null
@@ -332,7 +370,12 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
 
   useEffect(() => {
     if (
-      ["positional_bests", "tier_landscape", "cross_position"].includes(
+      [
+        "positional_bests",
+        "tier_landscape",
+        "cross_position",
+        "intra_position",
+      ].includes(
         viewState.view,
       )
       && drawerPlayerId
@@ -661,6 +704,14 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                 </div>
               </div>
             )}
+            {viewState.view === "intra_position" && (
+              <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                The live shortlist uses only explicitly available players at
+                the selected position. Historical Player A and Player B use
+                the full eligible same-position library, remain independent of
+                live updates, and run only when you choose Run analysis.
+              </p>
+            )}
             {["tier_landscape", "positional_bests", "cross_position"].includes(
               viewState.view,
             ) && (
@@ -733,6 +784,12 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
               onInspectPlayer={inspectLivePlayer}
             />
           )}
+          {viewState.view === "intra_position" && (
+            <IntraPositionLiveSurface
+              model={intraPositionModel}
+              onInspectPlayer={inspectLivePlayer}
+            />
+          )}
           {viewState.view === "positional_bests" && (
             <div className="rounded-lg border border-slate-200 bg-white p-3">
               <h2 className="font-semibold text-slate-900">
@@ -763,6 +820,19 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
               <p className="text-xs text-slate-500">
                 The historical selections are distinct from live advisor
                 candidates and run only when you request the bounded query.
+              </p>
+            </div>
+          )}
+          {viewState.view === "intra_position" && (
+            <div className="rounded-lg border border-slate-200 bg-white p-3">
+              <h2 className="font-semibold text-slate-900">
+                Historical intra-position drilldown
+              </h2>
+              <p className="text-xs text-slate-500">
+                Player A and Player B selections remain separate from the
+                live availability shortlist. Run the existing bounded
+                historical trend manually for the selected 1-, 3-, or 5-season
+                window and scoring profile.
               </p>
             </div>
           )}

@@ -140,6 +140,17 @@ Phase 10A navigation and all calculation ownership. See
 `docs/phase10d-cross-position-comparison.md`. This candidate does not mark
 Phase 10 complete.
 
+Bounded Phase 10E candidate: enrich only the intra-position view with an
+immediately available maximum-three live shortlist drawn solely from explicit
+currently available same-position players, active-rank ordering, honest
+active/custom rank and tier authority, shared projection risk/reward ranges,
+and supplied actionable status context. Keep historical Player A / Player B
+comparison manually runnable and explicitly separate from the live shortlist;
+preserve Phase 10A navigation and all availability, ranking, recommendation,
+tier, projection, and historical-query ownership. See
+`docs/phase10e-intra-position-comparison.md`. This candidate does not mark
+Phase 10 complete.
+
 Exit gate: the four views and their transitions have a coherent acceptance
 review, pinned and automatic navigation behave as specified, and manual
 usability/visual checks are recorded. UX work does not change calculation or
