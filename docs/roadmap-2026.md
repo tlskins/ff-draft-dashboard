@@ -151,6 +151,18 @@ tier, projection, and historical-query ownership. See
 `docs/phase10e-intra-position-comparison.md`. This candidate does not mark
 Phase 10 complete.
 
+Bounded Phase 10F acceptance candidate: the four decision views now share a
+focused cross-view integration gate for navigation arbitration, ownership,
+live/history separation, drawer and live-region behavior, responsive parity,
+and the unchanged Phase 9 promotion boundary. Agent-run in-app browser checks
+covered all four views at desktop and narrow widths and a deliberate local
+historical request. A localized cross-position name-truncation defect was
+corrected without changing calculation or data ownership. See
+`docs/phase10f-cross-view-acceptance.md`. Automated and agent-browser checks
+are complete, but every human visual, keyboard, live-interruption, and
+assistive-technology checklist item remains unrecorded. Phase 10 is therefore
+implementation-complete and human-acceptance-pending, not complete.
+
 Exit gate: the four views and their transitions have a coherent acceptance
 review, pinned and automatic navigation behave as specified, and manual
 usability/visual checks are recorded. UX work does not change calculation or

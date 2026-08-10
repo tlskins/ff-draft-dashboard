@@ -312,8 +312,8 @@ const CandidateCard: React.FC<{
   return (
     <li className="min-w-0 rounded-lg border border-violet-100 bg-white p-3">
       <article aria-labelledby={`cross-position-${candidate.player.id}`}>
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
             <p className="text-xs font-bold uppercase tracking-wide text-violet-700">
               {candidate.preferenceLabel}
               {candidate.fallbackNumber === null
@@ -321,7 +321,7 @@ const CandidateCard: React.FC<{
                 : ` ${candidate.fallbackNumber}`}
             </p>
             <h3
-              className="truncate text-lg font-bold text-slate-950"
+              className="break-words text-lg font-bold text-slate-950"
               id={`cross-position-${candidate.player.id}`}
             >
               {candidate.player.fullName}
