@@ -25,6 +25,9 @@ import {
   buildPositionalBestsPresentationModel,
 } from "../../behavior/analysis/positionalBests"
 import {
+  buildCrossPositionPresentationModel,
+} from "../../behavior/analysis/crossPosition"
+import {
   buildTierLandscapePresentationModel,
 } from "../../behavior/analysis/tierLandscape"
 import type {
@@ -48,6 +51,7 @@ import {
   RankingSummary,
 } from "../../types"
 import DeclarativeChart from "./DeclarativeChart"
+import CrossPositionLiveSurface from "./CrossPositionLiveSurface"
 import PlayerComparisonDrawer from "./PlayerComparisonDrawer"
 import PositionalBestsLiveSurface from "./PositionalBestsLiveSurface"
 import TierLandscapeLiveSurface from "./TierLandscapeLiveSurface"
@@ -144,6 +148,16 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   const positionalBestsModel = useMemo(() => (
     recommendations
       ? buildPositionalBestsPresentationModel({
+          recommendations,
+          boardSettings,
+          settings,
+          playerStatus,
+        })
+      : null
+  ), [boardSettings, playerStatus, recommendations, settings])
+  const crossPositionModel = useMemo(() => (
+    recommendations
+      ? buildCrossPositionPresentationModel({
           recommendations,
           boardSettings,
           settings,
@@ -292,6 +306,11 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         lane.visibleTierBands.some(band => band.players.some(player =>
           player.player.id === drawerPlayerId))))
     )
+    || (
+      viewState.view === "cross_position"
+      && Boolean(crossPositionModel?.candidates.some(candidate =>
+        candidate.player.id === drawerPlayerId))
+    )
   const drawerPlayer = drawerPlayerIsValid
     ? eligiblePlayers.find(player => player.id === drawerPlayerId)
       || positionalBestsModel?.candidates.find(candidate =>
@@ -299,6 +318,8 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
       || tierLandscapeModel.lanes.flatMap(lane =>
         lane.visibleTierBands.flatMap(band => band.players))
         .find(player => player.player.id === drawerPlayerId)?.player
+      || crossPositionModel?.candidates.find(candidate =>
+        candidate.player.id === drawerPlayerId)?.player
       || null
     : null
   const canRun = (
@@ -311,7 +332,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
 
   useEffect(() => {
     if (
-      ["positional_bests", "tier_landscape"].includes(viewState.view)
+      ["positional_bests", "tier_landscape", "cross_position"].includes(
+        viewState.view,
+      )
       && drawerPlayerId
       && !drawerPlayerIsValid
     ) {
@@ -618,7 +641,8 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             {viewState.view === "cross_position" && (
               <div className="rounded-lg bg-slate-50 p-3">
                 <p className="mb-2 text-xs text-slate-500">
-                  Highest active rank at each position
+                  Historical comparison players selected independently from live
+                  advisor candidates
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {crossPositionPlayerIds.map(playerId => {
@@ -637,13 +661,15 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                 </div>
               </div>
             )}
-            {["tier_landscape", "positional_bests"].includes(
+            {["tier_landscape", "positional_bests", "cross_position"].includes(
               viewState.view,
             ) && (
               <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
                 {viewState.view === "positional_bests"
                   ? "The live comparison uses the supplied deterministic advisor candidates. Historical controls below remain a manual drilldown for the selected position."
-                  : "The live landscape above uses only explicitly available draft-board players. Historical controls below remain a separate manual drilldown."}
+                  : viewState.view === "tier_landscape"
+                    ? "The live landscape above uses only explicitly available draft-board players. Historical controls below remain a separate manual drilldown."
+                    : "The live comparison above uses only supplied deterministic advisor candidates. These historical selections are separate and run only when you choose Run analysis."}
               </p>
             )}
           </fieldset>
@@ -701,6 +727,12 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
               onInspectPlayer={inspectLivePlayer}
             />
           )}
+          {viewState.view === "cross_position" && (
+            <CrossPositionLiveSurface
+              model={crossPositionModel}
+              onInspectPlayer={inspectLivePlayer}
+            />
+          )}
           {viewState.view === "positional_bests" && (
             <div className="rounded-lg border border-slate-200 bg-white p-3">
               <h2 className="font-semibold text-slate-900">
@@ -720,6 +752,17 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
               <p className="text-xs text-slate-500">
                 Run the existing bounded historical query independently of the
                 live tier landscape.
+              </p>
+            </div>
+          )}
+          {viewState.view === "cross_position" && (
+            <div className="rounded-lg border border-slate-200 bg-white p-3">
+              <h2 className="font-semibold text-slate-900">
+                Historical cross-position drilldown
+              </h2>
+              <p className="text-xs text-slate-500">
+                The historical selections are distinct from live advisor
+                candidates and run only when you request the bounded query.
               </p>
             </div>
           )}

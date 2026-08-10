@@ -130,6 +130,16 @@ preserve Phase 10A navigation and all ranking, recommendation, tier, and
 opponent-model ownership. See `docs/phase10c-positional-tier-landscape.md`.
 This candidate does not mark Phase 10 complete.
 
+Bounded Phase 10D candidate: enrich only the cross-position view with the
+existing ordered maximum-three deterministic recommendation candidates,
+supplied roster/replacement/tier/survival/run evidence, honest rank/tier
+labels, shared projection ranges, actionable status context, and existing
+comparison-drawer access. Keep the historical cross-position drilldown
+manually runnable and explicitly separate from the live candidates; preserve
+Phase 10A navigation and all calculation ownership. See
+`docs/phase10d-cross-position-comparison.md`. This candidate does not mark
+Phase 10 complete.
+
 Exit gate: the four views and their transitions have a coherent acceptance
 review, pinned and automatic navigation behave as specified, and manual
 usability/visual checks are recorded. UX work does not change calculation or
