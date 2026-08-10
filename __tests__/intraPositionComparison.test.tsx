@@ -702,9 +702,9 @@ describe("intra-position live surface", () => {
       "intra-position-projection-median-rb-maximum",
     )
     expect(minimumPoint.getAttribute("style"))
-      .toContain("left: 0%; transform: translateX(0);")
+      .toContain("left: 0%; transform: translateX(0) translateY(-50%);")
     expect(maximumPoint.getAttribute("style"))
-      .toContain("left: 100%; transform: translateX(-100%);")
+      .toContain("left: 100%; transform: translateX(-100%) translateY(-50%);")
     expect(minimumMedian.getAttribute("style"))
       .toContain("left: 0%; transform: translateX(0);")
     expect(maximumMedian.getAttribute("style"))
@@ -784,24 +784,25 @@ describe("intra-position live surface", () => {
     )
     await waitFor(() => expect(liveRegion()).toContain("Update 3."))
 
+    const readyWithoutActionableEvidence = {
+      "rb-one": {
+        playerId: "rb-one",
+        state: "ready" as const,
+        response: {events: []},
+        loadedAt: 1,
+      },
+    }
     view.rerender(
       <IntraPositionLiveSurface
         model={modelFor([first], {
           currentBoardSettings: espnBoardSettings,
           rankingSummaries: projectionChanged,
-          playerStatus: {
-            "rb-one": {
-              playerId: "rb-one",
-              state: "ready",
-              response: {events: [statusEvent()]},
-              loadedAt: 2,
-            },
-          },
+          playerStatus: readyWithoutActionableEvidence,
         })}
         onInspectPlayer={jest.fn()}
       />,
     )
-    await waitFor(() => expect(liveRegion()).toContain("Update 4."))
+    expect(liveRegion()).toContain("Update 3.")
 
     view.rerender(
       <IntraPositionLiveSurface
@@ -811,9 +812,29 @@ describe("intra-position live surface", () => {
           playerStatus: {
             "rb-one": {
               playerId: "rb-one",
-              state: "ready",
-              response: {events: [statusEvent()]},
-              loadedAt: 3,
+              state: "loading",
+              response: null,
+              loadedAt: null,
+            },
+          },
+        })}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+    await waitFor(() => expect(liveRegion()).toContain("Update 4."))
+    expect(view.getByText("Loading advisory status evidence…")).toBeTruthy()
+
+    view.rerender(
+      <IntraPositionLiveSurface
+        model={modelFor([first], {
+          currentBoardSettings: espnBoardSettings,
+          rankingSummaries: projectionChanged,
+          playerStatus: {
+            "rb-one": {
+              playerId: "rb-one",
+              state: "loading",
+              response: null,
+              loadedAt: null,
             },
           },
         })}
@@ -824,6 +845,99 @@ describe("intra-position live surface", () => {
 
     view.rerender(
       <IntraPositionLiveSurface
+        model={modelFor([first], {
+          currentBoardSettings: espnBoardSettings,
+          rankingSummaries: projectionChanged,
+          playerStatus: {
+            "rb-one": {
+              playerId: "rb-one",
+              state: "unavailable",
+              response: null,
+              loadedAt: 2,
+            },
+          },
+        })}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+    await waitFor(() => expect(liveRegion()).toContain("Update 5."))
+    expect(view.getByText(/Status provider unavailable/)).toBeTruthy()
+
+    const actionableStatus = statusEvent()
+    view.rerender(
+      <IntraPositionLiveSurface
+        model={modelFor([first], {
+          currentBoardSettings: espnBoardSettings,
+          rankingSummaries: projectionChanged,
+          playerStatus: {
+            "rb-one": {
+              playerId: "rb-one",
+              state: "ready",
+              response: {events: [actionableStatus]},
+              loadedAt: 3,
+            },
+          },
+        })}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+    await waitFor(() => expect(liveRegion()).toContain("Update 6."))
+    expect(view.getByText(/Limited — structured report\./)).toBeTruthy()
+
+    view.rerender(
+      <IntraPositionLiveSurface
+        model={modelFor([first], {
+          currentBoardSettings: espnBoardSettings,
+          rankingSummaries: projectionChanged,
+          playerStatus: {
+            "rb-one": {
+              playerId: "rb-one",
+              state: "ready",
+              response: {events: [actionableStatus]},
+              loadedAt: 4,
+            },
+          },
+        })}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+    expect(liveRegion()).toContain("Update 6.")
+
+    view.rerender(
+      <IntraPositionLiveSurface
+        model={modelFor([first], {
+          currentBoardSettings: espnBoardSettings,
+          rankingSummaries: projectionChanged,
+          playerStatus: {
+            "rb-one": {
+              playerId: "rb-one",
+              state: "ready",
+              response: {
+                events: [statusEvent({short_summary: "Updated report."})],
+              },
+              loadedAt: 5,
+            },
+          },
+        })}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+    await waitFor(() => expect(liveRegion()).toContain("Update 7."))
+
+    view.rerender(
+      <IntraPositionLiveSurface
+        model={modelFor([first], {
+          currentBoardSettings: espnBoardSettings,
+          rankingSummaries: projectionChanged,
+          playerStatus: readyWithoutActionableEvidence,
+        })}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+    await waitFor(() => expect(liveRegion()).toContain("Update 8."))
+
+    view.rerender(
+      <IntraPositionLiveSurface
         model={modelFor([second], {
           currentBoardSettings: espnBoardSettings,
           rankingSummaries: projectionChanged,
@@ -831,7 +945,7 @@ describe("intra-position live surface", () => {
         onInspectPlayer={jest.fn()}
       />,
     )
-    await waitFor(() => expect(liveRegion()).toContain("Update 5."))
+    await waitFor(() => expect(liveRegion()).toContain("Update 9."))
   })
 })
 

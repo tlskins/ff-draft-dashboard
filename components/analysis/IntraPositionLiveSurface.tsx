@@ -21,13 +21,44 @@ const formatSpread = (value: number | null): string => (
   value === null ? "Unavailable" : `${value.toFixed(1)} PPG`
 )
 
-const markerTransform = (percent: number): string => (
+const horizontalMarkerTransform = (percent: number): string => (
   percent <= 0
     ? "translateX(0)"
     : percent >= 100
       ? "translateX(-100%)"
       : "translateX(-50%)"
 )
+
+const centeredPointMarkerTransform = (percent: number): string => (
+  `${horizontalMarkerTransform(percent)} translateY(-50%)`
+)
+
+const renderedStatusFingerprint = (
+  candidate: IntraPositionPlayerModel,
+) => {
+  const actionableEvents = candidate.statusEvidence.map(event => ({
+    id: event.id,
+    type: event.type,
+    recommendationImpact: event.recommendation_impact,
+    shortSummary: event.short_summary,
+    source: event.source,
+    sourceUrl: event.source_url,
+    sourcePublishedAt: event.source_published_at,
+    fetchedAt: event.fetched_at,
+    confidence: event.confidence,
+    stale: event.stale,
+  }))
+  if (actionableEvents.length > 0) {
+    return {state: "actionable", events: actionableEvents}
+  }
+  if (
+    candidate.statusState === "loading"
+    || candidate.statusState === "unavailable"
+  ) {
+    return {state: candidate.statusState}
+  }
+  return null
+}
 
 /**
  * Includes every displayed live fact, rather than cache bookkeeping, so an
@@ -56,19 +87,7 @@ const shortlistUpdateKey = (model: IntraPositionPresentationModel): string => (
       projectionTier: candidate.projectionTier,
       projection: candidate.projection,
       projectionSpread: candidate.projectionSpread,
-      statusState: candidate.statusState,
-      statusEvidence: candidate.statusEvidence.map(event => ({
-        id: event.id,
-        type: event.type,
-        recommendationImpact: event.recommendation_impact,
-        shortSummary: event.short_summary,
-        source: event.source,
-        sourceUrl: event.source_url,
-        sourcePublishedAt: event.source_published_at,
-        fetchedAt: event.fetched_at,
-        confidence: event.confidence,
-        stale: event.stale,
-      })),
+      status: renderedStatusFingerprint(candidate),
     })),
   })
 )
@@ -114,11 +133,11 @@ const ProjectionRangeVisualization: React.FC<{
         <div aria-hidden="true" className="relative h-full">
           {hasRange && isPoint && rangeStart !== null && (
             <span
-              className="absolute top-1/2 h-2 w-1 -translate-y-1/2 rounded bg-indigo-700"
+              className="absolute top-1/2 h-2 w-1 rounded bg-indigo-700"
               data-testid={`intra-position-projection-point-${candidate.player.id}`}
               style={{
                 left: `${rangeStart}%`,
-                transform: markerTransform(rangeStart),
+                transform: centeredPointMarkerTransform(rangeStart),
               }}
             />
           )}
@@ -138,7 +157,7 @@ const ProjectionRangeVisualization: React.FC<{
               data-testid={`intra-position-projection-median-${candidate.player.id}`}
               style={{
                 left: `${projection.medianPercent}%`,
-                transform: markerTransform(projection.medianPercent),
+                transform: horizontalMarkerTransform(projection.medianPercent),
               }}
             />
           )}
