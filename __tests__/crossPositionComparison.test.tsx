@@ -285,6 +285,85 @@ describe("cross-position presentation model", () => {
     ])).toEqual({minimum: 0, maximum: 1, hasFiniteValues: false})
   })
 
+  it("fails closed for invalid probability evidence while preserving valid zero and one", () => {
+    const belowRange = candidate(player("below", FantasyPosition.QUARTERBACK, 1), 3, {
+      survivalProbability: -0.1,
+      tierBoundaryProbability: -0.2,
+      positionalRunProbability: -0.5,
+    })
+    const aboveRange = candidate(player("above", FantasyPosition.RUNNING_BACK, 1), 2, {
+      survivalProbability: 1.1,
+      tierBoundaryProbability: 1.2,
+      positionalRunProbability: 1.5,
+    })
+    const valid = candidate(player("valid", FantasyPosition.WIDE_RECEIVER, 1), 1, {
+      survivalProbability: 0,
+      tierBoundaryProbability: 1,
+      positionalRunProbability: 0,
+    })
+    const model = buildModel([belowRange, aboveRange, valid])
+
+    expect(model.candidates[0].metricValues).toMatchObject({
+      survivalProbability: null,
+      tierBoundaryProbability: null,
+      positionalRunProbability: null,
+    })
+    expect(model.candidates[1].metricValues).toMatchObject({
+      survivalProbability: null,
+      tierBoundaryProbability: null,
+      positionalRunProbability: null,
+    })
+    expect(model.candidates[2].metricValues).toMatchObject({
+      survivalProbability: 0,
+      tierBoundaryProbability: 1,
+      positionalRunProbability: 0,
+    })
+    expect(model.metricScales.survivalProbability).toEqual({
+      minimum: 0,
+      maximum: 0,
+      hasFiniteValues: true,
+    })
+    expect(model.metricScales.tierBoundaryProbability).toEqual({
+      minimum: 1,
+      maximum: 1,
+      hasFiniteValues: true,
+    })
+
+    const view = render(
+      <CrossPositionLiveSurface model={model} onInspectPlayer={jest.fn()} />,
+    )
+    expect(view.getAllByRole("img", {
+      name: "Survival to next user pick: unavailable",
+    })).toHaveLength(2)
+    expect(view.getAllByRole("img", {
+      name: "Current-tier boundary / exhaustion probability: unavailable",
+    })).toHaveLength(2)
+    expect(view.getAllByRole("img", {
+      name: "Positional-run probability: unavailable",
+    })).toHaveLength(2)
+    expect(view.queryByTestId(
+      "cross-position-metric-survivalProbability-below",
+    )).toBeNull()
+    expect(view.queryByTestId(
+      "cross-position-metric-tierBoundaryProbability-below",
+    )).toBeNull()
+    expect(view.queryByTestId(
+      "cross-position-metric-positionalRunProbability-below",
+    )).toBeNull()
+    expect(view.queryByTestId(
+      "cross-position-metric-survivalProbability-above",
+    )).toBeNull()
+    expect(view.queryByTestId(
+      "cross-position-metric-tierBoundaryProbability-above",
+    )).toBeNull()
+    expect(view.queryByTestId(
+      "cross-position-metric-positionalRunProbability-above",
+    )).toBeNull()
+    expect(view.getByTestId(
+      "cross-position-metric-survivalProbability-valid",
+    )).toBeTruthy()
+  })
+
   it("only exposes actual custom rank and tier data while keeping the active source honest", () => {
     const model = buildModel([
       candidate(player("custom", FantasyPosition.QUARTERBACK, 1, {
@@ -475,6 +554,31 @@ describe("live cross-position surface", () => {
     expect(empty.queryByRole("list", {
       name: "Deterministic cross-position recommendation candidates",
     })).toBeNull()
+  })
+
+  it("keeps an equal projection median at the shared maximum inside its track", () => {
+    const minimum = candidate(player("minimum", FantasyPosition.QUARTERBACK, 1), 3, {
+      projectedFloor: 0,
+      projectedMedian: 0,
+      projectedCeiling: 0,
+    })
+    const maximum = candidate(player("maximum", FantasyPosition.RUNNING_BACK, 1), 2, {
+      projectedFloor: 10,
+      projectedMedian: 10,
+      projectedCeiling: 10,
+    })
+    const view = render(
+      <CrossPositionLiveSurface
+        model={buildModel([minimum, maximum])}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+
+    const marker = view.getByTestId("cross-position-projection-median-maximum")
+    expect(marker.getAttribute("style")).toContain("left: 100%")
+    expect(marker.getAttribute("style")).toContain(
+      "transform: translateX(-100%)",
+    )
   })
 
   it("renders live candidates before a historical request and keeps historical drawer ownership separate", async () => {

@@ -99,6 +99,13 @@ const ProjectionRangeVisualization: React.FC<{
     : isPoint
       ? Math.min(99, projection.startPercent)
       : projection.startPercent
+  const medianMarkerTransform = projection.medianPercent === null
+    ? null
+    : projection.medianPercent <= 0
+      ? "translateX(0)"
+      : projection.medianPercent >= 100
+        ? "translateX(-100%)"
+        : "translateX(-50%)"
   const ariaLabel = `${candidate.player.fullName} projection uncertainty range: `
     + `floor ${formatProjectionValue(projection.floor)} PPG, `
     + `median ${formatProjectionValue(projection.median)} PPG, `
@@ -138,7 +145,11 @@ const ProjectionRangeVisualization: React.FC<{
           {projection.medianPercent !== null && (
             <span
               className="absolute top-0 h-full w-0.5 bg-slate-950"
-              style={{left: `${projection.medianPercent}%`}}
+              data-testid={`cross-position-projection-median-${candidate.player.id}`}
+              style={{
+                left: `${projection.medianPercent}%`,
+                transform: medianMarkerTransform || undefined,
+              }}
             />
           )}
         </div>

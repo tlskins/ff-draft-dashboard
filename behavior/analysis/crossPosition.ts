@@ -62,6 +62,10 @@ const finiteEvidenceValue = (value: unknown): number | null => (
   finiteNumber(value) ? value : null
 )
 
+const finiteProbability = (value: unknown): number | null => (
+  finiteNumber(value) && value >= 0 && value <= 1 ? value : null
+)
+
 /**
  * A metric scale compares only the supplied values for that one metric. It is
  * never a valuation, probability, or score and it deliberately has no
@@ -109,13 +113,13 @@ const candidateMetricValues = (
   tierLossIfDeferred: finiteEvidenceValue(
     candidate.candidate.evidence.tierLossIfDeferred,
   ),
-  survivalProbability: finiteEvidenceValue(
+  survivalProbability: finiteProbability(
     candidate.candidate.evidence.survivalProbability,
   ),
-  tierBoundaryProbability: finiteEvidenceValue(
+  tierBoundaryProbability: finiteProbability(
     candidate.candidate.evidence.tierBoundaryProbability,
   ),
-  positionalRunProbability: finiteEvidenceValue(
+  positionalRunProbability: finiteProbability(
     candidate.candidate.evidence.positionalRunProbability,
   ),
   benchUtility: finiteEvidenceValue(
