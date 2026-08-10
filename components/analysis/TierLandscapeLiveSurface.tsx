@@ -40,24 +40,37 @@ const landscapeUpdateKey = (
     nextUserPick: model.nextUserPick,
     picksBeforeNextUserPick: model.picksBeforeNextUserPick,
     forecastHorizon: model.forecastHorizon,
+    projectionScale: model.projectionScale,
     lanes: model.lanes.map(lane => ({
       position: lane.position,
       availablePlayerCount: lane.availablePlayerCount,
+      totalTierBandCount: lane.totalTierBandCount,
+      hiddenTierBandCount: lane.hiddenTierBandCount,
       primaryTierSourceLabel: lane.primaryTierSourceLabel,
       currentTopAvailableTier: lane.currentTopAvailableTier,
       run: lane.run,
       visibleTierBands: lane.visibleTierBands.map(band => ({
         id: band.id,
+        label: band.label,
+        sourceLabel: band.sourceLabel,
         availablePlayerCount: band.availablePlayerCount,
         hiddenPlayerCount: band.hiddenPlayerCount,
         players: band.players.map(player => ({
           id: player.player.id,
+          fullName: player.player.fullName,
+          team: player.player.team,
+          position: player.player.position,
           positionRank: player.positionRank,
+          positionRankSourceLabel: player.positionRankSourceLabel,
           primaryTier: player.primaryTier,
+          primaryTierSourceLabel: player.primaryTierSourceLabel,
           projectionTier: player.projectionTier,
           floor: player.projection.floor,
           median: player.projection.median,
           ceiling: player.projection.ceiling,
+          startPercent: player.projection.startPercent,
+          medianPercent: player.projection.medianPercent,
+          endPercent: player.projection.endPercent,
           survivalProbability: player.survivalProbability,
         })),
       })),
@@ -280,7 +293,9 @@ const Lane: React.FC<{
     : `${formatEvidenceProbability(lane.run.probability)}${
       lane.run.minimumPicks === null
         ? " · modeled length unavailable"
-        : ` · ${lane.run.minimumPicks}-pick run`
+        : ` · at least ${lane.run.minimumPicks} positional ${
+          lane.run.minimumPicks === 1 ? "pick" : "picks"
+        }`
     }`
   return (
     <section
@@ -294,6 +309,18 @@ const Lane: React.FC<{
         </h3>
         <p className="text-xs text-slate-600">
           Primary tier source: {lane.primaryTierSourceLabel}
+        </p>
+        <p className="mt-1 text-xs text-slate-600">
+          {lane.availablePlayerCount} available {lane.availablePlayerCount === 1
+            ? "player"
+            : "players"} across {lane.totalTierBandCount} tier {lane.totalTierBandCount === 1
+            ? "band"
+            : "bands"}.
+          {lane.hiddenTierBandCount > 0 && (
+            <> {lane.hiddenTierBandCount} later tier {lane.hiddenTierBandCount === 1
+              ? "band is"
+              : "bands are"} omitted from this bounded landscape.</>
+          )}
         </p>
       </header>
       {current ? (

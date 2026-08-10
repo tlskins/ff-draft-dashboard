@@ -417,6 +417,9 @@ describe("live positional tier landscape presentation model", () => {
     const qb = model.lanes.find(lane => lane.position === "QB")!
 
     expect(qb.currentTopAvailableTier?.availablePlayerCount).toBe(4)
+    expect(qb.availablePlayerCount).toBe(8)
+    expect(qb.totalTierBandCount).toBe(5)
+    expect(qb.hiddenTierBandCount).toBe(2)
     expect(qb.visibleTierBands).toHaveLength(MAX_VISIBLE_TIER_BANDS_PER_LANE)
     expect(qb.visibleTierBands[0]).toMatchObject({
       availablePlayerCount: 4,
@@ -563,6 +566,9 @@ describe("live positional tier landscape surface", () => {
       .toHaveLength(4)
     expect(view.getAllByText("Modeled positional run · supplied"))
       .toHaveLength(4)
+    expect(view.getByText("40% · at least 3 positional picks")).toBeTruthy()
+    expect(view.getAllByText("2 available players across 1 tier band."))
+      .toHaveLength(4)
     expect(view.getByText(/Later-user-pick expected tiers are unavailable:/)).toBeTruthy()
     expect(view.getByRole("img", {
       name: /rb-a Player projection range overlay: floor/,
@@ -609,6 +615,80 @@ describe("live positional tier landscape surface", () => {
       />,
     )
     expect(view.getByText(/Live tier landscape updated.*Update 1/)).toBeTruthy()
+  })
+
+  it("announces a displayed rank-source-only update once and remains silent for its equivalent rerender", async () => {
+    const customAvailable = landscapePlayers().map(player => ({
+      ...player,
+      ranks: {
+        ...player.ranks,
+        [ThirdPartyRanker.CUSTOM]: playerRanking(
+          player.id,
+          ThirdPartyRanker.CUSTOM,
+          player.position,
+          1,
+          1,
+        ),
+      },
+    }))
+    const initial = modelFor(customAvailable)
+    const sourceChanged = {
+      ...initial,
+      lanes: initial.lanes.map(lane => ({
+        ...lane,
+        visibleTierBands: lane.visibleTierBands.map(band => ({
+          ...band,
+          players: band.players.map(player => ({
+            ...player,
+            positionRankSourceLabel: "ESPN draft board",
+          })),
+        })),
+      })),
+    }
+    expect(initial.lanes.every(lane =>
+      lane.primaryTierSourceLabel === "Custom user tiers")).toBe(true)
+    expect(sourceChanged.lanes.flatMap(lane => lane.visibleTierBands)
+      .flatMap(band => band.players)
+      .every(player => player.primaryTierSourceLabel === "Custom user tier"))
+      .toBe(true)
+    const view = render(
+      <TierLandscapeLiveSurface model={initial} onInspectPlayer={jest.fn()} />,
+    )
+
+    view.rerender(
+      <TierLandscapeLiveSurface
+        model={sourceChanged}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+    await waitFor(() => expect(view.getByText(
+      /Live tier landscape updated.*Update 1/,
+    )).toBeTruthy())
+
+    view.rerender(
+      <TierLandscapeLiveSurface
+        model={sourceChanged}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+    expect(view.queryByText(/Update 2/)).toBeNull()
+  })
+
+  it("discloses total density and later tier bands omitted by the bounded display", () => {
+    const qbs = Array.from({length: 5}, (_, index) => makePlayer(
+      `qb-tier-${index + 1}`,
+      FantasyPosition.QUARTERBACK,
+      index + 1,
+      index + 1,
+    ))
+    const model = modelFor(qbs)
+    const view = render(
+      <TierLandscapeLiveSurface model={model} onInspectPlayer={jest.fn()} />,
+    )
+
+    expect(view.getByTestId("tier-landscape-lane-QB").textContent).toContain(
+      "5 available players across 5 tier bands. 2 later tier bands are omitted from this bounded landscape.",
+    )
   })
 
   it("keeps empty availability and missing recommendation or forecast states useful", () => {

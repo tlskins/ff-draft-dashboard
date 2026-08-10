@@ -48,8 +48,10 @@ Primary tier bands group by their actual primary source plus tier number. The
 surface shows at most three nearby bands per lane and at most three leading
 players per visible band. Every visible band still reports its complete count
 within the explicit available-player input and says when additional players in
-that band are omitted from the card list. This keeps the visual surface
-bounded while retaining useful density evidence.
+that band are omitted from the card list. Each lane also discloses its total
+available-player and tier-band counts, plus the number of later tier bands
+omitted by the bounded display. This keeps the visual surface bounded while
+retaining useful density evidence.
 
 ## Projection overlay
 
@@ -70,8 +72,10 @@ with no supplied per-pick probability is `Unavailable`; missing entries do not
 become invented zero-probability evidence. Finite out-of-range inputs are
 clamped to `[0, 1]`; non-finite values are rejected.
 
-Run probability and minimum run length come directly from
-`runProbabilities`. Current-tier exhaustion comes directly from a matching
+Run probability and its supplied minimum-pick threshold come directly from
+`runProbabilities`; the UI labels it as the probability of **at least** that
+many positional picks, never an exact run length. Current-tier exhaustion
+comes directly from a matching
 supplied `tierBoundaryProbabilities` item only when its tier authority aligns
 with the displayed primary tier. The UI does not recompute either value.
 
@@ -96,9 +100,9 @@ The surface uses a heading hierarchy, semantic lane/band/player lists,
 keyboard-native inspect buttons, numeric text for every probability and range,
 and empty/unavailable states for missing evidence. A polite update uses a
 stable displayed-evidence key: equivalent rerenders do not announce again,
-while a material availability, density, projection, or forecast change emits
-one concise update. Human visual and assistive-technology acceptance remains
-deferred.
+while a material availability, density, rank/tier source, projection, or
+forecast change emits one concise update. Human visual and
+assistive-technology acceptance remains deferred.
 
 ## Historical drilldown
 

@@ -87,6 +87,8 @@ export interface TierLandscapeTierBandModel {
 export interface TierLandscapeLaneModel {
   position: TierLandscapePosition
   availablePlayerCount: number
+  totalTierBandCount: number
+  hiddenTierBandCount: number
   primaryTierSourceLabel: string
   currentTopAvailableTier: TierLandscapeCurrentTier | null
   run: TierLandscapeRunEvidence
@@ -127,6 +129,8 @@ interface PreliminaryTierBand {
 interface PreliminaryLane {
   position: TierLandscapePosition
   availablePlayerCount: number
+  totalTierBandCount: number
+  hiddenTierBandCount: number
   primaryTierSourceLabel: string
   currentTopAvailableTier: PreliminaryTierBand | null
   visibleTierBands: PreliminaryTierBand[]
@@ -353,6 +357,11 @@ const buildPreliminaryLane = (
   return {
     position,
     availablePlayerCount: players.length,
+    totalTierBandCount: tierBands.length,
+    hiddenTierBandCount: Math.max(
+      0,
+      tierBands.length - MAX_VISIBLE_TIER_BANDS_PER_LANE,
+    ),
     primaryTierSourceLabel: primaryTierSourceSummary(players, boardSettings),
     currentTopAvailableTier: tierBands[0] || null,
     visibleTierBands: tierBands.slice(0, MAX_VISIBLE_TIER_BANDS_PER_LANE),
@@ -566,6 +575,8 @@ export const buildTierLandscapePresentationModel = ({
     lanes: preliminaryLanes.map(lane => ({
       position: lane.position,
       availablePlayerCount: lane.availablePlayerCount,
+      totalTierBandCount: lane.totalTierBandCount,
+      hiddenTierBandCount: lane.hiddenTierBandCount,
       primaryTierSourceLabel: lane.primaryTierSourceLabel,
       currentTopAvailableTier: currentTierFor(
         lane,
