@@ -41,9 +41,32 @@ const candidateUpdateKey = (
       label: candidate.preferenceLabel,
       fallbackNumber: candidate.fallbackNumber,
       positionRank: candidate.positionRank,
+      positionRankSourceLabel: candidate.positionRankSourceLabel,
+      customPositionRank: candidate.customPositionRank,
+      customTier: candidate.customTier,
+      activeTier: candidate.activeTier,
+      activeTierSourceLabel: candidate.activeTierSourceLabel,
+      projectionTier: candidate.projectionTier,
       floor: candidate.projection.floor,
       median: candidate.projection.median,
       ceiling: candidate.projection.ceiling,
+      survivalProbability: candidate.candidate.evidence.survivalProbability,
+      tierLossIfDeferred: candidate.candidate.evidence.tierLossIfDeferred,
+      rosterRole: candidate.candidate.evidence.rosterRole,
+      flags: candidate.candidate.evidence.flags,
+      statusState: candidate.statusState,
+      statusEvidence: candidate.statusEvidence.map(event => ({
+        id: event.id,
+        type: event.type,
+        recommendationImpact: event.recommendation_impact,
+        shortSummary: event.short_summary,
+        source: event.source,
+        sourceUrl: event.source_url,
+        sourcePublishedAt: event.source_published_at,
+        fetchedAt: event.fetched_at,
+        confidence: event.confidence,
+        stale: event.stale,
+      })),
     })),
   })
 }
@@ -55,8 +78,14 @@ const ProjectionRangeVisualization: React.FC<{
   const {projection} = candidate
   const rangeWidth = projection.startPercent !== null
     && projection.endPercent !== null
-    ? Math.max(1, projection.endPercent - projection.startPercent)
+    ? Math.max(0, projection.endPercent - projection.startPercent)
     : 0
+  const isPoint = rangeWidth === 0
+  const rangeLeft = projection.startPercent === null
+    ? null
+    : isPoint
+      ? Math.min(99, projection.startPercent)
+      : projection.startPercent
   const ariaLabel = `${candidate.player.fullName} projection distribution: `
     + `floor ${formatProjectionValue(projection.floor)} PPG, `
     + `median ${formatProjectionValue(projection.median)} PPG, `
@@ -88,9 +117,10 @@ const ProjectionRangeVisualization: React.FC<{
             <span
               className="absolute top-1/2 h-2 -translate-y-1/2 rounded border-2 border-indigo-700 bg-indigo-200"
               style={{
-                left: `${projection.startPercent}%`,
-                width: `${rangeWidth}%`,
+                left: `${rangeLeft}%`,
+                width: `${isPoint ? 1 : rangeWidth}%`,
               }}
+              data-testid={`projection-range-${candidate.player.id}`}
             />
           )}
           {projection.medianPercent !== null && (
@@ -351,19 +381,26 @@ const PositionalBestsLiveSurface: React.FC<
   PositionalBestsLiveSurfaceProps
 > = ({model, onInspectPlayer}) => {
   const previousUpdateKey = useRef<string | null>(null)
+  const announcementCount = useRef(0)
   const [announcement, setAnnouncement] = useState("")
   const updateKey = candidateUpdateKey(model)
 
   useEffect(() => {
     if (previousUpdateKey.current !== null && previousUpdateKey.current !== updateKey) {
+      announcementCount.current += 1
       if (!model) {
-        setAnnouncement("Live recommendation data is unavailable.")
+        setAnnouncement(
+          `Live recommendation data is unavailable. Update ${announcementCount.current}.`,
+        )
       } else if (model.candidates.length === 0) {
-        setAnnouncement("No legal deterministic recommendation candidates remain.")
+        setAnnouncement(
+          "No legal deterministic recommendation candidates remain. "
+          + `Update ${announcementCount.current}.`,
+        )
       } else {
         setAnnouncement(
           `Deterministic advisor recommendations updated. Preferred candidate: `
-          + `${model.candidates[0].player.fullName}.`,
+          + `${model.candidates[0].player.fullName}. Update ${announcementCount.current}.`,
         )
       }
     }

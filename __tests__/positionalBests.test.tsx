@@ -274,6 +274,36 @@ describe("positional bests presentation model", () => {
     })
   })
 
+  it("counts every pick before the next user pick and safely handles unavailable pick context", () => {
+    const candidate = makeCandidate(makePlayer("one", 1))
+    const betweenPicks = buildPositionalBestsPresentationModel({
+      recommendations: makeRecommendations([candidate]),
+      boardSettings,
+      settings,
+    })
+    const onClock = buildPositionalBestsPresentationModel({
+      recommendations: {
+        ...makeRecommendations([candidate]),
+        currentPick: 8,
+        nextUserPick: 8,
+      },
+      boardSettings,
+      settings,
+    })
+    const unavailable = buildPositionalBestsPresentationModel({
+      recommendations: {
+        ...makeRecommendations([candidate]),
+        currentPick: 0,
+      },
+      boardSettings,
+      settings,
+    })
+
+    expect(betweenPicks.picksRemainingUntilNextUserPick).toBe(2)
+    expect(onClock.picksRemainingUntilNextUserPick).toBe(0)
+    expect(unavailable.picksRemainingUntilNextUserPick).toBeNull()
+  })
+
   it("creates one deterministic scale and safely normalizes equal, zero, missing, and malformed ranges", () => {
     expect(normalizeProjectionRange({
       floor: 12,
@@ -424,6 +454,143 @@ describe("realtime positional bests surface", () => {
     fireEvent.keyDown(inspect, {key: "Enter"})
     fireEvent.click(inspect)
     expect(onInspectPlayer).toHaveBeenCalledWith(player)
+  })
+
+  it("announces material recommendation-evidence updates but not equivalent rerenders", () => {
+    const player = makePlayer("one", 1, 4, 2)
+    const initialModel = buildPositionalBestsPresentationModel({
+      recommendations: makeRecommendations([makeCandidate(player)]),
+      boardSettings,
+      settings,
+      playerStatus: {
+        one: {
+          playerId: "one",
+          state: "ready",
+          loadedAt: 1,
+          response: {
+            schema_version: 1,
+            player_id: "one",
+            last_updated_at: "2026-08-09T10:00:00Z",
+            events: [statusEvent()],
+          },
+        },
+      },
+    })
+    const view = render(
+      <PositionalBestsLiveSurface
+        model={initialModel}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+
+    view.rerender(
+      <PositionalBestsLiveSurface
+        model={buildPositionalBestsPresentationModel({
+          recommendations: makeRecommendations([makeCandidate(player)]),
+          boardSettings,
+          settings,
+          playerStatus: {
+            one: {
+              playerId: "one",
+              state: "ready",
+              loadedAt: 2,
+              response: {
+                schema_version: 1,
+                player_id: "one",
+                last_updated_at: "2026-08-09T10:00:00Z",
+                events: [statusEvent()],
+              },
+            },
+          },
+        })}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+    expect(view.queryByText(/Deterministic advisor recommendations updated/)).toBeNull()
+
+    view.rerender(
+      <PositionalBestsLiveSurface
+        model={buildPositionalBestsPresentationModel({
+          recommendations: makeRecommendations([
+            makeCandidate(player, {survivalProbability: 0.2}),
+          ]),
+          boardSettings,
+          settings,
+          playerStatus: {
+            one: {
+              playerId: "one",
+              state: "ready",
+              loadedAt: 3,
+              response: {
+                schema_version: 1,
+                player_id: "one",
+                last_updated_at: "2026-08-09T10:00:00Z",
+                events: [statusEvent()],
+              },
+            },
+          },
+        })}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+    expect(view.getByText(/Deterministic advisor recommendations updated.*Update 1/)).toBeTruthy()
+
+    view.rerender(
+      <PositionalBestsLiveSurface
+        model={buildPositionalBestsPresentationModel({
+          recommendations: makeRecommendations([
+            makeCandidate(player, {survivalProbability: 0.2}),
+          ]),
+          boardSettings,
+          settings,
+          playerStatus: {
+            one: {
+              playerId: "one",
+              state: "ready",
+              loadedAt: 4,
+              response: {
+                schema_version: 1,
+                player_id: "one",
+                last_updated_at: "2026-08-09T10:00:00Z",
+                events: [statusEvent()],
+              },
+            },
+          },
+        })}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+    expect(view.getByText(/Deterministic advisor recommendations updated.*Update 1/)).toBeTruthy()
+  })
+
+  it("keeps an equal maximum projection range inside the shared scale", () => {
+    const player = makePlayer("one", 1)
+    const model = buildPositionalBestsPresentationModel({
+      recommendations: makeRecommendations([
+        makeCandidate(player, {
+          projectedFloor: 20,
+          projectedMedian: 20,
+          projectedCeiling: 20,
+        }),
+        makeCandidate(makePlayer("two", 2), {
+          projectedFloor: 10,
+          projectedMedian: 15,
+          projectedCeiling: 20,
+        }),
+      ]),
+      boardSettings,
+      settings,
+    })
+    const view = render(
+      <PositionalBestsLiveSurface model={model} onInspectPlayer={jest.fn()} />,
+    )
+
+    const range = view.getByTestId("projection-range-one")
+    expect(range.getAttribute("style")).toContain("left: 99%")
+    expect(range.getAttribute("style")).toContain("width: 1%")
+    expect(view.getByRole("img", {
+      name: /floor 20.0 PPG, median 20.0 PPG, ceiling 20.0 PPG/,
+    })).toBeTruthy()
   })
 
   it("does not fabricate unsupported flags and renders safe empty/unavailable states", () => {

@@ -286,7 +286,7 @@ export const buildPositionalBestsPresentationModel = ({
     nextUserPick,
     picksRemainingUntilNextUserPick: currentPick !== null
       && nextUserPick !== null
-      ? Math.max(0, nextUserPick - currentPick - 1)
+      ? Math.max(0, nextUserPick - currentPick)
       : null,
     projectionScale,
     candidates: suppliedCandidates.map((candidate, index) =>
