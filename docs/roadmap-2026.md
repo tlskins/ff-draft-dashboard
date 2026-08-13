@@ -256,6 +256,42 @@ data and does not begin or complete Phase 11B, 11C, or Phase 11 as a whole.
 - Preserve browser-owned custom positional ranks and tiers and keep source rank
   refreshes distinct from user authority.
 
+Stage A preview completed from frozen August 12 provider candidates. The
+non-mutating preflight proposed only rankings, catalog, roster, and transaction
+actions; injuries were recorded unavailable and 2026 weekly stats remained
+intentionally skipped. The disposable preview and review reports are complete,
+with historical/user-data preservation, logical replay idempotency, and focused
+Flask smoke passing. The canonical reconciled report is under
+`phase-11b-2026-08-12/reconciled-preview-r1` and includes every bounded identity
+addition, removal, and retained change; browser-owned ranks and tiers were
+out of scope and not touched, without an unsupported browser byte-proof claim.
+
+After explicit Stage A approval, Stage B created a fresh candidate-release copy
+from the original Phase 11A artifacts and replayed only the frozen A bytes. Its
+rankings, path-normalized logical SQLite state, semantic report evidence, and
+completed Parquet history agree with the approved R1 preview. Exact replay is
+idempotent. The full API gate passed 97/97; the full dashboard gate passed 74
+runnable suites and 452 runnable tests, and its optimized build, lint/type
+validation, static export, API-types check, candidate API/dashboard startup, and
+required live smokes passed. No 2026 weekly stats were imported, browser-owned
+custom rank/tier code remained unchanged, and optional injury unavailability
+remains nonblocking. The candidate is preserved under
+`phase-11b-2026-08-12/candidate-release-rehearsal-v1`.
+
+After separate approval, the reviewed rankings and SQLite candidate were
+atomically promoted into the authoritative API checkout. Historical source
+paths were rebound to the authoritative, hash-verified 2021–2025 Parquet
+artifacts; all 15 normalized logical tables remained equal to the reviewed
+candidate and SQLite integrity passed. A fresh provider-free replay was
+idempotent and did not mutate the promoted artifacts. The post-promotion API
+gate passed 97/97, the dashboard gate passed 74 runnable suites and 452 runnable
+tests, API types and the optimized static export passed, and all required live
+HTTP smokes returned 200. Integration and promotion evidence is preserved under
+`phase-11b-2026-08-12/post-promotion-evidence-20260813T123143Z`. Phase 11B's
+technical exit gate is satisfied; staging, commit, tag, push, deployment, and
+the separately scoped Phase 11C remain gated. See
+`docs/phase11b-2026-preseason-refresh.md`.
+
 Exit gate: the reviewed refresh is reproducible, provenance is recorded, the
 API and dashboard smoke against the refreshed local store, unresolved mappings
 are explicit, and no optional provider can block drafting.
