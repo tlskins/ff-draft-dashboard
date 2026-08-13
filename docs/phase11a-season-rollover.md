@@ -44,8 +44,9 @@ Rankings freshness evidence is the snapshot's `cached_at`; its season, source,
 player count, and stored-artifact fingerprint are separate fields. Identity
 freshness evidence is the catalog import's `retrieved_at` and SHA-256. Weekly
 season freshness evidence is the latest stored import retrieval timestamp and
-SHA-256 for that season. Readiness queries only SQLite metadata and do not open
-the Parquet datasets.
+SHA-256 for that season. Readiness queries SQLite metadata and checks that each
+referenced Parquet path is an existing regular file, but it does not open or
+read the Parquet dataset contents.
 
 Status sources distinguish availability from freshness:
 
@@ -86,7 +87,9 @@ builder.
 
 Missing rankings or catalog metadata is returned as `unavailable` with null
 source timestamps and fingerprints. No imported weekly seasons produces an
-empty completed-season list. Missing status evidence produces
+empty completed-season list. A latest weekly-source row with a non-Parquet,
+blank, missing, or non-file storage path is treated as not imported and omitted
+from the existing season lists and identity-miss aggregate. Missing status evidence produces
 `never_imported`/`unknown`. The dashboard shows loading, metadata-unavailable,
 no-completed-season, reduced-window, and current/partial-exclusion states and
 disables historical execution when an exact completed-season selection cannot
