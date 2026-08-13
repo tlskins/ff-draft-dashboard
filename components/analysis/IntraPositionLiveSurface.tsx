@@ -417,7 +417,7 @@ const IntraPositionLiveSurface: React.FC<IntraPositionLiveSurfaceProps> = ({
         <p className="mt-1 max-w-4xl text-sm text-slate-700">
           Start with up to five available players in board order. Run the
           historical comparison below to see exact weekly breakpoints and the
-          previous season on one shared chart.
+          latest completed season on one shared chart.
         </p>
       </header>
 

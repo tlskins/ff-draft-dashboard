@@ -15,6 +15,11 @@ import {
   HistoricalComparisonResponse,
   loadHistoricalComparison,
 } from "../../behavior/api/historical"
+import {
+  buildCompletedSeasonWindows,
+  formatSeasonList,
+  useDataReadiness,
+} from "../../behavior/api/dataReadiness"
 import type {
   DraftRecommendationSet,
 } from "../../behavior/draft-advisor/recommendations"
@@ -94,7 +99,6 @@ interface AnalysisWorkspaceProps {
 }
 
 const POSITIONS: AnalysisPosition[] = ["QB", "RB", "WR", "TE"]
-const COMPLETED_SEASONS = [2021, 2022, 2023, 2024, 2025]
 const VIEW_STATE_STORAGE_KEY = "drafty-analysis-view-state"
 const VISIBLE_ANALYSIS_VIEW_IDS: AnalysisViewState["view"][] = [
   "cross_position",
@@ -124,6 +128,15 @@ const formatValue = (value: string | number | undefined) => (
   typeof value === "number" ? value.toFixed(1) : value || "—"
 )
 
+const resultSeasonLabel = (
+  seasons: AnalysisQueryResponse["query"]["seasons"],
+): string => formatSeasonList(Array.isArray(seasons)
+  ? seasons
+  : Array.from(
+      {length: seasons.end - seasons.start + 1},
+      (_, index) => seasons.start + index,
+    ))
+
 const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   players,
   availablePlayers = [],
@@ -139,6 +152,13 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   onAnalysisViewEventHandled,
   onClose,
 }) => {
+  const readiness = useDataReadiness()
+  const completedSeasonWindows = useMemo(
+    () => readiness.data
+      ? buildCompletedSeasonWindows(readiness.data)
+      : [],
+    [readiness.data],
+  )
   const eligiblePlayers = useMemo(() => players
     .filter(player =>
       POSITIONS.includes(player.position as AnalysisPosition))
@@ -156,7 +176,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   const [additionalComparisonIds, setAdditionalComparisonIds] = useState<string[]>([])
   const [viewState, setViewState] =
     useState<AnalysisViewState>(loadViewState)
-  const [seasonWindow, setSeasonWindow] = useState<1 | 3 | 5>(3)
+  const [seasonWindow, setSeasonWindow] = useState<1 | 3 | 5>(5)
   const [scoringProfile, setScoringProfile] =
     useState<ScoringProfileId>(settings.ppr ? "ppr" : "standard")
   const [result, setResult] =
@@ -174,6 +194,15 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     "historical" | "live" | null
   >(null)
   const [advisorAnnouncement, setAdvisorAnnouncement] = useState("")
+  const selectedSeasonWindow = completedSeasonWindows.find(
+    window => window.size === seasonWindow,
+  ) || null
+  const selectedSeasons = selectedSeasonWindow?.seasons || []
+  const completedSeasonCount = readiness.data
+    ? new Set(readiness.data.imported_weekly_seasons
+        .filter(source => source.classification === "completed")
+        .map(source => source.season)).size
+    : 0
   const positionalBestsModel = useMemo(() => (
     recommendations
       ? buildPositionalBestsPresentationModel({
@@ -294,6 +323,16 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   }, [settings.ppr])
 
   useEffect(() => {
+    if (!readiness.data || completedSeasonWindows.length === 0) return
+    if (completedSeasonWindows.some(window => window.size === seasonWindow)) {
+      return
+    }
+    setSeasonWindow(
+      completedSeasonWindows[completedSeasonWindows.length - 1].size,
+    )
+  }, [completedSeasonWindows, readiness.data, seasonWindow])
+
+  useEffect(() => {
     if (typeof localStorage !== "undefined") {
       localStorage.setItem(
         VIEW_STATE_STORAGE_KEY,
@@ -411,7 +450,8 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         candidate.player.id === drawerPlayerId)?.player
       || null
     : null
-  const canRun = (
+  const canRun = Boolean(selectedSeasonWindow) && !readiness.loading
+    && !readiness.error && (
     viewState.view === "cross_position"
       ? crossPositionPlayerIds.length > 0
       : viewState.view === "intra_position"
@@ -517,7 +557,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         playerIds: selectedPlayerIds,
         crossPositionPlayerIds,
         position,
-        seasonWindow,
+        seasons: selectedSeasons,
         scoringProfile,
       })
       setDrawerPlayerId(null)
@@ -527,7 +567,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         viewState.view === "intra_position"
           ? loadHistoricalComparison({
               playerIds: selectedPlayerIds,
-              seasons: COMPLETED_SEASONS.slice(-seasonWindow),
+              seasons: selectedSeasons,
               scoringProfile,
             })
           : Promise.resolve(null),
@@ -720,6 +760,60 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             )}
           </div>
 
+          <div className="lg:col-span-12" aria-live="polite">
+            {readiness.loading && (
+              <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                Loading season availability and source freshness…
+              </p>
+            )}
+            {readiness.error && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                Season metadata unavailable: {readiness.error}. Historical
+                analysis is disabled until the API reports completed seasons.
+              </p>
+            )}
+            {readiness.data && completedSeasonWindows.length === 0 && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                No completed historical seasons are available. Current or
+                partial seasons are not used as a fallback.
+              </p>
+            )}
+            {readiness.data && completedSeasonWindows.length > 0 && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                <p>
+                  Rankings: {readiness.data.rankings.availability}
+                  {readiness.data.rankings.season
+                    ? ` · season ${readiness.data.rankings.season}`
+                    : ""}
+                  {readiness.data.rankings.cached_at
+                    ? ` · cached ${readiness.data.rankings.cached_at}`
+                    : ""}
+                </p>
+                <p>
+                  Identity catalog: {readiness.data.identity_catalog.availability}
+                  {readiness.data.identity_catalog.retrieved_at
+                    ? ` · retrieved ${readiness.data.identity_catalog.retrieved_at}`
+                    : ""}
+                  {` · ${readiness.data.historical_identity_miss_count} historical identity misses`}
+                </p>
+                {completedSeasonCount < 3 && (
+                  <p>Three- and five-season windows are unavailable because fewer than three completed seasons are imported.</p>
+                )}
+                {completedSeasonCount >= 3 && completedSeasonCount < 5 && (
+                  <p>The five-season window is unavailable because fewer than five completed seasons are imported.</p>
+                )}
+              </div>
+            )}
+            {readiness.data
+              && readiness.data.current_partial_seasons.length > 0 && (
+              <p className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                {formatSeasonList(readiness.data.current_partial_seasons)} is
+                current/partial and intentionally excluded from completed-history
+                windows.
+              </p>
+            )}
+          </div>
+
           <fieldset className="lg:col-span-7">
             <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Scope
@@ -886,12 +980,15 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                 aria-label="Analysis season window"
                 className="mt-1 w-full rounded border border-slate-300 p-2"
                 value={seasonWindow}
+                disabled={completedSeasonWindows.length === 0}
                 onChange={event =>
                   setSeasonWindow(Number(event.target.value) as 1 | 3 | 5)}
               >
-                <option value={1}>2025</option>
-                <option value={3}>2023–2025</option>
-                <option value={5}>2021–2025</option>
+                {completedSeasonWindows.map(window => (
+                  <option key={window.size} value={window.size}>
+                    {window.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="text-sm">
@@ -990,12 +1087,13 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
           )}
           {viewState.view === "intra_position"
             && !playerLabResult
-            && !playerLabError && (
+            && !playerLabError
+            && selectedSeasonWindow && (
             <div className={styles.labEmpty}>
               <h2 className="font-bold text-slate-900">Player Lab is ready</h2>
               <p className="mx-auto mt-2 max-w-xl text-sm">
                 Choose three to five {position} players above and run the
-                analysis to compare their scoring ranges, full 2025 season,
+                analysis to compare their scoring ranges, full {selectedSeasons[selectedSeasons.length - 1]} season,
                 and recorded playing-time gaps.
               </p>
             </div>
@@ -1008,7 +1106,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                     {activeView.label}
                   </h2>
                   <p className="text-xs text-slate-500">
-                    {COMPLETED_SEASONS.slice(-seasonWindow)[0]}–2025 ·{" "}
+                    {resultSeasonLabel(result.query.seasons)} ·{" "}
                     {result.row_count} grouped rows ·{" "}
                     {result.scoring_profile.id.replace("_", " ")}
                   </p>

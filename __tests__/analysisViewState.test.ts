@@ -443,7 +443,7 @@ describe("formal view query mappings", () => {
     playerIds: ["rb-one", "rb-two"],
     crossPositionPlayerIds: ["qb-one", "rb-one", "wr-one", "te-one"],
     position: "RB" as const,
-    seasonWindow: 3 as const,
+    seasons: [2021, 2023, 2025],
     scoringProfile: "ppr" as const,
   }
 

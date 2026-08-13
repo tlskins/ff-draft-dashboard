@@ -17,6 +17,7 @@ import type {
   DraftRecommendationSet,
 } from "../behavior/draft-advisor/recommendations"
 import { executeHistoricalAnalysis } from "../behavior/api/historicalAnalysis"
+import {useDataReadiness} from "../behavior/api/dataReadiness"
 import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
 import PositionalBestsLiveSurface from "../components/analysis/PositionalBestsLiveSurface"
 import {
@@ -28,14 +29,20 @@ import {
   ThirdPartyADPRanker,
   ThirdPartyRanker,
 } from "../types"
+import {completedDataReadinessState} from "../test-support/dataReadiness"
 
 
 jest.mock("../behavior/api/historicalAnalysis", () => ({
   ...jest.requireActual("../behavior/api/historicalAnalysis"),
   executeHistoricalAnalysis: jest.fn(),
 }))
+jest.mock("../behavior/api/dataReadiness", () => ({
+  ...jest.requireActual("../behavior/api/dataReadiness"),
+  useDataReadiness: jest.fn(),
+}))
 
 const mockedExecute = jest.mocked(executeHistoricalAnalysis)
+jest.mocked(useDataReadiness).mockReturnValue(completedDataReadinessState)
 
 const settings: FantasySettings = {
   ppr: true,

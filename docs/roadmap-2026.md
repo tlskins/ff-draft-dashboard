@@ -233,6 +233,17 @@ sources fail closed; the dashboard renders API-owned season/freshness metadata;
 the preflight is deterministic and non-mutating; focused cross-repository tests,
 type checks, builds, and contract generation pass.
 
+Phase 11A implementation result: the API now owns a versioned data-readiness
+contract, explicit reviewed completed-through policy, metadata-only weekly
+season/source queries, status-source evidence states, and a pure deterministic
+refresh preflight with an immutable read-only CLI collector. The dashboard uses
+the generated contract to construct exact completed-season windows and renders
+loading, unavailable, reduced-history, no-history, and partial-season exclusion
+states. The five-season default remains 2021-2025, and non-contiguous imports
+remain exact season lists rather than inferred ranges. See
+`docs/phase11a-season-rollover.md`. This result does not import 2026 mutable
+data and does not begin or complete Phase 11B, 11C, or Phase 11 as a whole.
+
 #### Phase 11B: reviewed 2026 preseason refresh
 
 - Refresh the ESPN 2026 player universe, ranks, and ADP; refresh the nflverse

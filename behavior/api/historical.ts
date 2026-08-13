@@ -17,7 +17,7 @@ interface LoadHistoricalComparisonOptions {
 
 export const loadHistoricalComparison = async ({
   playerIds,
-  season = 2025,
+  season,
   seasons,
   scoringProfile = "ppr",
   apiHost = process.env.NEXT_PUBLIC_API_HOST,
@@ -28,13 +28,16 @@ export const loadHistoricalComparison = async ({
   if (!apiHost) {
     throw new Error("Historical API is not configured")
   }
+  if (!seasons?.length && season === undefined) {
+    throw new Error("Historical seasons are unavailable")
+  }
   const params = new URLSearchParams({
     player_ids: playerIds.join(","),
     scoring_profile: scoringProfile,
   })
   if (seasons?.length) {
     params.set("seasons", seasons.join(","))
-  } else {
+  } else if (season !== undefined) {
     params.set("season", String(season))
   }
   const response = await (fetcher || fetch)(

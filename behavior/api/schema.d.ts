@@ -248,6 +248,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/data-readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Return season availability and stored source-freshness evidence.
+         * @description The API owns completed-versus-partial season classification. generated_at describes response construction time and is never source-freshness evidence.
+         */
+        get: operations["getDataReadiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/historical/query": {
         parameters: {
             query?: never;
@@ -338,6 +358,77 @@ export interface components {
             player_count: number;
         };
         /** @enum {string} */
+        SourceAvailability: "available" | "unavailable";
+        RankingsReadiness: {
+            availability: components["schemas"]["SourceAvailability"];
+            season: number | null;
+            /** Format: date-time */
+            cached_at: string | null;
+            source: string | null;
+            player_count: number;
+            fingerprint: string | null;
+        };
+        IdentityCatalogReadiness: {
+            availability: components["schemas"]["SourceAvailability"];
+            source: string | null;
+            dataset: string | null;
+            /** Format: uri */
+            source_url: string | null;
+            /** Format: date-time */
+            retrieved_at: string | null;
+            fingerprint: string | null;
+            player_count: number;
+        };
+        /** @enum {string} */
+        SeasonClassification: "completed" | "current_partial";
+        ImportedWeeklySeasonReadiness: {
+            season: number;
+            classification: components["schemas"]["SeasonClassification"];
+            /** Format: uri */
+            source_url: string;
+            fingerprint: string;
+            /** Format: date-time */
+            retrieved_at: string;
+            row_count: number;
+            identity_miss_count: number;
+        };
+        StatusSourceReadiness: {
+            provider: string;
+            dataset: string;
+            season: number | null;
+            /** @enum {string} */
+            availability: "never_imported" | "available" | "unavailable";
+            /** @enum {string} */
+            freshness: "fresh" | "stale" | "unknown";
+            /** @enum {string} */
+            evidence: "none" | "status_event" | "import_run";
+            /** Format: uri */
+            source_url: string | null;
+            fingerprint: string | null;
+            /** Format: date-time */
+            retrieved_at: string | null;
+            record_count: number;
+            reason: string | null;
+        };
+        DataReadinessResponse: {
+            /** @constant */
+            schema_version: 1;
+            /**
+             * Format: date-time
+             * @description Response construction time; not source-freshness evidence.
+             */
+            generated_at: string;
+            current_fantasy_season: number;
+            completed_season_through: number;
+            rankings: components["schemas"]["RankingsReadiness"];
+            identity_catalog: components["schemas"]["IdentityCatalogReadiness"];
+            imported_weekly_seasons: components["schemas"]["ImportedWeeklySeasonReadiness"][];
+            completed_seasons: number[];
+            current_partial_seasons: number[];
+            historical_identity_miss_count: number;
+            status_sources: components["schemas"]["StatusSourceReadiness"][];
+        };
+        /** @enum {string} */
         FantasyPosition: "QB" | "RB" | "WR" | "TE" | "DST" | "K" | "";
         FantasySettings: {
             ppr: boolean;
@@ -419,6 +510,7 @@ export interface components {
             start: number;
             end: number;
         };
+        AnalysisSeasonSelection: components["schemas"]["AnalysisSeasonRange"] | number[];
         AnalysisFilter: {
             /** @enum {string} */
             field: "player_id" | "player_name" | "position" | "season" | "week" | "team" | "opponent" | "fantasy_points" | "attempts" | "passing_yards" | "carries" | "rushing_yards" | "receptions" | "targets" | "receiving_yards";
@@ -442,7 +534,7 @@ export interface components {
         AnalysisQuery: {
             player_ids: string[];
             positions: ("QB" | "RB" | "WR" | "TE")[];
-            seasons: components["schemas"]["AnalysisSeasonRange"];
+            seasons: components["schemas"]["AnalysisSeasonSelection"];
             weeks?: number[];
             scoring_profile_id: components["schemas"]["ScoringProfileId"];
             metrics: ("games" | "fantasy_points_mean" | "fantasy_points_total" | "fantasy_points_std_dev" | "fantasy_points_p10" | "fantasy_points_p50" | "fantasy_points_p90" | "attempts_total" | "passing_yards_total" | "carries_total" | "rushing_yards_total" | "receptions_total" | "targets_total" | "receiving_yards_total" | "touchdowns_total")[];
@@ -1588,6 +1680,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getDataReadiness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versioned local data-readiness metadata. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataReadinessResponse"];
                 };
             };
         };

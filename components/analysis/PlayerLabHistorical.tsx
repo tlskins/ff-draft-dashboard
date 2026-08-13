@@ -216,7 +216,7 @@ const PlayerLabHistorical: React.FC<PlayerLabHistoricalProps> = ({
       <section className={styles.panel}>
         <div className={styles.panelHeader}>
           <div>
-            <h2 className={styles.panelTitle}>Full previous season</h2>
+            <h2 className={styles.panelTitle}>Full {latestSeason} season</h2>
             <p className={styles.panelCaption}>All selected players share one graph. X-axis is NFL week; Y-axis is fantasy points. Missing weeks break the line instead of being treated as zero.</p>
           </div>
           <span className={styles.neutralPill}>{latestSeason} · weeks 1–18</span>

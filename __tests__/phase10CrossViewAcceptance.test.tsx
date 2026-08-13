@@ -21,6 +21,8 @@ import {
 import type {
   HistoricalComparisonResponse,
 } from "../behavior/api/historical"
+import {useDataReadiness} from "../behavior/api/dataReadiness"
+import {completedDataReadinessState} from "../test-support/dataReadiness"
 import {
   buildCrossPositionPresentationModel,
 } from "../behavior/analysis/crossPosition"
@@ -81,6 +83,12 @@ jest.mock("../behavior/api/historicalAnalysis", () => ({
   ...jest.requireActual("../behavior/api/historicalAnalysis"),
   executeHistoricalAnalysis: jest.fn(),
 }))
+jest.mock("../behavior/api/dataReadiness", () => ({
+  ...jest.requireActual("../behavior/api/dataReadiness"),
+  useDataReadiness: jest.fn(),
+}))
+
+jest.mocked(useDataReadiness).mockReturnValue(completedDataReadinessState)
 jest.mock("../behavior/api/historical", () => ({
   ...jest.requireActual("../behavior/api/historical"),
   loadHistoricalComparison: jest.fn(),

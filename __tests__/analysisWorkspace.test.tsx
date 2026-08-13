@@ -8,7 +8,12 @@ import {
 import {
   executeHistoricalAnalysis,
 } from "../behavior/api/historicalAnalysis"
+import {useDataReadiness} from "../behavior/api/dataReadiness"
 import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
+import {
+  completedDataReadiness,
+  completedDataReadinessState,
+} from "../test-support/dataReadiness"
 import {
   FantasyPosition,
   FantasySettings,
@@ -23,8 +28,14 @@ jest.mock("../behavior/api/historicalAnalysis", () => ({
   ...jest.requireActual("../behavior/api/historicalAnalysis"),
   executeHistoricalAnalysis: jest.fn(),
 }))
+jest.mock("../behavior/api/dataReadiness", () => ({
+  ...jest.requireActual("../behavior/api/dataReadiness"),
+  useDataReadiness: jest.fn(),
+}))
 
 const mockedExecute = jest.mocked(executeHistoricalAnalysis)
+const mockedReadiness = jest.mocked(useDataReadiness)
+mockedReadiness.mockReturnValue(completedDataReadinessState)
 
 const settings: FantasySettings = {
   ppr: true,
@@ -97,6 +108,7 @@ const players: Player[] = [
 describe("decision analysis workspace navigation", () => {
   beforeEach(() => {
     localStorage.clear()
+    mockedReadiness.mockReturnValue(completedDataReadinessState)
     mockedExecute.mockReset()
     mockedExecute.mockResolvedValue({
       query: {
@@ -774,5 +786,154 @@ describe("decision analysis workspace navigation", () => {
     )
     fireEvent.click(view.getByRole("button", {name: "Return to draft board"}))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it("uses exact API-reported seasons and excludes a current partial season", async () => {
+    mockedReadiness.mockReturnValue({
+      data: {
+        ...completedDataReadiness,
+        imported_weekly_seasons: [2019, 2021, 2025].map(season => ({
+          ...completedDataReadiness.imported_weekly_seasons[0],
+          season,
+          fingerprint: `weekly-${season}`,
+        })).concat([{
+          ...completedDataReadiness.imported_weekly_seasons[0],
+          season: 2026,
+          classification: "current_partial",
+          fingerprint: "weekly-2026",
+        }]),
+        completed_seasons: [2019, 2021, 2025],
+        current_partial_seasons: [2026],
+      },
+      error: null,
+      loading: false,
+    })
+    const view = render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+
+    await waitFor(() => expect(view.getByRole("option", {
+      name: "2019, 2021, 2025",
+    })).toBeTruthy())
+    expect(view.container.textContent).toContain(
+      "2026 is current/partial and intentionally excluded",
+    )
+    fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
+    await waitFor(() => expect(mockedExecute).toHaveBeenCalled())
+    expect(mockedExecute.mock.calls[0][0].seasons).toEqual([
+      2019,
+      2021,
+      2025,
+    ])
+  })
+
+  it("offers only a one-season window when fewer than three are complete", async () => {
+    mockedReadiness.mockReturnValue({
+      data: {
+        ...completedDataReadiness,
+        imported_weekly_seasons: [2024, 2025].map(season => ({
+          ...completedDataReadiness.imported_weekly_seasons[0],
+          season,
+          fingerprint: `weekly-${season}`,
+        })),
+        completed_seasons: [2024, 2025],
+      },
+      error: null,
+      loading: false,
+    })
+    const view = render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+
+    await waitFor(() => expect(view.getAllByRole("option", {
+      name: "2025",
+    })).toHaveLength(1))
+    expect(view.getByLabelText("Analysis season window").querySelectorAll(
+      "option",
+    )).toHaveLength(1)
+    expect(view.container.textContent).toContain(
+      "Three- and five-season windows are unavailable",
+    )
+  })
+
+  it("fails closed when readiness metadata is unavailable", () => {
+    mockedReadiness.mockReturnValue({
+      data: null,
+      error: "Data-readiness API returned 503",
+      loading: false,
+    })
+    const view = render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+
+    expect(view.container.textContent).toContain(
+      "Season metadata unavailable: Data-readiness API returned 503",
+    )
+    expect(view.getByRole("button", {
+      name: "Run analysis",
+    }).hasAttribute("disabled")).toBe(true)
+  })
+
+  it("does not fabricate completed history from a partial-only store", () => {
+    mockedReadiness.mockReturnValue({
+      data: {
+        ...completedDataReadiness,
+        imported_weekly_seasons: [{
+          ...completedDataReadiness.imported_weekly_seasons[0],
+          season: 2026,
+          classification: "current_partial",
+        }],
+        completed_seasons: [],
+        current_partial_seasons: [2026],
+      },
+      error: null,
+      loading: false,
+    })
+    const view = render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+
+    expect(view.container.textContent).toContain(
+      "No completed historical seasons are available",
+    )
+    expect(view.getByRole("button", {
+      name: "Run analysis",
+    }).hasAttribute("disabled")).toBe(true)
   })
 })

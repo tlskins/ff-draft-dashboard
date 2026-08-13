@@ -11,6 +11,7 @@ import type {
 import {
   executeHistoricalAnalysis,
 } from "../behavior/api/historicalAnalysis"
+import {useDataReadiness} from "../behavior/api/dataReadiness"
 import {
   buildIntraPositionPresentationModel,
   MAX_INTRA_POSITION_SHORTLIST_PLAYERS,
@@ -35,13 +36,19 @@ import {
   ThirdPartyRanker,
   Tier,
 } from "../types"
+import {completedDataReadinessState} from "../test-support/dataReadiness"
 
 jest.mock("../behavior/api/historicalAnalysis", () => ({
   ...jest.requireActual("../behavior/api/historicalAnalysis"),
   executeHistoricalAnalysis: jest.fn(),
 }))
+jest.mock("../behavior/api/dataReadiness", () => ({
+  ...jest.requireActual("../behavior/api/dataReadiness"),
+  useDataReadiness: jest.fn(),
+}))
 
 const mockedExecute = jest.mocked(executeHistoricalAnalysis)
+jest.mocked(useDataReadiness).mockReturnValue(completedDataReadinessState)
 
 const settings: FantasySettings = {
   ppr: true,
@@ -1122,13 +1129,16 @@ describe("intra-position historical query controls", () => {
         playerIds: ["rb-one", "rb-two"],
         crossPositionPlayerIds: [],
         position: "RB",
-        seasonWindow,
+        seasons: Array.from(
+          {length: seasonWindow},
+          (_, index) => 2025 - seasonWindow + index + 1,
+        ),
         scoringProfile,
       })
-      expect(query.seasons).toEqual({
-        start: 2025 - seasonWindow + 1,
-        end: 2025,
-      })
+      expect(query.seasons).toEqual(Array.from(
+        {length: seasonWindow},
+        (_, index) => 2025 - seasonWindow + index + 1,
+      ))
       expect(query.scoring_profile_id).toBe(scoringProfile)
       expect(query.metrics).toEqual([
         "games",

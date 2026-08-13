@@ -153,13 +153,13 @@ describe("manual analysis presets", () => {
       playerIds: [],
       position: "RB",
       positionScope: true,
-      seasonWindow: 3,
+      seasons: [2021, 2023, 2025],
       scoringProfile: "half_ppr",
     })
 
     expect(query.positions).toEqual(["RB"])
     expect(query.player_ids).toEqual([])
-    expect(query.seasons).toEqual({start: 2023, end: 2025})
+    expect(query.seasons).toEqual([2021, 2023, 2025])
     expect(query.metrics).toContain("carries_total")
     expect(query.visualization).toEqual({
       type: "scatter",

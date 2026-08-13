@@ -49,9 +49,8 @@ interface BuildAnalysisQueryOptions {
   playerIds: string[]
   position: AnalysisPosition
   positionScope: boolean
-  seasonWindow: 1 | 3 | 5
+  seasons: number[]
   scoringProfile: "standard" | "half_ppr" | "ppr"
-  endSeason?: number
 }
 
 const volumeMetric = (position: AnalysisPosition) => {
@@ -69,17 +68,13 @@ export const buildAnalysisQuery = ({
   playerIds,
   position,
   positionScope,
-  seasonWindow,
+  seasons,
   scoringProfile,
-  endSeason = 2025,
 }: BuildAnalysisQueryOptions): AnalysisQuery => {
   const shared = {
     player_ids: positionScope ? [] : playerIds,
     positions: positionScope ? [position] : [],
-    seasons: {
-      start: endSeason - seasonWindow + 1,
-      end: endSeason,
-    },
+    seasons,
     scoring_profile_id: scoringProfile,
     filters: [],
   } satisfies Partial<AnalysisQuery>
@@ -177,9 +172,8 @@ interface BuildAnalysisViewQueryOptions {
   playerIds: string[]
   crossPositionPlayerIds: string[]
   position: AnalysisPosition
-  seasonWindow: 1 | 3 | 5
+  seasons: number[]
   scoringProfile: "standard" | "half_ppr" | "ppr"
-  endSeason?: number
 }
 
 export const buildAnalysisViewQuery = ({
@@ -187,9 +181,8 @@ export const buildAnalysisViewQuery = ({
   playerIds,
   crossPositionPlayerIds,
   position,
-  seasonWindow,
+  seasons,
   scoringProfile,
-  endSeason,
 }: BuildAnalysisViewQueryOptions): AnalysisQuery => {
   if (view === "tier_landscape") {
     return buildAnalysisQuery({
@@ -197,9 +190,8 @@ export const buildAnalysisViewQuery = ({
       playerIds: [],
       position,
       positionScope: true,
-      seasonWindow,
+      seasons,
       scoringProfile,
-      endSeason,
     })
   }
   if (view === "positional_bests") {
@@ -208,9 +200,8 @@ export const buildAnalysisViewQuery = ({
       playerIds: [],
       position,
       positionScope: true,
-      seasonWindow,
+      seasons,
       scoringProfile,
-      endSeason,
     })
   }
   if (view === "cross_position") {
@@ -219,9 +210,8 @@ export const buildAnalysisViewQuery = ({
       playerIds: crossPositionPlayerIds,
       position,
       positionScope: false,
-      seasonWindow,
+      seasons,
       scoringProfile,
-      endSeason,
     })
   }
   return buildAnalysisQuery({
@@ -229,8 +219,7 @@ export const buildAnalysisViewQuery = ({
     playerIds,
     position,
     positionScope: false,
-    seasonWindow,
+    seasons,
     scoringProfile,
-    endSeason,
   })
 }

@@ -4,6 +4,11 @@ import {
   loadHistoricalComparison,
   ScoringProfileId,
 } from "../behavior/api/historical"
+import {
+  buildCompletedSeasonWindows,
+  formatSeasonList,
+  useDataReadiness,
+} from "../behavior/api/dataReadiness"
 import { FantasySettings, Player } from "../types"
 
 
@@ -17,7 +22,6 @@ const COLORS = ["#2563eb", "#dc2626"]
 const CHART_WIDTH = 360
 const CHART_HEIGHT = 150
 const CHART_PADDING = 20
-const COMPLETED_SEASONS = [2021, 2022, 2023, 2024, 2025]
 
 const pointsForPlayer = (
   player: HistoricalComparisonResponse["players"][number],
@@ -68,6 +72,16 @@ const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
     useState<HistoricalComparisonResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const readiness = useDataReadiness()
+  const completedSeasonWindows = useMemo(
+    () => readiness.data
+      ? buildCompletedSeasonWindows(readiness.data)
+      : [],
+    [readiness.data],
+  )
+  const selectedWindow = completedSeasonWindows.find(
+    window => window.size === seasonWindow,
+  ) || null
 
   useEffect(() => {
     if (player) {
@@ -86,7 +100,22 @@ const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
   }, [settings.ppr])
 
   useEffect(() => {
-    if (!enabled || !primaryPlayer || !comparisonId) {
+    if (!readiness.data || completedSeasonWindows.length === 0) return
+    if (selectedWindow) return
+    setSeasonWindow(
+      completedSeasonWindows[completedSeasonWindows.length - 1].size,
+    )
+  }, [completedSeasonWindows, readiness.data, selectedWindow])
+
+  useEffect(() => {
+    if (
+      !enabled
+      || !primaryPlayer
+      || !comparisonId
+      || !selectedWindow
+      || readiness.loading
+      || readiness.error
+    ) {
       setComparison(null)
       return
     }
@@ -95,7 +124,7 @@ const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
     setError(null)
     loadHistoricalComparison({
       playerIds: [primaryPlayer.id, comparisonId],
-      seasons: COMPLETED_SEASONS.slice(-seasonWindow),
+      seasons: selectedWindow.seasons,
       scoringProfile: profile,
     })
       .then((result) => {
@@ -122,6 +151,9 @@ const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
     enabled,
     primaryPlayer,
     profile,
+    readiness.error,
+    readiness.loading,
+    selectedWindow,
     seasonWindow,
   ])
 
@@ -138,26 +170,30 @@ const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
     1,
     ...(comparison?.players.map((item) => item.weeks.length) || []),
   )
-  const selectedSeasons = COMPLETED_SEASONS.slice(-seasonWindow)
+  const selectedSeasons = selectedWindow?.seasons || []
 
   return (
     <section className="mx-4 my-3 rounded border border-slate-300 bg-white p-3 text-xs shadow-sm">
       <div className="mb-2 flex items-center justify-between gap-2">
         <h2 className="font-semibold">
-          {selectedSeasons[0]}–
-          {selectedSeasons[selectedSeasons.length - 1]} weekly comparison
+          {selectedWindow
+            ? `${formatSeasonList(selectedSeasons)} weekly comparison`
+            : "Historical weekly comparison"}
         </h2>
         <div className="flex gap-1">
           <select
             aria-label="Historical season window"
             className="rounded border border-slate-400 p-1"
             value={seasonWindow}
+            disabled={completedSeasonWindows.length === 0}
             onChange={(event) =>
               setSeasonWindow(Number(event.target.value))}
           >
-            <option value={1}>1 yr</option>
-            <option value={3}>3 yr</option>
-            <option value={5}>5 yr</option>
+            {completedSeasonWindows.map(window => (
+              <option key={window.size} value={window.size}>
+                {window.label}
+              </option>
+            ))}
           </select>
           <select
             aria-label="Scoring profile"
@@ -202,6 +238,26 @@ const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
           ))}
         </select>
       </label>
+
+      {readiness.loading && <p>Loading season availability…</p>}
+      {readiness.error && (
+        <p className="rounded bg-amber-50 p-2 text-amber-900">
+          Season metadata unavailable: {readiness.error}
+        </p>
+      )}
+      {readiness.data && completedSeasonWindows.length === 0 && (
+        <p className="rounded bg-amber-50 p-2 text-amber-900">
+          No completed historical seasons are available. Partial seasons are
+          not used as a fallback.
+        </p>
+      )}
+      {readiness.data
+        && readiness.data.current_partial_seasons.length > 0 && (
+        <p className="rounded bg-blue-50 p-2 text-blue-900">
+          {formatSeasonList(readiness.data.current_partial_seasons)} is
+          current/partial and intentionally excluded.
+        </p>
+      )}
 
       {loading && <p>Loading weekly distributions…</p>}
       {error && (
