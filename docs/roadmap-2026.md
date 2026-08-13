@@ -12,18 +12,18 @@ Phase 7. It is intentionally concise and does not replace the specification.
 | --- | --- | --- |
 | 0. Contracts and replay foundation | Complete | No pending foundation implementation. |
 | 1. Historical data foundation | Complete | No pending implementation. |
-| 2. Rankings and tiers | Implementation and tests complete | Manual usability review remains. |
-| 3. Manual analysis workspace | Implementation and tests complete | Manual visual review remains. |
+| 2. Rankings and tiers | Core implementation complete | Phase 10 accepted tier clarity; refresh operations and ranking-editor refinement move to Phase 12. |
+| 3. Manual analysis workspace | Complete | Phase 10 completed and accepted the Decision Cockpit, Position Tiers, and Player Lab redesign. |
 | 4. Deterministic live advisor | Complete | The campaign has 5/5 qualifying recorded mocks and 5/4 distinct target slots, with no coverage gaps. |
-| 5. Realtime text and voice | Implementation complete | Credential-backed browser/device Realtime smoke remains. |
+| 5. Realtime text and voice | Implementation complete; product track deferred | Credential-backed Realtime and voice-quality work is not on the current release critical path. |
 | 6. Status enrichment | Complete | No pending implementation. |
-| 7. Hardening | Complete | Manual screen-reader and narrow-viewport review remains. |
+| 7. Hardening | Complete | Narrow-viewport acceptance passed in Phase 10; VoiceOver-specific validation remains deferred to the release audit. |
 
 “Complete” means the implementation and its recorded or automated gates are
 complete as stated in the source documents. Manual or credential-backed checks
 are called out separately and are not silently treated as passed.
-Those remaining checks are operationally unverified; Phases 8-13 below are
-future work.
+Those remaining checks are operationally unverified; the active phases and
+explicitly deferred tracks below are the current execution order.
 
 The live opponent model remains frozen v1. Offline challengers and the bounded
 residual run-only shadow capture are observation-only. Only two existing
@@ -32,7 +32,7 @@ no prospective accuracy evidence yet. Offline tuning and in-sample artifact
 parity are not prospective evidence and do not establish promotion readiness.
 Exact-player prediction is not a promotion gate; position/run calibration is.
 
-## Phases 8-13
+## Active phases 8-13
 
 ### Phase 8: Program reset and stable integration baseline
 
@@ -201,53 +201,120 @@ projection, opponent-model, and API behavior remains unchanged; any bounded
 presentation-derived calculation is documented, tested, and prevented from
 changing that ownership.
 
-### Phase 11: Realtime copilot quality
+### Phase 11: 2026 season data readiness
 
-Dependency: the Phase 8 baseline, the Phase 5 implementation, and access to a
-credentialed browser/device test session.
+Dependency: the accepted Phase 10 workspace, the existing local-first API, and
+the Phase 1 nflverse import/repository foundation.
 
-Run credentialed browser/device smoke and model-versioned transcript/tool
-evaluations. Evaluate evidence and preference faithfulness, confirmation
-safety, interruption behavior, and timing. Keep the deterministic boundary,
-fallback, and existing credential-free contract gates in force.
+Move draft-season data readiness ahead of optional model work. Current local
+state on August 12, 2026 is a 436-player season-2026 rankings snapshot cached
+July 30, an 8,364-player nflverse identity catalog cached July 30, completed
+weekly stat seasons 2021-2025, and no imported production status events. The
+dashboard still hardcodes completed historical windows through 2025. Treat
+current rankings/rosters, completed historical seasons, and an in-progress
+weekly season as three distinct data products.
 
-Exit gate: credentialed smoke, transcript/tool evaluation, evidence and
-preference faithfulness, confirmation safety, and interruption/timing review
-all have recorded outcomes with no unresolved release-critical failure.
+#### Phase 11A: season rollover and source-freshness foundation
 
-### Phase 12: Prediction-v2 promotion decision
+- Make the API the source of truth for imported weekly seasons, completed versus
+  current/partial season state, rankings season/cache time, identity-catalog
+  freshness, status-source availability, and identity misses.
+- Replace dashboard hardcoded completed-season arrays and labels with validated
+  API metadata while preserving an honest empty/unavailable state.
+- Add a deterministic, non-mutating refresh preflight that reports proposed
+  source URLs, source availability, current versus candidate fingerprints,
+  expected season classification, and the imports that would run.
+- Keep 2021-2025 as the default completed historical window. Phase 11A does not
+  import mutable 2026 data, silently include a partial season in historical
+  distributions, or change user ranks and tiers.
 
-Dependency: the Phase 9 prospective dossier and the stable integration
-baseline. Phase 11 quality results remain a separate copilot-quality input,
-not a substitute for prospective prediction evidence.
+Exit gate: API and generated dashboard contracts agree; missing or partial
+sources fail closed; the dashboard renders API-owned season/freshness metadata;
+the preflight is deterministic and non-mutating; focused cross-repository tests,
+type checks, builds, and contract generation pass.
 
-Promote prediction v2 only if the Phase 9 prospective position/run gates pass.
-If they do not, perform a bounded diagnostic redesign, document the failed
-gate and next evidence needed, and do not promote. In either path, preserve
-frozen v1 as an explicit rollback target and keep the promotion decision
-reversible.
+#### Phase 11B: reviewed 2026 preseason refresh
 
-Exit gate: the orchestrator records either a gate-backed v2 promotion with a
-tested v1 rollback or a no-promotion diagnostic decision. Exact-player
-prediction is not used as a promotion gate; position/run calibration is.
+- Refresh the ESPN 2026 player universe, ranks, and ADP; refresh the nflverse
+  identity catalog; and import available 2026 weekly rosters and transactions.
+- Attempt structured injury ingestion only when its source exists. Record an
+  unavailable provider without blocking rankings or drafting.
+- Produce a reviewable before/after report for player additions/removals, rank
+  changes, team changes, source fingerprints, and unresolved identities before
+  replacing the local release artifact.
+- Preserve browser-owned custom positional ranks and tiers and keep source rank
+  refreshes distinct from user authority.
 
-### Phase 13: Draft-season release readiness
+Exit gate: the reviewed refresh is reproducible, provenance is recorded, the
+API and dashboard smoke against the refreshed local store, unresolved mappings
+are explicit, and no optional provider can block drafting.
 
-Dependency: Phases 8-12 have resolved their integration and promotion
-decisions, with either frozen v1 or an approved v2 selected for release.
+#### Phase 11C: in-season weekly ingestion
 
-Complete the data refresh, selector smoke, startup/recovery/migration checks,
-full mock acceptance, and manual accessibility/device audit. Reconfirm
-fallback and rollback paths against the release baseline.
+Begins when nflverse publishes 2026 regular-season player-week data. Import it
+incrementally as the current partial season, expose it as an explicit selectable
+scope, and never blend a small partial sample into the default three-to-five
+completed-season distributions. After the season is complete and verified, roll
+the default five-season window from 2021-2025 to 2022-2026.
 
-Exit gate: all release checks pass, operational limitations are documented,
-the selected model and rollback path are recorded, and no unresolved
+Exit gate: repeated weekly imports are idempotent and provenance-preserving;
+partial-season labeling is visible; missing weeks are not treated as zero; and
+the completed-season rollover requires an explicit reviewed state change.
+
+### Phase 12: ranking and tier operations
+
+Dependency: Phase 11A metadata contracts and the reviewed Phase 11B preseason
+snapshot.
+
+Make rank sources refreshable and auditable from the local-first product,
+surface source age and failure independently, and refine the frontend editor for
+user-owned positional ranks and tiers. Rebuild derived rank/tier/projection
+overlays only from versioned inputs. User ranks and tiers remain primary and are
+never overwritten by a provider refresh. Current-roster considerations remain
+secondary flags rather than the primary player-value order.
+
+Exit gate: source refresh and derived-overlay boundaries are explicit; user
+edits survive refresh, export/import, and restart; stale/unavailable sources are
+visible; and the ranking/tier editor receives bounded human usability review.
+
+### Phase 13: draft-season release readiness
+
+Dependency: Phases 10-12 are integrated. Frozen prediction v1 is an acceptable
+release model while Phase 9 remains evidence-blocked; neither prediction-v2 nor
+Realtime GPT promotion is a release prerequisite.
+
+Complete extension selector smoke, startup/recovery/migration checks, one full
+local mock acceptance, refreshed-data/API smoke, fallback and rollback checks,
+and the deferred manual VoiceOver/device audit. Verify that current rankings,
+status availability, completed historical windows, and any partial 2026 data
+are labeled consistently across the release.
+
+Exit gate: all release checks pass, operational and accessibility limitations
+are documented, frozen v1 rollback remains tested, and no unresolved
 release-critical blocker remains.
+
+## Deferred product tracks
+
+### Prediction-v2 promotion decision
+
+Phase 9 remains evidence-blocked pending eligible prospective position/run
+labels. Promotion is deferred and does not block Phases 11-13. Promote only if
+the predeclared prospective gates pass; otherwise retain frozen v1 and record
+the evidence still needed. Exact-player prediction is not a promotion gate.
+
+### Realtime GPT text and voice quality
+
+The Phase 5 implementation and Phase 7 credential-free safety gates remain in
+the codebase, but credentialed browser/device smoke, model-versioned transcript
+evaluation, and voice interruption/timing work are explicitly deferred until
+after the local-first data, ranking, and release path is stable. The
+deterministic advisor, confirmation boundary, and outage fallback remain
+mandatory; deferred verification must never be represented as a pass.
 
 ## Ordering and session policy
 
-Prospective Phase 9 evidence collection may run opportunistically in parallel
-with Phase 10 UX work once the Phase 8 baseline exists. Parallel capture does
+Prospective Phase 9 evidence collection may run opportunistically, but it does
+not block the active Phase 11-13 data and release path. Parallel capture does
 not authorize promotion, model changes, or cross-session scope expansion.
 
 The main planning thread is the orchestrator: it owns architecture,
