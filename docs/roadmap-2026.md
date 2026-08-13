@@ -288,8 +288,11 @@ gate passed 97/97, the dashboard gate passed 74 runnable suites and 452 runnable
 tests, API types and the optimized static export passed, and all required live
 HTTP smokes returned 200. Integration and promotion evidence is preserved under
 `phase-11b-2026-08-12/post-promotion-evidence-20260813T123143Z`. Phase 11B's
-technical exit gate is satisfied; staging, commit, tag, push, deployment, and
-the separately scoped Phase 11C remain gated. See
+technical exit gate is satisfied. The two local checkpoint commits now exist:
+API `959bcc5295ddb5eb28df07ecceedf01255808792` and dashboard
+`d247a30bb59caf99283e346be091171c5424b5ce`; tag, push, deployment, and the
+separately scoped Phase 11C remain gated. This is documentation reconciliation,
+not a reopening of Phase 11B. See
 `docs/phase11b-2026-preseason-refresh.md`.
 
 Exit gate: the reviewed refresh is reproducible, provenance is recorded, the
@@ -323,6 +326,44 @@ secondary flags rather than the primary player-value order.
 Exit gate: source refresh and derived-overlay boundaries are explicit; user
 edits survive refresh, export/import, and restart; stale/unavailable sources are
 visible; and the ranking/tier editor receives bounded human usability review.
+
+#### Phase 12A: provider-free ranking-source visibility and preview
+
+The additive, provider-free implementation is complete and checkpoint-ready,
+but not yet checkpointed. It separates server-owned provider identity from
+SQLite transport; independently preserves attempt, success, failure, retrieval,
+season, scoring, fingerprint, and count evidence; retains last-good data on
+failure; and offers list/detail plus bounded inline deterministic read-only
+refresh preview. Preview reports differences and affected profile player IDs;
+unavailable/stale sources remain visible and `/players/latest` remains ungated.
+It grants no apply/promotion authority and mutates no rank/profile/artifact,
+overlay, or recommendation state.
+
+The executable implementation boundary is eleven paths: API `openapi/v1.json`,
+`app/__init__.py`, `app/api/ranking_sources.py`,
+`app/repositories/ranking_sources.py`, `app/services/ranking_sources.py`,
+`tests/test_ranking_sources.py`, and `tests/test_openapi_contract.py`; dashboard
+`behavior/api/rankingSources.ts`, `behavior/api/schema.d.ts`,
+`__tests__/rankingSources.test.ts`, and
+`docs/phase12a-ranking-source-contract.md`. This roadmap amendment makes the
+working closure boundary twelve paths but is not executable implementation.
+Starting HEADs remain API `959bcc5295ddb5eb28df07ecceedf01255808792` and
+dashboard `d247a30bb59caf99283e346be091171c5424b5ce` on
+`refactor/realtime-foundation`, with empty indexes.
+
+Two consecutive frozen focused gates passed on unchanged hashes: API 35/35 and
+dashboard 4 suites, 11/11 each run; `api:types:check` is current, and
+`git diff --check` plus static syntax/OpenAPI audit passed. A fresh independent
+Sol integrated review returned GO with no P1/P2, relying on the reported gates
+rather than rerunning them. The correction budget is consumed: two semantic
+rounds (timezone-aware timestamp validation and metadata-only
+diff/`would_change` semantics) plus one generated-types continuation.
+
+Phase 12B must define the canonical profile-v2/rebase and portability contract:
+source fingerprint/season/scoring binding, added/removed-player policy,
+unknown/missing IDs, and consistent survival across SQLite profile revisions,
+browser-restart storage, and portable export/import. Phase 12A grants no
+refresh apply/promotion authority.
 
 ### Phase 13: draft-season release readiness
 

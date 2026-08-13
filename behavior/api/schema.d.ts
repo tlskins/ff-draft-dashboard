@@ -248,6 +248,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ranking-sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List configured ranking sources and last-good status. */
+        get: operations["listRankingSources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ranking-sources/{source_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        /** Return one ranking source status. */
+        get: operations["getRankingSource"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ranking-sources/{source_id}/refresh-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview a bounded inline candidate without applying it.
+         * @description Deterministic and non-mutating. No provider locator, filesystem path, transport override, apply, or promotion is accepted.
+         */
+        post: operations["previewRankingSourceRefresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/data-readiness": {
         parameters: {
             query?: never;
@@ -706,6 +764,71 @@ export interface components {
         };
         RankingProfileMoveRevisionRequest: {
             expected_revision: number;
+        };
+        /** @enum {string} */
+        RankingSourceAvailability: "available" | "stale" | "unavailable";
+        RankingSourceStatus: {
+            /** @constant */
+            schema_version: 1;
+            id: string;
+            provider_id: string;
+            provider_name: string;
+            /** @enum {string} */
+            storage_transport: "sqlite";
+            availability: components["schemas"]["RankingSourceAvailability"];
+            is_stale: boolean;
+            /** Format: date-time */
+            last_attempt_at: string | null;
+            /** Format: date-time */
+            last_success_at: string | null;
+            failure_reason: string | null;
+            /** Format: date-time */
+            retrieved_at: string | null;
+            season: number | null;
+            scoring_type: components["schemas"]["ScoringProfileId"] | null;
+            fingerprint: string | null;
+            record_count: number | null;
+        };
+        RankingSourceListResponse: {
+            sources: components["schemas"]["RankingSourceStatus"][];
+        };
+        RankingSourceCandidatePlayer: {
+            player_id: string;
+            overall_rank: number;
+        };
+        RankingSourceRefreshPreviewRequest: {
+            /** Format: date-time */
+            retrieved_at: string;
+            season: number;
+            scoring_type: components["schemas"]["ScoringProfileId"];
+            players: components["schemas"]["RankingSourceCandidatePlayer"][];
+        };
+        RankingSourcePlayerDifference: {
+            player_id: string;
+            previous_rank: number;
+            candidate_rank: number;
+        };
+        RankingSourceDifferences: {
+            season_changed: boolean;
+            scoring_type_changed: boolean;
+            retrieval_time_changed: boolean;
+            added_player_ids: string[];
+            removed_player_ids: string[];
+            changed: components["schemas"]["RankingSourcePlayerDifference"][];
+        };
+        RankingSourceRefreshPreviewResponse: {
+            /** @constant */
+            schema_version: 1;
+            source: components["schemas"]["RankingSourceStatus"];
+            candidate_fingerprint: string;
+            idempotency_key: string;
+            /** @constant */
+            logically_idempotent: true;
+            repeated_candidate: boolean;
+            would_change: boolean;
+            candidate_record_count: number;
+            differences: components["schemas"]["RankingSourceDifferences"];
+            affected_profile_player_ids: string[];
         };
         /** @enum {string} */
         DraftPlatform: "ESPN" | "NFL";
@@ -1675,6 +1798,101 @@ export interface operations {
             };
             /** @description There is no redo revision or the expected revision is stale. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listRankingSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All configured sources, including unavailable and stale sources. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingSourceListResponse"];
+                };
+            };
+        };
+    };
+    getRankingSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Independent attempt, success, failure, and last-good evidence. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingSourceStatus"];
+                };
+            };
+            /** @description The source is not configured. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewRankingSourceRefresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RankingSourceRefreshPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description A logically idempotent source and affected-profile diff. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingSourceRefreshPreviewResponse"];
+                };
+            };
+            /** @description The inline candidate is malformed or outside its bounds. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The source is not configured. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
