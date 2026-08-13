@@ -18,7 +18,7 @@ describe("analysis view state", () => {
       true,
     )
     const advisor = transitionAnalysisView(pinned, {
-      view: "cross_position",
+      view: "tier_landscape",
       source: "agent",
       explanation: "The preferred position changed.",
     })
@@ -164,7 +164,7 @@ describe("analysis view state", () => {
         revision: 21,
       },
     })
-    expect(newest.state.view).toBe("tier_landscape")
+    expect(newest.state.view).toBe("cross_position")
     expect(newest.state.pendingAdvisorRecommendation).toEqual({
       view: "positional_bests",
       explanation: "Review the best available options.",

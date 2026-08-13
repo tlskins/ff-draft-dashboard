@@ -92,6 +92,8 @@ export interface TierLandscapeLaneModel {
   primaryTierSourceLabel: string
   currentTopAvailableTier: TierLandscapeCurrentTier | null
   run: TierLandscapeRunEvidence
+  /** Complete, explicitly available pool in board-rank order. */
+  players: TierLandscapePlayerModel[]
   visibleTierBands: TierLandscapeTierBandModel[]
 }
 
@@ -133,6 +135,7 @@ interface PreliminaryLane {
   hiddenTierBandCount: number
   primaryTierSourceLabel: string
   currentTopAvailableTier: PreliminaryTierBand | null
+  players: PreliminaryPlayer[]
   visibleTierBands: PreliminaryTierBand[]
 }
 
@@ -364,6 +367,7 @@ const buildPreliminaryLane = (
     ),
     primaryTierSourceLabel: primaryTierSourceSummary(players, boardSettings),
     currentTopAvailableTier: tierBands[0] || null,
+    players,
     visibleTierBands: tierBands.slice(0, MAX_VISIBLE_TIER_BANDS_PER_LANE),
   }
 }
@@ -555,9 +559,7 @@ export const buildTierLandscapePresentationModel = ({
       boardSettings,
       rankingSummaries,
     ))
-  const visiblePlayers = preliminaryLanes.flatMap(lane =>
-    lane.visibleTierBands.flatMap(band =>
-      band.players.slice(0, MAX_VISIBLE_PLAYERS_PER_TIER_BAND)))
+  const visiblePlayers = preliminaryLanes.flatMap(lane => lane.players)
   const projectionScale = buildProjectionScale(
     visiblePlayers.map(player => player.projectionValues),
   )
@@ -584,6 +586,11 @@ export const buildTierLandscapePresentationModel = ({
         opponentForecast,
       ),
       run: suppliedRunFor(lane.position, opponentForecast),
+      players: lane.players.map(player => playerModelFor(
+        player,
+        projectionScale,
+        opponentForecast,
+      )),
       visibleTierBands: lane.visibleTierBands.map(band => ({
         id: band.id,
         tier: band.tier,

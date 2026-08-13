@@ -31,7 +31,7 @@ export const INTRA_POSITION_POSITIONS = [
 export type IntraPosition = typeof INTRA_POSITION_POSITIONS[number]
 
 /** The live shortlist is intentionally bounded independently of advisor picks. */
-export const MAX_INTRA_POSITION_SHORTLIST_PLAYERS = 3
+export const MAX_INTRA_POSITION_SHORTLIST_PLAYERS = 5
 
 export interface IntraPositionPlayerModel {
   player: Player

@@ -91,39 +91,68 @@ export interface AnalysisViewDefinition {
 export const ANALYSIS_VIEW_DEFINITIONS: AnalysisViewDefinition[] = [
   {
     id: "tier_landscape",
-    label: "Positional tier landscape",
-    shortLabel: "Landscape",
-    description: "See scoring density, downside, and tier-cliff shape.",
-    explanation: "Exploring positional density and scoring ranges.",
+    label: "Position tiers",
+    shortLabel: "Position tiers",
+    description: "See every available player, tier cliffs, and run risk.",
+    explanation: "Reviewing player supply and tier cliffs by position.",
   },
   {
     id: "positional_bests",
-    label: "Realtime positional bests",
-    shortLabel: "Positional bests",
-    description: "Rank the strongest historical options at one position.",
-    explanation: "Reviewing the best options at the selected position.",
+    label: "Position tiers",
+    shortLabel: "Position tiers",
+    description: "See every available player, tier cliffs, and run risk.",
+    explanation: "Reviewing player supply and tier cliffs by position.",
   },
   {
     id: "cross_position",
-    label: "Cross-position comparison",
-    shortLabel: "Cross-position",
-    description: "Compare the top custom-ranked option at each position.",
-    explanation: "Comparing the leading option across positions.",
+    label: "Decision cockpit",
+    shortLabel: "Decision cockpit",
+    description: "Compare the best QB, RB, WR, and TE now and next turn.",
+    explanation: "Comparing the best option at each position now and next turn.",
   },
   {
     id: "intra_position",
-    label: "Intra-position comparison",
-    shortLabel: "Intra-position",
-    description: "Compare two players at the same position over time.",
-    explanation: "Comparing selected players within one position.",
+    label: "Player lab",
+    shortLabel: "Player lab",
+    description: "Compare weekly range and season trends for 3–5 players.",
+    explanation: "Comparing weekly outcomes for players at one position.",
   },
 ]
 
+const USER_FACING_VIEW_IDS: Record<AnalysisViewId, AnalysisViewId> = {
+  tier_landscape: "tier_landscape",
+  positional_bests: "tier_landscape",
+  cross_position: "cross_position",
+  intra_position: "intra_position",
+}
+
+const USER_FACING_VIEW_LABELS: Record<AnalysisViewId, string> = {
+  tier_landscape: "Position Tiers",
+  positional_bests: "Position Tiers",
+  cross_position: "Decision Cockpit",
+  intra_position: "Player Lab",
+}
+
+/** Preserve the four internal IDs while consolidating their visible routes. */
+export const userFacingAnalysisViewId = (
+  view: AnalysisViewId,
+): AnalysisViewId => USER_FACING_VIEW_IDS[view]
+
+export const userFacingAnalysisViewLabel = (
+  view: AnalysisViewId,
+): string => USER_FACING_VIEW_LABELS[view]
+
+export const userFacingAnalysisViewDefinition = (
+  view: AnalysisViewId,
+): AnalysisViewDefinition => ANALYSIS_VIEW_DEFINITIONS.find(definition => (
+  definition.id === userFacingAnalysisViewId(view)
+)) || ANALYSIS_VIEW_DEFINITIONS[0]
+
 export const DEFAULT_ANALYSIS_VIEW_STATE: AnalysisViewState = {
-  view: "tier_landscape",
+  view: "cross_position",
   pinned: false,
   source: "manual",
-  explanation: "Explore positional density and scoring ranges.",
+  explanation: "Compare the best option at each position now and next turn.",
   lastProcessedEventStreamId: null,
   lastProcessedAdvisorRevision: null,
   lastProcessedConfirmedManualSequence: null,

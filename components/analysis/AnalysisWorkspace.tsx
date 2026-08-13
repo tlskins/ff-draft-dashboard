@@ -11,6 +11,10 @@ import {
   executeHistoricalAnalysis,
   ScoringProfileId,
 } from "../../behavior/api/historicalAnalysis"
+import {
+  HistoricalComparisonResponse,
+  loadHistoricalComparison,
+} from "../../behavior/api/historical"
 import type {
   DraftRecommendationSet,
 } from "../../behavior/draft-advisor/recommendations"
@@ -48,6 +52,9 @@ import {
   restoreAnalysisViewState,
   serializeAnalysisViewState,
   transitionAnalysisViewState,
+  userFacingAnalysisViewDefinition,
+  userFacingAnalysisViewId,
+  userFacingAnalysisViewLabel,
 } from "../../behavior/analysis/viewState"
 import {getPlayerMetrics} from "../../behavior/draft"
 import {
@@ -60,8 +67,10 @@ import DeclarativeChart from "./DeclarativeChart"
 import CrossPositionLiveSurface from "./CrossPositionLiveSurface"
 import IntraPositionLiveSurface from "./IntraPositionLiveSurface"
 import PlayerComparisonDrawer from "./PlayerComparisonDrawer"
-import PositionalBestsLiveSurface from "./PositionalBestsLiveSurface"
+import PlayerLabHistorical from "./PlayerLabHistorical"
 import TierLandscapeLiveSurface from "./TierLandscapeLiveSurface"
+import type {TierRunwayForecast} from "./TierLandscapeLiveSurface"
+import styles from "./AnalysisRedesign.module.css"
 
 
 interface AnalysisWorkspaceProps {
@@ -74,6 +83,8 @@ interface AnalysisWorkspaceProps {
   rankingSummaries: RankingSummary[]
   recommendations?: DraftRecommendationSet | null
   opponentForecast?: OpponentForecast | null
+  /** Optional run probabilities for the user's next one to three turns. */
+  tierRunwayForecast?: TierRunwayForecast
   playerStatus?: PlayerStatusCacheSnapshot
   analysisViewEvent?: AnalysisViewNavigationEvent | null
   onAnalysisViewEventHandled?: (
@@ -85,7 +96,12 @@ interface AnalysisWorkspaceProps {
 const POSITIONS: AnalysisPosition[] = ["QB", "RB", "WR", "TE"]
 const COMPLETED_SEASONS = [2021, 2022, 2023, 2024, 2025]
 const VIEW_STATE_STORAGE_KEY = "drafty-analysis-view-state"
-
+const VISIBLE_ANALYSIS_VIEW_IDS: AnalysisViewState["view"][] = [
+  "cross_position",
+  "tier_landscape",
+  "intra_position",
+]
+const PLAYER_LAB_COLORS = ["#4f46e5", "#0891b2", "#d97706", "#dc2626", "#7c3aed"]
 const loadViewState = (): AnalysisViewState => {
   if (typeof localStorage === "undefined") {
     return {...DEFAULT_ANALYSIS_VIEW_STATE}
@@ -117,6 +133,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   rankingSummaries,
   recommendations = null,
   opponentForecast = null,
+  tierRunwayForecast = {},
   playerStatus = {},
   analysisViewEvent,
   onAnalysisViewEventHandled,
@@ -136,6 +153,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   )
   const [primaryId, setPrimaryId] = useState(activePlayer?.id || "")
   const [secondaryId, setSecondaryId] = useState("")
+  const [additionalComparisonIds, setAdditionalComparisonIds] = useState<string[]>([])
   const [viewState, setViewState] =
     useState<AnalysisViewState>(loadViewState)
   const [seasonWindow, setSeasonWindow] = useState<1 | 3 | 5>(3)
@@ -143,8 +161,12 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     useState<ScoringProfileId>(settings.ppr ? "ppr" : "standard")
   const [result, setResult] =
     useState<AnalysisQueryResponse | null>(null)
+  const [playerLabResult, setPlayerLabResult] =
+    useState<HistoricalComparisonResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [playerLabError, setPlayerLabError] = useState<string | null>(null)
+  const [historyControlsOpen, setHistoryControlsOpen] = useState(true)
   const [drawerPlayerId, setDrawerPlayerId] = useState<string | null>(
     null,
   )
@@ -212,7 +234,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   const clearAnalysisState = useCallback(() => {
     analysisRequestId.current += 1
     setResult(null)
+    setPlayerLabResult(null)
     setError(null)
+    setPlayerLabError(null)
     setDrawerPlayerId(null)
     setDrawerPlayerOrigin(null)
     setLoading(false)
@@ -235,6 +259,28 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     ) {
       setSecondaryId(candidate?.id || "")
     }
+  }, [positionPlayers, primaryId, secondaryId])
+
+  useEffect(() => {
+    setAdditionalComparisonIds(current => {
+      const next = current.filter(id => (
+        id !== primaryId
+        && id !== secondaryId
+        && positionPlayers.some(player => player.id === id)
+      )).slice(0, 3)
+      const selected = new Set([primaryId, secondaryId, ...next].filter(Boolean))
+      for (const player of positionPlayers) {
+        if (selected.size >= Math.min(3, positionPlayers.length)) break
+        if (selected.has(player.id)) continue
+        next.push(player.id)
+        selected.add(player.id)
+      }
+      const bounded = next.slice(0, 3)
+      return bounded.length === current.length
+        && bounded.every((id, index) => id === current[index])
+        ? current
+        : bounded
+    })
   }, [positionPlayers, primaryId, secondaryId])
 
   useEffect(() => {
@@ -276,17 +322,17 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
       if (transition.viewChanged) clearAnalysisState()
       if (transition.confirmedManualAction === "applied") {
         setAdvisorAnnouncement(
-          `Selected ${analysisViewEvent.view.replace(/_/g, " ")} from a `
+          `Selected ${userFacingAnalysisViewLabel(analysisViewEvent.view)} from a `
           + `confirmed advisor recommendation. ${analysisViewEvent.explanation}`,
         )
       } else if (transition.advisorAction === "pending") {
         setAdvisorAnnouncement(
-          `Advisor recommends ${analysisViewEvent.view.replace(/_/g, " ")}. `
+          `Advisor recommends ${userFacingAnalysisViewLabel(analysisViewEvent.view)}. `
           + `${analysisViewEvent.explanation} Your pinned view was preserved.`,
         )
       } else if (transition.advisorAction === "applied") {
         setAdvisorAnnouncement(
-          `Advisor selected ${analysisViewEvent.view.replace(/_/g, " ")}. `
+          `Advisor selected ${userFacingAnalysisViewLabel(analysisViewEvent.view)}. `
           + analysisViewEvent.explanation,
         )
       }
@@ -298,7 +344,11 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     onAnalysisViewEventHandled,
   ])
 
-  const selectedPlayerIds = [primaryId, secondaryId].filter(Boolean)
+  const selectedPlayerIds = Array.from(new Set([
+    primaryId,
+    secondaryId,
+    ...additionalComparisonIds,
+  ].filter(Boolean))).slice(0, 5)
   const crossPositionPlayerIds = useMemo(() => POSITIONS.flatMap(
     candidatePosition => {
       const ranked = eligiblePlayers
@@ -315,25 +365,26 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
       return ranked[0] ? [ranked[0].player.id] : []
     },
   ), [boardSettings, eligiblePlayers, settings])
-  const activeView = ANALYSIS_VIEW_DEFINITIONS.find(
-    definition => definition.id === viewState.view,
-  ) || ANALYSIS_VIEW_DEFINITIONS[0]
+  const activeView = userFacingAnalysisViewDefinition(viewState.view)
   const drawerPlayerIsValid = drawerPlayerOrigin !== "live"
     || (
       viewState.view === "positional_bests"
-      && Boolean(positionalBestsModel?.candidates.some(candidate =>
-        candidate.player.id === drawerPlayerId))
+      && Boolean(tierLandscapeModel.lanes.some(lane =>
+        lane.players.some(player => player.player.id === drawerPlayerId)))
     )
     || (
       viewState.view === "tier_landscape"
       && Boolean(tierLandscapeModel.lanes.some(lane =>
-        lane.visibleTierBands.some(band => band.players.some(player =>
-          player.player.id === drawerPlayerId))))
+        lane.players.some(player => player.player.id === drawerPlayerId)))
     )
     || (
       viewState.view === "cross_position"
-      && Boolean(crossPositionModel?.candidates.some(candidate =>
-        candidate.player.id === drawerPlayerId))
+      && (
+        Boolean(crossPositionModel?.candidates.some(candidate =>
+          candidate.player.id === drawerPlayerId))
+        || Boolean(tierLandscapeModel.lanes.some(lane =>
+          lane.players.some(player => player.player.id === drawerPlayerId)))
+      )
     )
     || (
       viewState.view === "intra_position"
@@ -352,7 +403,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
       || positionalBestsModel?.candidates.find(candidate =>
         candidate.player.id === drawerPlayerId)?.player
       || tierLandscapeModel.lanes.flatMap(lane =>
-        lane.visibleTierBands.flatMap(band => band.players))
+        lane.players)
         .find(player => player.player.id === drawerPlayerId)?.player
       || crossPositionModel?.candidates.find(candidate =>
         candidate.player.id === drawerPlayerId)?.player
@@ -364,7 +415,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     viewState.view === "cross_position"
       ? crossPositionPlayerIds.length > 0
       : viewState.view === "intra_position"
-        ? selectedPlayerIds.length > 0
+        ? positionPlayers.length >= 3
+          && selectedPlayerIds.length >= 3
+          && selectedPlayerIds.length <= 5
         : positionPlayers.length > 0
   )
 
@@ -430,7 +483,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
       const recommendation = transition.advisorRecommendation
       setAdvisorAnnouncement(
         `Automatic navigation restored. Applying the pending advisor `
-        + `recommendation for ${recommendation.view.replace(/_/g, " ")}. `
+        + `recommendation for ${userFacingAnalysisViewLabel(recommendation.view)}. `
         + recommendation.explanation,
       )
     }
@@ -446,7 +499,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     if (transition.viewChanged) clearAnalysisState()
     if (recommendation) {
       setAdvisorAnnouncement(
-        `Selected ${recommendation.view.replace(/_/g, " ")} manually from `
+        `Selected ${userFacingAnalysisViewLabel(recommendation.view)} manually from `
         + `the advisor recommendation. ${recommendation.explanation}`,
       )
     }
@@ -457,6 +510,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     const requestId = ++analysisRequestId.current
     setLoading(true)
     setError(null)
+    setPlayerLabError(null)
     try {
       const query = buildAnalysisViewQuery({
         view: viewState.view,
@@ -468,15 +522,35 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
       })
       setDrawerPlayerId(null)
       setDrawerPlayerOrigin(null)
-      const response = await executeHistoricalAnalysis(query)
-      if (analysisRequestId.current === requestId) setResult(response)
-    } catch (requestError) {
-      if (analysisRequestId.current === requestId) {
+      const [analysisOutcome, labOutcome] = await Promise.allSettled([
+        executeHistoricalAnalysis(query),
+        viewState.view === "intra_position"
+          ? loadHistoricalComparison({
+              playerIds: selectedPlayerIds,
+              seasons: COMPLETED_SEASONS.slice(-seasonWindow),
+              scoringProfile,
+            })
+          : Promise.resolve(null),
+      ])
+      if (analysisRequestId.current !== requestId) return
+      if (analysisOutcome.status === "fulfilled") {
+        setResult(analysisOutcome.value)
+      } else {
         setResult(null)
         setError(
-          requestError instanceof Error
-            ? requestError.message
+          analysisOutcome.reason instanceof Error
+            ? analysisOutcome.reason.message
             : "Historical analysis failed",
+        )
+      }
+      if (labOutcome.status === "fulfilled") {
+        setPlayerLabResult(labOutcome.value)
+      } else {
+        setPlayerLabResult(null)
+        setPlayerLabError(
+          labOutcome.reason instanceof Error
+            ? labOutcome.reason.message
+            : "Player Lab history failed",
         )
       }
     } finally {
@@ -494,11 +568,11 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
               : "Automatic navigation"}
           </p>
           <h1 className="text-2xl font-bold text-slate-900">
-            Historical analysis workspace
+            Draft decision workspace
           </h1>
           <p className="max-w-3xl text-sm text-slate-600">
-            Build deterministic comparisons from nflverse weekly data.
-            Every chart is generated from a validated API specification.
+            Compare the board now, explore position tiers, and review how
+            similar players scored week by week.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -507,9 +581,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             aria-label={viewState.pinned
               ? "Return to automatic navigation"
               : "Pin current view"}
-            className={`rounded border px-3 py-2 text-sm font-semibold ${
+            className={`cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
               viewState.pinned
-                ? "border-indigo-600 bg-indigo-600 text-white"
+                ? "border-indigo-500 bg-indigo-100 text-indigo-950 ring-2 ring-indigo-200"
                 : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
             }`}
             onClick={toggleNavigationMode}
@@ -520,7 +594,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
           </button>
           {onClose && (
           <button
-            className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             onClick={onClose}
           >
             Return to draft board
@@ -569,9 +643,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             <p>
               Advisor recommends{" "}
               <span className="font-semibold">
-                {ANALYSIS_VIEW_DEFINITIONS.find(definition =>
-                  definition.id === viewState.pendingAdvisorRecommendation?.view,
-                )?.label}
+                {userFacingAnalysisViewLabel(
+                  viewState.pendingAdvisorRecommendation.view,
+                )}
               </span>
               . {viewState.pendingAdvisorRecommendation.explanation} Your
               current pinned view was preserved.
@@ -587,42 +661,66 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-12">
-        <aside className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 lg:col-span-4">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Analysis
-            </p>
-            <div
-              aria-label="Analysis views"
-              className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-              role="group"
-            >
-              {ANALYSIS_VIEW_DEFINITIONS.map(candidate => (
+      <nav aria-label="Analysis workspace views" className="mb-4 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+        <div
+          aria-label="Analysis views"
+          className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+          role="group"
+        >
+          {ANALYSIS_VIEW_DEFINITIONS.filter(candidate =>
+            VISIBLE_ANALYSIS_VIEW_IDS.includes(candidate.id)).map(candidate => {
+              const selected = userFacingAnalysisViewId(viewState.view) === candidate.id
+              return (
                 <button
                   aria-label={candidate.label}
-                  aria-pressed={viewState.view === candidate.id}
-                  className={`rounded-lg border p-2 text-left transition ${
-                    viewState.view === candidate.id
-                      ? "border-indigo-500 bg-indigo-50 text-indigo-900"
-                      : "border-slate-200 hover:border-slate-400"
-                  }`}
+                  aria-pressed={selected}
+                  className={`cursor-pointer rounded-xl border-2 px-4 py-3 text-left text-slate-950 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${selected ? "border-indigo-500 bg-indigo-100 ring-2 ring-indigo-200" : "border-slate-300 bg-white hover:border-slate-500"}`}
                   key={candidate.id}
-                  onClick={() =>
-                    selectView(candidate.id, candidate.explanation)}
+                  onClick={() => selectView(candidate.id, candidate.explanation)}
                 >
-                  <span className="block text-sm font-semibold">
-                    {candidate.shortLabel}
-                  </span>
-                  <span className="block text-xs text-slate-500">
-                    {candidate.description}
-                  </span>
+                  <span className="block text-sm font-bold">{candidate.shortLabel}</span>
+                  <span className="mt-0.5 block text-xs text-slate-600">{candidate.description}</span>
+                  <span className={`mt-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${selected ? "border-indigo-400 bg-white text-indigo-900" : "border-slate-300 bg-slate-100 text-slate-600"}`}>{selected ? "✓ Current view" : "Open view"}</span>
                 </button>
-              ))}
-            </div>
+              )
+            })}
+        </div>
+      </nav>
+
+      <div className="grid gap-4 lg:grid-cols-12">
+        <aside className={`${viewState.view === "intra_position" ? "lg:order-1" : "lg:order-2"} lg:col-span-12`}>
+          <details
+            className="rounded-xl border border-slate-200 bg-white shadow-sm"
+            onToggle={event => {
+              if (viewState.view !== "intra_position") {
+                setHistoryControlsOpen(event.currentTarget.open)
+              }
+            }}
+            open={viewState.view === "intra_position" || historyControlsOpen}
+          >
+            {viewState.view !== "intra_position" && (
+              <summary className="cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+                Historical analysis · optional manual comparison
+                <span className="ml-2 text-xs font-normal text-slate-500">Open controls</span>
+              </summary>
+            )}
+            <div className="grid gap-4 border-t border-slate-100 p-4 first:border-t-0 lg:grid-cols-12 lg:items-start">
+          <div className="lg:col-span-12">
+            {viewState.view === "intra_position" ? (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Player Lab</p>
+                <h2 className="text-xl font-bold text-slate-950">How different are their weekly outcomes?</h2>
+                <p className="mt-1 text-xs text-slate-500">Choose three to five players, then load the requested season data. Scoring distribution and playing-time evidence stay separate so the view never invents a cause.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Optional history controls</p>
+                <p className="mt-1 text-xs text-slate-500">The live decision visual above updates automatically. These controls only run a separate historical query.</p>
+              </>
+            )}
           </div>
 
-          <fieldset>
+          <fieldset className="lg:col-span-7">
             <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Scope
             </legend>
@@ -679,13 +777,68 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                       ))}
                   </select>
                 </label>
+                <fieldset className="mt-3">
+                  <legend className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Add players · {selectedPlayerIds.length}/5
+                  </legend>
+                  <p className="mt-1 text-xs text-slate-600" id="player-lab-selection-guidance">
+                    {positionPlayers.length < 3
+                      ? `Player Lab needs at least 3 eligible ${position} players; only ${positionPlayers.length} ${positionPlayers.length === 1 ? "is" : "are"} available in this pool.`
+                      : "Keep 3–5 players selected. Remove controls are disabled at the three-player minimum."}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Selected Player Lab players">
+                    {selectedPlayerIds.map((playerId, index) => {
+                      const player = eligiblePlayers.find(candidate => candidate.id === playerId)
+                      return player ? <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold shadow-sm" key={player.id}><span className="h-2 w-2 rounded-full" style={{backgroundColor: PLAYER_LAB_COLORS[index % PLAYER_LAB_COLORS.length]}} />{player.fullName}</span> : null
+                    })}
+                  </div>
+                  <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
+                    <div className="flex flex-wrap gap-1.5">
+                    {positionPlayers.filter(player => (
+                      player.id !== primaryId && player.id !== secondaryId
+                    )).map(player => {
+                      const checked = additionalComparisonIds.includes(player.id)
+                      return (
+                        <button
+                          aria-describedby="player-lab-selection-guidance"
+                          aria-pressed={checked}
+                          className={`cursor-pointer rounded-full border px-2.5 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 ${checked ? "border-indigo-500 bg-indigo-100 ring-2 ring-indigo-200" : "border-slate-300 bg-white hover:border-indigo-400"}`}
+                          disabled={
+                            (!checked && selectedPlayerIds.length >= 5)
+                            || (
+                              checked
+                              && positionPlayers.length >= 3
+                              && selectedPlayerIds.length <= 3
+                            )
+                          }
+                          key={player.id}
+                          onClick={() => setAdditionalComparisonIds(current => {
+                            if (
+                              checked
+                              && positionPlayers.length >= 3
+                              && selectedPlayerIds.length <= 3
+                            ) return current
+                            return checked
+                              ? current.filter(id => id !== player.id)
+                              : [...current, player.id].slice(0, 3)
+                          })}
+                          type="button"
+                        >
+                          <span aria-hidden="true" className="mr-1">{checked ? "✓" : "+"}</span>
+                          {player.fullName}
+                        </button>
+                      )
+                    })}
+                    </div>
+                  </div>
+                </fieldset>
               </>
             )}
             {viewState.view === "cross_position" && (
               <div className="rounded-lg bg-slate-50 p-3">
                 <p className="mb-2 text-xs text-slate-500">
-                  Historical comparison players selected independently from live
-                  advisor candidates
+                  Historical comparison uses the top library player at each
+                  position and runs only when requested.
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {crossPositionPlayerIds.map(playerId => {
@@ -707,9 +860,10 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             {viewState.view === "intra_position" && (
               <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
                 The live shortlist uses only explicitly available players at
-                the selected position. Historical Player A and Player B use
-                the full eligible same-position library, remain independent of
-                live updates, and run only when you choose Run analysis.
+                the selected position. The three-to-five-player historical
+                comparison uses the full eligible same-position library,
+                remains independent of live updates, and runs only when you
+                choose Run analysis.
               </p>
             )}
             {["tier_landscape", "positional_bests", "cross_position"].includes(
@@ -717,15 +871,15 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             ) && (
               <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
                 {viewState.view === "positional_bests"
-                  ? "The live comparison uses the supplied deterministic advisor candidates. Historical controls below remain a manual drilldown for the selected position."
+                  ? "Position tiers use the players currently available on the draft board. Historical controls below are a separate manual drilldown."
                   : viewState.view === "tier_landscape"
-                    ? "The live landscape above uses only explicitly available draft-board players. Historical controls below remain a separate manual drilldown."
-                    : "The live comparison above uses only supplied deterministic advisor candidates. These historical selections are separate and run only when you choose Run analysis."}
+                    ? "Position tiers use only players currently available on the draft board. Historical controls below are a separate manual drilldown."
+                    : "The decision cockpit uses the current board and supplied recommendation evidence. Historical selections are separate and run only when you choose Run analysis."}
               </p>
             )}
           </fieldset>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 lg:col-span-3">
             <label className="text-sm">
               Seasons
               <select
@@ -757,37 +911,32 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
           </div>
 
           <button
-            className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            aria-describedby={viewState.view === "intra_position"
+              ? "player-lab-selection-guidance"
+              : undefined}
+            className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 lg:col-span-2 lg:self-end"
             disabled={!canRun || loading}
             onClick={() => void runAnalysis()}
           >
             {loading ? "Running analysis…" : "Run analysis"}
           </button>
+            </div>
+          </details>
         </aside>
 
-        <div className="space-y-3 lg:col-span-8">
-          {viewState.view === "positional_bests" && (
-            <PositionalBestsLiveSurface
-              model={positionalBestsModel}
-              onInspectPlayer={inspectLivePlayer}
-            />
-          )}
-          {viewState.view === "tier_landscape" && (
+        <div className={`space-y-4 ${viewState.view === "intra_position" ? "lg:order-2" : "lg:order-1"} lg:col-span-12`}>
+          {["tier_landscape", "positional_bests"].includes(viewState.view) && (
             <TierLandscapeLiveSurface
               model={tierLandscapeModel}
               onInspectPlayer={inspectLivePlayer}
+              runwayForecast={tierRunwayForecast}
             />
           )}
           {viewState.view === "cross_position" && (
             <CrossPositionLiveSurface
               model={crossPositionModel}
               onInspectPlayer={inspectLivePlayer}
-            />
-          )}
-          {viewState.view === "intra_position" && (
-            <IntraPositionLiveSurface
-              model={intraPositionModel}
-              onInspectPlayer={inspectLivePlayer}
+              tierModel={tierLandscapeModel}
             />
           )}
           {viewState.view === "positional_bests" && (
@@ -823,31 +972,36 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
               </p>
             </div>
           )}
-          {viewState.view === "intra_position" && (
-            <div className="rounded-lg border border-slate-200 bg-white p-3">
-              <h2 className="font-semibold text-slate-900">
-                Historical intra-position drilldown
-              </h2>
-              <p className="text-xs text-slate-500">
-                Player A and Player B selections remain separate from the
-                live availability shortlist. Run the existing bounded
-                historical trend manually for the selected 1-, 3-, or 5-season
-                window and scoring profile.
-              </p>
-            </div>
-          )}
           {error && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
               Analysis unavailable: {error}
             </div>
           )}
-          {!result && !error && (
-            <div className="flex min-h-80 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
-              Choose a view and run the analysis to build a chart.
+          {playerLabError && viewState.view === "intra_position" && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              Player Lab history unavailable: {playerLabError}
+            </div>
+          )}
+          {playerLabResult && viewState.view === "intra_position" && (
+            <PlayerLabHistorical
+              onInspectPlayer={inspectHistoricalPlayer}
+              response={playerLabResult}
+            />
+          )}
+          {viewState.view === "intra_position"
+            && !playerLabResult
+            && !playerLabError && (
+            <div className={styles.labEmpty}>
+              <h2 className="font-bold text-slate-900">Player Lab is ready</h2>
+              <p className="mx-auto mt-2 max-w-xl text-sm">
+                Choose three to five {position} players above and run the
+                analysis to compare their scoring ranges, full 2025 season,
+                and recorded playing-time gaps.
+              </p>
             </div>
           )}
           {result && (
-            <>
+            <div className={viewState.view === "intra_position" ? "hidden" : "contents"}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h2 className="font-semibold text-slate-900">
@@ -925,7 +1079,23 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                 Recomputed from {result.sources.length} nflverse weekly
                 source{result.sources.length === 1 ? "" : "s"}.
               </p>
-            </>
+            </div>
+          )}
+          {viewState.view === "intra_position" && (
+            <details className="rounded-xl border border-slate-300 bg-white shadow-sm">
+              <summary className="cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+                Current-board projection context
+                <span className="ml-2 text-xs font-normal text-slate-500">
+                  Optional live shortlist
+                </span>
+              </summary>
+              <div className="border-t border-slate-200 p-3">
+                <IntraPositionLiveSurface
+                  model={intraPositionModel}
+                  onInspectPlayer={inspectLivePlayer}
+                />
+              </div>
+            </details>
           )}
         </div>
       </div>

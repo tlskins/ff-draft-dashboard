@@ -14,7 +14,14 @@ import type {
   DraftRecommendationSet,
 } from "../behavior/draft-advisor/recommendations"
 import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
-import CrossPositionLiveSurface from "../components/analysis/CrossPositionLiveSurface"
+import CrossPositionLiveSurface, {
+  expectedNextOption,
+  waitCostEstimate,
+} from "../components/analysis/CrossPositionLiveSurface"
+import type {
+  TierLandscapeLaneModel,
+  TierLandscapePlayerModel,
+} from "../behavior/analysis/tierLandscape"
 import {
   FantasyPosition,
   FantasySettings,
@@ -390,6 +397,100 @@ describe("cross-position presentation model", () => {
   })
 })
 
+describe("decision cockpit next-pick estimate", () => {
+  it("produces an expected option when every supplied survival value is below fifty percent", () => {
+    const lanePlayer = (
+      id: string,
+      median: number,
+      survivalProbability: number,
+    ): TierLandscapePlayerModel => ({
+      player: player(id, FantasyPosition.RUNNING_BACK, 1),
+      positionRank: 1,
+      positionRankSourceLabel: "Harris rank",
+      primaryTier: 1,
+      primaryTierSourceLabel: "Harris tier",
+      projectionTier: 1,
+      projection: {
+        floor: median - 4,
+        median,
+        ceiling: median + 4,
+        rangeFloor: median - 4,
+        rangeCeiling: median + 4,
+        startPercent: 0,
+        medianPercent: 50,
+        endPercent: 100,
+      },
+      survivalProbability,
+    })
+    const lane = {
+      position: FantasyPosition.RUNNING_BACK,
+      players: [
+        lanePlayer("drafted", 22, 0.2),
+        lanePlayer("next-one", 20, 0.3),
+        lanePlayer("next-two", 15, 0.4),
+        lanePlayer("next-three", 10, 0.4),
+      ],
+    } as TierLandscapeLaneModel
+
+    const estimate = expectedNextOption(lane, "drafted", [])
+
+    expect(estimate.player?.player.id).toBe("next-one")
+    expect(estimate.suppliedPlayerCount).toBe(3)
+    expect(estimate.expectedMedian).toBeCloseTo(15.9, 1)
+  })
+
+  it("compares the current top with the next tier and keeps exhaustion risk separate", () => {
+    const lanePlayer = (
+      id: string,
+      median: number,
+      survivalProbability: number | null,
+      primaryTier = 1,
+    ): TierLandscapePlayerModel => ({
+      player: player(id, FantasyPosition.RUNNING_BACK, 1),
+      positionRank: 1,
+      positionRankSourceLabel: "Harris rank",
+      primaryTier,
+      primaryTierSourceLabel: "Harris tier",
+      projectionTier: 1,
+      projection: {
+        floor: median - 4,
+        median,
+        ceiling: median + 4,
+        rangeFloor: median - 4,
+        rangeCeiling: median + 4,
+        startPercent: 0,
+        medianPercent: 50,
+        endPercent: 100,
+      },
+      survivalProbability,
+    })
+    const lane = {
+      position: FantasyPosition.RUNNING_BACK,
+      players: [
+        lanePlayer("drafted", 22, 0.2),
+        lanePlayer("leader", 20, 0.3),
+        lanePlayer("same-tier", 20, null),
+        lanePlayer("fallback", 15, null, 2),
+      ],
+      currentTopAvailableTier: {
+        exhaustionProbability: 0.4,
+      },
+    } as TierLandscapeLaneModel
+
+    expect(waitCostEstimate(lane, "drafted", [])).toMatchObject({
+      cost: 5,
+      expectedLoss: 2,
+      tierGoneProbability: 0.4,
+      current: {player: {id: "leader"}},
+      fallback: {player: {id: "fallback"}},
+    })
+    expect(waitCostEstimate({
+      ...lane,
+      players: lane.players.slice(0, 3),
+    }, "drafted", [])).toBeNull()
+  })
+})
+
 describe("live cross-position surface", () => {
   beforeEach(() => {
     localStorage.clear()
@@ -594,10 +695,10 @@ describe("live cross-position surface", () => {
     }
     const view = render(<AnalysisWorkspace {...props} />)
     fireEvent.click(view.getByRole("button", {
-      name: "Cross-position comparison",
+      name: "Decision cockpit",
     }))
 
-    expect(view.getByText("Cross-position comparison", {selector: "h2"})).toBeTruthy()
+    expect(view.getByText("Decision cockpit", {selector: "h2"})).toBeTruthy()
     expect(mockedExecute).not.toHaveBeenCalled()
     fireEvent.click(view.getByRole("button", {
       name: "Inspect alpha Player comparison",
@@ -612,7 +713,7 @@ describe("live cross-position surface", () => {
 
     fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
     await waitFor(() => expect(mockedExecute).toHaveBeenCalledTimes(1))
-    fireEvent.click(view.getByRole("button", {name: "alpha Player"}))
+    await waitFor(() => fireEvent.click(view.getByRole("button", {name: "alpha Player"})))
     expect(view.getByRole("dialog")).toBeTruthy()
 
     view.rerender(

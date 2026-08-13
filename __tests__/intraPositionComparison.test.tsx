@@ -333,16 +333,17 @@ describe("intra-position live presentation model", () => {
     ])
 
     expect(model.players.map(player => player.player.id)).toEqual([
-      "rb-two", "rb-one", "rb-three",
+      "rb-two", "rb-one", "rb-three", "rb-four",
     ])
-    expect(model.players).toHaveLength(MAX_INTRA_POSITION_SHORTLIST_PLAYERS)
+    expect(model.players).toHaveLength(4)
+    expect(MAX_INTRA_POSITION_SHORTLIST_PLAYERS).toBe(5)
     expect(model.players.map(player => player.player.id))
       .not.toContain(draftedOnlyInLibrary.id)
     expect(model).toMatchObject({
       position: "RB",
       totalAvailablePlayerCount: 4,
-      visiblePlayerCount: 3,
-      hiddenPlayerCount: 1,
+      visiblePlayerCount: 4,
+      hiddenPlayerCount: 0,
     })
   })
 
@@ -371,9 +372,9 @@ describe("intra-position live presentation model", () => {
     ])
 
     expect(model.players.map(player => player.player.id)).toEqual([
-      "rb-a", "rb-z", "rb-b",
+      "rb-a", "rb-z", "rb-b", "rb-unranked",
     ])
-    expect(model.hiddenPlayerCount).toBe(1)
+    expect(model.hiddenPlayerCount).toBe(0)
 
     const allUnranked = modelFor([
       makePlayer("rb-unranked-z", {
@@ -979,10 +980,10 @@ describe("intra-position workspace and historical boundaries", () => {
   it("renders the live shortlist without a historical request and keeps Player A / Player B manually controlled", async () => {
     const view = render(<AnalysisWorkspace {...workspaceProps} />)
     fireEvent.click(view.getByRole("button", {
-      name: "Intra-position comparison",
+      name: "Player lab",
     }))
 
-    expect(view.getByText("Intra-position risk and reward comparison"))
+    expect(view.getByText("Compare RB options"))
       .toBeTruthy()
     expect(view.getByText("rb-one Player", {selector: "h3"})).toBeTruthy()
     expect(mockedExecute).not.toHaveBeenCalled()
@@ -1003,7 +1004,7 @@ describe("intra-position workspace and historical boundaries", () => {
     fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
     await waitFor(() => expect(mockedExecute).toHaveBeenCalledTimes(1))
     expect(mockedExecute.mock.calls[0][0]).toEqual(expect.objectContaining({
-      player_ids: ["rb-one", "historical-only"],
+      player_ids: ["rb-one", "historical-only", "rb-two"],
       group_by: "season",
       metrics: [
         "games",
@@ -1026,7 +1027,7 @@ describe("intra-position workspace and historical boundaries", () => {
   it("keeps live and historical drawers separate while closing a removed or position-incompatible live drawer", async () => {
     const view = render(<AnalysisWorkspace {...workspaceProps} />)
     fireEvent.click(view.getByRole("button", {
-      name: "Intra-position comparison",
+      name: "Player lab",
     }))
     fireEvent.click(view.getByRole("button", {
       name: "Inspect rb-one Player comparison",
@@ -1057,7 +1058,7 @@ describe("intra-position workspace and historical boundaries", () => {
     })
     fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
     await waitFor(() => expect(mockedExecute).toHaveBeenCalledTimes(1))
-    fireEvent.click(view.getByRole("button", {name: "Historical Only"}))
+    await waitFor(() => fireEvent.click(view.getByRole("button", {name: "Historical Only"})))
     expect(view.getByRole("dialog")).toBeTruthy()
 
     view.rerender(
@@ -1078,7 +1079,7 @@ describe("intra-position workspace and historical boundaries", () => {
       </div>,
     )
     const viewButtons = view.getAllByRole("button", {
-      name: "Intra-position comparison",
+      name: "Player lab",
     })
     fireEvent.click(viewButtons[0])
     fireEvent.click(viewButtons[1])

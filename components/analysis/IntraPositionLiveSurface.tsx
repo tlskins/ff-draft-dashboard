@@ -113,7 +113,7 @@ const ProjectionRangeVisualization: React.FC<{
   return (
     <section
       aria-label={`${candidate.player.fullName} projection risk and reward context`}
-      className="mt-3 rounded border border-indigo-100 bg-indigo-50 p-2"
+      className="mt-3 rounded-lg border-2 border-indigo-200 bg-indigo-50 p-3"
     >
       <div className="flex flex-wrap items-center justify-between gap-1">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-indigo-800">
@@ -127,13 +127,14 @@ const ProjectionRangeVisualization: React.FC<{
       </div>
       <div
         aria-label={ariaLabel}
-        className="mt-2 h-7 overflow-hidden rounded border border-indigo-200 bg-white p-1"
+        className="mt-2 h-10 overflow-hidden rounded-lg border-2 border-slate-300 bg-white p-1"
         role="img"
+        style={{backgroundImage: "linear-gradient(to right, #e2e8f0 1px, transparent 1px)", backgroundSize: "25% 100%"}}
       >
         <div aria-hidden="true" className="relative h-full">
           {hasRange && isPoint && rangeStart !== null && (
             <span
-              className="absolute top-1/2 h-2 w-1 rounded bg-indigo-700"
+              className="absolute top-1/2 h-3 w-1 rounded bg-indigo-700"
               data-testid={`intra-position-projection-point-${candidate.player.id}`}
               style={{
                 left: `${rangeStart}%`,
@@ -143,7 +144,7 @@ const ProjectionRangeVisualization: React.FC<{
           )}
           {hasRange && !isPoint && rangeStart !== null && (
             <span
-              className="absolute top-1/2 h-2 -translate-y-1/2 rounded border-2 border-indigo-700 bg-indigo-200"
+              className="absolute top-1/2 h-3 -translate-y-1/2 rounded border-2 border-indigo-700 bg-indigo-200 shadow-sm"
               data-testid={`intra-position-projection-range-${candidate.player.id}`}
               style={{
                 left: `${rangeStart}%`,
@@ -153,7 +154,7 @@ const ProjectionRangeVisualization: React.FC<{
           )}
           {projection.medianPercent !== null && (
             <span
-              className="absolute top-0 h-full w-0.5 bg-slate-950"
+              className="absolute top-0 h-full w-1 rounded bg-slate-950"
               data-testid={`intra-position-projection-median-${candidate.player.id}`}
               style={{
                 left: `${projection.medianPercent}%`,
@@ -285,7 +286,7 @@ const ShortlistCard: React.FC<{
     || candidate.activeTier !== candidate.customTier
 
   return (
-    <li className="min-w-0 rounded-lg border border-violet-100 bg-white p-3">
+    <li className="min-w-0 rounded-xl border-2 border-slate-300 bg-white p-4 shadow-sm">
       <article aria-labelledby={`intra-position-${candidate.player.id}`}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -305,7 +306,7 @@ const ShortlistCard: React.FC<{
           </div>
           <button
             aria-label={`Inspect ${candidate.player.fullName} comparison`}
-            className="shrink-0 rounded border border-indigo-300 bg-white px-2 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
+            className="shrink-0 cursor-pointer rounded-lg border-2 border-indigo-400 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-100 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             onClick={() => onInspectPlayer(candidate.player)}
             type="button"
           >
@@ -404,41 +405,41 @@ const IntraPositionLiveSurface: React.FC<IntraPositionLiveSurfaceProps> = ({
   return (
     <section
       aria-labelledby="live-intra-position-title"
-      className="rounded-xl border border-violet-200 bg-violet-50 p-3 text-left"
+      className="rounded-2xl border-2 border-slate-300 bg-slate-100 p-4 text-left shadow-sm md:p-5"
     >
       <header>
-        <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
-          Live availability shortlist
+        <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">
+          Player lab · current board
         </p>
-        <h2 className="text-xl font-bold text-violet-950" id="live-intra-position-title">
-          Intra-position risk and reward comparison
+        <h2 className="text-2xl font-bold text-slate-950" id="live-intra-position-title">
+          Compare {model.position} options
         </h2>
-        <p className="mt-1 max-w-4xl text-sm text-violet-900">
-          Current {model.position} options come only from the explicit live
-          availability collection and are ordered by the active draft-board
-          position rank. This is not a deterministic advisor recommendation.
+        <p className="mt-1 max-w-4xl text-sm text-slate-700">
+          Start with up to five available players in board order. Run the
+          historical comparison below to see exact weekly breakpoints and the
+          previous season on one shared chart.
         </p>
       </header>
 
       <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-4">
-        <div className="rounded bg-white p-2">
+        <div className="rounded-lg border border-slate-300 bg-white p-3">
           <dt className="text-slate-500">Selected position</dt>
           <dd className="font-semibold text-slate-950">{model.position}</dd>
         </div>
-        <div className="rounded bg-white p-2">
+        <div className="rounded-lg border border-slate-300 bg-white p-3">
           <dt className="text-slate-500">Total currently available</dt>
           <dd className="font-semibold text-slate-950">
             {model.totalAvailablePlayerCount}
           </dd>
         </div>
-        <div className="rounded bg-white p-2">
-          <dt className="text-slate-500">Visible shortlist</dt>
+        <div className="rounded-lg border border-slate-300 bg-white p-3">
+          <dt className="text-slate-500">Shown for comparison</dt>
           <dd className="font-semibold text-slate-950">
             {model.visiblePlayerCount}
           </dd>
         </div>
-        <div className="rounded bg-white p-2">
-          <dt className="text-slate-500">Hidden by shortlist bound</dt>
+        <div className="rounded-lg border border-slate-300 bg-white p-3">
+          <dt className="text-slate-500">More available</dt>
           <dd className="font-semibold text-slate-950">
             {model.hiddenPlayerCount}
           </dd>
@@ -446,9 +447,10 @@ const IntraPositionLiveSurface: React.FC<IntraPositionLiveSurfaceProps> = ({
       </dl>
 
       <p className="mt-3 rounded border border-indigo-100 bg-white p-2 text-xs text-indigo-950">
-        Status evidence is advisory only and cannot change live availability,
-        rank order, tiers, or projections. Additional risk and synergy evidence
-        remains unavailable until reliable structured contracts exist.
+        The live ranges are projections. Historical scoring variance is kept
+        separate and loads only when you choose Run analysis. Additional risk
+        and synergy evidence remains unavailable until reliable structured
+        contracts exist.
       </p>
       <div aria-live="polite" className="sr-only" role="status">
         {announcement}

@@ -57,6 +57,15 @@ const players: Player[] = [
     ranks: {},
   },
   {
+    id: "three",
+    firstName: "Player",
+    lastName: "Three",
+    fullName: "Player Three",
+    position: FantasyPosition.RUNNING_BACK,
+    team: NFLTeam.ARI,
+    ranks: {},
+  },
+  {
     id: "qb-one",
     firstName: "Quarterback",
     lastName: "One",
@@ -91,7 +100,7 @@ describe("decision analysis workspace navigation", () => {
     mockedExecute.mockReset()
     mockedExecute.mockResolvedValue({
       query: {
-        player_ids: ["one", "two"],
+        player_ids: ["one", "three", "two"],
         positions: [],
         seasons: {start: 2023, end: 2025},
         scoring_profile_id: "ppr",
@@ -190,14 +199,14 @@ describe("decision analysis workspace navigation", () => {
       />,
     )
 
-    expect(getByText("Historical analysis workspace")).toBeTruthy()
-    fireEvent.click(getByText("Intra-position"))
+    expect(getByText("Draft decision workspace")).toBeTruthy()
+    fireEvent.click(getByRole("button", {name: "Player lab"}))
     fireEvent.click(getByRole("button", {name: "Run analysis"}))
 
     await waitFor(() => expect(mockedExecute).toHaveBeenCalledTimes(1))
     expect(mockedExecute.mock.calls[0][0]).toEqual(
       expect.objectContaining({
-        player_ids: ["one", "two"],
+        player_ids: ["one", "three", "two"],
         group_by: "season",
         scoring_profile_id: "ppr",
       }),
@@ -211,7 +220,7 @@ describe("decision analysis workspace navigation", () => {
     expect(getByRole("dialog")).toBeTruthy()
   })
 
-  it("exposes all four views as selectable accessible controls", () => {
+  it("exposes the three consolidated workspaces as selectable accessible controls", () => {
     const view = render(
       <AnalysisWorkspace
         activePlayer={players[0]}
@@ -225,21 +234,18 @@ describe("decision analysis workspace navigation", () => {
       />,
     )
     const labels = [
-      "Positional tier landscape",
-      "Realtime positional bests",
-      "Cross-position comparison",
-      "Intra-position comparison",
+      "Position tiers",
+      "Decision cockpit",
+      "Player lab",
     ]
     labels.forEach(label => {
       expect(view.getByRole("button", {name: label})).toBeTruthy()
     })
 
     const cross = view.getByRole("button", {
-      name: "Cross-position comparison",
+      name: "Decision cockpit",
     })
     expect(view.getByRole("group", {name: "Analysis views"})).toBeTruthy()
-    expect(cross.getAttribute("aria-pressed")).toBe("false")
-    fireEvent.click(cross)
     expect(cross.getAttribute("aria-pressed")).toBe("true")
     expect(view.container.textContent).toContain("Automatic navigation")
     expect(view.getByText("Current view selected manually:")).toBeTruthy()
@@ -260,14 +266,14 @@ describe("decision analysis workspace navigation", () => {
     )
     fireEvent.click(view.getByRole("button", {name: "Pin current view"}))
     fireEvent.click(view.getByRole("button", {
-      name: "Intra-position comparison",
+      name: "Player lab",
     }))
 
     expect(view.getByRole("button", {
       name: "Return to automatic navigation",
     })).toBeTruthy()
     expect(view.getByRole("button", {
-      name: "Intra-position comparison",
+      name: "Player lab",
     }).getAttribute("aria-pressed")).toBe("true")
     expect(view.container.textContent).toContain("Pinned navigation")
     expect(view.getByText("Pinned: advisor cannot replace this view")).toBeTruthy()
@@ -307,11 +313,11 @@ describe("decision analysis workspace navigation", () => {
       />,
     )
     await waitFor(() => expect(view.getByRole("button", {
-      name: "Cross-position comparison",
+      name: "Decision cockpit",
     }).getAttribute("aria-pressed")).toBe("true"))
 
     fireEvent.click(view.getByRole("button", {
-      name: "Intra-position comparison",
+      name: "Player lab",
     }))
     view.rerender(
       <AnalysisWorkspace
@@ -333,7 +339,7 @@ describe("decision analysis workspace navigation", () => {
       />,
     )
     await waitFor(() => expect(view.getByRole("button", {
-      name: "Intra-position comparison",
+      name: "Player lab",
     }).getAttribute("aria-pressed")).toBe("true"))
 
     view.rerender(
@@ -356,7 +362,7 @@ describe("decision analysis workspace navigation", () => {
       />,
     )
     await waitFor(() => expect(view.getByRole("button", {
-      name: "Realtime positional bests",
+      name: "Position tiers",
     }).getAttribute("aria-pressed")).toBe("true"))
     expect(view.container.textContent).toContain("Review the best available options.")
   })
@@ -374,7 +380,7 @@ describe("decision analysis workspace navigation", () => {
     }
     const view = render(<AnalysisWorkspace {...props} />)
     fireEvent.click(view.getByRole("button", {
-      name: "Cross-position comparison",
+      name: "Decision cockpit",
     }))
     fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
     await waitFor(() => expect(view.container.querySelector("svg")).not.toBeNull())
@@ -415,7 +421,7 @@ describe("decision analysis workspace navigation", () => {
       />,
     )
     await waitFor(() => expect(view.getByRole("button", {
-      name: "Intra-position comparison",
+      name: "Player lab",
     }).getAttribute("aria-pressed")).toBe("true"))
 
     expect(view.getByRole("button", {
@@ -429,7 +435,7 @@ describe("decision analysis workspace navigation", () => {
     expect(Array.from(
       view.container.querySelectorAll("[aria-live='polite']"),
     ).some(region => region.textContent?.includes(
-      "Selected intra position from a confirmed advisor recommendation",
+      "Selected Player Lab from a confirmed advisor recommendation",
     ))).toBe(true)
 
     view.rerender(
@@ -455,7 +461,7 @@ describe("decision analysis workspace navigation", () => {
       />,
     )
     await waitFor(() => expect(view.getByRole("button", {
-      name: "Intra-position comparison",
+      name: "Player lab",
     }).getAttribute("aria-pressed")).toBe("true"))
 
     view.rerender(
@@ -474,7 +480,7 @@ describe("decision analysis workspace navigation", () => {
       "Newer advice is pending while pinned.",
     ))
     expect(view.getByRole("button", {
-      name: "Intra-position comparison",
+      name: "Player lab",
     }).getAttribute("aria-pressed")).toBe("true")
   })
 
@@ -501,14 +507,14 @@ describe("decision analysis workspace navigation", () => {
           streamId: "draft-one",
           eventId: "proposal-view-same",
           sequence: 1,
-          view: "tier_landscape",
-          explanation: "Stay on the confirmed tier landscape.",
+          view: "cross_position",
+          explanation: "Stay on the confirmed decision cockpit.",
           supersedesAutomaticRevision: 60,
         }}
       />,
     )
     await waitFor(() => expect(view.container.textContent).toContain(
-      "Stay on the confirmed tier landscape.",
+      "Stay on the confirmed decision cockpit.",
     ))
     expect(view.container.querySelector("svg")).not.toBeNull()
   })
@@ -641,7 +647,7 @@ describe("decision analysis workspace navigation", () => {
       name: "Review pending advisor recommendation",
     }))
     expect(view.getByRole("button", {
-      name: "Realtime positional bests",
+      name: "Position tiers",
     }).getAttribute("aria-pressed")).toBe("true")
     expect(view.getByRole("button", {
       name: "Return to automatic navigation",
@@ -662,7 +668,7 @@ describe("decision analysis workspace navigation", () => {
       />,
     )
     fireEvent.click(view.getByRole("button", {
-      name: "Intra-position comparison",
+      name: "Player lab",
     }))
     fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
     await waitFor(() => expect(view.container.querySelector("svg")).not.toBeNull())
@@ -689,7 +695,7 @@ describe("decision analysis workspace navigation", () => {
       />,
     )
     await waitFor(() => expect(view.getByRole("button", {
-      name: "Cross-position comparison",
+      name: "Decision cockpit",
     }).getAttribute("aria-pressed")).toBe("true"))
     expect(view.queryByRole("dialog")).toBeNull()
     expect(view.container.querySelector("svg")).toBeNull()
@@ -701,7 +707,7 @@ describe("decision analysis workspace navigation", () => {
     )
     expect(liveRegions.length).toBeGreaterThan(0)
     expect(liveRegions.some(region =>
-      region.textContent?.includes("Advisor selected cross position"),
+      region.textContent?.includes("Advisor selected Decision Cockpit"),
     )).toBe(true)
   })
 
@@ -720,7 +726,7 @@ describe("decision analysis workspace navigation", () => {
       />,
     )
     fireEvent.click(view.getByRole("button", {
-      name: "Intra-position comparison",
+      name: "Player lab",
     }))
     fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
     await waitFor(() => expect(view.container.textContent).toContain(

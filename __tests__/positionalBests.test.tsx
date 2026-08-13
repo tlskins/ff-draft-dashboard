@@ -642,6 +642,7 @@ describe("workspace live and historical boundaries", () => {
   )
   const workspaceProps = {
     activePlayer: players[0],
+    availablePlayers: players,
     boardSettings,
     players,
     rankingSummaries: [],
@@ -658,11 +659,12 @@ describe("workspace live and historical boundaries", () => {
   it("renders live candidates without issuing a historical request, while keeping the drilldown runnable", async () => {
     const view = render(<AnalysisWorkspace {...workspaceProps} />)
     fireEvent.click(view.getByRole("button", {
-      name: "Realtime positional bests",
+      name: "Position tiers",
     }))
+    fireEvent.click(view.getByRole("button", {name: /RB 2 tiered/}))
 
-    expect(view.getByText("Realtime positional bests")).toBeTruthy()
-    expect(view.getByText("one Player")).toBeTruthy()
+    expect(view.getByText("Where will each tier run out?")).toBeTruthy()
+    expect(view.getAllByText("one Player").length).toBeGreaterThan(0)
     expect(mockedExecute).not.toHaveBeenCalled()
 
     fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
@@ -673,19 +675,21 @@ describe("workspace live and historical boundaries", () => {
     }))
   })
 
-  it("replaces stale candidates and closes a removed candidate's drawer", () => {
+  it("keeps position tiers independent of recommendations and closes an unavailable player's drawer", () => {
     const view = render(<AnalysisWorkspace {...workspaceProps} />)
     fireEvent.click(view.getByRole("button", {
-      name: "Realtime positional bests",
+      name: "Position tiers",
     }))
+    fireEvent.click(view.getByRole("button", {name: /RB 2 tiered/}))
     fireEvent.click(view.getByRole("button", {
-      name: "Inspect one Player comparison",
+      name: "Inspect one Player",
     }))
     expect(view.getByRole("dialog")).toBeTruthy()
 
     view.rerender(
       <AnalysisWorkspace
         {...workspaceProps}
+        availablePlayers={[players[1]]}
         recommendations={makeRecommendations([
           makeCandidate(players[1]),
         ])}
@@ -693,7 +697,7 @@ describe("workspace live and historical boundaries", () => {
     )
     expect(view.queryByText("one Player")).toBeNull()
     expect(view.queryByRole("dialog")).toBeNull()
-    expect(view.getByText("two Player")).toBeTruthy()
+    expect(view.getAllByText("two Player").length).toBeGreaterThan(0)
   })
 
   it("gives equivalent recommendation inputs to independently rendered workspace paths", () => {
@@ -704,13 +708,13 @@ describe("workspace live and historical boundaries", () => {
       </div>,
     )
     const liveButtons = view.getAllByRole("button", {
-      name: "Realtime positional bests",
+      name: "Position tiers",
     })
     fireEvent.click(liveButtons[0])
     fireEvent.click(liveButtons[1])
-    expect(view.getAllByText("one Player")).toHaveLength(2)
-    expect(view.getAllByRole("list", {
-      name: "Deterministic positional recommendation candidates",
-    })).toHaveLength(2)
+    view.getAllByRole("button", {name: /RB 2 tiered/})
+      .forEach(button => fireEvent.click(button))
+    expect(view.getAllByRole("button", {name: "Inspect one Player"}))
+      .toHaveLength(2)
   })
 })

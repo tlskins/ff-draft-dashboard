@@ -398,6 +398,7 @@ describe("live positional tier landscape presentation model", () => {
     const view = render(
       <TierLandscapeLiveSurface model={model} onInspectPlayer={jest.fn()} />,
     )
+    fireEvent.click(view.getByText("Detailed tier and forecast evidence"))
     expect(view.getByText("Projection tier · overlay only")).toBeTruthy()
     expect(view.queryByText("Custom user tier")).toBeNull()
   })
@@ -586,6 +587,61 @@ describe("live positional tier landscape surface", () => {
     )
   })
 
+  it("omits untiered players and prints a five-point PPG axis for the selected position", () => {
+    const noTier = makePlayer(
+      "rb-no-tier",
+      FantasyPosition.RUNNING_BACK,
+      3,
+      0,
+    )
+    const view = render(
+      <TierLandscapeLiveSurface
+        model={modelFor([...landscapePlayers(), noTier])}
+        onInspectPlayer={jest.fn()}
+      />,
+    )
+
+    fireEvent.click(view.getByRole("button", {name: /RB 2 tiered/}))
+
+    expect(view.queryByText("rb-no-tier Player")).toBeNull()
+    expect(view.getByText("Exact breakpoints")).toBeTruthy()
+    const ticks = view.container.querySelectorAll(".rangeTicks > span")
+    expect(ticks).toHaveLength(5)
+    expect(ticks[4].textContent).toMatch(/\d+\.\d PPG/)
+  })
+
+  it("compares every position across the supplied three-turn runway", () => {
+    const view = render(
+      <TierLandscapeLiveSurface
+        model={modelFor()}
+        onInspectPlayer={jest.fn()}
+        runwayForecast={{
+          RB: [{
+            turn: 2,
+            runProbability: 0.7,
+            tierExhaustionProbability: 0.5,
+          }],
+        }}
+      />,
+    )
+
+    expect(view.getByRole("table", {
+      name: "Position run outlook over the next three turns",
+    })).toBeTruthy()
+    expect(view.getByRole("columnheader", {name: "Next turn · +1"}))
+      .toBeTruthy()
+    expect(view.getByText("40% run chance")).toBeTruthy()
+    expect(view.getByText("70% run chance")).toBeTruthy()
+    expect(view.getByText("Current tier gone: 50%")).toBeTruthy()
+    expect(view.getAllByText("Not forecast")).toHaveLength(7)
+
+    const rbControl = view.getByRole("button", {name: "Show RB tier details"})
+    fireEvent.click(rbControl)
+    expect(rbControl.getAttribute("aria-pressed")).toBe("true")
+    expect(view.getByRole("heading", {name: "RB projection range"}))
+      .toBeTruthy()
+  })
+
   it("does not repeat announcements for equivalent rerenders and announces one material update", () => {
     const initial = modelFor()
     const view = render(
@@ -685,6 +741,7 @@ describe("live positional tier landscape surface", () => {
     const view = render(
       <TierLandscapeLiveSurface model={model} onInspectPlayer={jest.fn()} />,
     )
+    fireEvent.click(view.getByText("Detailed tier and forecast evidence"))
 
     expect(view.getByTestId("tier-landscape-lane-QB").textContent).toContain(
       "5 available players across 5 tier bands. 2 later tier bands are omitted from this bounded landscape.",
@@ -732,9 +789,11 @@ describe("tier landscape workspace boundaries", () => {
 
   it("renders live availability without an API request and keeps historical tier drilldown manual", async () => {
     const view = render(<AnalysisWorkspace {...workspaceProps} />)
+    fireEvent.click(view.getByRole("button", {name: "Position tiers"}))
+    fireEvent.click(view.getByRole("button", {name: /RB 2 tiered/}))
 
-    expect(view.getByText("Positional tier landscape")).toBeTruthy()
-    expect(view.getByText("rb-a Player")).toBeTruthy()
+    expect(view.getByText("Where will each tier run out?")).toBeTruthy()
+    expect(view.getAllByText("rb-a Player").length).toBeGreaterThan(0)
     expect(view.queryByText("drafted-rb Player")).toBeNull()
     expect(mockedExecute).not.toHaveBeenCalled()
 
@@ -754,8 +813,10 @@ describe("tier landscape workspace boundaries", () => {
         onAnalysisViewEventHandled={onAnalysisViewEventHandled}
       />,
     )
+    fireEvent.click(view.getByRole("button", {name: "Position tiers"}))
+    fireEvent.click(view.getByRole("button", {name: /RB 2 tiered/}))
     fireEvent.click(view.getByRole("button", {
-      name: "Inspect rb-a Player comparison",
+      name: "Inspect rb-a Player",
     }))
     expect(view.getByRole("dialog")).toBeTruthy()
 
@@ -777,7 +838,7 @@ describe("tier landscape workspace boundaries", () => {
     expect(view.queryByText("rb-a Player")).toBeNull()
     expect(onAnalysisViewEventHandled).not.toHaveBeenCalled()
     expect(view.getByRole("button", {
-      name: "Positional tier landscape",
+      name: "Position tiers",
     }).getAttribute("aria-pressed")).toBe("true")
   })
 
@@ -788,16 +849,15 @@ describe("tier landscape workspace boundaries", () => {
         <AnalysisWorkspace {...workspaceProps} />
       </div>,
     )
-
-    expect(view.getAllByText("rb-a Player")).toHaveLength(2)
-    expect(view.getAllByText("55%")).toHaveLength(2)
-    expect(view.getAllByRole("list", {
-      name: "RB Harris draft board tier 1 leading available players",
-    })).toHaveLength(2)
+    view.getAllByRole("button", {name: "Position tiers"}).forEach(button => fireEvent.click(button))
+    view.getAllByRole("button", {name: /RB 2 tiered/}).forEach(button => fireEvent.click(button))
+    expect(view.getAllByRole("button", {name: "Inspect rb-a Player"})).toHaveLength(2)
+    expect(view.getAllByText("2 tiered players")).toHaveLength(2)
   })
 
   it("preserves Phase 10A pinned navigation while live landscape inputs update", async () => {
     const view = render(<AnalysisWorkspace {...workspaceProps} />)
+    fireEvent.click(view.getByRole("button", {name: "Position tiers"}))
     fireEvent.click(view.getByRole("button", {name: "Pin current view"}))
 
     view.rerender(
@@ -811,7 +871,7 @@ describe("tier landscape workspace boundaries", () => {
       name: "Return to automatic navigation",
     })).toBeTruthy())
     expect(view.getByRole("button", {
-      name: "Positional tier landscape",
+      name: "Position tiers",
     }).getAttribute("aria-pressed")).toBe("true")
   })
 })

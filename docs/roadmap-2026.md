@@ -100,9 +100,12 @@ this work.
 
 Refine the decision workspace across the tier landscape, realtime positional
 bests, cross-position comparison, intra-position comparison, and
-automatic/pinned navigation. Preserve deterministic calculation ownership,
-user-tier authority, and the distinction between automatic navigation and a
-user pin.
+automatic/pinned navigation. Preserve authoritative advisor, ranking,
+projection, opponent-model, and API ownership; preserve user-tier authority
+and the distinction between automatic navigation and a user pin. Bounded
+presentation-derived estimates may support the workspace when their inputs,
+fallbacks, and limitations are explicit and they do not reorder or replace the
+authoritative advisor output.
 
 Bounded Phase 10A slice completed: the workspace now has explicit automatic
 and pinned navigation semantics, ordered/idempotent advisor transitions,
@@ -151,22 +154,52 @@ tier, projection, and historical-query ownership. See
 `docs/phase10e-intra-position-comparison.md`. This candidate does not mark
 Phase 10 complete.
 
-Bounded Phase 10F acceptance candidate: the four decision views now share a
-focused cross-view integration gate for navigation arbitration, ownership,
-live/history separation, drawer and live-region behavior, responsive parity,
-and the unchanged Phase 9 promotion boundary. Agent-run in-app browser checks
-covered all four views at desktop and narrow widths and a deliberate local
-historical request. A localized cross-position name-truncation defect was
-corrected without changing calculation or data ownership. See
-`docs/phase10f-cross-view-acceptance.md`. Automated and agent-browser checks
-are complete, but every human visual, keyboard, live-interruption, and
-assistive-technology checklist item remains unrecorded. Phase 10 is therefore
-implementation-complete and human-acceptance-pending, not complete.
+Bounded Phase 10F acceptance and redesign candidate: the original four-view
+integration gate covers navigation arbitration, ownership, live/history
+separation, drawer and live-region behavior, responsive parity, and the
+unchanged Phase 9 promotion boundary. The human-directed run recorded the
+original checklist, exposed P2 usability failures, and approved a consolidation
+into Decision Cockpit, Position Tiers, and Player Lab. The redesign made
+material presentation-model and interaction changes, including bounded
+next-option and waiting-cost estimates; it was not a calculation-neutral
+restyle. See `docs/phase10f-cross-view-acceptance.md`.
+
+Phase 10G hardening candidate: the deterministic maximum-three advisor list
+remains authoritative for **Preferred now**, its fallback order, and its
+supplied detailed evidence. The four Decision Cockpit positional leaders are
+separate rank-driven analyses of explicitly available QB/RB/WR/TE players, not
+four advisor recommendations. The preferred candidate's position selects the
+initial displayed scenario when possible; fixed QB/RB/WR/TE lane order is the
+deterministic fallback. The next-option estimate walks rank order only through
+players with supplied survival evidence and stops at the first uncovered rank;
+the waiting-cost estimate compares supplied projection medians across the next
+visible board/user tier and uses supplied boundary/current-tier evidence for
+exhaustion. Both are bounded display-derived estimates: missing evidence stays
+unavailable, and shared projection-tier medians can produce `No modeled tier
+drop` even when board/user tiers differ. Neither estimate changes advisor or
+ranking ownership. Player Lab now compares three to five manually selected
+same-position players, discloses pools below three, and keeps historical runs
+manual. User-facing navigation aliases both internal positional view IDs as
+Position Tiers while retaining the internal four-ID state/event boundary.
+
+The resumed post-rewrite human run passed narrow/mobile behavior across all
+three workspaces, non-VoiceOver keyboard controls, the visible Player Lab
+drawer routes, and automatic/pinned Position Tiers alias behavior. The operator
+explicitly deferred every VoiceOver-specific check as an accepted non-blocking
+limitation; those table and live-announcement observations are not a human pass
+and do not constitute WCAG certification. Confirmed-manual Realtime remains an
+environment limitation rather than a pass because no credentialed live draft
+or mock was started. With no Phase 10 acceptance blocker remaining, the Phase
+10 exit gate is satisfied. The accepted redesign and hardening close at
+annotated milestone `phase10g-decision-workspace-acceptance-2026-08-12` and
+Phase 10 is complete. Phase 11 has not begun.
 
 Exit gate: the four views and their transitions have a coherent acceptance
 review, pinned and automatic navigation behave as specified, and manual
-usability/visual checks are recorded. UX work does not change calculation or
-model behavior.
+usability/visual checks are recorded. Authoritative advisor, ranking,
+projection, opponent-model, and API behavior remains unchanged; any bounded
+presentation-derived calculation is documented, tested, and prevented from
+changing that ownership.
 
 ### Phase 11: Realtime copilot quality
 

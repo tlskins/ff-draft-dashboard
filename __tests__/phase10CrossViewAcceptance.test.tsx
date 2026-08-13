@@ -4,6 +4,7 @@ import {
   act,
   fireEvent,
   render,
+  within,
   waitFor,
 } from "@testing-library/react"
 
@@ -14,6 +15,12 @@ import {
 import type {
   AnalysisQueryResponse,
 } from "../behavior/api/historicalAnalysis"
+import {
+  loadHistoricalComparison,
+} from "../behavior/api/historical"
+import type {
+  HistoricalComparisonResponse,
+} from "../behavior/api/historical"
 import {
   buildCrossPositionPresentationModel,
 } from "../behavior/analysis/crossPosition"
@@ -74,8 +81,13 @@ jest.mock("../behavior/api/historicalAnalysis", () => ({
   ...jest.requireActual("../behavior/api/historicalAnalysis"),
   executeHistoricalAnalysis: jest.fn(),
 }))
+jest.mock("../behavior/api/historical", () => ({
+  ...jest.requireActual("../behavior/api/historical"),
+  loadHistoricalComparison: jest.fn(),
+}))
 
 const mockedExecute = jest.mocked(executeHistoricalAnalysis)
+const mockedLoadHistoricalComparison = jest.mocked(loadHistoricalComparison)
 
 const settings: FantasySettings = {
   ppr: true,
@@ -326,6 +338,42 @@ const historicalResponse: AnalysisQueryResponse = {
   ],
 }
 
+const playerLabResponse: HistoricalComparisonResponse = {
+  season: 2025,
+  seasons: [2025],
+  source: historicalResponse.sources[0],
+  sources: historicalResponse.sources,
+  scoring_profile: {id: "ppr", weights: {}},
+  identity_miss_count: 0,
+  players: players.slice(2, 5).map((selectedPlayer, index) => ({
+    player_id: selectedPlayer.id,
+    player_name: selectedPlayer.fullName,
+    position: "RB",
+    distribution: {
+      games: 17,
+      mean: 15 + index,
+      median: 15 + index,
+      std_dev: 4,
+      minimum: 3,
+      p10: 6,
+      p25: 10,
+      p50: 15,
+      p75: 19,
+      p90: 24,
+      maximum: 30,
+    },
+    season_distributions: [],
+    weeks: [1, 2, 3].map(week => ({
+      season: 2025,
+      week,
+      team: "BUF",
+      opponent: "MIA",
+      points: 10 + week + index,
+      contributions: {},
+    })),
+  })),
+}
+
 const availablePlayers = [...players]
 const workspaceProps = {
   activePlayer: players[2],
@@ -346,31 +394,24 @@ const viewCases: Array<{
 }> = [
   {
     id: "tier_landscape",
-    button: "Positional tier landscape",
-    heading: "Positional tier landscape",
-    source: /Available-player density and tiers update from the current draft board/,
+    button: "Position tiers",
+    heading: "Where will each tier run out?",
+    source: /Choose a position to see every available player/,
     historical: "Historical positional tier drilldown",
   },
   {
-    id: "positional_bests",
-    button: "Realtime positional bests",
-    heading: "Realtime positional bests",
-    source: /These candidates come from the deterministic advisor/,
-    historical: "Historical positional drilldown",
-  },
-  {
     id: "cross_position",
-    button: "Cross-position comparison",
-    heading: "Cross-position comparison",
-    source: /Candidate selection, order, score, and evidence come from the deterministic advisor/,
+    button: "Decision cockpit",
+    heading: "Decision cockpit",
+    source: /Compare the best available QB, RB, WR, and TE now/,
     historical: "Historical cross-position drilldown",
   },
   {
     id: "intra_position",
-    button: "Intra-position comparison",
-    heading: "Intra-position risk and reward comparison",
-    source: /come only from the explicit live availability collection/,
-    historical: "Historical intra-position drilldown",
+    button: "Player lab",
+    heading: "How different are their weekly outcomes?",
+    source: /Choose three to five players/,
+    historical: "Current-board projection context",
   },
 ]
 
@@ -379,9 +420,245 @@ describe("Phase 10F cross-view acceptance gate", () => {
     localStorage.clear()
     mockedExecute.mockReset()
     mockedExecute.mockResolvedValue(historicalResponse)
+    mockedLoadHistoricalComparison.mockReset()
+    mockedLoadHistoricalComparison.mockResolvedValue(playerLabResponse)
   })
 
-  it("selects all four views accessibly and renders the correct independent live source and manual history boundary", () => {
+  it("lands the approved cockpit, position-tier, and player-lab interaction model", () => {
+    const view = render(<AnalysisWorkspace {...workspaceProps} />)
+
+    expect(view.getByRole("button", {name: "Decision cockpit"})
+      .getAttribute("aria-pressed")).toBe("true")
+    expect(view.getByRole("heading", {name: "Top option at every position"}))
+      .toBeTruthy()
+    const comparisonTable = view.getByRole("table", {
+      name: "Cross-position decision comparison",
+    })
+    expect(within(comparisonTable).getAllByRole("row")).toHaveLength(5)
+    expect(within(comparisonTable).getAllByRole("columnheader")).toHaveLength(5)
+    expect(within(comparisonTable).getAllByRole("rowheader")).toHaveLength(4)
+    expect(within(comparisonTable).getAllByRole("cell")).toHaveLength(16)
+    const scenarios = within(view.getByRole("group", {
+      name: "Draft choice scenario",
+    }))
+    expect(scenarios.getAllByRole("button")).toHaveLength(4)
+    fireEvent.click(scenarios.getByRole("button", {name: "RB"}))
+    expect(view.getByRole("region", {name: "Alpha Runner"})).toBeTruthy()
+    expect(view.getByRole("group", {
+      name: /Tier-cliff cost of waiting one turn, sorted by projected points per game lost/,
+    })).toBeTruthy()
+
+    fireEvent.click(view.getByRole("button", {name: "Position tiers"}))
+    fireEvent.click(view.getByRole("button", {name: /RB 4 tiered/}))
+    expect(view.getAllByRole("button", {name: /Inspect .* Runner$/}))
+      .toHaveLength(4)
+    expect(view.getByRole("img", {
+      name: /Alpha Runner: floor 11.0, median 16.0, ceiling 21.0/,
+    })).toBeTruthy()
+
+    fireEvent.click(view.getByRole("button", {name: "Player lab"}))
+    expect(view.getByRole("group", {name: "Add players · 3/5"})).toBeTruthy()
+  })
+
+  it("selects one rank-driven scenario for a preferred candidate who is not its position leader", async () => {
+    const preferredRunner = recommendations([
+      candidate(players[3], 20),
+      candidate(players[6], 19),
+    ])
+    const view = render(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        recommendations={preferredRunner}
+      />,
+    )
+    const scenarios = within(view.getByRole("group", {
+      name: "Draft choice scenario",
+    }))
+    const selected = () => scenarios.getAllByRole("button").filter(button => (
+      button.getAttribute("aria-pressed") === "true"
+    ))
+
+    expect(selected()).toHaveLength(1)
+    expect(selected()[0].getAttribute("aria-label")).toBe("RB")
+    expect(view.getByRole("region", {name: "Alpha Runner"})).toBeTruthy()
+    expect(view.getByLabelText(
+      "Advisor preferred Bravo Runner; selected RB scenario uses Alpha Runner",
+    )).toBeTruthy()
+
+    view.rerender(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        recommendations={recommendations([
+          candidate(players[7], 21),
+          candidate(players[2], 18),
+        ])}
+      />,
+    )
+    await waitFor(() => {
+      expect(selected()).toHaveLength(1)
+      expect(selected()[0].getAttribute("aria-label")).toBe("WR")
+    })
+    expect(view.getByRole("region", {name: "Will Receiver"})).toBeTruthy()
+    expect(view.getByLabelText(
+      "Advisor preferred Riley Receiver; selected WR scenario uses Will Receiver",
+    )).toBeTruthy()
+
+    view.rerender(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        availablePlayers={availablePlayers.filter(player => (
+          player.position !== FantasyPosition.RUNNING_BACK
+        ))}
+        recommendations={preferredRunner}
+      />,
+    )
+    await waitFor(() => {
+      expect(selected()).toHaveLength(1)
+      expect(selected()[0].getAttribute("aria-label")).toBe("QB")
+    })
+    expect(view.getByRole("region", {name: "Quinn Quarterback"})).toBeTruthy()
+    expect(view.getByLabelText(
+      "Advisor preferred Bravo Runner; selected QB scenario uses Quinn Quarterback",
+    )).toBeTruthy()
+  })
+
+  it("opens the historical drawer from the visible Player Lab and restores keyboard focus", async () => {
+    const view = render(<AnalysisWorkspace {...workspaceProps} />)
+    fireEvent.click(view.getByRole("button", {name: "Player lab"}))
+    fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
+
+    const inspect = await view.findByRole("button", {
+      name: "Inspect Alpha Runner from season chart",
+    })
+    inspect.focus()
+    fireEvent.keyDown(inspect, {key: "Enter"})
+    const close = await view.findByRole("button", {
+      name: "Close player comparison",
+    })
+    await waitFor(() => expect(document.activeElement).toBe(close))
+    fireEvent.keyDown(view.getByRole("dialog"), {key: "Escape"})
+    await waitFor(() => expect(view.queryByRole("dialog")).toBeNull())
+    expect(document.activeElement).toBe(inspect)
+
+    fireEvent.keyDown(inspect, {key: " "})
+    await waitFor(() => expect(view.getByRole("dialog")).toBeTruthy())
+    fireEvent.click(view.getByRole("button", {
+      name: "Close player comparison",
+    }))
+    await waitFor(() => expect(document.activeElement).toBe(inspect))
+  })
+
+  it("enforces the three-to-five Player Lab selection boundary", () => {
+    const view = render(<AnalysisWorkspace {...workspaceProps} />)
+    fireEvent.click(view.getByRole("button", {name: "Player lab"}))
+
+    const third = view.getByRole("button", {name: "Charlie Runner"})
+    expect((third as HTMLButtonElement).disabled).toBe(true)
+    expect((view.getByRole("button", {
+      name: "Run analysis",
+    }) as HTMLButtonElement).disabled).toBe(false)
+
+    const fourth = view.getByRole("button", {name: "Delta Runner"})
+    fireEvent.click(fourth)
+    expect(view.getByRole("group", {name: "Add players · 4/5"})).toBeTruthy()
+    expect((third as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(third)
+    expect(view.getByRole("group", {name: "Add players · 3/5"})).toBeTruthy()
+    expect((fourth as HTMLButtonElement).disabled).toBe(true)
+
+    view.unmount()
+    const undersized = render(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        availablePlayers={players.filter(player => (
+          player.position !== FantasyPosition.RUNNING_BACK
+          || ["rb-one", "rb-two"].includes(player.id)
+        ))}
+        players={players.filter(player => (
+          player.position !== FantasyPosition.RUNNING_BACK
+          || ["rb-one", "rb-two"].includes(player.id)
+        ))}
+      />,
+    )
+    fireEvent.click(undersized.getByRole("button", {name: "Player lab"}))
+    expect(undersized.getByText(
+      "Player Lab needs at least 3 eligible RB players; only 2 are available in this pool.",
+    )).toBeTruthy()
+    expect((undersized.getByRole("button", {
+      name: "Run analysis",
+    }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it("uses the Position Tiers alias for applied, pending, and equivalent advisor events", async () => {
+    const props = {
+      ...workspaceProps,
+      analysisViewEvent: {
+        kind: "automatic" as const,
+        streamId: "phase-10g-alias",
+        view: "positional_bests" as const,
+        explanation: "Review the position supply.",
+        revision: 1,
+      },
+    }
+    const view = render(<AnalysisWorkspace {...props} />)
+    const advisorStatus = () => Array.from(
+      view.container.querySelectorAll("[aria-live='polite']"),
+    ).find(region => region.textContent?.includes("Advisor selected"))
+
+    await waitFor(() => expect(advisorStatus()?.textContent).toContain(
+      "Advisor selected Position Tiers. Review the position supply.",
+    ))
+    expect(view.container.textContent).not.toContain("Realtime positional bests")
+    expect(view.getByRole("button", {name: "Position tiers"})
+      .getAttribute("aria-pressed")).toBe("true")
+
+    fireEvent.click(view.getByRole("button", {name: "Decision cockpit"}))
+    fireEvent.click(view.getByRole("button", {name: "Pin current view"}))
+    view.rerender(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        analysisViewEvent={{
+          ...props.analysisViewEvent,
+          explanation: "Position Tiers should remain pending.",
+          revision: 2,
+        }}
+      />,
+    )
+    await waitFor(() => expect(view.getByText(
+      /Advisor recommends Position Tiers.*Position Tiers should remain pending/,
+    )).toBeTruthy())
+    const pendingAnnouncement = Array.from(
+      view.container.querySelectorAll("[aria-live='polite']"),
+    ).find(region => region.textContent?.includes("Your pinned view was preserved"))
+      ?.textContent
+
+    view.rerender(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        analysisViewEvent={{
+          ...props.analysisViewEvent,
+          explanation: "Position Tiers should remain pending.",
+          revision: 2,
+        }}
+      />,
+    )
+    expect(Array.from(
+      view.container.querySelectorAll("[aria-live='polite']"),
+    ).find(region => region.textContent?.includes("Your pinned view was preserved"))
+      ?.textContent).toBe(pendingAnnouncement)
+    expect(view.container.textContent).not.toContain("Realtime positional bests")
+
+    fireEvent.click(view.getByRole("button", {
+      name: "Return to automatic navigation",
+    }))
+    await waitFor(() => expect(Array.from(
+      view.container.querySelectorAll("[aria-live='polite']"),
+    ).some(region => region.textContent?.includes(
+      "Applying the pending advisor recommendation for Position Tiers.",
+    ))).toBe(true))
+  })
+
+  it("selects all three consolidated workspaces accessibly and retains the manual history boundary", () => {
     const view = render(<AnalysisWorkspace {...workspaceProps} />)
 
     viewCases.forEach(({button, heading, source, historical}) => {
@@ -411,15 +688,17 @@ describe("Phase 10F cross-view acceptance gate", () => {
       resolveRequest = resolve
     }))
     const view = render(<AnalysisWorkspace {...workspaceProps} />)
+    fireEvent.click(view.getByRole("button", {name: "Position tiers"}))
+    fireEvent.click(view.getByRole("button", {name: /RB 4 tiered/}))
     const landscapeInspect = view.getByRole("button", {
-      name: "Inspect Alpha Runner comparison",
+      name: "Inspect Alpha Runner",
     })
     fireEvent.click(landscapeInspect)
     expect(view.getByRole("dialog")).toBeTruthy()
     fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
     expect(view.getByRole("button", {name: "Running analysis…"})).toBeTruthy()
 
-    fireEvent.click(view.getByRole("button", {name: "Cross-position comparison"}))
+    fireEvent.click(view.getByRole("button", {name: "Decision cockpit"}))
     expect(view.queryByRole("dialog")).toBeNull()
     expect(view.queryByRole("button", {name: "Running analysis…"})).toBeNull()
     expect(view.container.querySelector("svg")).toBeNull()
@@ -430,7 +709,7 @@ describe("Phase 10F cross-view acceptance gate", () => {
     mockedExecute.mockRejectedValueOnce(new Error("bounded history error"))
     fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
     await waitFor(() => expect(view.getByText(/bounded history error/)).toBeTruthy())
-    fireEvent.click(view.getByRole("button", {name: "Intra-position comparison"}))
+    fireEvent.click(view.getByRole("button", {name: "Player lab"}))
     expect(view.queryByText(/bounded history error/)).toBeNull()
   })
 
@@ -439,6 +718,7 @@ describe("Phase 10F cross-view acceptance gate", () => {
     const view = render(
       <AnalysisWorkspace {...workspaceProps} onAnalysisViewEventHandled={onHandled} />,
     )
+    fireEvent.click(view.getByRole("button", {name: "Position tiers"}))
     fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
     await waitFor(() => expect(view.container.querySelector("svg")).not.toBeNull())
 
@@ -655,7 +935,7 @@ describe("Phase 10F cross-view acceptance gate", () => {
         <AnalysisWorkspace {...workspaceProps} analysisViewEvent={automatic} />
       </div>,
     )
-    expect(pair.getAllByRole("button", {name: "Cross-position comparison"})
+    expect(pair.getAllByRole("button", {name: "Decision cockpit"})
       .every(button => button.getAttribute("aria-pressed") === "true"))
       .toBe(true)
     expect(pair.getAllByRole("list", {
@@ -713,7 +993,7 @@ describe("Phase 10F cross-view acceptance gate", () => {
       "qb-one", "wr-one", "rb-one",
     ])
     expect(intra.players.map(item => item.player.id)).toEqual([
-      "rb-one", "rb-two", "rb-three",
+      "rb-one", "rb-two", "rb-three", "rb-four",
     ])
     expect(landscape.lanes.flatMap(lane => lane.visibleTierBands)
       .flatMap(band => band.players)
@@ -797,7 +1077,7 @@ describe("Phase 10F cross-view acceptance gate", () => {
     expect(view.getAllByText(/Custom user tier/).length).toBeGreaterThan(0)
     expect(view.getAllByText(/Projection tier · overlay only/).length)
       .toBeGreaterThan(0)
-    view.getByRole("region", {name: "Cross-position comparison"})
+    view.getByRole("region", {name: "Decision cockpit"})
       .querySelectorAll("h3")
       .forEach(heading => {
         expect(heading.className).toContain("break-words")
@@ -812,7 +1092,7 @@ describe("Phase 10F cross-view acceptance gate", () => {
 
   it("keeps live inspection keyboard-operable, restores drawer focus, and retains historical chart inspection", async () => {
     const view = render(<AnalysisWorkspace {...workspaceProps} />)
-    fireEvent.click(view.getByRole("button", {name: "Intra-position comparison"}))
+    fireEvent.click(view.getByRole("button", {name: "Player lab"}))
     const inspect = view.getByRole("button", {
       name: "Inspect Bravo Runner comparison",
     })
