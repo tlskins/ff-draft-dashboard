@@ -17,6 +17,7 @@ import {
 } from "../draft"
 import type { AnalysisViewId } from "../analysis/viewState"
 import type { OpponentForecast } from "./types"
+import { isPlayerAutomaticallyRecommendable } from "../playerAvailability"
 
 type RosterRole = "open_starter" | "flex_upgrade" | "bench"
 type AdvisorPosition =
@@ -374,6 +375,10 @@ export const createDraftRecommendations = ({
   const candidates = ADVISOR_POSITIONS.flatMap(position => {
     const availableAtPosition = playerRanks[position]
       .filter(player => !rosterPicks.includes(player.id))
+      .filter(player => isPlayerAutomaticallyRecommendable(
+        player,
+        boardSettings,
+      ))
       .sort((left, right) =>
         getPlayerMetrics(left, settings, boardSettings).posRank
         - getPlayerMetrics(right, settings, boardSettings).posRank)

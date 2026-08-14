@@ -542,6 +542,30 @@ export interface components {
             ppr_position_rank: number | null;
             ppr_position_tier: components["schemas"]["Tier"] | null;
         };
+        EspnSourcePresence: {
+            present_in_current_response: boolean;
+            /** Format: date-time */
+            last_seen_at: string | null;
+            source_url: string | null;
+            source_fingerprint: string | null;
+            /** @enum {string} */
+            reason: "present_in_current_response" | "not_present_in_current_response";
+            last_known_rank: components["schemas"]["PlayerRanking"] | null;
+        };
+        PlayerSourcePresence: {
+            espn: components["schemas"]["EspnSourcePresence"];
+        };
+        PlayerAvailability: {
+            /** @enum {string} */
+            state: "ranked_current" | "active_unranked" | "reserve" | "free_agent" | "unknown" | "inactive_confirmed";
+            automatic_recommendation_eligible: boolean;
+            source: string;
+            source_url: string | null;
+            /** Format: date-time */
+            observed_at: string | null;
+            reason: string;
+            source_status: string | null;
+        };
         /** @description Compatibility shape for the current cached PFR-derived records. This blob is not extended and will be replaced by nflverse endpoints. */
         LegacyHistoricalStats: {
             [key: string]: unknown;
@@ -559,6 +583,8 @@ export interface components {
             historical_stats: {
                 [key: string]: components["schemas"]["LegacyHistoricalStats"] | null;
             };
+            source_presence?: components["schemas"]["PlayerSourcePresence"];
+            availability?: components["schemas"]["PlayerAvailability"];
         };
         ReplacementLevel: [
             number,

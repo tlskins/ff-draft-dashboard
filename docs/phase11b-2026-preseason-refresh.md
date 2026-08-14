@@ -1,5 +1,47 @@
 # Phase 11B reviewed 2026 preseason refresh
 
+## Stable-universe correction candidate
+
+The original, technically validated 436-player candidate below was promoted by
+an older parallel continuation and checkpointed at API `959bcc5`. That result is
+historically valid evidence, but its replacement semantics are superseded: one
+ESPN response is source-presence evidence, not authority to delete a previously
+known player. The authoritative `refactor/realtime-foundation` checkout remains
+on that 436-player artifact while this correction is reviewed and integrated.
+
+The correction was rebuilt from post-Phase-12 baselines API `40da040` and
+dashboard `53697b5`. A provider-free replay used only the frozen August 13
+source bytes and the verified pre-promotion Phase 11A backup. Its fresh evidence
+is under `stable-player-universe-stage-b-v3`; the generated rankings SHA-256 is
+`82d3f8025f8dc67355f9eef6f6111843ac29b315ceb81d0a1a84e69810f41b81`.
+The correction worktrees and embedded dashboard snapshot contain that exact
+455-player artifact.
+
+The corrected result has 19 newly ranked players, 417 still present in ESPN,
+and 19 retained players absent from the current ESPN response, with zero stable
+identity losses. ESPN-absent players have no active ESPN rank; their last rank
+is isolated as lineage metadata. Normalized availability is 426 ranked/current
+and automatically recommendable, 15 active-unranked, three reserve, one free
+agent, ten unknown/unmapped, and zero terminal inactive. The ten suppressed
+ESPN-present players retain current rank lineage; notably, frozen RLS evidence
+suppresses Brandon Aiyuk without deleting his ESPN ranks. Only RET is terminal;
+INA and EXE are nonterminal reserve states.
+
+SQLite reconciliation found the correction changes rankings semantics, not the
+reviewed Phase 11B identity/status imports. Against both the promoted 436-player
+SQLite and superseded Stage B database, every existing path-normalized table
+and row is equal. The corrected disposable database adds only the empty Phase
+12 `ranking_source_observations` table created during app initialization. From
+the Phase 11A backup, the same reviewed changes remain: 20 retained/additional
+canonical identities, 29 external IDs, eight status events, three source runs,
+and one additional identity-source observation. Completed 2021–2025 Parquet
+artifacts remain byte-identical and 2026 weekly stats remain absent.
+
+Phase 11B remains open until the correction commits are reviewed and integrated
+into the authoritative branches. No provider request, deployment, tag, push,
+Phase 11C import, or authoritative SQLite promotion occurred during this
+correction.
+
 ## Authoritative promotion result and gate
 
 After explicit Stage B approval, the reviewed candidate rankings and SQLite
@@ -37,8 +79,9 @@ rollback backup remains at
 `phase-11b-2026-08-12/pre-promotion-backup-20260813T120914Z` with manifest
 SHA-256 `a744960257b8b8bbb8ec2f337800dd35d56f805c9c4246292b87380150dbad28`.
 No staging, commit, tag, push, deployment, provider request, installation, or
-2026 weekly-stat import occurred. Phase 11B's technical exit gate is satisfied;
-repository checkpointing and release/deployment remain separately gated.
+2026 weekly-stat import occurred in that historical continuation. Its technical
+gate passed for the superseded replacement policy; the stable-universe Phase
+11B gate remains open as described above.
 
 ## Stage B candidate result
 
@@ -139,7 +182,9 @@ provider file, and injected preflight evidence were identical.
 
 ## Rankings preview
 
-The rankings snapshot remains 436 players, with 19 additions and 19 removals.
+The superseded rankings snapshot remained 436 players, with 19 additions and 19
+removals. The correction above retains all 19 removals in a 455-player stable
+universe.
 The additions are Laquon Treadwell, Ko Kieft, Jack Stoll, Kene Nwangwu, DeeJay
 Dallas, Brycen Tremayne, Dylan Laube, Isaac Guerendo, Jacob Saylors, Sam Howell,
 Luke McCaffrey, Bam Knight, Josh Williams, Brashard Smith, CJ Daniels, Rasheen
@@ -239,9 +284,10 @@ touched; no browser-asset byte-preservation claim is made. Repeating the exact p
 the same logical fingerprints for rankings, identities, status events, source
 runs, and historical files; exact replay is logically idempotent.
 
-Focused preview smoke passed for `GET /v1/data-readiness`, the 436-player
-rankings endpoint, a changed-player transaction status, an unchanged-player
-empty status, and a five-source 2021–2025 historical comparison.
+The historical focused preview smoke passed for `GET /v1/data-readiness`, the
+then-436-player rankings endpoint, a changed-player transaction status, an
+unchanged-player empty status, and a five-source 2021–2025 historical
+comparison. The correction reruns these gates against 455 players.
 
 ## Historical replacement and integration boundary
 

@@ -288,11 +288,22 @@ gate passed 97/97, the dashboard gate passed 74 runnable suites and 452 runnable
 tests, API types and the optimized static export passed, and all required live
 HTTP smokes returned 200. Integration and promotion evidence is preserved under
 `phase-11b-2026-08-12/post-promotion-evidence-20260813T123143Z`. Phase 11B's
-technical exit gate is satisfied. The two local checkpoint commits now exist:
+historical technical gate passed for that candidate. The two local checkpoint commits exist:
 API `959bcc5295ddb5eb28df07ecceedf01255808792` and dashboard
 `d247a30bb59caf99283e346be091171c5424b5ce`; tag, push, deployment, and the
-separately scoped Phase 11C remain gated. This is documentation reconciliation,
-not a reopening of Phase 11B. See
+separately scoped Phase 11C remain gated.
+
+That 436-player promotion is superseded for player-universe semantics. The
+stable-universe correction was rebuilt from post-Phase-12 checkpoints using
+only frozen evidence and the pre-promotion Phase 11A backup. Its 455-player
+artifact retains all 19 ESPN-absent players, separates ESPN source presence from
+normalized availability, removes stale ESPN rank/ADP from active calculations,
+and preserves current ESPN lineage for catalog-suppressed players. Frozen RLS
+evidence for Brandon Aiyuk is a regression case: he remains present/ranked but
+is not automatically recommended. The correction changes no reviewed SQLite
+rows relative to the promoted database; its disposable database adds only the
+empty Phase 12 ranking-source observation table. Phase 11B remains open until
+these correction commits are integrated. Phase 11C has not begun. See
 `docs/phase11b-2026-preseason-refresh.md`.
 
 Exit gate: the reviewed refresh is reproducible, provenance is recorded, the

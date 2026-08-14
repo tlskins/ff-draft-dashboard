@@ -14,7 +14,7 @@ export const completedDataReadiness: DataReadinessResponse = {
     season: 2026,
     cached_at: "2026-07-30T14:18:40Z",
     source: "file",
-    player_count: 436,
+    player_count: 455,
     fingerprint: "rankings-fingerprint",
   },
   identity_catalog: {

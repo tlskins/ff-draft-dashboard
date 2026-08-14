@@ -209,6 +209,33 @@ export interface PlayerRanking {
     pprPositionTier?: Tier;
 }
 
+export type PlayerAvailabilityState =
+    | "ranked_current"
+    | "active_unranked"
+    | "reserve"
+    | "free_agent"
+    | "unknown"
+    | "inactive_confirmed"
+
+export interface EspnSourcePresence {
+    presentInCurrentResponse: boolean
+    lastSeenAt?: string | null
+    sourceUrl?: string | null
+    sourceFingerprint?: string | null
+    reason: "present_in_current_response" | "not_present_in_current_response"
+    lastKnownRank?: PlayerRanking | null
+}
+
+export interface PlayerAvailability {
+    state: PlayerAvailabilityState
+    automaticRecommendationEligible: boolean
+    source: string
+    sourceUrl?: string | null
+    observedAt?: string | null
+    reason: string
+    sourceStatus?: string | null
+}
+
 export interface RankingSummary {
     ranker: FantasyRanker;
     ppr: boolean;
@@ -233,6 +260,8 @@ export interface Player {
     pprRankTier?: number;
     pros?: string;
     cons?: string;
+    sourcePresence?: { espn: EspnSourcePresence }
+    availability?: PlayerAvailability
 
     // TODO - need to handle "target"
 }

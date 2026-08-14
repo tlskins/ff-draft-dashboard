@@ -43,7 +43,7 @@ export const getPlayerMetrics = (
 ): PlayerMetrics => {
     const ranks = player.ranks?.[boardSettings.ranker]
     const adpRanks = player.ranks?.[boardSettings.adpRanker]
-    if ( !ranks || !adpRanks ) {
+    if ( !ranks ) {
         return {
             overallRank: undefined,
             posRank: 9999,
@@ -54,13 +54,13 @@ export const getPlayerMetrics = (
     }
     const overallRank = settings.ppr ? ranks.pprOverallRank : ranks.standardOverallRank
     const posRank = settings.ppr ? ranks.pprPositionRank : ranks.standardPositionRank
-    const adp = adpRanks.adp || 999
+    const adp = adpRanks?.adp
 
     return {
         overallRank,
         posRank,
         tier: settings.ppr ? ranks.pprPositionTier : ranks.standardPositionTier,
-        adp: parseFloat(adp.toFixed(1)),
+        adp: adp == null ? undefined : parseFloat(adp.toFixed(1)),
         overallOrPosRank: overallRank == null ? posRank : overallRank,
     }
 }

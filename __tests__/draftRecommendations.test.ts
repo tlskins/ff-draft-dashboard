@@ -143,6 +143,93 @@ const ranksFor = (players: Player[]): PlayerRanks => ({
 })
 
 describe("deterministic draft recommendations", () => {
+  it("suppresses stale ESPN lineage from automatic recommendations", () => {
+    const stale = player("rb-stale", FantasyPosition.RUNNING_BACK, 1, 1)
+    stale.ranks = {}
+    stale.availability = {
+      state: "unknown",
+      automaticRecommendationEligible: false,
+      source: "stable_player_universe",
+      reason: "no_current_nflverse_catalog_match",
+    }
+    stale.sourcePresence = {
+      espn: {
+        presentInCurrentResponse: false,
+        lastSeenAt: "2026-07-01T00:00:00Z",
+        reason: "not_present_in_current_response",
+        lastKnownRank: {
+          playerId: stale.id,
+          ranker: ThirdPartyRanker.ESPN,
+          position: stale.position,
+          adp: 1,
+          standardPositionRank: 1,
+          pprPositionRank: 1,
+        },
+      },
+    }
+    const current = player("rb-current", FantasyPosition.RUNNING_BACK, 2, 20)
+    current.availability = {
+      state: "ranked_current",
+      automaticRecommendationEligible: true,
+      source: "nflverse_players",
+      reason: "nflverse_status_active",
+    }
+    const candidates = [stale, current]
+
+    const result = createDraftRecommendations({
+      settings,
+      boardSettings,
+      rankingSummaries: [rankingSummary()],
+      playerRanks: ranksFor(candidates),
+      playerLib: Object.fromEntries(
+        candidates.map(candidate => [candidate.id, candidate]),
+      ),
+      roster: createRosters(settings.numTeams)[0],
+      currentPick: 1,
+      myPickNum: 1,
+    })
+
+    expect(result.candidates.map(candidate => candidate.player.id))
+      .toContain("rb-current")
+    expect(result.candidates.map(candidate => candidate.player.id))
+      .not.toContain("rb-stale")
+  })
+
+  it("honors Custom positional authority for a nonterminal suppressed player", () => {
+    const custom = player("rb-custom", FantasyPosition.RUNNING_BACK, 1, 1)
+    delete custom.ranks[ThirdPartyRanker.ESPN]
+    custom.availability = {
+      state: "free_agent",
+      automaticRecommendationEligible: false,
+      source: "nflverse_players",
+      reason: "nflverse_status_cut",
+    }
+    const current = player("rb-current", FantasyPosition.RUNNING_BACK, 2, 20)
+    current.availability = {
+      state: "ranked_current",
+      automaticRecommendationEligible: true,
+      source: "nflverse_players",
+      reason: "nflverse_status_active",
+    }
+    const candidates = [current, custom]
+
+    const result = createDraftRecommendations({
+      settings,
+      boardSettings,
+      rankingSummaries: [rankingSummary()],
+      playerRanks: ranksFor(candidates),
+      playerLib: Object.fromEntries(
+        candidates.map(candidate => [candidate.id, candidate]),
+      ),
+      roster: createRosters(settings.numTeams)[0],
+      currentPick: 1,
+      myPickNum: 1,
+    })
+
+    expect(result.candidates.map(candidate => candidate.player.id))
+      .toContain("rb-custom")
+  })
+
   it("preserves positional rank order and returns three candidates", () => {
     const candidates = [
       player("qb-1", FantasyPosition.QUARTERBACK, 1, 8),
