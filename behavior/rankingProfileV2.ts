@@ -164,8 +164,11 @@ const exactKeys = (
 }
 
 const nonempty = (value: unknown, label: string, max = 80): string => {
-  if (typeof value !== "string" || !value || value.length > max) {
-    fail(`${label}: expected a non-empty string up to ${max} characters`)
+  if (typeof value !== "string") {
+    return fail(`${label}: expected a non-empty string up to ${max} characters`)
+  }
+  if (!value || value.length > max) {
+    return fail(`${label}: expected a non-empty string up to ${max} characters`)
   }
   return value
 }
@@ -178,7 +181,7 @@ const playerId = (value: unknown, label: string): string => {
 
 const integer = (value: unknown, label: string, min: number, max: number): number => {
   if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
-    fail(`${label}: expected an integer from ${min} to ${max}`)
+    return fail(`${label}: expected an integer from ${min} to ${max}`)
   }
   return value
 }
@@ -189,12 +192,12 @@ const position = (value: unknown, label: string): ProfilePosition => {
 }
 
 const scoring = (value: unknown, label: string): ProfileScoringType => {
-  if (value !== "ppr" && value !== "standard") fail(`${label}: unsupported scoring type`)
+  if (value !== "ppr" && value !== "standard") return fail(`${label}: unsupported scoring type`)
   return value
 }
 
 const hash = (value: unknown, label: string): string => {
-  if (typeof value !== "string" || !HASH_PATTERN.test(value)) fail(`${label}: invalid SHA-256`)
+  if (typeof value !== "string" || !HASH_PATTERN.test(value)) return fail(`${label}: invalid SHA-256`)
   return value
 }
 
@@ -204,7 +207,7 @@ const nullableString = (value: unknown, label: string): string | null => (
 
 const unresolvedReason = (value: unknown, label: string): UnresolvedReason => {
   if (value !== "missing_from_target" && value !== "position_changed" && value !== "legacy_unknown") {
-    fail(`${label}: unsupported reason`)
+    return fail(`${label}: unsupported reason`)
   }
   return value
 }
@@ -220,7 +223,7 @@ const canonicalJson = (value: unknown): string => {
       `${JSON.stringify(key)}:${canonicalJson(value[key])}`
     )).join(",")}}`
   }
-  fail("fingerprint input: unsupported JSON value")
+  return fail("fingerprint input: unsupported JSON value")
 }
 
 const utf8 = (value: string): Uint8Array => {
@@ -582,7 +585,12 @@ export const adaptLegacyRankingsToProfileV2 = (input: unknown, trustedUniverse: 
   const allowedRoot = ["players", "rankingsSummaries", "cachedAt", "season", "editedAt", "copiedRanker", "settings"]
   if (Object.keys(root).some(key => !allowedRoot.includes(key))) fail("rankings: unsupported field")
   const legacyPlayers = safeArray(root.players, "rankings.players")
-  const byPosition = Object.fromEntries(POSITIONS.map(pos => [pos, []])) as Record<ProfilePosition, Array<{player_id: string; rank: number; user_tier: number}>>
+  const byPosition: Record<ProfilePosition, Array<{player_id: string; rank: number; user_tier: number}>> = {
+    QB: [],
+    RB: [],
+    WR: [],
+    TE: [],
+  }
   const seen = new Set<string>()
   legacyPlayers.forEach((value, index) => {
     const item = record(value, `rankings.players[${index}]`)
