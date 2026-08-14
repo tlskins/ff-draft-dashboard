@@ -72,9 +72,11 @@ and must never retry malformed v2 input as a legacy format.
 ## Verification and rollback
 
 The API and dashboard consume byte-identical synthetic fixtures. Phase 12B1 is
-technically complete and checkpoint-ready, but is not staged, committed, or
-checkpointed. The preserved working boundary is exactly these 20 paths (10 API
-and 10 dashboard):
+technically complete and locally checkpointed at API
+`40da04065b896fbce4d2e6968704ae8963c4156e` and dashboard
+`971ac7a54e36df7a1a2fd6b61bb6120a71f0c5b6`, followed by dashboard build
+hardening `fe020286a8a89186c37af5adb1e058862163555a`. The implementation boundary
+is exactly these 20 paths (10 API and 10 dashboard):
 
 - API: `openapi/v1.json`; `app/api/ranking_profiles.py`;
   `app/repositories/ranking_sources.py`; `app/services/ranking_profile_rebase.py`;
@@ -99,7 +101,7 @@ The 17 non-document final hashes are frozen as follows:
   `tests/test_ranking_profiles.py` `c06085a6fc16bec32f09b49b5d6d48cdba4457571ba724068d54fd579b79c7db`;
   `tests/test_ranking_sources.py` `416569aff9a681ef7d104a1556a17a1c1f0fc6722d2223cdee93e8270823e648`;
   `tests/test_openapi_contract.py` `dd24fa5ba9a2de408e7c9c775d2689f34a4e997d4278d162af2d13f432d7ca63`.
-- Dashboard: `behavior/rankingProfileV2.ts` `652f815aa60c9183ff00bd7a3c22b1454a75e9f3538a684136841c33c1ffecfa`;
+- Dashboard: `behavior/rankingProfileV2.ts` `fccf094b5ed8a0ede018f05ab94ec30d87c8f20b6340b42b841894c0c164128f`;
   `behavior/api/rankingProfiles.ts` `43935239eb6721af800b3ca59acc23b99cd17856307f5e95d2869cdb91903f6e`;
   `behavior/api/schema.d.ts` `fbb4f308bb6ed85c664fb10fedc77ff6065ac74a9540bc03157bb9cbd4241b43`;
   `__tests__/fixtures/rankingProfileRebaseV1.json` `f69c4c0b4697a1719b8d5bdcc4c6d6beb0fce273dde42a042711858a4df0ae12`;
@@ -107,8 +109,8 @@ The 17 non-document final hashes are frozen as follows:
   `__tests__/rankingProfiles.test.ts` `a6d65f51ff838b63689ebebee20dcd5c2480448132473fab51fa645a04d386d6`;
   `__tests__/rankingSources.test.ts` `2ee3b9c3c9d8ddbbdadbef9ca1517a2dd8a11ab0eabab3053417d23fbf4d0423`.
 
-The three closure-document hashes are intentionally frozen only after this
-amendment and are reported separately, avoiding self-referential stale values.
+Closure-document hashes are intentionally not embedded here, avoiding
+self-referential stale values.
 
 Two corrected frozen gates passed with Node `v22.22.0`: API 34/34 and dashboard
 three suites 21/21 on each pass, generated API types current on each pass, and
@@ -119,16 +121,25 @@ compatibility seam and fail-closed rebase, matched the static boundary, and did
 not rerun gates. The retained nonblocking P3 is that bounded timezone-aware
 `datetime.fromisoformat` accepts ISO-8601 forms rather than strictly RFC 3339.
 
+The independent checkpoint audit additionally passed the API full suite
+(115/115), dashboard full suite (76 suites and 470 tests, with two existing
+skips), dashboard lint, Python compilation, and generated-type freshness. The
+production build then exposed compile-only TypeScript narrowing and typed-map
+construction defects in `behavior/rankingProfileV2.ts`; the hardening commit
+above corrected them without changing the contract. The final hardening state
+passed the three focused dashboard suites (21/21), generated-type freshness,
+and a complete optimized production build.
+
 The exceptional, exhausted correction history is: initial provider/key/cap
 fixes; durable nullable `last_success_provider_id` additive serialized migration
 with conservative backfill and timestamp validation; the mechanical Node gate
 continuation; and the injected legacy repository compatibility correction.
 
-Before checkpoint, revert or remove exactly these 20 working paths to API
-`70f093a4daa599104310b407f16d41ac730c2036` and dashboard
+Rollback uses normal Git reverts of the local Phase 12B checkpoint sequence,
+including dashboard hardening and closeout documentation. Its pre-Phase-12B
+bases are API `70f093a4daa599104310b407f16d41ac730c2036` and dashboard
 `7ccb0fa71d34bad031fd2bf337a0a2008fef1b1d`. No active DB/data rollback is
-needed because only disposable test databases were used. After checkpoint, use
-a normal Git revert of the two intended local commits; no active schema
+needed because only disposable test databases were used, and no active schema
 migration has run.
 
 Phase 12B2 remains separate. This work does not authorize durable profile-v2

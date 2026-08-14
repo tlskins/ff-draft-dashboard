@@ -367,23 +367,27 @@ server-held Phase 12A rank evidence and player-position membership, as described
 `docs/phase12b-profile-v2-rebase.md`. Its authority correction adds separately
 retained last-success provider attribution, conservative legacy backfill, and
 bounded timezone-aware validation of retained success/retrieval timestamps.
-The technical implementation is complete and checkpoint-ready, but not staged,
-committed, or checkpointed. Its final preserved boundary is exactly 20 paths
-(10 API and 10 dashboard); two Node `v22.22.0` frozen passes recorded API 34/34,
-dashboard three suites 21/21, current generated types, byte-identical fixtures,
-and clean path/status/hash/index audits. A fresh independent Sol review is GO
-with no P1/P2. The exceptional correction budgets are exhausted, not ongoing;
-the only retained P3 is bounded timezone-aware `datetime.fromisoformat`
-ISO-8601 acceptance rather than strict RFC 3339. The exact boundary, 17
-non-document hashes, post-amendment document hashes, correction history, and
-rollback procedure are recorded in `docs/phase12b-profile-v2-rebase.md`.
+The technical implementation is complete and locally checkpointed at API
+`40da04065b896fbce4d2e6968704ae8963c4156e` and dashboard
+`971ac7a54e36df7a1a2fd6b61bb6120a71f0c5b6`, followed by dashboard build
+hardening `fe020286a8a89186c37af5adb1e058862163555a`. Its implementation boundary
+is exactly 20 paths (10 API and 10 dashboard); the original frozen gates
+recorded API 34/34, dashboard three suites 21/21, current generated types,
+byte-identical fixtures, and clean path/status/hash/index audits. The
+independent checkpoint audit also passed API 115/115, dashboard 76 suites and
+470 tests (two existing skips), lint, Python compilation, generated-type
+freshness, and—after the compile-only hardening correction—the focused 21/21
+and optimized production build. The retained nonblocking P3 is bounded
+timezone-aware `datetime.fromisoformat` ISO-8601 acceptance rather than strict
+RFC 3339. The exact boundary, hashes, correction history, and rollback
+procedure are recorded in `docs/phase12b-profile-v2-rebase.md`.
 
 Phase 12A remains checkpointed at API `70f093a4daa599104310b407f16d41ac730c2036`
-and dashboard `7ccb0fa71d34bad031fd2bf337a0a2008fef1b1d`; only Phase 12B1 is
-checkpoint-ready and uncheckpointed. Durable SQLite/browser profile-v2
-persistence, browser-restart migration, portable-v2 production wiring, and
-rebase apply remain Phase 12B2 work. Phase 12A and 12B1 grant no refresh,
-profile apply, or promotion authority.
+and dashboard `7ccb0fa71d34bad031fd2bf337a0a2008fef1b1d`; Phase 12B1 is now independently
+reviewed and checkpointed. Durable SQLite/browser profile-v2 persistence,
+browser-restart migration, portable-v2 production wiring, and rebase apply
+remain Phase 12B2 work. Phase 12A and 12B1 grant no refresh, profile apply, or
+promotion authority.
 
 ### Phase 13: draft-season release readiness
 
