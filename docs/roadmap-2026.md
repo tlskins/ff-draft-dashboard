@@ -397,11 +397,23 @@ RFC 3339. The exact boundary, hashes, correction history, and rollback
 procedure are recorded in `docs/phase12b-profile-v2-rebase.md`.
 
 Phase 12A remains checkpointed at API `70f093a4daa599104310b407f16d41ac730c2036`
-and dashboard `7ccb0fa71d34bad031fd2bf337a0a2008fef1b1d`; Phase 12B1 is now independently
-reviewed and checkpointed. Durable SQLite/browser profile-v2 persistence,
-browser-restart migration, portable-v2 production wiring, and rebase apply
-remain Phase 12B2 work. Phase 12A and 12B1 grant no refresh, profile apply, or
-promotion authority.
+and dashboard `7ccb0fa71d34bad031fd2bf337a0a2008fef1b1d`; Phase 12B1 is independently
+reviewed and checkpointed. Phase 12B2a now adds the first bounded persistence
+slice at API `ce211c60b0f4b27bfa18e0937c8657f156d4bcb0`: serialized, additive,
+idempotent SQLite storage for canonical v2 revision history and restart-safe
+metadata/undo/redo pointers, with legacy rows retained unchanged and the v1
+repository/HTTP contract preserved. The dashboard adds unwired pure migration
+and storage helpers that fail closed for corrupt, unsupported, or malformed
+claimed-v2 input; retain the legacy source and a rollback record; read-verify
+the destination; and reload identically after simulated restart. Its exact
+boundary, validation evidence, and rollback procedure are recorded in
+`docs/phase12b-profile-v2-rebase.md`.
+
+Phase 12B2b should next wire canonical v2 through an explicit API/dashboard
+consumer and portable-v2 startup/import/export contract. Rebase apply remains a
+later independent Phase 12B2 slice. Phase 12A, 12B1, and 12B2a grant no ranking
+source refresh/apply/promotion, profile rebase apply, overlay, recommendation,
+provider, deployment, or Phase 11C authority.
 
 ### Phase 13: draft-season release readiness
 

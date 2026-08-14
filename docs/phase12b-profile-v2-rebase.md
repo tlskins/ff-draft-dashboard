@@ -1,4 +1,4 @@
-# Phase 12B1: profile v2 and rebase preview
+# Phase 12B: profile v2 persistence and rebase
 
 Phase 12B1 defines a provider-free, additive, read-only contract. It validates
 canonical profile-v2 snapshots, converts legacy values in memory, and previews
@@ -142,7 +142,84 @@ bases are API `70f093a4daa599104310b407f16d41ac730c2036` and dashboard
 needed because only disposable test databases were used, and no active schema
 migration has run.
 
-Phase 12B2 remains separate. This work does not authorize durable profile-v2
-persistence, localStorage migration, portable-v2 production wiring, revision
-or rebase apply, source refresh/apply/promotion, ranking overlay changes, or any
-consumer/page/component integration.
+## Phase 12B2a: durable persistence and restart-safe migration seams
+
+Phase 12B2a is complete as the first bounded Phase 12B2 slice. The API now
+stores every canonical profile-v2 revision in the additive
+`ranking_profile_v2_revisions` SQLite table while retaining the existing
+profile metadata, immutable revision history, current-revision pointer, and
+legacy schema-v1 snapshots. Initialization creates or backfills the v2 table in
+one serialized `BEGIN IMMEDIATE` transaction. Backfill validates every legacy
+revision and inserts only missing canonical copies; it does not rewrite the
+legacy row. Repeated and concurrent initialization is idempotent. A malformed
+legacy row aborts and rolls back the migration rather than partially promoting
+history.
+
+The repository exposes explicit v2 create, list/read, revision, undo, and redo
+methods. Native v2 writes are validated at the Phase 12B1 boundary, including
+scoring/provenance binding and the shared 500-player active-plus-unresolved
+ceiling. Metadata and the undo/redo pointer remain outside canonical snapshots
+and are committed atomically with both the authoritative v2 revision and a
+non-authoritative active-player v1 compatibility projection. Existing v1 HTTP
+and injected-repository behavior is unchanged; legacy writes also acquire the
+same immediate transaction and receive a canonical v2 mirror. Therefore this
+slice changes neither OpenAPI nor generated dashboard API types and does not
+wire a production v2 consumer.
+
+The dashboard adds a pure deterministic migration planner plus an injected
+storage-adapter commit protocol. It explicitly dispatches valid claimed v2 to
+the v2 validator and never retries malformed claimed v2 as legacy. Portable-v1
+and full legacy Rankings values use the Phase 12B1 adapters, preserving
+positional order, user-tier groups, unresolved tombstones, and
+`legacy_unbound` provenance. Corrupt JSON, unsupported versions, malformed
+claimed v2, invalid legacy values, corrupt destinations, and divergent valid
+destinations return structured evidence without a write.
+
+Browser migration uses three distinct keys: the untouched legacy source, the
+canonical v2 destination, and a migration-backup record. The destination is
+written only after source validation and durable backup readback, then parsed
+and revalidated from storage byte-for-byte before success. A failed or
+interrupted destination write restores its prior value; the legacy source and
+backup remain recovery boundaries. Repeated migration returns the identical
+stored v2 value without rewriting it, and the loader returns an equal canonical
+profile from a new storage adapter over the same durable values, simulating a
+browser restart. No page, hook, component, import/export consumer, or automatic
+startup migration calls these helpers yet.
+
+### Phase 12B2a evidence and boundary
+
+The isolated API checkpoint is
+`ce211c60b0f4b27bfa18e0937c8657f156d4bcb0`. Its boundary is exactly
+`app/repositories/ranking_profiles.py` and
+`tests/test_ranking_profile_persistence_v2.py`. The dashboard boundary is
+exactly `behavior/rankingProfileStorage.ts`,
+`__tests__/rankingProfileStorage.test.ts`, this document, and
+`docs/roadmap-2026.md`; its checkpoint hash is reported in the handoff because
+embedding a commit's own hash in that commit is self-referential.
+
+Validation used disposable SQLite databases and injected in-memory storage
+adapters. The focused API Phase 12/OpenAPI gate passed 41/41; the full API suite
+passed 129/129; and Python compilation passed. The focused dashboard
+profile-v2/storage gate passed 22/22; the full Jest suite passed 78 suites and
+491 tests with one suite and two tests skipped; TypeScript checking, generated
+API-type freshness, lint, and the optimized production build passed. Both
+repositories passed `git diff --check`. The Phase 11B API
+`latest_player_rankings.json` and dashboard `behavior/playerData.json` remained
+byte-identical at
+`82d3f8025f8dc67355f9eef6f6111843ac29b315ceb81d0a1a84e69810f41b81`.
+
+Rollback is a normal Git revert of the isolated API and dashboard Phase 12B2a
+commits. The additive SQLite table may safely remain unused after a code revert:
+legacy tables and rows were not rewritten, and older code ignores the new
+table. If removal is later desired, it must be a separately reviewed migration,
+not part of rollback. Browser rollback calls
+`restoreRankingProfileStorageBackup`; it restores the prior destination and the
+retained legacy source. Because this slice performs no production wiring, no
+active browser or authoritative database migration ran during implementation.
+
+Phase 12B2b should wire canonical v2 through an explicit public API/dashboard
+consumer contract, including portable-v2 production import/export and startup
+migration orchestration, while retaining this fail-closed boundary. Rebase
+apply should remain a later separately authorized slice. Ranking-source
+refresh/apply/promotion, providers, overlays, recommendations, Phase 11C,
+Realtime GPT, deployment, tag, and push remain out of scope.
