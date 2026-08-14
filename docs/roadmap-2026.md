@@ -302,9 +302,12 @@ and preserves current ESPN lineage for catalog-suppressed players. Frozen RLS
 evidence for Brandon Aiyuk is a regression case: he remains present/ranked but
 is not automatically recommended. The correction changes no reviewed SQLite
 rows relative to the promoted database; its disposable database adds only the
-empty Phase 12 ranking-source observation table. Phase 11B remains open until
-these correction commits are integrated. Phase 11C has not begun. See
-`docs/phase11b-2026-preseason-refresh.md`.
+empty Phase 12 ranking-source observation table. The correction is integrated
+on the authoritative branches at API `1a30e29` and dashboard `d4837de`. Its
+post-integration gate passed 124 API tests, 20 focused dashboard regressions,
+generated API-type freshness, lint, the optimized production build, and a
+scripted local HTTP smoke of the 455-player store. Phase 11B is complete; Phase
+11C has not begun. See `docs/phase11b-2026-preseason-refresh.md`.
 
 Exit gate: the reviewed refresh is reproducible, provenance is recorded, the
 API and dashboard smoke against the refreshed local store, unresolved mappings

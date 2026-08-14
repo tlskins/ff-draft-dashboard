@@ -1,20 +1,21 @@
 # Phase 11B reviewed 2026 preseason refresh
 
-## Stable-universe correction candidate
+## Stable-universe correction closeout
 
 The original, technically validated 436-player candidate below was promoted by
 an older parallel continuation and checkpointed at API `959bcc5`. That result is
 historically valid evidence, but its replacement semantics are superseded: one
 ESPN response is source-presence evidence, not authority to delete a previously
-known player. The authoritative `refactor/realtime-foundation` checkout remains
-on that 436-player artifact while this correction is reviewed and integrated.
+known player. The stable-universe correction supersedes that artifact and is
+integrated on the authoritative `refactor/realtime-foundation` branches at API
+`1a30e29` and dashboard `d4837de`.
 
 The correction was rebuilt from post-Phase-12 baselines API `40da040` and
 dashboard `53697b5`. A provider-free replay used only the frozen August 13
 source bytes and the verified pre-promotion Phase 11A backup. Its fresh evidence
 is under `stable-player-universe-stage-b-v3`; the generated rankings SHA-256 is
 `82d3f8025f8dc67355f9eef6f6111843ac29b315ceb81d0a1a84e69810f41b81`.
-The correction worktrees and embedded dashboard snapshot contain that exact
+The authoritative API and embedded dashboard snapshot contain that exact
 455-player artifact.
 
 The corrected result has 19 newly ranked players, 417 still present in ESPN,
@@ -37,10 +38,14 @@ canonical identities, 29 external IDs, eight status events, three source runs,
 and one additional identity-source observation. Completed 2021–2025 Parquet
 artifacts remain byte-identical and 2026 weekly stats remain absent.
 
-Phase 11B remains open until the correction commits are reviewed and integrated
-into the authoritative branches. No provider request, deployment, tag, push,
-Phase 11C import, or authoritative SQLite promotion occurred during this
-correction.
+The post-integration gate passed 124 API tests, the 20 focused dashboard
+availability/data/recommendation regressions, generated API-type freshness,
+lint, the optimized production build, and a scripted local HTTP smoke. The
+smoke returned 200 for the exported dashboard, `/v1/data-readiness`, and
+`/players/latest`; both API views reported 455 players and the 19 ESPN-absent
+players retained no active ESPN ranks. Phase 11B is complete. No provider
+request, deployment, tag, push, Phase 11C import, or new authoritative SQLite
+promotion occurred during the correction.
 
 ## Authoritative promotion result and gate
 
