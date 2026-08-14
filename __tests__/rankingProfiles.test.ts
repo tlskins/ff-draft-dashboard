@@ -1,9 +1,13 @@
 import {
   createRankingProfile,
   createRankingProfileRevision,
+  previewRankingProfileRebase,
+  RankingProfileApiError,
   redoRankingProfile,
   undoRankingProfile,
 } from "../behavior/api/rankingProfiles"
+import type {RankingProfileRebasePreviewRequest} from "../behavior/api/rankingProfiles"
+import rebaseFixture from "./fixtures/rankingProfileRebaseV1.json"
 import {
   applyRankingProfileSnapshot,
   createRankingProfileSnapshot,
@@ -89,15 +93,42 @@ describe("ranking profile contract adapter", () => {
       expected_revision: 1,
       snapshot,
     }, options)
+    await previewRankingProfileRebase("home/id", {
+      expected_revision: 1,
+      target: rebaseFixture.rebase.target,
+    } as unknown as RankingProfileRebasePreviewRequest, options)
     await undoRankingProfile("home", 2, options)
     await redoRankingProfile("home", 1, options)
 
     expect(fetcher.mock.calls.map(call => call[0])).toEqual([
       "http://127.0.0.1:5000/v1/ranking-profiles",
       "http://127.0.0.1:5000/v1/ranking-profiles/home/revisions",
+      "http://127.0.0.1:5000/v1/ranking-profiles/home%2Fid/rebase-preview",
       "http://127.0.0.1:5000/v1/ranking-profiles/home/undo",
       "http://127.0.0.1:5000/v1/ranking-profiles/home/redo",
     ])
+  })
+
+  it("preserves machine-readable preview error codes", async () => {
+    const fetcher = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: "Target does not match server evidence",
+        code: "source_records_mismatch",
+      }),
+    })
+    await expect(previewRankingProfileRebase("home", {
+      expected_revision: 1,
+      target: rebaseFixture.rebase.target,
+    } as unknown as RankingProfileRebasePreviewRequest, {
+      apiHost: "http://127.0.0.1:5000",
+      fetcher: fetcher as unknown as typeof fetch,
+    })).rejects.toMatchObject({
+      name: "RankingProfileApiError",
+      status: 400,
+      code: "source_records_mismatch",
+    } satisfies Partial<RankingProfileApiError>)
   })
 })
 

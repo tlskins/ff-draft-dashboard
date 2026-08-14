@@ -191,6 +191,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ranking-profiles/{profile_id}/rebase-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview a server-verified, deterministic, non-mutating profile rebase.
+         * @description The server verifies the configured source/provider, last-good Phase 12A season/scoring/fingerprint and exact player ranks, plus player positions from its current player universe. Caller expected fingerprints are stale-request assertions only.
+         */
+        post: operations["previewRankingProfileRebase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ranking-profiles/{profile_id}/revisions": {
         parameters: {
             query?: never;
@@ -405,6 +427,7 @@ export interface components {
     schemas: {
         ErrorResponse: {
             error: string;
+            code?: string;
         };
         HealthResponse: {
             /** @constant */
@@ -706,6 +729,99 @@ export interface components {
             count: number;
             misses: components["schemas"]["IdentityMiss"][];
         };
+        /** @enum {string} */
+        RankingProfileV2ScoringType: "ppr" | "standard";
+        RankingProfileV2Player: {
+            player_id: string;
+            user_tier: number;
+        };
+        RankingProfileV2Positions: {
+            QB: components["schemas"]["RankingProfileV2Player"][];
+            RB: components["schemas"]["RankingProfileV2Player"][];
+            WR: components["schemas"]["RankingProfileV2Player"][];
+            TE: components["schemas"]["RankingProfileV2Player"][];
+        };
+        RankingProfileUnresolvedPlayer: {
+            player_id: string;
+            /** @enum {string} */
+            last_position: "QB" | "RB" | "WR" | "TE";
+            last_user_rank: number;
+            last_user_tier: number;
+            /** @enum {string} */
+            reason: "legacy_unknown" | "missing_from_target" | "position_changed";
+        };
+        RankingProfileProvenance: {
+            /** @enum {string} */
+            binding_state: "bound" | "legacy_unbound";
+            base_source_id: string | null;
+            base_provider_id: string | null;
+            source_observation_fingerprint: string | null;
+            source_season: number | null;
+            source_scoring_type: components["schemas"]["RankingProfileV2ScoringType"] | null;
+            player_universe_fingerprint: string | null;
+        };
+        /** @description Canonical profile v2. At most 500 unique player IDs may appear in total across all four active position arrays plus unresolved_players. */
+        RankingProfileV2: {
+            /** @constant */
+            schema_version: 2;
+            /** @constant */
+            rebase_version: "profile_rebase_v1";
+            scoring_type: components["schemas"]["RankingProfileV2ScoringType"];
+            positions: components["schemas"]["RankingProfileV2Positions"];
+            unresolved_players: components["schemas"]["RankingProfileUnresolvedPlayer"][];
+            provenance: components["schemas"]["RankingProfileProvenance"];
+        };
+        RankingProfileRebaseTargetPlayer: {
+            player_id: string;
+            /** @enum {string} */
+            position: "QB" | "RB" | "WR" | "TE";
+            overall_rank: number;
+        };
+        /** @description Caller-supplied target assertions. The API independently binds these values to its configured source, Phase 12A last-good observation records, and server-held player-position universe before previewing. */
+        RankingProfileRebaseTarget: {
+            source_id: string;
+            provider_id: string;
+            season: number;
+            scoring_type: components["schemas"]["RankingProfileV2ScoringType"];
+            source_observation_fingerprint: string;
+            expected_source_observation_fingerprint: string;
+            player_universe_fingerprint: string;
+            expected_player_universe_fingerprint: string;
+            players: components["schemas"]["RankingProfileRebaseTargetPlayer"][];
+        };
+        RankingProfileRebasePreviewRequest: {
+            expected_revision: number;
+            target: components["schemas"]["RankingProfileRebaseTarget"];
+        };
+        RankingProfileRebaseCounts: {
+            added: number;
+            removed: number;
+            position_conflicts: number;
+            unresolved: number;
+        };
+        RankingProfileRebasePlayerIds: {
+            added: string[];
+            removed: string[];
+            position_conflicts: string[];
+            unresolved: string[];
+        };
+        RankingProfileRebasePreviewResponse: {
+            /** @constant */
+            schema_version: 1;
+            /** @constant */
+            rebase_version: "profile_rebase_v1";
+            input_profile_fingerprint: string;
+            output_profile_fingerprint: string;
+            target_source_observation_fingerprint: string;
+            target_player_universe_fingerprint: string;
+            preview_key: string;
+            /** @constant */
+            logically_idempotent: true;
+            would_change: boolean;
+            counts: components["schemas"]["RankingProfileRebaseCounts"];
+            player_ids: components["schemas"]["RankingProfileRebasePlayerIds"];
+            profile: components["schemas"]["RankingProfileV2"];
+        };
         RankingProfilePlayer: {
             player_id: string;
             rank: number;
@@ -781,6 +897,7 @@ export interface components {
             last_attempt_at: string | null;
             /** Format: date-time */
             last_success_at: string | null;
+            last_success_provider_id: string | null;
             failure_reason: string | null;
             /** Format: date-time */
             retrieved_at: string | null;
@@ -1639,6 +1756,59 @@ export interface operations {
             };
             /** @description The profile does not exist. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewRankingProfileRebase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RankingProfileRebasePreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description The deterministic rebase preview; no profile revision was written. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileRebasePreviewResponse"];
+                };
+            };
+            /** @description The request, profile conversion, or target metadata is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The profile does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The expected profile revision is stale. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

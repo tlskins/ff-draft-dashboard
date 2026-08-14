@@ -12,14 +12,20 @@ neither may be inferred from the other.
 The source status keeps these facts independent:
 
 - last attempted refresh time;
-- last successful refresh time and retrieval time;
+- last successful provider identity, refresh time, and retrieval time;
 - the latest failure reason;
 - season and scoring type;
 - canonical fingerprint and record count;
 - availability and staleness.
 
 A failed attempt updates attempt/failure evidence only. It never clears or
-rewrites the last successful observation. An unavailable or stale source
+rewrites the last successful observation, including its provider attribution.
+The public `provider_id`, provider name, and storage transport continue to
+describe the currently configured source; nullable `last_success_provider_id`
+identifies the provider that produced retained last-good ranks. Legacy rows are
+backfilled only when their latest attempt was an unambiguous success. A legacy
+failed-last-attempt row remains unattributed until a fresh success rather than
+guessing from its latest-attempt provider. An unavailable or stale source
 remains in the source collection and does not gate `/players/latest`.
 
 ## HTTP surface
@@ -53,45 +59,42 @@ only through the configured repository database. Tests create disposable
 temporary databases and frozen fixtures. Phase 12A development does not inspect
 or initialize an active database, contact a provider, or use the network.
 
+The additive `last_success_provider_id` migration is serialized in one
+`BEGIN IMMEDIATE` transaction, is safe to repeat, and conservatively backfills
+only unambiguous legacy successes. Phase 12B1 accepts retained
+`last_success_at` and `retrieved_at` evidence only when each is a bounded string
+of at most 64 characters parsed by `datetime.fromisoformat` as a timezone-aware
+ISO-8601 value. Strict RFC 3339 normalization remains out of scope.
+
 Future provider ingestion, application/promotion, profile rebasing, derived
 overlay recalculation, and production migration require separate phases and
 authorization.
 
 ## Closure evidence and next boundary
 
-The additive provider-free implementation is complete and checkpoint-ready, not
-yet checkpointed. Its executable boundary is exactly eleven paths:
+Phase 12A is already checkpointed at API
+`70f093a4daa599104310b407f16d41ac730c2036` and dashboard
+`7ccb0fa71d34bad031fd2bf337a0a2008fef1b1d`; its historical closure evidence
+above is retained. Only the Phase 12B1 authority correction is complete and
+checkpoint-ready but not staged, committed, or checkpointed.
 
-- API: `openapi/v1.json`, `app/__init__.py`, `app/api/ranking_sources.py`,
-  `app/repositories/ranking_sources.py`, `app/services/ranking_sources.py`,
-  `tests/test_ranking_sources.py`, and `tests/test_openapi_contract.py`.
-- Dashboard: `behavior/api/rankingSources.ts`, `behavior/api/schema.d.ts`,
-  and `__tests__/rankingSources.test.ts`.
-- This contract document is the eleventh path; the roadmap reconciliation is a
-  twelfth working-closure path, not executable implementation.
+That correction preserves the Phase 12A non-authorities and adds durable,
+nullable last-success provider attribution through an additive serialized
+migration, conservative backfill, bounded timestamp validation, and an
+injected-legacy-repository compatibility seam. Its closure evidence, exact
+20-path boundary, hashes, frozen-gate results, review, and rollback procedure
+are recorded in `phase12b-profile-v2-rebase.md`.
 
-Starting HEADs remain API `959bcc5295ddb5eb28df07ecceedf01255808792` and
-dashboard `d247a30bb59caf99283e346be091171c5424b5ce`, both on
-`refactor/realtime-foundation`, with empty indexes. On unchanged frozen hashes,
-two consecutive focused runs passed: API 35/35 and dashboard 4 suites, 11/11
-per run; `api:types:check` is current, and `git diff --check` plus static
-syntax/OpenAPI audit passed. A fresh independent Sol integrated review returned
-GO with no P1/P2 and relied on those reported gates rather than rerunning them.
-The correction budget is consumed: two semantic rounds (timezone-aware
-timestamp validation; metadata-only diff/`would_change` semantics) and one
-generated-types continuation.
+The exceptional correction budgets (initial provider/key/cap fixes; durable
+attribution/backfill/timestamp work; mechanical Node gate continuation; and
+legacy repository compatibility) are exhausted, not an ongoing allowance. The
+retained non-blocking P3 is deliberately limited to accepting bounded
+timezone-aware `datetime.fromisoformat` ISO-8601 values rather than strict
+RFC 3339.
 
-Retained non-blocking P3 follow-ups are strict-RFC3339 normalization beyond the
-timezone-aware ISO forms accepted by `datetime.fromisoformat`, and a direct
-focused stale stored-observation test. They do not reopen Phase 12A.
-
-Before checkpoint, rollback is limited to reverting or removing the twelve
-Phase 12A working-tree paths. No data rollback is needed: no provider/source
-apply, active database, release artifact, user profile, embedded fallback,
-overlay, or recommendation state was mutated.
-
-Phase 12B must define the canonical profile-v2/rebase and portability contract,
-including source fingerprint/season/scoring binding, added/removed-player
-policy, unknown/missing IDs, and consistent survival across SQLite profile
-revisions, browser-restart storage, and portable export/import. It alone may
-consider later authority; Phase 12A grants no refresh apply/promotion authority.
+Before the Phase 12B1 checkpoint, rollback means reverting or removing exactly
+its 20 working paths to the two checkpoints above. No active database or data
+rollback exists because only disposable test databases were used. After a
+checkpoint, rollback is a normal Git revert of the two intended local commits;
+no active schema migration has been run. Phase 12B2 remains separately
+authorized work and Phase 12A grants no refresh apply or promotion authority.

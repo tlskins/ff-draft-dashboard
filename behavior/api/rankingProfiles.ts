@@ -9,6 +9,10 @@ export type RankingProfileCreateRequest =
   ApiComponents["schemas"]["RankingProfileCreateRequest"]
 export type RankingProfileRevisionRequest =
   ApiComponents["schemas"]["RankingProfileRevisionRequest"]
+export type RankingProfileRebasePreviewRequest =
+  ApiComponents["schemas"]["RankingProfileRebasePreviewRequest"]
+export type RankingProfileRebasePreviewResponse =
+  ApiComponents["schemas"]["RankingProfileRebasePreviewResponse"]
 
 interface RankingProfileApiOptions {
   apiHost?: string
@@ -19,6 +23,7 @@ export class RankingProfileApiError extends Error {
   constructor(
     message: string,
     public readonly status?: number,
+    public readonly code?: string,
   ) {
     super(message)
     this.name = "RankingProfileApiError"
@@ -45,10 +50,12 @@ const request = async <ResponseBody>(
   if (!response.ok) {
     const error = await response.json().catch(() => null) as {
       error?: string
+      code?: string
     } | null
     throw new RankingProfileApiError(
       error?.error || `Ranking profile API returned ${response.status}`,
       response.status,
+      error?.code,
     )
   }
   return response.json() as Promise<ResponseBody>
@@ -86,6 +93,16 @@ export const createRankingProfileRevision = (
   options: RankingProfileApiOptions = {},
 ) => post<RankingProfile>(
   `/v1/ranking-profiles/${encodeURIComponent(profileId)}/revisions`,
+  body,
+  options,
+)
+
+export const previewRankingProfileRebase = (
+  profileId: string,
+  body: RankingProfileRebasePreviewRequest,
+  options: RankingProfileApiOptions = {},
+) => post<RankingProfileRebasePreviewResponse>(
+  `/v1/ranking-profiles/${encodeURIComponent(profileId)}/rebase-preview`,
   body,
   options,
 )

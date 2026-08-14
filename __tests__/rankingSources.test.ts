@@ -16,6 +16,7 @@ const unavailableSource = {
   is_stale: false,
   last_attempt_at: null,
   last_success_at: null,
+  last_success_provider_id: null,
   failure_reason: null,
   retrieved_at: null,
   season: null,

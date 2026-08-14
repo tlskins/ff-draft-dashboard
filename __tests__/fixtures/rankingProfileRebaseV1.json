@@ -1,0 +1,192 @@
+{
+  "fixture_version": "profile_rebase_v1",
+  "limits": {"max_total_players": 500},
+  "unchanged_rank_change": {
+    "profile": {
+      "schema_version": 2,
+      "rebase_version": "profile_rebase_v1",
+      "scoring_type": "ppr",
+      "positions": {
+        "QB": [{"player_id": "q1", "user_tier": 1}],
+        "RB": [{"player_id": "r1", "user_tier": 1}, {"player_id": "r2", "user_tier": 2}],
+        "WR": [{"player_id": "w1", "user_tier": 1}],
+        "TE": []
+      },
+      "unresolved_players": [],
+      "provenance": {
+        "binding_state": "bound",
+        "base_source_id": "source-old",
+        "base_provider_id": "provider-old",
+        "source_observation_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "source_season": 2026,
+        "source_scoring_type": "ppr",
+        "player_universe_fingerprint": "e36e425b6a93ef8aff3372ec1bac14ccffd8f89abb82efc2ed1de935e05a370b"
+      }
+    },
+    "target": {
+      "source_id": "source-new",
+      "provider_id": "provider-new",
+      "season": 2026,
+      "scoring_type": "ppr",
+      "source_observation_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected_source_observation_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "player_universe_fingerprint": "e36e425b6a93ef8aff3372ec1bac14ccffd8f89abb82efc2ed1de935e05a370b",
+      "expected_player_universe_fingerprint": "e36e425b6a93ef8aff3372ec1bac14ccffd8f89abb82efc2ed1de935e05a370b",
+      "players": [
+        {"player_id": "r2", "position": "RB", "overall_rank": 1},
+        {"player_id": "w1", "position": "WR", "overall_rank": 2},
+        {"player_id": "r1", "position": "RB", "overall_rank": 90},
+        {"player_id": "q1", "position": "QB", "overall_rank": 100}
+      ]
+    },
+    "expected_fingerprints": {
+      "input_profile_fingerprint": "cf9ca083f09c43f7bd41d40da16aa2b8cecf9fb5c7602f0cbd348b57b8b91159",
+      "output_profile_fingerprint": "13c6cef90f303b09820aae07f73ec346b9fd7efd02eed17c084f141e5b5c348e",
+      "preview_key": "e1624a09554f67265ade9961d25d5b0741729f78b4c4fffe6ccb3856a4931291"
+    },
+    "expected_profile": {
+      "schema_version": 2,
+      "rebase_version": "profile_rebase_v1",
+      "scoring_type": "ppr",
+      "positions": {
+        "QB": [{"player_id": "q1", "user_tier": 1}],
+        "RB": [{"player_id": "r1", "user_tier": 1}, {"player_id": "r2", "user_tier": 2}],
+        "WR": [{"player_id": "w1", "user_tier": 1}],
+        "TE": []
+      },
+      "unresolved_players": [],
+      "provenance": {
+        "binding_state": "bound",
+        "base_source_id": "source-new",
+        "base_provider_id": "provider-new",
+        "source_observation_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_season": 2026,
+        "source_scoring_type": "ppr",
+        "player_universe_fingerprint": "e36e425b6a93ef8aff3372ec1bac14ccffd8f89abb82efc2ed1de935e05a370b"
+      }
+    }
+  },
+  "rebase": {
+    "profile": {
+      "schema_version": 2,
+      "rebase_version": "profile_rebase_v1",
+      "scoring_type": "ppr",
+      "positions": {
+        "QB": [{"player_id": "q1", "user_tier": 1}],
+        "RB": [{"player_id": "r1", "user_tier": 1}, {"player_id": "r2", "user_tier": 2}, {"player_id": "r3", "user_tier": 3}],
+        "WR": [{"player_id": "w1", "user_tier": 1}],
+        "TE": []
+      },
+      "unresolved_players": [
+        {"player_id": "x", "last_position": "RB", "last_user_rank": 4, "last_user_tier": 4, "reason": "legacy_unknown"}
+      ],
+      "provenance": {
+        "binding_state": "legacy_unbound",
+        "base_source_id": null,
+        "base_provider_id": null,
+        "source_observation_fingerprint": null,
+        "source_season": null,
+        "source_scoring_type": null,
+        "player_universe_fingerprint": null
+      }
+    },
+    "target": {
+      "source_id": "source-new",
+      "provider_id": "provider-new",
+      "season": 2026,
+      "scoring_type": "ppr",
+      "source_observation_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected_source_observation_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "player_universe_fingerprint": "682c1c2637f8e5e11de68115a5752552d9b1187603aa6c11a14b1d6cba14a755",
+      "expected_player_universe_fingerprint": "682c1c2637f8e5e11de68115a5752552d9b1187603aa6c11a14b1d6cba14a755",
+      "players": [
+        {"player_id": "x", "position": "RB", "overall_rank": 1},
+        {"player_id": "r3", "position": "RB", "overall_rank": 2},
+        {"player_id": "w1", "position": "TE", "overall_rank": 5},
+        {"player_id": "t1", "position": "TE", "overall_rank": 8},
+        {"player_id": "r4", "position": "RB", "overall_rank": 10},
+        {"player_id": "q1", "position": "QB", "overall_rank": 40},
+        {"player_id": "r1", "position": "RB", "overall_rank": 50}
+      ]
+    },
+    "expected_fingerprints": {
+      "input_profile_fingerprint": "96db8dd9c7deeb6eb15f0b72d973cf214c6e48d5832686800e8c9dcb697fcdbc",
+      "output_profile_fingerprint": "387706added610ceec8d8be17a81301663fb370d0961f2d7b5c0a348e040b050",
+      "preview_key": "314f3ab0b6d4fc3789e6a47a5b23a541d6efbd172f7422d31beecfe867a670ae"
+    },
+    "expected_profile": {
+      "schema_version": 2,
+      "rebase_version": "profile_rebase_v1",
+      "scoring_type": "ppr",
+      "positions": {
+        "QB": [{"player_id": "q1", "user_tier": 1}],
+        "RB": [{"player_id": "r1", "user_tier": 1}, {"player_id": "r3", "user_tier": 2}, {"player_id": "r4", "user_tier": 3}],
+        "WR": [],
+        "TE": [{"player_id": "t1", "user_tier": 1}]
+      },
+      "unresolved_players": [
+        {"player_id": "x", "last_position": "RB", "last_user_rank": 4, "last_user_tier": 4, "reason": "legacy_unknown"},
+        {"player_id": "r2", "last_position": "RB", "last_user_rank": 2, "last_user_tier": 2, "reason": "missing_from_target"},
+        {"player_id": "w1", "last_position": "WR", "last_user_rank": 1, "last_user_tier": 1, "reason": "position_changed"}
+      ],
+      "provenance": {
+        "binding_state": "bound",
+        "base_source_id": "source-new",
+        "base_provider_id": "provider-new",
+        "source_observation_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_season": 2026,
+        "source_scoring_type": "ppr",
+        "player_universe_fingerprint": "682c1c2637f8e5e11de68115a5752552d9b1187603aa6c11a14b1d6cba14a755"
+      }
+    },
+    "expected_player_ids": {
+      "added": ["r4", "t1"],
+      "removed": ["r2"],
+      "position_conflicts": ["w1"],
+      "unresolved": ["r2", "w1", "x"]
+    },
+    "expected_counts": {"added": 2, "removed": 1, "position_conflicts": 1, "unresolved": 3}
+  },
+  "legacy_api_v1": {
+    "scoring_type": "ppr",
+    "snapshot": {
+      "schema_version": 1,
+      "positions": {
+        "QB": [{"player_id": "q1", "rank": 1, "user_tier": 1}],
+        "RB": [{"player_id": "r1", "rank": 1, "user_tier": 1}],
+        "WR": [],
+        "TE": []
+      }
+    },
+    "expected_binding_state": "legacy_unbound"
+  },
+  "legacy_portable_v1": {
+    "snapshot": {
+      "source_ranker": "Harris",
+      "scoring": "ppr",
+      "positions": {
+        "QB": [{"player_id": "q1", "rank": 1, "user_tier": 1}],
+        "RB": [{"player_id": "unknown-rb", "rank": 1, "user_tier": 1}, {"player_id": "r1", "rank": 2, "user_tier": 2}],
+        "WR": [{"player_id": "w1", "rank": 1, "user_tier": 1}],
+        "TE": []
+      }
+    },
+    "trusted_universe": [
+      {"player_id": "q1", "position": "QB", "overall_rank": 20},
+      {"player_id": "r1", "position": "RB", "overall_rank": 30},
+      {"player_id": "w1", "position": "WR", "overall_rank": 40}
+    ],
+    "expected_active_player_ids": ["q1", "r1", "w1"],
+    "expected_unresolved_player_ids": ["unknown-rb"],
+    "expected_binding_state": "legacy_unbound"
+  },
+  "errors": {
+    "duplicate_target_player": [
+      {"player_id": "q1", "position": "QB", "overall_rank": 1},
+      {"player_id": "q1", "position": "QB", "overall_rank": 2}
+    ],
+    "scoring_conflict": "standard",
+    "source_fingerprint_conflict": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "universe_fingerprint_conflict": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  }
+}

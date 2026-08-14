@@ -329,8 +329,9 @@ visible; and the ranking/tier editor receives bounded human usability review.
 
 #### Phase 12A: provider-free ranking-source visibility and preview
 
-The additive, provider-free implementation is complete and checkpoint-ready,
-but not yet checkpointed. It separates server-owned provider identity from
+The additive, provider-free implementation is complete and checkpointed at API
+`70f093a4daa599104310b407f16d41ac730c2036` and dashboard
+`7ccb0fa71d34bad031fd2bf337a0a2008fef1b1d`. It separates server-owned provider identity from
 SQLite transport; independently preserves attempt, success, failure, retrieval,
 season, scoring, fingerprint, and count evidence; retains last-good data on
 failure; and offers list/detail plus bounded inline deterministic read-only
@@ -347,9 +348,9 @@ The executable implementation boundary is eleven paths: API `openapi/v1.json`,
 `__tests__/rankingSources.test.ts`, and
 `docs/phase12a-ranking-source-contract.md`. This roadmap amendment makes the
 working closure boundary twelve paths but is not executable implementation.
-Starting HEADs remain API `959bcc5295ddb5eb28df07ecceedf01255808792` and
-dashboard `d247a30bb59caf99283e346be091171c5424b5ce` on
-`refactor/realtime-foundation`, with empty indexes.
+Its implementation started from API `959bcc5295ddb5eb28df07ecceedf01255808792`
+and dashboard `d247a30bb59caf99283e346be091171c5424b5ce`; its accepted checkpoints are the
+newer hashes above on `refactor/realtime-foundation`.
 
 Two consecutive frozen focused gates passed on unchanged hashes: API 35/35 and
 dashboard 4 suites, 11/11 each run; `api:types:check` is current, and
@@ -359,11 +360,30 @@ rather than rerunning them. The correction budget is consumed: two semantic
 rounds (timezone-aware timestamp validation and metadata-only
 diff/`would_change` semantics) plus one generated-types continuation.
 
-Phase 12B must define the canonical profile-v2/rebase and portability contract:
-source fingerprint/season/scoring binding, added/removed-player policy,
-unknown/missing IDs, and consistent survival across SQLite profile revisions,
-browser-restart storage, and portable export/import. Phase 12A grants no
-refresh apply/promotion authority.
+Phase 12B1 defines the canonical profile-v2 validation with one 500-player
+active-plus-unresolved ceiling, pure legacy adapters, and a deterministic
+read-only rebase preview whose HTTP surface binds caller assertions to
+server-held Phase 12A rank evidence and player-position membership, as described in
+`docs/phase12b-profile-v2-rebase.md`. Its authority correction adds separately
+retained last-success provider attribution, conservative legacy backfill, and
+bounded timezone-aware validation of retained success/retrieval timestamps.
+The technical implementation is complete and checkpoint-ready, but not staged,
+committed, or checkpointed. Its final preserved boundary is exactly 20 paths
+(10 API and 10 dashboard); two Node `v22.22.0` frozen passes recorded API 34/34,
+dashboard three suites 21/21, current generated types, byte-identical fixtures,
+and clean path/status/hash/index audits. A fresh independent Sol review is GO
+with no P1/P2. The exceptional correction budgets are exhausted, not ongoing;
+the only retained P3 is bounded timezone-aware `datetime.fromisoformat`
+ISO-8601 acceptance rather than strict RFC 3339. The exact boundary, 17
+non-document hashes, post-amendment document hashes, correction history, and
+rollback procedure are recorded in `docs/phase12b-profile-v2-rebase.md`.
+
+Phase 12A remains checkpointed at API `70f093a4daa599104310b407f16d41ac730c2036`
+and dashboard `7ccb0fa71d34bad031fd2bf337a0a2008fef1b1d`; only Phase 12B1 is
+checkpoint-ready and uncheckpointed. Durable SQLite/browser profile-v2
+persistence, browser-restart migration, portable-v2 production wiring, and
+rebase apply remain Phase 12B2 work. Phase 12A and 12B1 grant no refresh,
+profile apply, or promotion authority.
 
 ### Phase 13: draft-season release readiness
 
