@@ -445,6 +445,11 @@ byte-identical. Rebase apply remains a later independent Phase 12B slice. Phase 
 12B1, and 12B2a grant no ranking-source refresh/apply/promotion, profile rebase
 apply, overlay, recommendation, provider, deployment, or Phase 11C authority.
 
+Phase 12B2b integration order is additive API first, followed by the dashboard
+consumer and browser-authority hardening together. The pre-hardening dashboard
+consumer is not a deployable endpoint. Full rollback reverses that order:
+dashboard hardening and consumer together first, then the additive API.
+
 ### Phase 13: draft-season release readiness
 
 Dependency: Phases 10-12 are integrated. Frozen prediction v1 is an acceptable

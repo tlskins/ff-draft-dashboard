@@ -331,9 +331,12 @@ journals, corrupt authority, retained source/backup evidence, and rollback CAS.
 Validation uses only disposable SQLite databases and injected in-memory or
 JSDOM browser storage.
 
-Rollback is a normal Git revert of the API and dashboard Phase 12B2b commits in
-dependency order (API contract/implementation first, then generated dashboard
-consumer). No production database or browser cleanup is part of this slice.
+Integration applies the additive API commit first, then the dashboard consumer
+commit and this browser-authority hardening commit as one contiguous dashboard
+release; the pre-hardening dashboard consumer must not ship alone. Rollback
+reverts the dashboard hardening and consumer together before reverting the
+additive API commit. No production database or browser cleanup is part of this
+slice.
 The additive SQLite tables remain safe if code is reverted. For browser data,
 `restoreRankingProfileStorageBackup` restores only when the retained source and
 canonical destination still match the migration compare-and-swap evidence; a
