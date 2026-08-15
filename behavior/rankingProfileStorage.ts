@@ -3,7 +3,6 @@ import {
   adaptPortableV1ToProfileV2,
   ProfileScoringType,
   RankingProfileV2,
-  RankingProfileV2ValidationError,
   validateRankingProfileV2,
 } from "./rankingProfileV2"
 
@@ -60,6 +59,28 @@ export type RankingProfileStorageMigrationResult =
     evidence: RankingProfileStorageMigrationEvidence
   }
 
+export interface RankingProfileStorageRollbackEvidence {
+  code:
+    | "rollback_restored"
+    | "rollback_already_restored"
+    | "rollback_not_found"
+    | "rollback_invalid_backup"
+    | "rollback_conflict"
+    | "rollback_storage_read_failed"
+    | "rollback_storage_write_failed"
+  message: string
+}
+
+export type RankingProfileStorageRollbackResult =
+  | {
+    status: "restored" | "already_restored" | "not_found"
+    evidence: RankingProfileStorageRollbackEvidence
+  }
+  | {
+    status: "rejected"
+    evidence: RankingProfileStorageRollbackEvidence
+  }
+
 export interface PlanRankingProfileStorageMigrationOptions {
   legacy_format: LegacyRankingProfileFormat
   trusted_universe: unknown
@@ -75,11 +96,12 @@ export interface MigrateRankingProfileStorageOptions
 
 interface RankingProfileStorageBackup {
   schema: "drafty.ranking-profile-v2-migration-backup"
-  version: 1
+  version: 2
   source_key: string
   source_value: string
   destination_key: string
   previous_destination_value: string | null
+  expected_destination_value: string
 }
 
 const evidence = (
@@ -91,6 +113,11 @@ const evidence = (
   source_format: sourceFormat,
   message,
 })
+
+const rollbackEvidence = (
+  code: RankingProfileStorageRollbackEvidence["code"],
+  message: string,
+): RankingProfileStorageRollbackEvidence => ({code, message})
 
 const parsedRecord = (value: unknown): Record<string, unknown> | null => (
   value !== null
@@ -245,11 +272,12 @@ export const migrateRankingProfileStorage = (
 
   const backup: RankingProfileStorageBackup = {
     schema: "drafty.ranking-profile-v2-migration-backup",
-    version: 1,
+    version: 2,
     source_key: sourceKey,
     source_value: sourceValue,
     destination_key: destinationKey,
     previous_destination_value: destinationValue,
+    expected_destination_value: plan.serialized,
   }
   const serializedBackup = JSON.stringify(backup)
   try {
@@ -273,7 +301,14 @@ export const migrateRankingProfileStorage = (
     return {status: "migrated", profile: reloaded!, evidence: plan.evidence}
   } catch (error) {
     try {
-      restoreDestination(storage, destinationKey, destinationValue)
+      const currentSource = storage.getItem(sourceKey)
+      const currentDestination = storage.getItem(destinationKey)
+      if (
+        currentSource === sourceValue
+        && currentDestination === plan.serialized
+      ) {
+        restoreDestination(storage, destinationKey, destinationValue)
+      }
     } catch {
       // The retained backup and untouched source remain the recovery boundary.
     }
@@ -284,31 +319,135 @@ export const migrateRankingProfileStorage = (
   }
 }
 
+const validateBackup = (
+  serialized: string,
+): RankingProfileStorageBackup | null => {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(serialized) as unknown
+  } catch {
+    return null
+  }
+  const value = parsedRecord(parsed)
+  if (!value) return null
+  const expectedKeys = new Set([
+    "schema",
+    "version",
+    "source_key",
+    "source_value",
+    "destination_key",
+    "previous_destination_value",
+    "expected_destination_value",
+  ])
+  if (
+    Object.keys(value).length !== expectedKeys.size
+    || Object.keys(value).some(key => !expectedKeys.has(key))
+    || value.schema !== "drafty.ranking-profile-v2-migration-backup"
+    || value.version !== 2
+    || typeof value.source_key !== "string"
+    || value.source_key.length === 0
+    || typeof value.source_value !== "string"
+    || typeof value.destination_key !== "string"
+    || value.destination_key.length === 0
+    || typeof value.expected_destination_value !== "string"
+    || (value.previous_destination_value !== null
+      && typeof value.previous_destination_value !== "string")
+    || value.source_key === value.destination_key
+  ) return null
+  try {
+    if (
+      serializeRankingProfileV2(JSON.parse(value.expected_destination_value) as unknown)
+      !== value.expected_destination_value
+    ) return null
+  } catch {
+    return null
+  }
+  return value as unknown as RankingProfileStorageBackup
+}
+
 export const restoreRankingProfileStorageBackup = (
   storage: RankingProfileStorageAdapter,
   backupKey = RANKING_PROFILE_V2_BACKUP_KEY,
-): boolean => {
-  const serialized = storage.getItem(backupKey)
-  if (serialized === null) return false
-  const value = JSON.parse(serialized) as RankingProfileStorageBackup
-  if (
-    value.schema !== "drafty.ranking-profile-v2-migration-backup"
-    || value.version !== 1
-    || typeof value.source_key !== "string"
-    || typeof value.source_value !== "string"
-    || typeof value.destination_key !== "string"
-    || (value.previous_destination_value !== null
-      && typeof value.previous_destination_value !== "string")
-  ) {
-    throw new RankingProfileV2ValidationError("Migration backup is invalid")
+): RankingProfileStorageRollbackResult => {
+  let serialized: string | null
+  try {
+    serialized = storage.getItem(backupKey)
+  } catch (error) {
+    return {
+      status: "rejected",
+      evidence: rollbackEvidence(
+        "rollback_storage_read_failed",
+        error instanceof Error ? error.message : "Migration backup read failed",
+      ),
+    }
   }
-  if (storage.getItem(value.source_key) !== value.source_value) {
-    storage.setItem(value.source_key, value.source_value)
+  if (serialized === null) {
+    return {
+      status: "not_found",
+      evidence: rollbackEvidence("rollback_not_found", "Migration backup is not stored"),
+    }
   }
-  restoreDestination(
-    storage,
-    value.destination_key,
-    value.previous_destination_value,
-  )
-  return true
+  const backup = validateBackup(serialized)
+  if (!backup) {
+    return {
+      status: "rejected",
+      evidence: rollbackEvidence("rollback_invalid_backup", "Migration backup is invalid"),
+    }
+  }
+
+  let currentSource: string | null
+  let currentDestination: string | null
+  try {
+    currentSource = storage.getItem(backup.source_key)
+    currentDestination = storage.getItem(backup.destination_key)
+  } catch (error) {
+    return {
+      status: "rejected",
+      evidence: rollbackEvidence(
+        "rollback_storage_read_failed",
+        error instanceof Error ? error.message : "Rollback state read failed",
+      ),
+    }
+  }
+  if (currentSource !== backup.source_value) {
+    return {
+      status: "rejected",
+      evidence: rollbackEvidence("rollback_conflict", "Legacy source changed after migration"),
+    }
+  }
+  if (currentDestination === backup.previous_destination_value) {
+    return {
+      status: "already_restored",
+      evidence: rollbackEvidence("rollback_already_restored", "Migration destination is already restored"),
+    }
+  }
+  if (currentDestination !== backup.expected_destination_value) {
+    return {
+      status: "rejected",
+      evidence: rollbackEvidence("rollback_conflict", "Profile-v2 destination changed after migration"),
+    }
+  }
+
+  try {
+    restoreDestination(
+      storage,
+      backup.destination_key,
+      backup.previous_destination_value,
+    )
+    if (storage.getItem(backup.destination_key) !== backup.previous_destination_value) {
+      throw new Error("Restored destination did not read back identically")
+    }
+  } catch (error) {
+    return {
+      status: "rejected",
+      evidence: rollbackEvidence(
+        "rollback_storage_write_failed",
+        error instanceof Error ? error.message : "Rollback destination write failed",
+      ),
+    }
+  }
+  return {
+    status: "restored",
+    evidence: rollbackEvidence("rollback_restored", "Migration destination was restored"),
+  }
 }

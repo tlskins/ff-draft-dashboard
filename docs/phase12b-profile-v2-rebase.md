@@ -148,23 +148,30 @@ Phase 12B2a is complete as the first bounded Phase 12B2 slice. The API now
 stores every canonical profile-v2 revision in the additive
 `ranking_profile_v2_revisions` SQLite table while retaining the existing
 profile metadata, immutable revision history, current-revision pointer, and
-legacy schema-v1 snapshots. Initialization creates or backfills the v2 table in
-one serialized `BEGIN IMMEDIATE` transaction. Backfill validates every legacy
-revision and inserts only missing canonical copies; it does not rewrite the
-legacy row. Repeated and concurrent initialization is idempotent. A malformed
-legacy row aborts and rolls back the migration rather than partially promoting
-history.
+legacy schema-v1 snapshots. The additive `ranking_profile_authorities` table
+durably records whether each profile's mutation authority is legacy v1 or
+canonical v2. Initialization creates and backfills both additive tables in one
+serialized `BEGIN IMMEDIATE` transaction. Existing profiles default to legacy
+authority, and backfill validates every legacy revision and inserts only
+missing canonical copies; it does not rewrite the legacy row. Repeated and
+concurrent initialization is idempotent. A malformed legacy row aborts and
+rolls back the migration rather than partially promoting history.
 
 The repository exposes explicit v2 create, list/read, revision, undo, and redo
 methods. Native v2 writes are validated at the Phase 12B1 boundary, including
 scoring/provenance binding and the shared 500-player active-plus-unresolved
 ceiling. Metadata and the undo/redo pointer remain outside canonical snapshots
 and are committed atomically with both the authoritative v2 revision and a
-non-authoritative active-player v1 compatibility projection. Existing v1 HTTP
-and injected-repository behavior is unchanged; legacy writes also acquire the
-same immediate transaction and receive a canonical v2 mirror. Therefore this
-slice changes neither OpenAPI nor generated dashboard API types and does not
-wire a production v2 consumer.
+non-authoritative active-player v1 compatibility projection. Native v2 create
+sets v2 authority. The first explicit v2 revision of a legacy profile
+atomically promotes that profile to v2 authority; validation or concurrency
+failure rolls back both revision and promotion. After promotion, legacy
+revision and legacy undo/redo mutations fail closed with a repository conflict
+before they can replace canonical tombstones or provenance. Legacy reads remain
+available as compatibility projections, and existing v1 HTTP behavior remains
+unchanged for legacy-authoritative profiles. Therefore this slice changes
+neither OpenAPI nor generated dashboard API types and does not wire a
+production v2 consumer.
 
 The dashboard adds a pure deterministic migration planner plus an injected
 storage-adapter commit protocol. It explicitly dispatches valid claimed v2 to
@@ -179,43 +186,56 @@ Browser migration uses three distinct keys: the untouched legacy source, the
 canonical v2 destination, and a migration-backup record. The destination is
 written only after source validation and durable backup readback, then parsed
 and revalidated from storage byte-for-byte before success. A failed or
-interrupted destination write restores its prior value; the legacy source and
-backup remain recovery boundaries. Repeated migration returns the identical
-stored v2 value without rewriting it, and the loader returns an equal canonical
-profile from a new storage adapter over the same durable values, simulating a
-browser restart. No page, hook, component, import/export consumer, or automatic
-startup migration calls these helpers yet.
+interrupted destination write restores its prior value only when the live
+source and written destination still match; the legacy source and backup remain
+recovery boundaries. The version-2 backup captures the exact
+source, prior destination, and canonical destination written by that migration.
+Rollback validates the entire backup and reads both live values before writing.
+It restores only when source and destination still match the captured
+compare-and-swap state; changed source or destination data returns structured
+conflict evidence with zero writes. A destination already equal to its prior
+value is an idempotent success. Malformed backup and storage failures also fail
+closed with structured evidence. Rollback never overwrites the source. Repeated
+migration returns the identical stored v2 value without rewriting it, and the
+loader returns an equal canonical profile from a new storage adapter over the
+same durable values, simulating a browser restart. No page, hook, component,
+import/export consumer, or automatic startup migration calls these helpers yet.
 
 ### Phase 12B2a evidence and boundary
 
-The isolated API checkpoint is
-`ce211c60b0f4b27bfa18e0937c8657f156d4bcb0`. Its boundary is exactly
+The isolated API checkpoint sequence is
+`ce211c60b0f4b27bfa18e0937c8657f156d4bcb0`, followed by authority hardening
+`7422fb3cf667933bba69a09dd454eff41f532bb8`. Its boundary remains exactly
 `app/repositories/ranking_profiles.py` and
 `tests/test_ranking_profile_persistence_v2.py`. The dashboard boundary is
 exactly `behavior/rankingProfileStorage.ts`,
 `__tests__/rankingProfileStorage.test.ts`, this document, and
-`docs/roadmap-2026.md`; its checkpoint hash is reported in the handoff because
-embedding a commit's own hash in that commit is self-referential.
+`docs/roadmap-2026.md`. Its initial checkpoint is
+`a918ea11e2ca78b68fc7ffd4149fd8740c5d95d4`; the hardening hash is reported in
+the handoff because embedding a commit's own hash in that commit is
+self-referential.
 
 Validation used disposable SQLite databases and injected in-memory storage
-adapters. The focused API Phase 12/OpenAPI gate passed 41/41; the full API suite
-passed 129/129; and Python compilation passed. The focused dashboard
-profile-v2/storage gate passed 22/22; the full Jest suite passed 78 suites and
-491 tests with one suite and two tests skipped; TypeScript checking, generated
-API-type freshness, lint, and the optimized production build passed. Both
-repositories passed `git diff --check`. The Phase 11B API
+adapters. After hardening, the focused API Phase 12/OpenAPI gate passed 43/43
+twice, the full API suite passed 131/131, and Python compilation passed. The
+focused dashboard Phase 12 gate passed 33/33; the full Jest suite passed 78
+suites and 495 tests with one suite and two tests skipped. TypeScript checking,
+generated API-type freshness, lint, and the optimized production build passed.
+Both repositories passed `git diff --check`. The Phase 11B API
 `latest_player_rankings.json` and dashboard `behavior/playerData.json` remained
 byte-identical at
 `82d3f8025f8dc67355f9eef6f6111843ac29b315ceb81d0a1a84e69810f41b81`.
 
 Rollback is a normal Git revert of the isolated API and dashboard Phase 12B2a
-commits. The additive SQLite table may safely remain unused after a code revert:
-legacy tables and rows were not rewritten, and older code ignores the new
-table. If removal is later desired, it must be a separately reviewed migration,
-not part of rollback. Browser rollback calls
-`restoreRankingProfileStorageBackup`; it restores the prior destination and the
-retained legacy source. Because this slice performs no production wiring, no
-active browser or authoritative database migration ran during implementation.
+commits. The additive SQLite tables may safely remain unused after a code revert:
+legacy tables and rows were not rewritten, and older code ignores the new v2
+revision and authority tables. If removal is later desired, it must be a
+separately reviewed migration, not part of rollback. Browser rollback calls
+`restoreRankingProfileStorageBackup`; its compare-and-swap guard restores only
+the prior destination when neither source nor migrated destination has changed.
+A conflict requires the user or later orchestration to choose which newer value
+to retain. Because this slice performs no production wiring, no active browser
+or authoritative database migration ran during implementation.
 
 Phase 12B2b should wire canonical v2 through an explicit public API/dashboard
 consumer contract, including portable-v2 production import/export and startup

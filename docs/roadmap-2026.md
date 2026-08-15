@@ -402,11 +402,18 @@ reviewed and checkpointed. Phase 12B2a now adds the first bounded persistence
 slice at API `ce211c60b0f4b27bfa18e0937c8657f156d4bcb0`: serialized, additive,
 idempotent SQLite storage for canonical v2 revision history and restart-safe
 metadata/undo/redo pointers, with legacy rows retained unchanged and the v1
-repository/HTTP contract preserved. The dashboard adds unwired pure migration
-and storage helpers that fail closed for corrupt, unsupported, or malformed
-claimed-v2 input; retain the legacy source and a rollback record; read-verify
-the destination; and reload identically after simulated restart. Its exact
-boundary, validation evidence, and rollback procedure are recorded in
+repository/HTTP contract preserved. API authority hardening at
+`7422fb3cf667933bba69a09dd454eff41f532bb8` adds a durable discriminator:
+existing profiles remain legacy-authoritative, native v2 profiles are
+v2-authoritative, and an explicit v2 revision atomically promotes a legacy
+profile. Legacy mutations reject after promotion, preventing loss of canonical
+tombstones or provenance. The dashboard adds unwired pure migration and storage
+helpers that fail closed for corrupt, unsupported, or malformed claimed-v2
+input; retain the legacy source and a rollback record; read-verify the
+destination; and reload identically after simulated restart. Its hardened
+rollback is compare-and-swap: source or destination divergence returns a
+structured conflict without overwriting newer user data. The exact boundary,
+validation evidence, and rollback procedure are recorded in
 `docs/phase12b-profile-v2-rebase.md`.
 
 Phase 12B2b should next wire canonical v2 through an explicit API/dashboard

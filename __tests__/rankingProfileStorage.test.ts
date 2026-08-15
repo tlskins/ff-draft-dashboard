@@ -45,6 +45,26 @@ class InterruptingStorage extends MemoryStorage {
   }
 }
 
+class FailingReadStorage extends MemoryStorage {
+  constructor(values: Map<string, string>, private readonly failingKey: string) {
+    super(values)
+  }
+
+  getItem(key: string) {
+    if (key === this.failingKey) throw new Error("simulated rollback read failure")
+    return super.getItem(key)
+  }
+}
+
+class FailingRollbackWriteStorage extends MemoryStorage {
+  removeItem(key: string) {
+    if (key === RANKING_PROFILE_V2_STORAGE_KEY) {
+      throw new Error("simulated rollback write failure")
+    }
+    super.removeItem(key)
+  }
+}
+
 const portableOptions = {
   legacy_format: "portable_v1" as const,
   trusted_universe: fixture.legacy_portable_v1.trusted_universe,
@@ -199,9 +219,101 @@ describe("restart-safe ranking profile v2 browser migration", () => {
     ]))
     expect(migrateRankingProfileStorage(storage, portableOptions).status).toBe("migrated")
 
-    expect(restoreRankingProfileStorageBackup(storage)).toBe(true)
+    expect(restoreRankingProfileStorageBackup(storage)).toMatchObject({
+      status: "restored",
+      evidence: {code: "rollback_restored"},
+    })
     expect(storage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBe(source)
     expect(storage.getItem(RANKING_PROFILE_V2_STORAGE_KEY)).toBeNull()
+
+    expect(restoreRankingProfileStorageBackup(storage)).toMatchObject({
+      status: "already_restored",
+      evidence: {code: "rollback_already_restored"},
+    })
+  })
+
+  it("rejects rollback after the legacy source changes and makes zero writes", () => {
+    const source = JSON.stringify(fixture.legacy_portable_v1.snapshot)
+    const storage = new MemoryStorage(new Map([
+      [LEGACY_RANKING_PROFILE_STORAGE_KEY, source],
+    ]))
+    expect(migrateRankingProfileStorage(storage, portableOptions).status).toBe("migrated")
+    storage.setItem(LEGACY_RANKING_PROFILE_STORAGE_KEY, "newer-user-source")
+    const before = new Map(storage.sharedValues())
+
+    expect(restoreRankingProfileStorageBackup(storage)).toMatchObject({
+      status: "rejected",
+      evidence: {code: "rollback_conflict"},
+    })
+    expect(storage.sharedValues()).toEqual(before)
+  })
+
+  it("rejects rollback after the v2 destination changes and makes zero writes", () => {
+    const source = JSON.stringify(fixture.legacy_portable_v1.snapshot)
+    const storage = new MemoryStorage(new Map([
+      [LEGACY_RANKING_PROFILE_STORAGE_KEY, source],
+    ]))
+    expect(migrateRankingProfileStorage(storage, portableOptions).status).toBe("migrated")
+    storage.setItem(RANKING_PROFILE_V2_STORAGE_KEY, "newer-user-destination")
+    const before = new Map(storage.sharedValues())
+
+    expect(restoreRankingProfileStorageBackup(storage)).toMatchObject({
+      status: "rejected",
+      evidence: {code: "rollback_conflict"},
+    })
+    expect(storage.sharedValues()).toEqual(before)
+  })
+
+  it("rejects malformed rollback evidence without touching stored data", () => {
+    for (const malformed of [
+      "{bad",
+      JSON.stringify({
+        schema: "drafty.ranking-profile-v2-migration-backup",
+        version: 1,
+      }),
+    ]) {
+      const storage = new MemoryStorage(new Map([
+        [LEGACY_RANKING_PROFILE_STORAGE_KEY, "current-source"],
+        [RANKING_PROFILE_V2_STORAGE_KEY, "current-destination"],
+        [RANKING_PROFILE_V2_BACKUP_KEY, malformed],
+      ]))
+      const before = new Map(storage.sharedValues())
+
+      expect(restoreRankingProfileStorageBackup(storage)).toMatchObject({
+        status: "rejected",
+        evidence: {code: "rollback_invalid_backup"},
+      })
+      expect(storage.sharedValues()).toEqual(before)
+    }
+  })
+
+  it("fails closed on rollback storage reads and writes without losing data", () => {
+    const source = JSON.stringify(fixture.legacy_portable_v1.snapshot)
+    const migrated = new MemoryStorage(new Map([
+      [LEGACY_RANKING_PROFILE_STORAGE_KEY, source],
+    ]))
+    expect(migrateRankingProfileStorage(migrated, portableOptions).status).toBe("migrated")
+
+    const readValues = new Map(migrated.sharedValues())
+    const readFailure = new FailingReadStorage(
+      readValues,
+      LEGACY_RANKING_PROFILE_STORAGE_KEY,
+    )
+    const beforeRead = new Map(readValues)
+    expect(restoreRankingProfileStorageBackup(readFailure)).toMatchObject({
+      status: "rejected",
+      evidence: {code: "rollback_storage_read_failed"},
+    })
+    expect(readValues).toEqual(beforeRead)
+
+    const writeValues = new Map(migrated.sharedValues())
+    const writeFailure = new FailingRollbackWriteStorage(writeValues)
+    const beforeWrite = new Map(writeValues)
+    expect(restoreRankingProfileStorageBackup(writeFailure)).toMatchObject({
+      status: "rejected",
+      evidence: {code: "rollback_storage_write_failed"},
+    })
+    expect(writeValues).toEqual(beforeWrite)
   })
 
   it("enforces the shared 500-player active-plus-unresolved ceiling", () => {
