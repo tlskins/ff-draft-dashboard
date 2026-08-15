@@ -1,15 +1,19 @@
 import fixture from "./fixtures/rankingProfileRebaseV1.json"
 import {
   LEGACY_RANKING_PROFILE_STORAGE_KEY,
+  commitCanonicalRankingProfile,
   loadStoredRankingProfileV2,
   migrateRankingProfileStorage,
   planRankingProfileStorageMigration,
   RANKING_PROFILE_V2_BACKUP_KEY,
+  RANKING_PROFILE_V2_AUTHORITY_KEY,
+  RANKING_PROFILE_V2_COMMIT_KEY,
   RANKING_PROFILE_V2_STORAGE_KEY,
   RankingProfileStorageAdapter,
   restoreRankingProfileStorageBackup,
   runRankingProfileStartupMigration,
 } from "../behavior/rankingProfileStorage"
+import { validateRankingProfileV2 } from "../behavior/rankingProfileV2"
 
 
 class MemoryStorage implements RankingProfileStorageAdapter {
@@ -66,6 +70,60 @@ class FailingRollbackWriteStorage extends MemoryStorage {
   }
 }
 
+class FailAtMutationStorage extends MemoryStorage {
+  private mutations = 0
+  private failed = false
+
+  constructor(values: Map<string, string>, private readonly failureAt: number) {
+    super(values)
+  }
+
+  private afterMutation() {
+    this.mutations += 1
+    if (!this.failed && this.mutations === this.failureAt) {
+      this.failed = true
+      throw new Error(`simulated storage failure at mutation ${this.failureAt}`)
+    }
+  }
+
+  setItem(key: string, value: string) {
+    super.setItem(key, value)
+    this.afterMutation()
+  }
+
+  removeItem(key: string) {
+    super.removeItem(key)
+    this.afterMutation()
+  }
+}
+
+class FailReadbackAtMutationStorage extends MemoryStorage {
+  private mutations = 0
+  private failed = false
+
+  constructor(values: Map<string, string>, private readonly failureAt: number) {
+    super(values)
+  }
+
+  setItem(key: string, value: string) {
+    super.setItem(key, value)
+    this.mutations += 1
+  }
+
+  removeItem(key: string) {
+    super.removeItem(key)
+    this.mutations += 1
+  }
+
+  getItem(key: string) {
+    if (!this.failed && this.mutations === this.failureAt) {
+      this.failed = true
+      throw new Error(`simulated readback failure at mutation ${this.failureAt}`)
+    }
+    return super.getItem(key)
+  }
+}
+
 const portableOptions = {
   legacy_format: "portable_v1" as const,
   trusted_universe: fixture.legacy_portable_v1.trusted_universe,
@@ -105,8 +163,8 @@ describe("restart-safe ranking profile v2 browser migration", () => {
     expect(storage.getItem(RANKING_PROFILE_V2_STORAGE_KEY)).toBe(destination)
     expect(storage.getItem(RANKING_PROFILE_V2_BACKUP_KEY)).toBe(backup)
     expect(runRankingProfileStartupMigration(storage, [], "ppr")).toMatchObject({
-      status: "unavailable",
-      evidence: {code: "trusted_universe_unavailable"},
+      status: "already_current",
+      evidence: {code: "already_v2"},
     })
   })
 
@@ -123,9 +181,11 @@ describe("restart-safe ranking profile v2 browser migration", () => {
     ]))
     expect(runRankingProfileStartupMigration(migrated, [{id: "rb-1", position: "RB"}], "ppr").status)
       .toBe("migrated")
+    const destination = migrated.getItem(RANKING_PROFILE_V2_STORAGE_KEY)
     migrated.setItem(LEGACY_RANKING_PROFILE_STORAGE_KEY, "newer-source")
     expect(runRankingProfileStartupMigration(migrated, [{id: "rb-1", position: "RB"}], "ppr"))
-      .toMatchObject({status: "rejected", evidence: {code: "backup_conflict"}})
+      .toMatchObject({status: "already_current", evidence: {code: "already_v2"}})
+    expect(migrated.getItem(RANKING_PROFILE_V2_STORAGE_KEY)).toBe(destination)
   })
 
   it("migrates valid portable v1 without losing order, tiers, tombstones, or provenance", () => {
@@ -371,6 +431,178 @@ describe("restart-safe ranking profile v2 browser migration", () => {
       evidence: {code: "rollback_storage_write_failed"},
     })
     expect(writeValues).toEqual(beforeWrite)
+  })
+
+  it("loads an imported bound portable-v2 profile with a tombstone identically after restart", () => {
+    const imported = validateRankingProfileV2(fixture.rebase.expected_profile)
+    expect(imported.provenance.binding_state).toBe("bound")
+    expect(imported.unresolved_players.length).toBeGreaterThan(0)
+    const storage = new MemoryStorage(new Map([
+      [LEGACY_RANKING_PROFILE_STORAGE_KEY, legacyRankings],
+    ]))
+    expect(runRankingProfileStartupMigration(storage, [{id: "rb-1", position: "RB"}], "ppr").status).toBe("migrated")
+    const legacyBytes = storage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)
+    const backupBytes = storage.getItem(RANKING_PROFILE_V2_BACKUP_KEY)
+
+    expect(commitCanonicalRankingProfile(storage, imported).status).toBe("committed")
+    const canonicalBytes = storage.getItem(RANKING_PROFILE_V2_STORAGE_KEY)
+    const restarted = new MemoryStorage(storage.sharedValues())
+    const result = runRankingProfileStartupMigration(restarted, [], "ppr")
+
+    expect(result).toMatchObject({status: "already_current", profile: imported})
+    expect(restarted.getItem(RANKING_PROFILE_V2_STORAGE_KEY)).toBe(canonicalBytes)
+    expect(restarted.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBe(legacyBytes)
+    expect(restarted.getItem(RANKING_PROFILE_V2_BACKUP_KEY)).toBe(backupBytes)
+  })
+
+  it("persists an explicit empty canonical import without reviving legacy rankings", () => {
+    const storage = new MemoryStorage(new Map([[LEGACY_RANKING_PROFILE_STORAGE_KEY, legacyRankings]]))
+    expect(runRankingProfileStartupMigration(storage, [{id: "rb-1", position: "RB"}], "ppr").status).toBe("migrated")
+    expect(commitCanonicalRankingProfile(storage, null).status).toBe("committed")
+
+    expect(runRankingProfileStartupMigration(new MemoryStorage(storage.sharedValues()), [], "ppr"))
+      .toMatchObject({status: "already_current", profile: null})
+    expect(storage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBe(legacyRankings)
+  })
+
+  it("loads legitimate API-style and local-fallback canonical edits without changing migration evidence", () => {
+    for (const mutation of ["api", "local-fallback"]) {
+      const storage = new MemoryStorage(new Map([
+        [LEGACY_RANKING_PROFILE_STORAGE_KEY, legacyRankings],
+      ]))
+      const migrated = runRankingProfileStartupMigration(storage, [{id: "rb-1", position: "RB"}], "ppr")
+      expect(migrated.status).toBe("migrated")
+      const legacyBytes = storage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)
+      const backupBytes = storage.getItem(RANKING_PROFILE_V2_BACKUP_KEY)
+      const edited = validateRankingProfileV2({
+        ...fixture.rebase.expected_profile,
+        unresolved_players: fixture.rebase.expected_profile.unresolved_players.map(player => ({
+          ...player,
+          reason: mutation === "api" ? "missing_from_target" : "position_changed",
+        })),
+      })
+
+      expect(commitCanonicalRankingProfile(storage, edited).status).toBe("committed")
+      const restarted = runRankingProfileStartupMigration(new MemoryStorage(storage.sharedValues()), [], "ppr")
+      expect(restarted).toMatchObject({status: "already_current", profile: edited})
+      expect(storage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBe(legacyBytes)
+      expect(storage.getItem(RANKING_PROFILE_V2_BACKUP_KEY)).toBe(backupBytes)
+    }
+  })
+
+  it("makes selection, undo, and redo canonical snapshots durable", () => {
+    const storage = new MemoryStorage()
+    const selected = validateRankingProfileV2(fixture.rebase.expected_profile)
+    const undone = validateRankingProfileV2(fixture.rebase.profile)
+    const redone = validateRankingProfileV2({
+      ...fixture.rebase.expected_profile,
+      positions: {
+        ...fixture.rebase.expected_profile.positions,
+        RB: fixture.rebase.expected_profile.positions.RB.map((entry, index) => ({
+          ...entry,
+          user_tier: index + 1,
+        })),
+      },
+    })
+
+    for (const snapshot of [selected, undone, redone]) {
+      expect(commitCanonicalRankingProfile(storage, snapshot).status).toBe("committed")
+      expect(runRankingProfileStartupMigration(new MemoryStorage(storage.sharedValues()), [], "ppr"))
+        .toMatchObject({status: "already_current", profile: snapshot})
+    }
+  })
+
+  it("fails closed for corrupt authority, canonical data, and authority-less canonical data", () => {
+    const profile = validateRankingProfileV2(fixture.rebase.expected_profile)
+    const authorityCorrupt = new MemoryStorage(new Map([
+      [RANKING_PROFILE_V2_STORAGE_KEY, JSON.stringify(profile)],
+      [RANKING_PROFILE_V2_AUTHORITY_KEY, "{"],
+    ]))
+    expect(runRankingProfileStartupMigration(authorityCorrupt, [], "ppr"))
+      .toMatchObject({status: "rejected", evidence: {code: "authority_invalid"}})
+
+    const canonicalCorrupt = new MemoryStorage()
+    expect(commitCanonicalRankingProfile(canonicalCorrupt, profile).status).toBe("committed")
+    canonicalCorrupt.setItem(RANKING_PROFILE_V2_STORAGE_KEY, "not-json")
+    expect(runRankingProfileStartupMigration(canonicalCorrupt, [], "ppr"))
+      .toMatchObject({status: "rejected", evidence: {code: "authority_conflict"}})
+
+    const missingAuthority = new MemoryStorage(new Map([
+      [RANKING_PROFILE_V2_STORAGE_KEY, JSON.stringify(profile)],
+    ]))
+    expect(runRankingProfileStartupMigration(missingAuthority, [], "ppr"))
+      .toMatchObject({status: "rejected", evidence: {code: "authority_missing"}})
+  })
+
+  it("rolls back an import transaction at every write and readback failure position", () => {
+    const initial = validateRankingProfileV2(fixture.rebase.profile)
+    const imported = validateRankingProfileV2(fixture.rebase.expected_profile)
+    const base = new MemoryStorage(new Map([
+      ["ff-draft-favorites", "old-favorites"],
+      ["draft-plan", "old-plan"],
+    ]))
+    expect(commitCanonicalRankingProfile(base, initial).status).toBe("committed")
+
+    for (const StorageType of [FailAtMutationStorage, FailReadbackAtMutationStorage]) {
+      for (let failureAt = 1; failureAt <= 6; failureAt += 1) {
+        const values = new Map(base.sharedValues())
+        const before = new Map(values)
+        const storage = new StorageType(values, failureAt)
+        const result = commitCanonicalRankingProfile(storage, imported, [
+          {key: "ff-draft-favorites", value: "new-favorites"},
+          {key: "draft-plan", value: "new-plan"},
+        ])
+        expect(result).toMatchObject({status: "rejected", code: "commit_write_failed"})
+        expect(values).toEqual(before)
+        expect(values.has(RANKING_PROFILE_V2_COMMIT_KEY)).toBe(false)
+      }
+    }
+  })
+
+  it("retains an explicit recoverable journal if rollback cannot complete", () => {
+    class PersistentFailureStorage extends MemoryStorage {
+      setItem(key: string, value: string) {
+        if (key === RANKING_PROFILE_V2_AUTHORITY_KEY) throw new Error("authority storage unavailable")
+        super.setItem(key, value)
+      }
+    }
+    const initial = validateRankingProfileV2(fixture.rebase.profile)
+    const imported = validateRankingProfileV2(fixture.rebase.expected_profile)
+    const base = new MemoryStorage()
+    expect(commitCanonicalRankingProfile(base, initial).status).toBe("committed")
+    const values = new Map(base.sharedValues())
+    const result = commitCanonicalRankingProfile(new PersistentFailureStorage(values), imported)
+
+    expect(result).toMatchObject({status: "rejected", code: "commit_recovery_required"})
+    expect(values.get(RANKING_PROFILE_V2_COMMIT_KEY)).toContain("drafty.ranking-profile-v2-commit")
+  })
+
+  it("keeps incomplete migration CAS checks and clears authority only for an eligible rollback", () => {
+    const source = JSON.stringify(fixture.legacy_portable_v1.snapshot)
+    const incomplete = new MemoryStorage(new Map([[LEGACY_RANKING_PROFILE_STORAGE_KEY, source]]))
+    expect(migrateRankingProfileStorage(incomplete, portableOptions).status).toBe("migrated")
+    incomplete.setItem(LEGACY_RANKING_PROFILE_STORAGE_KEY, "changed-source")
+    expect(runRankingProfileStartupMigration(incomplete, [{id: "r1", position: "RB"}], "ppr"))
+      .toMatchObject({status: "rejected", evidence: {code: "backup_conflict"}})
+
+    const divergent = new MemoryStorage(new Map([[LEGACY_RANKING_PROFILE_STORAGE_KEY, legacyRankings]]))
+    expect(migrateRankingProfileStorage(divergent, {
+      legacy_format: "full_rankings_v1",
+      trusted_universe: [{player_id: "rb-1", position: "RB", overall_rank: 1}],
+      scoring_type: "ppr",
+    }).status).toBe("migrated")
+    divergent.setItem(RANKING_PROFILE_V2_STORAGE_KEY, JSON.stringify(validateRankingProfileV2(fixture.rebase.expected_profile)))
+    expect(runRankingProfileStartupMigration(divergent, [{id: "rb-1", position: "RB"}], "ppr"))
+      .toMatchObject({status: "rejected", evidence: {code: "backup_conflict"}})
+
+    const migrated = new MemoryStorage(new Map([[LEGACY_RANKING_PROFILE_STORAGE_KEY, legacyRankings]]))
+    expect(runRankingProfileStartupMigration(migrated, [{id: "rb-1", position: "RB"}], "ppr").status).toBe("migrated")
+    expect(migrated.getItem(RANKING_PROFILE_V2_AUTHORITY_KEY)).not.toBeNull()
+    expect(restoreRankingProfileStorageBackup(migrated).status).toBe("restored")
+    expect(migrated.getItem(RANKING_PROFILE_V2_STORAGE_KEY)).toBeNull()
+    expect(migrated.getItem(RANKING_PROFILE_V2_AUTHORITY_KEY)).toBeNull()
+    expect(migrated.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBe(legacyRankings)
+    expect(migrated.getItem(RANKING_PROFILE_V2_BACKUP_KEY)).not.toBeNull()
   })
 
   it("enforces the shared 500-player active-plus-unresolved ceiling", () => {

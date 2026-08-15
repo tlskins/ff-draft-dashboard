@@ -260,10 +260,15 @@ the repository and canonical validator.
 
 The dashboard adapter calls only the v2 endpoints when an API host is
 configured. It keeps browser-local operation when the host is absent or a
-request fails; a failed API request cannot replace a valid local value. A
-successful explicit save also persists the validated canonical snapshot in the
-browser v2 destination for restart continuity. There is no background sync,
-conflict auto-resolution, or provider/source promotion.
+request is unavailable; a rejected conflict or validation response cannot
+replace a valid local value. Save, select, undo, and redo commit the exact
+validated canonical snapshot through one browser commit function before
+updating client state. API unavailability falls back to the same canonical
+commit path without rewriting the legacy source. A server mutation can succeed
+before a browser quota or device-storage failure; that condition is reported
+explicitly and the returned revision is not presented as durably committed in
+the browser. There is no background sync, conflict auto-resolution, or
+provider/source promotion.
 
 Portable packages now use a versioned union. Production export emits version 2
 with `data.ranking_profile` containing the canonical profile (ordered
@@ -273,22 +278,30 @@ accepted only through its explicit legacy adapter. A package claiming version 2
 is parsed and validated as v2 and is never retried as v1. Active IDs must exist
 in the trusted universe at the same position; duplicate, cross-position,
 oversized, malformed, or scoring-conflicting input is rejected before the
-atomic storage transaction. Import confirmation and rollback behavior remain
-unchanged, with both the legacy compatibility value and canonical destination
-updated together.
+atomic storage transaction. Import commits the canonical snapshot, its bound
+authority record, favorites, and an optional draft plan under one versioned
+write-ahead journal. Every key is read back exactly. A failure rolls all prior
+values back; if rollback itself cannot complete, the journal remains as
+explicit recovery evidence and startup may resume only when every live value
+equals its recorded prior or next value. Import never synthesizes or rewrites
+the retained legacy ranking source.
 
-Startup calls the Phase 12B2a migration protocol from the client effect only
-after the loaded player universe is non-empty. The verified production legacy
-key is `ff-draft-custom-rankings`; the canonical destination and backup keys
-are `ff-draft-ranking-profile-v2` and `ff-draft-ranking-profile-v2-backup`.
-The source is retained. Migration writes a durable backup, writes the canonical
-destination, and reads it back through the validator before reporting success.
-Existing valid values are compare-and-swap checked; source, destination, or
-backup divergence fails closed without overwrite. Repeated calls are durable
-idempotence-safe across rerenders and React strict-mode remounts. The page
-surfaces only bounded, noninterruptive status text for migrated, already
-current, unavailable, or safely rejected outcomes. No browser storage is read
-during SSR or render.
+Startup calls the storage protocol from the client effect. The verified
+production keys are `ff-draft-custom-rankings` (retained legacy source),
+`ff-draft-ranking-profile-v2` (canonical destination),
+`ff-draft-ranking-profile-v2-backup` (original migration rollback evidence),
+`ff-draft-ranking-profile-v2-authority` (versioned authority discriminator and
+canonical fingerprint), and `ff-draft-ranking-profile-v2-commit` (recoverable
+write-ahead journal). With no established authority, startup preserves the
+Phase 12B2a migration compare-and-swap checks, requires the trusted player
+universe, writes and read-verifies the original backup and canonical result,
+then establishes authority through the journaled commit. With authority
+established, startup validates the authority, canonical snapshot, and retained
+backup, then loads that exact committed snapshot without reinterpreting the
+legacy source. Normal edits therefore cannot invalidate one-time migration
+evidence. Corrupt authority, canonical data, backup, journal, or impossible
+mixed transaction state fails closed. Repeated calls and strict-mode-style
+invocations are idempotent. No browser storage is read during SSR or render.
 
 ### 12B2b boundary and rollback
 
@@ -301,7 +314,8 @@ The executable API boundary is `openapi/v1.json`,
 `behavior/rankingProfileStorage.ts`, `pages/index.tsx`,
 `components/PortableDataControls.tsx`, `__tests__/rankingProfiles.test.ts`,
 `__tests__/portableData.test.tsx`, and
-`__tests__/rankingProfileStorage.test.ts`. This document and
+`__tests__/rankingProfileStorage.test.ts`, plus the hardening regression file
+`__tests__/useRankingProfiles.test.tsx`. This document and
 `docs/roadmap-2026.md` record the closeout boundary; unrelated data artifacts
 were not edited.
 
@@ -309,8 +323,13 @@ Focused API and dashboard tests cover v2 create/list/read/revision/undo/redo,
 restart persistence, expected-revision conflicts, authority enforcement,
 generated contract freshness, v2 serialization, portable-v2 round trips,
 portable-v1 compatibility, claimed-v2 fail-closed parsing, atomic writes, and
-startup idempotence/divergence handling. Validation uses only disposable
-SQLite databases and injected in-memory browser storage.
+startup idempotence/divergence handling. Hardening tests additionally cover
+bound portable-v2 import with tombstones across restart, migration followed by
+API and local edits, durable select/undo/redo, byte-identical state after API
+409/422 rejection, failure at every import write/readback position, recoverable
+journals, corrupt authority, retained source/backup evidence, and rollback CAS.
+Validation uses only disposable SQLite databases and injected in-memory or
+JSDOM browser storage.
 
 Rollback is a normal Git revert of the API and dashboard Phase 12B2b commits in
 dependency order (API contract/implementation first, then generated dashboard
@@ -318,6 +337,8 @@ consumer). No production database or browser cleanup is part of this slice.
 The additive SQLite tables remain safe if code is reverted. For browser data,
 `restoreRankingProfileStorageBackup` restores only when the retained source and
 canonical destination still match the migration compare-and-swap evidence; a
-conflict is reported without writes. Rebase apply, ranking-source refresh or
+matching canonical authority record is cleared with the restored destination,
+while a conflict is reported without overwriting newer data. The source and
+backup are never deleted automatically. Rebase apply, ranking-source refresh or
 promotion, provider changes, overlays, recommendations, Phase 11C, Realtime,
 deployment, push, and active-data migration remain explicitly deferred.

@@ -19,7 +19,7 @@ import {
   RankingProfileV2,
   validateRankingProfileV2,
 } from "../rankingProfileV2"
-import { RANKING_PROFILE_V2_STORAGE_KEY, serializeRankingProfileV2 } from "../rankingProfileStorage"
+import { commitCanonicalRankingProfile } from "../rankingProfileStorage"
 import { PlayerRanks } from "../draft"
 import {
   BoardSettings,
@@ -47,8 +47,8 @@ interface UseRankingProfilesOptions {
   boardSettings: BoardSettings
   onLoadPlayers: (rankings: Rankings) => void
   onSetRanker: (ranker: ThirdPartyRanker) => void
-  saveLocalRankings: () => boolean
   localProfile?: RankingProfileV2 | null
+  onLocalProfileCommitted?: (profile: RankingProfileV2) => void
 }
 
 export type RankingProfile = RankingProfileV2Record
@@ -249,8 +249,8 @@ export const useRankingProfiles = ({
   boardSettings,
   onLoadPlayers,
   onSetRanker,
-  saveLocalRankings,
   localProfile = null,
+  onLocalProfileCommitted,
 }: UseRankingProfilesOptions) => {
   const [profiles, setProfiles] = useState<RankingProfile[]>([])
   const [activeProfile, setActiveProfile] =
@@ -260,15 +260,16 @@ export const useRankingProfiles = ({
   const [error, setError] = useState<string | null>(null)
   const apiConfigured = Boolean(process.env.NEXT_PUBLIC_API_HOST)
 
-  const persistLocalProfile = useCallback((snapshot: RankingProfileV2) => {
-    if (typeof localStorage === "undefined") return false
-    try {
-      localStorage.setItem(RANKING_PROFILE_V2_STORAGE_KEY, serializeRankingProfileV2(snapshot))
-      return true
-    } catch {
-      return false
+  const persistLocalProfile = useCallback((snapshotValue: RankingProfileV2) => {
+    if (typeof localStorage === "undefined") throw new Error("Browser storage is unavailable")
+    const snapshot = validateRankingProfileV2(snapshotValue)
+    const committed = commitCanonicalRankingProfile(localStorage, snapshot)
+    if (committed.status === "rejected") {
+      throw new Error(`Browser canonical commit failed (${committed.code}): ${committed.message}`)
     }
-  }, [])
+    onLocalProfileCommitted?.(snapshot)
+    return snapshot
+  }, [onLocalProfileCommitted])
 
   const refresh = useCallback(async () => {
     if (!apiConfigured) return
@@ -317,9 +318,16 @@ export const useRankingProfiles = ({
           ? activeProfile.snapshot as unknown as RankingProfileV2
           : localProfile,
       )
-      saveLocalRankings()
-      persistLocalProfile(snapshot)
-      throw new Error("Saved in this browser; the local API is unavailable")
+      try {
+        persistLocalProfile(snapshot)
+      } catch (caught) {
+        const message = caught instanceof Error ? caught.message : "Browser canonical commit failed"
+        setError(message)
+        throw caught
+      }
+      const message = "Saved in this browser; the local API is unavailable"
+      setError(message)
+      throw new Error(message)
     }
     setIsSaving(true)
     try {
@@ -344,7 +352,7 @@ export const useRankingProfiles = ({
           ),
           snapshot,
         })
-      persistLocalProfile(snapshot)
+      persistLocalProfile(validateRankingProfileV2(profile.snapshot))
       updateProfileState(profile)
       return profile
     } catch (caught) {
@@ -357,10 +365,14 @@ export const useRankingProfiles = ({
       )
       const apiUnavailable = caught instanceof RankingProfileApiError
         && (caught.status === undefined || caught.status >= 500)
-      const localSaved = apiUnavailable
-        && saveLocalRankings()
-        && persistLocalProfile(snapshot)
-      if (localSaved) {
+      if (apiUnavailable) {
+        try {
+          persistLocalProfile(snapshot)
+        } catch (localError) {
+          const localMessage = localError instanceof Error ? localError.message : "Browser canonical commit failed"
+          setError(localMessage)
+          throw localError
+        }
         const localMessage = "Saved in this browser; the local API is unavailable"
         setError(localMessage)
         throw new Error(localMessage)
@@ -377,7 +389,6 @@ export const useRankingProfiles = ({
     boardSettings.ranker,
     playerRanks,
     rankings.copiedRanker,
-    saveLocalRankings,
     settings,
     localProfile,
     persistLocalProfile,
@@ -386,8 +397,15 @@ export const useRankingProfiles = ({
 
   const select = useCallback((profileId: string) => {
     const profile = profiles.find(candidate => candidate.id === profileId)
-    if (profile) applyProfile(profile)
-  }, [applyProfile, profiles])
+    if (!profile) return
+    try {
+      persistLocalProfile(validateRankingProfileV2(profile.snapshot))
+      applyProfile(profile)
+      setError(null)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to commit selected profile")
+    }
+  }, [applyProfile, persistLocalProfile, profiles])
 
   const startNew = useCallback(() => {
     setActiveProfile(null)
@@ -407,6 +425,7 @@ export const useRankingProfiles = ({
           activeProfile.id,
           activeProfile.current_revision,
         )
+      persistLocalProfile(validateRankingProfileV2(profile.snapshot))
       updateProfileState(profile)
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : `Unable to ${direction}`
@@ -415,7 +434,7 @@ export const useRankingProfiles = ({
     } finally {
       setIsSaving(false)
     }
-  }, [activeProfile, updateProfileState])
+  }, [activeProfile, persistLocalProfile, updateProfileState])
 
   return useMemo(() => ({
     profiles,

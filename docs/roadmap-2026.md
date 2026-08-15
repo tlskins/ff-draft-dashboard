@@ -425,11 +425,23 @@ validation failures are bounded structured errors. Production portable export
 now emits version 2 with the canonical `ranking_profile` (order, tiers,
 tombstones, scoring, and provenance), while the explicit portable-v1 adapter
 remains accepted and malformed claimed-v2 input never falls back to v1.
-Startup migration runs after the trusted player universe is loaded, verifies
-the production legacy key `ff-draft-custom-rankings`, preserves source and
-backup, read-verifies the canonical destination, and reports bounded
+Startup checks committed browser authority first; only an initial legacy
+migration waits for the trusted player universe. That migration verifies the
+production legacy key `ff-draft-custom-rankings`, preserves source and backup,
+read-verifies the canonical destination, and reports bounded
 migrated/current/unavailable/rejected status without overwriting divergent
-values. Rebase apply remains a later independent Phase 12B slice. Phase 12A,
+values. The Phase 12B2b hardening pass adds a versioned browser authority
+record bound to the canonical profile fingerprint and a recoverable
+write-ahead journal. Once authority is established by migration, portable-v2
+import, API save, local fallback save, profile selection, undo, or redo,
+startup loads the exact validated canonical snapshot and no longer
+reinterprets the retained legacy source. Normal commits preserve the original
+legacy bytes and migration backup. Import commits canonical data, authority,
+favorites, and an optional draft plan atomically with exact readback; failures
+restore prior values or retain an explicit recoverable journal. Corrupt
+authority, canonical data, backup, journal, or impossible mixed state fails
+closed, while rejected API conflicts and validation errors leave browser state
+byte-identical. Rebase apply remains a later independent Phase 12B slice. Phase 12A,
 12B1, and 12B2a grant no ranking-source refresh/apply/promotion, profile rebase
 apply, overlay, recommendation, provider, deployment, or Phase 11C authority.
 

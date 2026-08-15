@@ -66,13 +66,10 @@ import {
   PortableDataPackage,
   portableRankingProfile,
   portableRankingSource,
-  writeStorageTransaction,
 } from "@/behavior/portableData"
 import {
-  LEGACY_RANKING_PROFILE_STORAGE_KEY,
-  RANKING_PROFILE_V2_STORAGE_KEY,
+  commitCanonicalRankingProfile,
   runRankingProfileStartupMigration,
-  serializeRankingProfileV2,
 } from "@/behavior/rankingProfileStorage"
 import type { RankingProfileV2 } from "@/behavior/rankingProfileV2"
 import { draftPlanStorageKey } from "@/behavior/realtime/storage"
@@ -191,8 +188,8 @@ const Home: FC = () => {
     boardSettings,
     onLoadPlayers,
     onSetRanker,
-    saveLocalRankings: saveCustomRankings,
     localProfile: startupProfile,
+    onLocalProfileCommitted: setStartupProfile,
   })
 
   const {
@@ -573,17 +570,7 @@ const Home: FC = () => {
           realtimeAdvisor.plan,
         )
       : null
-    const writes = [
-      {
-        key: LEGACY_RANKING_PROFILE_STORAGE_KEY,
-        value: importedProfile
-          ? JSON.stringify(nextRankings)
-          : null,
-      },
-      {
-        key: RANKING_PROFILE_V2_STORAGE_KEY,
-        value: importedProfile ? serializeRankingProfileV2(importedProfile) : null,
-      },
+    const additionalWrites = [
       {
         key: "ff-draft-favorites",
         value: JSON.stringify(importedTargets),
@@ -593,7 +580,14 @@ const Home: FC = () => {
         value: JSON.stringify(importedPlan),
       }] : []),
     ]
-    writeStorageTransaction(localStorage, writes)
+    const committed = commitCanonicalRankingProfile(
+      localStorage,
+      importedProfile,
+      additionalWrites,
+    )
+    if (committed.status === "rejected") {
+      throw new Error(`Portable import browser commit failed (${committed.code}): ${committed.message}`)
+    }
 
     replaceSettings(portable.data.preferences.settings)
     setMyPickNum(portable.data.preferences.my_pick_num)
@@ -634,6 +628,8 @@ const Home: FC = () => {
     }
 
     let migratedProfile: RankingProfileV2 | null = null
+    let canonicalAuthorityEstablished = false
+    let migrationRejected = false
     if (browserLoaded) {
       const migration = runRankingProfileStartupMigration(
         localStorage,
@@ -641,6 +637,7 @@ const Home: FC = () => {
         settings.ppr ? "ppr" : "standard",
       )
       if (migration.status === "migrated" || migration.status === "already_current") {
+        canonicalAuthorityEstablished = true
         migratedProfile = migration.profile
         setStartupProfile(migration.profile)
         setStartupMigrationStatus(
@@ -651,18 +648,23 @@ const Home: FC = () => {
       } else if (migration.status === "unavailable") {
         setStartupMigrationStatus("Local profile migration is unavailable; browser rankings remain usable.")
       } else {
-        setStartupMigrationStatus("Local profile migration was rejected safely; browser rankings remain usable.")
+        migrationRejected = true
+        setStartupMigrationStatus("Local profile migration was rejected safely; untrusted browser rankings were not loaded.")
       }
     }
 
-    if (migratedProfile) {
-      onLoadPlayers({
-        ...applyRankingProfileV2Snapshot(currentRankings, migratedProfile),
-        settings,
-      })
-      onSetRanker(ThirdPartyRanker.CUSTOM)
+    if (canonicalAuthorityEstablished) {
+      if (migratedProfile) {
+        onLoadPlayers({
+          ...applyRankingProfileV2Snapshot(currentRankings, migratedProfile),
+          settings,
+        })
+        onSetRanker(ThirdPartyRanker.CUSTOM)
+      } else {
+        onLoadPlayers({...currentRankings, settings})
+      }
       setLatestRankings(currentRankings)
-    } else if (browserLoaded && hasCustomRankingsSaved()) {
+    } else if (!migrationRejected && browserLoaded && hasCustomRankingsSaved()) {
       // Load custom rankings without setting state first to get the data
       const customRankingsData = loadCustomRankingsData()
       if (customRankingsData) {
