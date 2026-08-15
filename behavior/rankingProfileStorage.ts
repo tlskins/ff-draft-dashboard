@@ -27,9 +27,13 @@ export interface RankingProfileStorageMigrationEvidence {
     | "unsupported_schema_version"
     | "malformed_claimed_v2"
     | "invalid_legacy_v1"
+    | "source_missing"
+    | "trusted_universe_unavailable"
     | "storage_read_failed"
     | "destination_invalid"
     | "destination_conflict"
+    | "backup_invalid"
+    | "backup_conflict"
     | "backup_write_failed"
     | "destination_write_failed"
   source_format: LegacyRankingProfileFormat | "profile_v2" | null
@@ -52,6 +56,10 @@ export type RankingProfileStorageMigrationResult =
   | {
     status: "migrated" | "already_current"
     profile: RankingProfileV2
+    evidence: RankingProfileStorageMigrationEvidence
+  }
+  | {
+    status: "unavailable"
     evidence: RankingProfileStorageMigrationEvidence
   }
   | {
@@ -232,24 +240,75 @@ export const migrateRankingProfileStorage = (
 
   let sourceValue: string | null
   let destinationValue: string | null
+  let backupValue: string | null
   try {
     sourceValue = storage.getItem(sourceKey)
     destinationValue = storage.getItem(destinationKey)
+    backupValue = storage.getItem(backupKey)
   } catch (error) {
     return {
       status: "rejected",
       evidence: evidence("storage_read_failed", null, error instanceof Error ? error.message : "Storage read failed"),
     }
   }
-  if (sourceValue === null) {
+  const existingBackup = backupValue === null ? null : validateBackup(backupValue)
+  if (backupValue !== null && !existingBackup) {
     return {
       status: "rejected",
-      evidence: evidence("storage_read_failed", null, "Legacy ranking profile is not stored"),
+      evidence: evidence("backup_invalid", null, "Migration backup is invalid"),
+    }
+  }
+  if (sourceValue === null) {
+    if (destinationValue !== null) {
+      try {
+        const profile = validateRankingProfileV2(JSON.parse(destinationValue) as unknown)
+        return {
+          status: "already_current",
+          profile,
+          evidence: evidence("already_v2", "profile_v2", "Canonical profile v2 is already stored"),
+        }
+      } catch (error) {
+        return {
+          status: "rejected",
+          evidence: evidence("destination_invalid", "profile_v2", error instanceof Error ? error.message : "Stored v2 destination is invalid"),
+        }
+      }
+    }
+    return {
+      status: "unavailable",
+      evidence: evidence("source_missing", null, "Legacy ranking profile is not stored"),
+    }
+  }
+
+  if (existingBackup && (
+    existingBackup.source_key !== sourceKey
+    || existingBackup.destination_key !== destinationKey
+    || existingBackup.source_value !== sourceValue
+  )) {
+    return {
+      status: "rejected",
+      evidence: evidence("backup_conflict", "profile_v2", "Migration backup conflicts with current storage values"),
     }
   }
 
   const plan = planRankingProfileStorageMigration(sourceValue, options)
   if (plan.status === "rejected") return plan
+
+  if (existingBackup && (
+    existingBackup.source_key !== sourceKey
+    || existingBackup.destination_key !== destinationKey
+    || existingBackup.source_value !== sourceValue
+    || existingBackup.expected_destination_value !== plan.serialized
+    || (
+      destinationValue !== existingBackup.previous_destination_value
+      && destinationValue !== existingBackup.expected_destination_value
+    )
+  )) {
+    return {
+      status: "rejected",
+      evidence: evidence("backup_conflict", plan.evidence.source_format, "Migration backup conflicts with current storage values"),
+    }
+  }
 
   if (destinationValue !== null) {
     let destination: RankingProfileV2
@@ -279,16 +338,18 @@ export const migrateRankingProfileStorage = (
     previous_destination_value: destinationValue,
     expected_destination_value: plan.serialized,
   }
-  const serializedBackup = JSON.stringify(backup)
-  try {
-    storage.setItem(backupKey, serializedBackup)
-    if (storage.getItem(backupKey) !== serializedBackup) {
-      throw new Error("Migration backup did not read back identically")
-    }
-  } catch (error) {
-    return {
-      status: "rejected",
-      evidence: evidence("backup_write_failed", plan.evidence.source_format, error instanceof Error ? error.message : "Migration backup write failed"),
+  if (!existingBackup) {
+    const serializedBackup = JSON.stringify(backup)
+    try {
+      storage.setItem(backupKey, serializedBackup)
+      if (storage.getItem(backupKey) !== serializedBackup) {
+        throw new Error("Migration backup did not read back identically")
+      }
+    } catch (error) {
+      return {
+        status: "rejected",
+        evidence: evidence("backup_write_failed", plan.evidence.source_format, error instanceof Error ? error.message : "Migration backup write failed"),
+      }
     }
   }
 
@@ -450,4 +511,43 @@ export const restoreRankingProfileStorageBackup = (
     status: "restored",
     evidence: rollbackEvidence("rollback_restored", "Migration destination was restored"),
   }
+}
+
+export interface RankingProfileStartupPlayer {
+  id: string
+  position: string
+}
+
+export const runRankingProfileStartupMigration = (
+  storage: RankingProfileStorageAdapter,
+  players: RankingProfileStartupPlayer[],
+  scoringType: ProfileScoringType,
+): RankingProfileStorageMigrationResult => {
+  const trustedUniverse = players
+    .filter(player => ["QB", "RB", "WR", "TE"].includes(player.position))
+    .map((player, index) => ({
+      player_id: player.id,
+      position: player.position,
+      overall_rank: index + 1,
+    }))
+  if (trustedUniverse.length === 0) {
+    return {
+      status: "unavailable",
+      evidence: evidence(
+        "trusted_universe_unavailable",
+        null,
+        "Trusted player universe is not available",
+      ),
+    }
+  }
+  return migrateRankingProfileStorage(storage, {
+    legacy_format: "full_rankings_v1",
+    trusted_universe: trustedUniverse,
+    scoring_type: scoringType,
+    // This is the production key written and read by useRanks. Keeping it
+    // explicit prevents a helper default from silently becoming authority.
+    source_key: "ff-draft-custom-rankings",
+    destination_key: RANKING_PROFILE_V2_STORAGE_KEY,
+    backup_key: RANKING_PROFILE_V2_BACKUP_KEY,
+  })
 }

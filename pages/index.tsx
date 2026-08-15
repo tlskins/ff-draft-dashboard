@@ -60,12 +60,21 @@ import {
 } from "@/behavior/playerData"
 import { shouldIgnoreGlobalDraftShortcut } from "@/behavior/accessibility"
 import {
-  applyPortableRankingSnapshot,
+  applyRankingProfileV2Snapshot,
   createImportedDraftPlan,
   createPortableDataPackage,
   PortableDataPackage,
+  portableRankingProfile,
+  portableRankingSource,
   writeStorageTransaction,
 } from "@/behavior/portableData"
+import {
+  LEGACY_RANKING_PROFILE_STORAGE_KEY,
+  RANKING_PROFILE_V2_STORAGE_KEY,
+  runRankingProfileStartupMigration,
+  serializeRankingProfileV2,
+} from "@/behavior/rankingProfileStorage"
+import type { RankingProfileV2 } from "@/behavior/rankingProfileV2"
 import { draftPlanStorageKey } from "@/behavior/realtime/storage"
 import {
   getSnapshotObservedThroughOverallPick,
@@ -172,6 +181,9 @@ const Home: FC = () => {
 
   const usingCustomRanking = boardSettings.ranker === ThirdPartyRanker.CUSTOM
 
+  const [startupProfile, setStartupProfile] = useState<RankingProfileV2 | null>(null)
+  const [startupMigrationStatus, setStartupMigrationStatus] = useState<string | null>(null)
+
   const rankingProfileControls = useRankingProfiles({
     playerRanks,
     rankings,
@@ -180,6 +192,7 @@ const Home: FC = () => {
     onLoadPlayers,
     onSetRanker,
     saveLocalRankings: saveCustomRankings,
+    localProfile: startupProfile,
   })
 
   const {
@@ -503,6 +516,9 @@ const Home: FC = () => {
 
   const createPortableData = useCallback(() => createPortableDataPackage({
     rankings,
+    rankingProfile: rankingProfileControls.activeProfile?.snapshot.schema_version === 2
+      ? rankingProfileControls.activeProfile.snapshot as unknown as RankingProfileV2
+      : startupProfile,
     settings,
     boardSettings,
     myPickNum,
@@ -513,8 +529,10 @@ const Home: FC = () => {
     myPickNum,
     playerTargets,
     rankings,
+    rankingProfileControls.activeProfile,
     realtimeAdvisor.plan,
     settings,
+    startupProfile,
   ])
 
   const applyPortableData = useCallback((portable: PortableDataPackage) => {
@@ -531,10 +549,15 @@ const Home: FC = () => {
       throw new Error("Browser storage is unavailable; local data was not changed")
     }
 
+    const importedProfile = portableRankingProfile(
+      portable,
+      portableValidationContext,
+    )
     const nextRankings = {
-      ...applyPortableRankingSnapshot(
+      ...applyRankingProfileV2Snapshot(
         rankings,
-        portable.data.custom_rankings,
+        importedProfile,
+        portableRankingSource(portable),
       ),
       settings: { ...portable.data.preferences.settings },
     }
@@ -552,10 +575,14 @@ const Home: FC = () => {
       : null
     const writes = [
       {
-        key: "ff-draft-custom-rankings",
-        value: portable.data.custom_rankings
+        key: LEGACY_RANKING_PROFILE_STORAGE_KEY,
+        value: importedProfile
           ? JSON.stringify(nextRankings)
           : null,
+      },
+      {
+        key: RANKING_PROFILE_V2_STORAGE_KEY,
+        value: importedProfile ? serializeRankingProfileV2(importedProfile) : null,
       },
       {
         key: "ff-draft-favorites",
@@ -571,6 +598,7 @@ const Home: FC = () => {
     replaceSettings(portable.data.preferences.settings)
     setMyPickNum(portable.data.preferences.my_pick_num)
     replacePlayerTargets(importedTargets)
+    setStartupProfile(importedProfile)
     applyImportedRankings(
       nextRankings,
       portable.data.preferences.settings,
@@ -587,6 +615,7 @@ const Home: FC = () => {
     replacePlayerTargets,
     replaceSettings,
     setMyPickNum,
+    portableValidationContext,
     sourceEventCount,
   ])
 
@@ -604,8 +633,36 @@ const Home: FC = () => {
       )
     }
 
-    // if custom rankings are detected load those as rankings and set latest rankings to the current rankings
-    if (browserLoaded && hasCustomRankingsSaved()) {
+    let migratedProfile: RankingProfileV2 | null = null
+    if (browserLoaded) {
+      const migration = runRankingProfileStartupMigration(
+        localStorage,
+        currentRankings.players,
+        settings.ppr ? "ppr" : "standard",
+      )
+      if (migration.status === "migrated" || migration.status === "already_current") {
+        migratedProfile = migration.profile
+        setStartupProfile(migration.profile)
+        setStartupMigrationStatus(
+          migration.status === "migrated"
+            ? "Local rankings were migrated to canonical profile v2."
+            : "Canonical profile v2 is current.",
+        )
+      } else if (migration.status === "unavailable") {
+        setStartupMigrationStatus("Local profile migration is unavailable; browser rankings remain usable.")
+      } else {
+        setStartupMigrationStatus("Local profile migration was rejected safely; browser rankings remain usable.")
+      }
+    }
+
+    if (migratedProfile) {
+      onLoadPlayers({
+        ...applyRankingProfileV2Snapshot(currentRankings, migratedProfile),
+        settings,
+      })
+      onSetRanker(ThirdPartyRanker.CUSTOM)
+      setLatestRankings(currentRankings)
+    } else if (browserLoaded && hasCustomRankingsSaved()) {
       // Load custom rankings without setting state first to get the data
       const customRankingsData = loadCustomRankingsData()
       if (customRankingsData) {
@@ -636,7 +693,7 @@ const Home: FC = () => {
       onLoadPlayers(currentRankings)
       resetBoardSettings()
     }
-  }, [onLoadPlayers, resetBoardSettings, browserLoaded, loadCustomRankings, loadCustomRankingsData, hasCustomRankingsSaved, setLatestRankings, calculateRankingDiffs, settings, boardSettings, setCustomAndLatestRankingsDiffs])
+  }, [onLoadPlayers, onSetRanker, resetBoardSettings, browserLoaded, loadCustomRankings, loadCustomRankingsData, hasCustomRankingsSaved, setLatestRankings, calculateRankingDiffs, settings, boardSettings, setCustomAndLatestRankingsDiffs])
 
   useEffect(() => {
     void loadCurrentRankings()
@@ -780,6 +837,11 @@ const Home: FC = () => {
               onApply={applyPortableData}
               validationContext={portableValidationContext}
             />
+          )}
+          {startupMigrationStatus && (
+            <p className="mb-2 px-3 text-left text-xs text-slate-600" role="status">
+              {startupMigrationStatus}
+            </p>
           )}
           {!analysisOpen && (
             <div className="w-full px-2 md:px-5">

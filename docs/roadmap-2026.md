@@ -416,11 +416,22 @@ structured conflict without overwriting newer user data. The exact boundary,
 validation evidence, and rollback procedure are recorded in
 `docs/phase12b-profile-v2-rebase.md`.
 
-Phase 12B2b should next wire canonical v2 through an explicit API/dashboard
-consumer and portable-v2 startup/import/export contract. Rebase apply remains a
-later independent Phase 12B2 slice. Phase 12A, 12B1, and 12B2a grant no ranking
-source refresh/apply/promotion, profile rebase apply, overlay, recommendation,
-provider, deployment, or Phase 11C authority.
+Phase 12B2b is implemented in isolated API and dashboard worktrees. It adds the
+explicit additive `/v1/ranking-profiles-v2` list/read/create/revision/undo/redo
+contract with generated dashboard types and an adapter that remains local-first
+when the API is absent or unavailable. Legacy v1 routes and payloads are
+unchanged; v2 responses expose `mutation_authority`, and v2 conflicts and
+validation failures are bounded structured errors. Production portable export
+now emits version 2 with the canonical `ranking_profile` (order, tiers,
+tombstones, scoring, and provenance), while the explicit portable-v1 adapter
+remains accepted and malformed claimed-v2 input never falls back to v1.
+Startup migration runs after the trusted player universe is loaded, verifies
+the production legacy key `ff-draft-custom-rankings`, preserves source and
+backup, read-verifies the canonical destination, and reports bounded
+migrated/current/unavailable/rejected status without overwriting divergent
+values. Rebase apply remains a later independent Phase 12B slice. Phase 12A,
+12B1, and 12B2a grant no ranking-source refresh/apply/promotion, profile rebase
+apply, overlay, recommendation, provider, deployment, or Phase 11C authority.
 
 ### Phase 13: draft-season release readiness
 

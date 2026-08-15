@@ -15,13 +15,19 @@ import {
   Tier,
 } from "../types"
 import type { DraftPlanDocument } from "./realtime/contracts"
+import {
+  adaptPortableV1ToProfileV2,
+  RankingProfileV2,
+  validateRankingProfileV2,
+} from "./rankingProfileV2"
 
 /**
  * The portable file deliberately contains only user-authored state. It is not
  * a backup of a draft session, API response, or browser configuration.
  */
 export const PORTABLE_DATA_SCHEMA = "drafty.local-data"
-export const PORTABLE_DATA_VERSION = 1 as const
+export const PORTABLE_DATA_V1_VERSION = 1 as const
+export const PORTABLE_DATA_VERSION = 2 as const
 export const PORTABLE_DATA_MAX_BYTES = 512 * 1024
 export const PORTABLE_DATA_MAX_PLAYERS_PER_POSITION = 200
 export const PORTABLE_DATA_MAX_TARGETS = 100
@@ -70,9 +76,9 @@ export interface PortableDraftPlan {
   entries: string[]
 }
 
-export interface PortableDataPackage {
+export interface PortableDataPackageV1 {
   schema: typeof PORTABLE_DATA_SCHEMA
-  version: typeof PORTABLE_DATA_VERSION
+  version: typeof PORTABLE_DATA_V1_VERSION
   exported_at: string
   data: {
     preferences: PortablePreferences
@@ -80,6 +86,19 @@ export interface PortableDataPackage {
     draft_plan: PortableDraftPlan | null
   }
 }
+
+export interface PortableDataPackageV2 {
+  schema: typeof PORTABLE_DATA_SCHEMA
+  version: typeof PORTABLE_DATA_VERSION
+  exported_at: string
+  data: {
+    preferences: PortablePreferences
+    ranking_profile: RankingProfileV2 | null
+    draft_plan: PortableDraftPlan | null
+  }
+}
+
+export type PortableDataPackage = PortableDataPackageV1 | PortableDataPackageV2
 
 export interface PortableDataValidationContext {
   /** The current downloaded/embedded player library is the identity authority. */
@@ -245,6 +264,31 @@ const validateRankingSnapshot = (
   }
 }
 
+const validatePortableRankingProfileV2 = (
+  value: unknown,
+  context: PortableDataValidationContext,
+): RankingProfileV2 => {
+  let profile: RankingProfileV2
+  try {
+    profile = validateRankingProfileV2(value)
+  } catch (error) {
+    fail(error instanceof Error ? error.message : "ranking_profile is invalid")
+  }
+  for (const position of POSITIONS) {
+    profile!.positions[position].forEach((entry, index) => {
+      const player = context.playersById.get(entry.player_id)
+      if (!player) {
+        fail(`ranking_profile.positions.${position}[${index}] references unknown player ${entry.player_id}`)
+        return
+      }
+      if (player.position !== position) {
+        fail(`ranking_profile player ${entry.player_id} is not a ${position}`)
+      }
+    })
+  }
+  return profile!
+}
+
 const validatePreferences = (
   value: unknown,
   context: PortableDataValidationContext,
@@ -314,7 +358,10 @@ export const parsePortableDataPackage = (
   const packageRecord = recordValue(value, "Import file")
   hasOnlyKeys(packageRecord, ["schema", "version", "exported_at", "data"], "package")
   if (packageRecord.schema !== PORTABLE_DATA_SCHEMA) fail("This is not a Drafty local-data package")
-  if (packageRecord.version !== PORTABLE_DATA_VERSION) {
+  if (
+    packageRecord.version !== PORTABLE_DATA_V1_VERSION
+    && packageRecord.version !== PORTABLE_DATA_VERSION
+  ) {
     fail("This package version is unsupported; export again from a compatible Drafty version")
   }
   const exportedAt = stringValue(packageRecord.exported_at, "package.exported_at", 64)
@@ -324,26 +371,44 @@ export const parsePortableDataPackage = (
     || new Date(exportedAt).toISOString() !== exportedAt
   ) fail("package.exported_at must be a canonical ISO date")
   const dataRecord = recordValue(packageRecord.data, "package.data")
-  hasOnlyKeys(dataRecord, ["preferences", "custom_rankings", "draft_plan"], "package.data")
   const preferences = validatePreferences(dataRecord.preferences, context)
-  const customRankings = dataRecord.custom_rankings === null
-    ? null
-    : validateRankingSnapshot(dataRecord.custom_rankings, context)
-  if (customRankings && (customRankings.scoring === "ppr") !== preferences.settings.ppr) {
-    fail("custom_rankings.scoring must match preferences.settings.ppr")
+  const draftPlan = validateDraftPlan(dataRecord.draft_plan)
+  if (packageRecord.version === PORTABLE_DATA_V1_VERSION) {
+    hasOnlyKeys(dataRecord, ["preferences", "custom_rankings", "draft_plan"], "package.data")
+    const customRankings = dataRecord.custom_rankings === null
+      ? null
+      : validateRankingSnapshot(dataRecord.custom_rankings, context)
+    if (customRankings && (customRankings.scoring === "ppr") !== preferences.settings.ppr) {
+      fail("custom_rankings.scoring must match preferences.settings.ppr")
+    }
+    if (preferences.board.ranker === ThirdPartyRanker.CUSTOM && !customRankings) {
+      fail("Custom board ranking requires custom_rankings")
+    }
+    return {
+      schema: PORTABLE_DATA_SCHEMA,
+      version: PORTABLE_DATA_V1_VERSION,
+      exported_at: exportedAt,
+      data: {preferences, custom_rankings: customRankings, draft_plan: draftPlan},
+    }
   }
-  if (preferences.board.ranker === ThirdPartyRanker.CUSTOM && !customRankings) {
-    fail("Custom board ranking requires custom_rankings")
+
+  // Version dispatch is final: malformed claimed-v2 data is never retried as
+  // a portable-v1 snapshot.
+  hasOnlyKeys(dataRecord, ["preferences", "ranking_profile", "draft_plan"], "package.data")
+  const rankingProfile = dataRecord.ranking_profile === null
+    ? null
+    : validatePortableRankingProfileV2(dataRecord.ranking_profile, context)
+  if (rankingProfile && (rankingProfile.scoring_type === "ppr") !== preferences.settings.ppr) {
+    fail("ranking_profile.scoring_type must match preferences.settings.ppr")
+  }
+  if (preferences.board.ranker === ThirdPartyRanker.CUSTOM && !rankingProfile) {
+    fail("Custom board ranking requires ranking_profile")
   }
   return {
     schema: PORTABLE_DATA_SCHEMA,
     version: PORTABLE_DATA_VERSION,
     exported_at: exportedAt,
-    data: {
-      preferences,
-      custom_rankings: customRankings,
-      draft_plan: validateDraftPlan(dataRecord.draft_plan),
-    },
+    data: {preferences, ranking_profile: rankingProfile, draft_plan: draftPlan},
   }
 }
 
@@ -433,10 +498,62 @@ export const applyPortableRankingSnapshot = (
   }
 }
 
+export const applyRankingProfileV2Snapshot = (
+  rankings: Rankings,
+  profile: RankingProfileV2 | null,
+  sourceRanker: ThirdPartyRanker = ThirdPartyRanker.HARRIS,
+): Rankings => applyPortableRankingSnapshot(
+  rankings,
+  profile ? {
+    source_ranker: sourceRanker,
+    scoring: profile.scoring_type,
+    positions: Object.fromEntries(POSITIONS.map(position => [
+      position,
+      profile.positions[position].map((entry, index) => ({
+        ...entry,
+        rank: index + 1,
+      })),
+    ])) as PortableRankingSnapshot["positions"],
+  } : null,
+)
+
+const trustedUniverseFor = (context: PortableDataValidationContext) => (
+  Array.from(context.playersById.values())
+    .filter(player => POSITIONS.includes(player.position as PortablePosition))
+    .map((player, index) => ({
+      player_id: player.id,
+      position: player.position,
+      overall_rank: index + 1,
+    }))
+)
+
+export const portableRankingProfile = (
+  value: PortableDataPackage,
+  context: PortableDataValidationContext,
+): RankingProfileV2 | null => {
+  if (value.version === PORTABLE_DATA_VERSION) {
+    return value.data.ranking_profile
+  }
+  if (!value.data.custom_rankings) return null
+  return adaptPortableV1ToProfileV2(
+    value.data.custom_rankings,
+    trustedUniverseFor(context),
+  )
+}
+
+export const portableRankingSource = (
+  value: PortableDataPackage,
+): ThirdPartyRanker => (
+  value.version === PORTABLE_DATA_V1_VERSION && value.data.custom_rankings
+    ? value.data.custom_rankings.source_ranker
+    : ThirdPartyRanker.HARRIS
+)
+
 const customRankFor = (player: Player) => player.ranks[ThirdPartyRanker.CUSTOM]
 
 export const createPortableDataPackage = ({
   rankings,
+  rankingProfile = null,
   settings,
   boardSettings,
   myPickNum,
@@ -445,22 +562,16 @@ export const createPortableDataPackage = ({
   now = new Date().toISOString(),
 }: {
   rankings: Rankings
+  rankingProfile?: RankingProfileV2 | null
   settings: FantasySettings
   boardSettings: BoardSettings
   myPickNum: number
   playerTargets: PlayerTarget[]
   plan: DraftPlanDocument | null
   now?: string
-}): PortableDataPackage => {
+}): PortableDataPackageV2 => {
   const hasCustomRanks = rankings.players.some(player => Boolean(customRankFor(player)))
-  const sourceCandidate = rankings.copiedRanker
-    || rankings.players.find(player => customRankFor(player))?.ranks[ThirdPartyRanker.CUSTOM]?.copiedRanker
-  // Local custom ranking is created from the three selectable third-party
-  // sources. A stale/legacy DataRanker value cannot be faithfully rebuilt, so
-  // normalize it to the stable Harris source before serializing.
-  const sourceRanker = sourceRankers.has(String(sourceCandidate))
-    ? sourceCandidate as ThirdPartyRanker
-    : ThirdPartyRanker.HARRIS
+  const shouldExportProfile = hasCustomRanks || rankingProfile !== null
   const scoring: PortableScoring = settings.ppr ? "ppr" : "standard"
   const positions = {} as Record<PortablePosition, PortableRankingEntry[]>
   for (const position of POSITIONS) {
@@ -487,6 +598,35 @@ export const createPortableDataPackage = ({
       return { player_id: player.id, rank: index + 1, user_tier: normalizedTier }
     })
   }
+  const baseProfile = rankingProfile
+    ? validateRankingProfileV2(rankingProfile)
+    : null
+  const canonicalProfile = shouldExportProfile ? validateRankingProfileV2({
+    schema_version: 2,
+    rebase_version: "profile_rebase_v1",
+    scoring_type: scoring,
+    positions: Object.fromEntries(POSITIONS.map(position => [
+      position,
+      positions[position].map(({player_id, user_tier}) => ({
+        player_id,
+        user_tier,
+      })),
+    ])),
+    unresolved_players: baseProfile?.scoring_type === scoring
+      ? baseProfile.unresolved_players
+      : [],
+    provenance: baseProfile?.scoring_type === scoring
+      ? baseProfile.provenance
+      : {
+        binding_state: "legacy_unbound",
+        base_source_id: null,
+        base_provider_id: null,
+        source_observation_fingerprint: null,
+        source_season: null,
+        source_scoring_type: null,
+        player_universe_fingerprint: null,
+      },
+  }) : null
   return {
     schema: PORTABLE_DATA_SCHEMA,
     version: PORTABLE_DATA_VERSION,
@@ -501,24 +641,23 @@ export const createPortableDataPackage = ({
           target_as_early_as_round: target.targetAsEarlyAsRound,
         })),
       },
-      custom_rankings: hasCustomRanks ? {
-        source_ranker: sourceRanker,
-        scoring,
-        positions,
-      } : null,
+      ranking_profile: canonicalProfile,
       draft_plan: plan ? { entries: plan.entries.map(entry => entry.text) } : null,
     },
   }
 }
 
 export const portableDataSummary = (value: PortableDataPackage): string[] => {
-  const rankingCount = value.data.custom_rankings
-    ? POSITIONS.reduce((count, position) => count + value.data.custom_rankings!.positions[position].length, 0)
+  const profile = value.version === PORTABLE_DATA_VERSION
+    ? value.data.ranking_profile
+    : value.data.custom_rankings
+  const rankingCount = profile
+    ? POSITIONS.reduce((count, position) => count + profile.positions[position].length, 0)
     : 0
   const parts = [
     `league and board preferences`,
     `${value.data.preferences.player_targets.length} player target${value.data.preferences.player_targets.length === 1 ? "" : "s"}`,
-    value.data.custom_rankings
+    profile
       ? `${rankingCount} custom positional rank${rankingCount === 1 ? "" : "s"}`
       : "no custom rankings (current custom rankings will be cleared)",
   ]

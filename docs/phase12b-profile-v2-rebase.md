@@ -237,9 +237,87 @@ A conflict requires the user or later orchestration to choose which newer value
 to retain. Because this slice performs no production wiring, no active browser
 or authoritative database migration ran during implementation.
 
-Phase 12B2b should wire canonical v2 through an explicit public API/dashboard
-consumer contract, including portable-v2 production import/export and startup
-migration orchestration, while retaining this fail-closed boundary. Rebase
-apply should remain a later separately authorized slice. Ranking-source
-refresh/apply/promotion, providers, overlays, recommendations, Phase 11C,
-Realtime GPT, deployment, tag, and push remain out of scope.
+## Phase 12B2b: canonical consumer, portable v2, and startup wiring
+
+Phase 12B2b is implemented in isolated worktrees from the accepted Phase 12B2a
+baselines. The public canonical surface is additive:
+
+- `GET/POST /v1/ranking-profiles-v2` for list/create;
+- `GET /v1/ranking-profiles-v2/{profile_id}` for read;
+- `POST /v1/ranking-profiles-v2/{profile_id}/revisions` for immutable revision
+  creation; and
+- `POST .../undo` and `POST .../redo` for expected-revision guarded pointer
+  moves.
+
+The legacy `/v1/ranking-profiles` routes and their v1 request/response payloads
+are unchanged. Every v2 response contains `snapshot.schema_version: 2` and an
+explicit `mutation_authority` (`canonical_v2` or `legacy_v1` for an additive
+compatibility view). v2 errors are bounded, structured, and use the codes
+`invalid_request`, `invalid_profile_v2`, `profile_not_found`, and
+`profile_conflict`. Route code delegates validation, authority, immutable
+history, tombstone, provenance, scoring, and expected-revision invariants to
+the repository and canonical validator.
+
+The dashboard adapter calls only the v2 endpoints when an API host is
+configured. It keeps browser-local operation when the host is absent or a
+request fails; a failed API request cannot replace a valid local value. A
+successful explicit save also persists the validated canonical snapshot in the
+browser v2 destination for restart continuity. There is no background sync,
+conflict auto-resolution, or provider/source promotion.
+
+Portable packages now use a versioned union. Production export emits version 2
+with `data.ranking_profile` containing the canonical profile (ordered
+positional entries, tiers, unresolved tombstones, scoring, and provenance),
+alongside the unchanged preferences and draft-plan fields. Version 1 remains
+accepted only through its explicit legacy adapter. A package claiming version 2
+is parsed and validated as v2 and is never retried as v1. Active IDs must exist
+in the trusted universe at the same position; duplicate, cross-position,
+oversized, malformed, or scoring-conflicting input is rejected before the
+atomic storage transaction. Import confirmation and rollback behavior remain
+unchanged, with both the legacy compatibility value and canonical destination
+updated together.
+
+Startup calls the Phase 12B2a migration protocol from the client effect only
+after the loaded player universe is non-empty. The verified production legacy
+key is `ff-draft-custom-rankings`; the canonical destination and backup keys
+are `ff-draft-ranking-profile-v2` and `ff-draft-ranking-profile-v2-backup`.
+The source is retained. Migration writes a durable backup, writes the canonical
+destination, and reads it back through the validator before reporting success.
+Existing valid values are compare-and-swap checked; source, destination, or
+backup divergence fails closed without overwrite. Repeated calls are durable
+idempotence-safe across rerenders and React strict-mode remounts. The page
+surfaces only bounded, noninterruptive status text for migrated, already
+current, unavailable, or safely rejected outcomes. No browser storage is read
+during SSR or render.
+
+### 12B2b boundary and rollback
+
+The executable API boundary is `openapi/v1.json`,
+`app/api/ranking_profiles.py`, `app/repositories/ranking_profiles.py`,
+`tests/test_ranking_profile_api_v2.py`, `tests/test_ranking_profiles.py`, and
+`tests/test_openapi_contract.py`. The dashboard boundary is
+`behavior/api/rankingProfiles.ts`, `behavior/api/schema.d.ts`,
+`behavior/hooks/useRankingProfiles.ts`, `behavior/portableData.ts`,
+`behavior/rankingProfileStorage.ts`, `pages/index.tsx`,
+`components/PortableDataControls.tsx`, `__tests__/rankingProfiles.test.ts`,
+`__tests__/portableData.test.tsx`, and
+`__tests__/rankingProfileStorage.test.ts`. This document and
+`docs/roadmap-2026.md` record the closeout boundary; unrelated data artifacts
+were not edited.
+
+Focused API and dashboard tests cover v2 create/list/read/revision/undo/redo,
+restart persistence, expected-revision conflicts, authority enforcement,
+generated contract freshness, v2 serialization, portable-v2 round trips,
+portable-v1 compatibility, claimed-v2 fail-closed parsing, atomic writes, and
+startup idempotence/divergence handling. Validation uses only disposable
+SQLite databases and injected in-memory browser storage.
+
+Rollback is a normal Git revert of the API and dashboard Phase 12B2b commits in
+dependency order (API contract/implementation first, then generated dashboard
+consumer). No production database or browser cleanup is part of this slice.
+The additive SQLite tables remain safe if code is reverted. For browser data,
+`restoreRankingProfileStorageBackup` restores only when the retained source and
+canonical destination still match the migration compare-and-swap evidence; a
+conflict is reported without writes. Rebase apply, ranking-source refresh or
+promotion, provider changes, overlays, recommendations, Phase 11C, Realtime,
+deployment, push, and active-data migration remain explicitly deferred.

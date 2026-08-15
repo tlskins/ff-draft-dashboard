@@ -1,12 +1,20 @@
 import {
+  createRankingProfileV2,
+  createRankingProfileV2Revision,
   createRankingProfile,
   createRankingProfileRevision,
+  listRankingProfilesV2,
   previewRankingProfileRebase,
   RankingProfileApiError,
   redoRankingProfile,
+  redoRankingProfileV2,
   undoRankingProfile,
+  undoRankingProfileV2,
 } from "../behavior/api/rankingProfiles"
-import type {RankingProfileRebasePreviewRequest} from "../behavior/api/rankingProfiles"
+import type {
+  RankingProfileRebasePreviewRequest,
+  RankingProfileV2CreateRequest,
+} from "../behavior/api/rankingProfiles"
 import rebaseFixture from "./fixtures/rankingProfileRebaseV1.json"
 import {
   applyRankingProfileSnapshot,
@@ -66,6 +74,59 @@ const player = (
 })
 
 describe("ranking profile contract adapter", () => {
+  it("serializes canonical v2 create/list/read/revision/undo/redo without v1 snapshots", async () => {
+    const snapshot: RankingProfileV2CreateRequest["snapshot"] = {
+      schema_version: 2,
+      rebase_version: "profile_rebase_v1",
+      scoring_type: "ppr",
+      positions: {QB: [], RB: [], WR: [], TE: []},
+      unresolved_players: [{
+        player_id: "missing-rb",
+        last_position: "RB",
+        last_user_rank: 1,
+        last_user_tier: 1,
+        reason: "missing_from_target",
+      }],
+      provenance: {
+        binding_state: "bound",
+        base_source_id: "espn",
+        base_provider_id: "espn",
+        source_observation_fingerprint: "a".repeat(64),
+        source_season: 2026,
+        source_scoring_type: "ppr",
+        player_universe_fingerprint: "b".repeat(64),
+      },
+    }
+    const profile = {id: "home", current_revision: 1, snapshot}
+    const fetcher = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => profile,
+    })
+    const options = {
+      apiHost: "http://127.0.0.1:5000",
+      fetcher: fetcher as unknown as typeof fetch,
+    }
+    const snapshotForRequest = profile.snapshot
+    await createRankingProfileV2({name: "Home", snapshot: snapshotForRequest}, options)
+    await listRankingProfilesV2(options)
+    await createRankingProfileV2Revision("home", {
+      expected_revision: 1,
+      snapshot: snapshotForRequest,
+    }, options)
+    await undoRankingProfileV2("home", 2, options)
+    await redoRankingProfileV2("home", 1, options)
+
+    expect(fetcher.mock.calls.map(call => call[0])).toEqual([
+      "http://127.0.0.1:5000/v1/ranking-profiles-v2",
+      "http://127.0.0.1:5000/v1/ranking-profiles-v2",
+      "http://127.0.0.1:5000/v1/ranking-profiles-v2/home/revisions",
+      "http://127.0.0.1:5000/v1/ranking-profiles-v2/home/undo",
+      "http://127.0.0.1:5000/v1/ranking-profiles-v2/home/redo",
+    ])
+    expect(JSON.stringify(fetcher.mock.calls[0][1])).not.toContain("schema_version\\\":1")
+    expect(fetcher.mock.calls[2][1]?.body).toContain("missing-rb")
+  })
+
   it("calls create, revision, undo, and redo endpoints", async () => {
     const profile = {
       id: "home",

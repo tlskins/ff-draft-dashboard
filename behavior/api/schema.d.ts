@@ -154,6 +154,100 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ranking-profiles-v2": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List canonical ranking-profile-v2 records. */
+        get: operations["listRankingProfilesV2"];
+        put?: never;
+        /** Create a canonical-v2-authoritative ranking profile. */
+        post: operations["createRankingProfileV2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ranking-profiles-v2/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        /** Read the current canonical revision and mutation authority. */
+        get: operations["getRankingProfileV2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ranking-profiles-v2/{profile_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save an immutable canonical v2 revision and explicitly promote legacy authority when needed. */
+        post: operations["createRankingProfileV2Revision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ranking-profiles-v2/{profile_id}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move the canonical current-revision pointer backward. */
+        post: operations["undoRankingProfileV2Revision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ranking-profiles-v2/{profile_id}/redo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move the canonical current-revision pointer forward. */
+        post: operations["redoRankingProfileV2Revision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ranking-profiles": {
         parameters: {
             query?: never;
@@ -796,6 +890,51 @@ export interface components {
             positions: components["schemas"]["RankingProfileV2Positions"];
             unresolved_players: components["schemas"]["RankingProfileUnresolvedPlayer"][];
             provenance: components["schemas"]["RankingProfileProvenance"];
+        };
+        /** @enum {string} */
+        RankingProfileV2MutationAuthority: "legacy_v1" | "canonical_v2";
+        RankingProfileV2Record: {
+            id: string;
+            name: string;
+            scoring_profile: components["schemas"]["RankingProfileV2ScoringType"];
+            source_ranker: string | null;
+            /** @constant */
+            projection_tier_method: "standard_deviation_v1";
+            mutation_authority: components["schemas"]["RankingProfileV2MutationAuthority"];
+            current_revision: number;
+            max_revision: number;
+            can_undo: boolean;
+            can_redo: boolean;
+            snapshot: components["schemas"]["RankingProfileV2"];
+            history: components["schemas"]["RankingProfileRevision"][];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        RankingProfileV2ListResponse: {
+            profiles: components["schemas"]["RankingProfileV2Record"][];
+        };
+        RankingProfileV2CreateRequest: {
+            id?: string;
+            name: string;
+            source_ranker?: string;
+            snapshot: components["schemas"]["RankingProfileV2"];
+        };
+        RankingProfileV2RevisionRequest: {
+            expected_revision: number;
+            name?: string;
+            reason?: string;
+            snapshot: components["schemas"]["RankingProfileV2"];
+        };
+        RankingProfileV2MoveRevisionRequest: {
+            expected_revision: number;
+        };
+        /** @enum {string} */
+        RankingProfileV2ErrorCode: "invalid_request" | "invalid_profile_v2" | "profile_not_found" | "profile_conflict";
+        RankingProfileV2ErrorResponse: {
+            error: string;
+            code: components["schemas"]["RankingProfileV2ErrorCode"];
         };
         RankingProfileRebaseTargetPlayer: {
             player_id: string;
@@ -1694,6 +1833,258 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listRankingProfilesV2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical profiles ordered by most recent edit, including explicit mutation authority. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ListResponse"];
+                };
+            };
+        };
+    };
+    createRankingProfileV2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RankingProfileV2CreateRequest"];
+            };
+        };
+        responses: {
+            /** @description The canonical profile was created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2Record"];
+                };
+            };
+            /** @description The request or canonical snapshot is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ErrorResponse"];
+                };
+            };
+            /** @description The requested profile ID already exists. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ErrorResponse"];
+                };
+            };
+        };
+    };
+    getRankingProfileV2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The canonical profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2Record"];
+                };
+            };
+            /** @description The profile does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ErrorResponse"];
+                };
+            };
+        };
+    };
+    createRankingProfileV2Revision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RankingProfileV2RevisionRequest"];
+            };
+        };
+        responses: {
+            /** @description The immutable canonical revision was saved. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2Record"];
+                };
+            };
+            /** @description The request or canonical snapshot is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ErrorResponse"];
+                };
+            };
+            /** @description The profile does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ErrorResponse"];
+                };
+            };
+            /** @description The expected revision is stale or authority is unavailable. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ErrorResponse"];
+                };
+            };
+        };
+    };
+    undoRankingProfileV2Revision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RankingProfileV2MoveRevisionRequest"];
+            };
+        };
+        responses: {
+            /** @description The preceding canonical revision is current. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2Record"];
+                };
+            };
+            /** @description The request is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ErrorResponse"];
+                };
+            };
+            /** @description The profile does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ErrorResponse"];
+                };
+            };
+            /** @description No undo exists or the expected revision is stale. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ErrorResponse"];
+                };
+            };
+        };
+    };
+    redoRankingProfileV2Revision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RankingProfileV2MoveRevisionRequest"];
+            };
+        };
+        responses: {
+            /** @description The next canonical revision is current. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2Record"];
+                };
+            };
+            /** @description The request is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ErrorResponse"];
+                };
+            };
+            /** @description The profile does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ErrorResponse"];
+                };
+            };
+            /** @description No redo exists or the expected revision is stale. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingProfileV2ErrorResponse"];
                 };
             };
         };

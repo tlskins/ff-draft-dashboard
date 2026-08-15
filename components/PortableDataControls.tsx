@@ -41,7 +41,7 @@ const PortableDataControls: React.FC<PortableDataControlsProps> = ({
       const url = URL.createObjectURL(blob)
       const anchor = document.createElement("a")
       anchor.href = url
-      anchor.download = "drafty-local-data-v1.json"
+      anchor.download = "drafty-local-data-v2.json"
       anchor.click()
       URL.revokeObjectURL(url)
       setError(null)

@@ -2,14 +2,24 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { cloneDeep } from "lodash"
 
 import {
-  createRankingProfile,
-  createRankingProfileRevision,
-  listRankingProfiles,
-  RankingProfile,
+  createRankingProfileV2,
+  createRankingProfileV2Revision,
+  listRankingProfilesV2,
+  RankingProfileApiError,
+  RankingProfileV2Record,
   RankingProfileSnapshot,
-  redoRankingProfile,
-  undoRankingProfile,
+  redoRankingProfileV2,
+  undoRankingProfileV2,
 } from "../api/rankingProfiles"
+import type { RankingProfile as LegacyRankingProfile } from "../api/rankingProfiles"
+import {
+  applyRankingProfileV2Snapshot,
+} from "../portableData"
+import {
+  RankingProfileV2,
+  validateRankingProfileV2,
+} from "../rankingProfileV2"
+import { RANKING_PROFILE_V2_STORAGE_KEY, serializeRankingProfileV2 } from "../rankingProfileStorage"
 import { PlayerRanks } from "../draft"
 import {
   BoardSettings,
@@ -38,7 +48,10 @@ interface UseRankingProfilesOptions {
   onLoadPlayers: (rankings: Rankings) => void
   onSetRanker: (ranker: ThirdPartyRanker) => void
   saveLocalRankings: () => boolean
+  localProfile?: RankingProfileV2 | null
 }
+
+export type RankingProfile = RankingProfileV2Record
 
 const scoringProfile = (settings: FantasySettings) => (
   settings.ppr ? "ppr" as const : "standard" as const
@@ -78,6 +91,40 @@ export const createRankingProfileSnapshot = (
     ]
   })) as RankingProfileSnapshot["positions"],
 })
+
+export const createRankingProfileV2Snapshot = (
+  playerRanks: PlayerRanks,
+  settings: FantasySettings,
+  baseProfile: RankingProfileV2 | null = null,
+): RankingProfileV2 => {
+  const legacy = createRankingProfileSnapshot(playerRanks, settings)
+  const scoring = scoringProfile(settings)
+  const base = baseProfile && baseProfile.scoring_type === scoring
+    ? validateRankingProfileV2(baseProfile)
+    : null
+  return validateRankingProfileV2({
+    schema_version: 2,
+    rebase_version: "profile_rebase_v1",
+    scoring_type: scoring,
+    positions: Object.fromEntries(POSITIONS.map(position => [
+      position,
+      legacy.positions[position].map(({player_id, user_tier}) => ({
+        player_id,
+        user_tier,
+      })),
+    ])),
+    unresolved_players: base?.unresolved_players || [],
+    provenance: base?.provenance || {
+      binding_state: "legacy_unbound",
+      base_source_id: null,
+      base_provider_id: null,
+      source_observation_fingerprint: null,
+      source_season: null,
+      source_scoring_type: null,
+      player_universe_fingerprint: null,
+    },
+  })
+}
 
 const valueFor = (
   player: Player,
@@ -124,10 +171,20 @@ const tiersFor = (
 }
 
 export const applyRankingProfileSnapshot = (
-  profile: RankingProfile,
+  profile: RankingProfile | LegacyRankingProfile,
   rankings: Rankings,
   settings: FantasySettings,
 ): Rankings => {
+  if (profile.snapshot.schema_version === 2) {
+    const sourceRanker = String(
+      profile.source_ranker || rankings.copiedRanker || ThirdPartyRanker.HARRIS,
+    ) as ThirdPartyRanker
+    return applyRankingProfileV2Snapshot(
+      rankings,
+      profile.snapshot as unknown as RankingProfileV2,
+      sourceRanker,
+    )
+  }
   const players = cloneDeep(rankings.players)
   const playersById = new Map(players.map(player => [player.id, player]))
   const sourceRanker = (
@@ -136,8 +193,9 @@ export const applyRankingProfileSnapshot = (
     ThirdPartyRanker.HARRIS
   ) as ThirdPartyRanker
 
+  const legacySnapshot = profile.snapshot as LegacyRankingProfile["snapshot"]
   POSITIONS.forEach(position => {
-    const entries = profile.snapshot.positions[position]
+    const entries = legacySnapshot.positions[position]
     const tiers = tiersFor(
       entries,
       playersById,
@@ -192,6 +250,7 @@ export const useRankingProfiles = ({
   onLoadPlayers,
   onSetRanker,
   saveLocalRankings,
+  localProfile = null,
 }: UseRankingProfilesOptions) => {
   const [profiles, setProfiles] = useState<RankingProfile[]>([])
   const [activeProfile, setActiveProfile] =
@@ -201,11 +260,21 @@ export const useRankingProfiles = ({
   const [error, setError] = useState<string | null>(null)
   const apiConfigured = Boolean(process.env.NEXT_PUBLIC_API_HOST)
 
+  const persistLocalProfile = useCallback((snapshot: RankingProfileV2) => {
+    if (typeof localStorage === "undefined") return false
+    try {
+      localStorage.setItem(RANKING_PROFILE_V2_STORAGE_KEY, serializeRankingProfileV2(snapshot))
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
   const refresh = useCallback(async () => {
     if (!apiConfigured) return
     setIsLoading(true)
     try {
-      const result = await listRankingProfiles()
+      const result = await listRankingProfilesV2()
       setProfiles(result.profiles)
       setError(null)
     } catch (caught) {
@@ -241,30 +310,61 @@ export const useRankingProfiles = ({
 
   const save = useCallback(async (name: string) => {
     if (!apiConfigured) {
+      const snapshot = createRankingProfileV2Snapshot(
+        playerRanks,
+        settings,
+        activeProfile?.snapshot.schema_version === 2
+          ? activeProfile.snapshot as unknown as RankingProfileV2
+          : localProfile,
+      )
       saveLocalRankings()
+      persistLocalProfile(snapshot)
       throw new Error("Saved in this browser; the local API is unavailable")
     }
     setIsSaving(true)
     try {
-      const snapshot = createRankingProfileSnapshot(playerRanks, settings)
+      const snapshot = createRankingProfileV2Snapshot(
+        playerRanks,
+        settings,
+        activeProfile?.snapshot.schema_version === 2
+          ? activeProfile.snapshot as unknown as RankingProfileV2
+          : localProfile,
+      )
       const profile = activeProfile
-        ? await createRankingProfileRevision(activeProfile.id, {
+        ? await createRankingProfileV2Revision(activeProfile.id, {
           expected_revision: activeProfile.current_revision,
           name,
           reason: "Ranking order or user tiers updated",
           snapshot,
         })
-        : await createRankingProfile({
+        : await createRankingProfileV2({
           name,
-          scoring_profile: scoringProfile(settings),
           source_ranker: String(
             rankings.copiedRanker || boardSettings.ranker,
           ),
           snapshot,
         })
+      persistLocalProfile(snapshot)
       updateProfileState(profile)
       return profile
     } catch (caught) {
+      const snapshot = createRankingProfileV2Snapshot(
+        playerRanks,
+        settings,
+        activeProfile?.snapshot.schema_version === 2
+          ? activeProfile.snapshot as unknown as RankingProfileV2
+          : localProfile,
+      )
+      const apiUnavailable = caught instanceof RankingProfileApiError
+        && (caught.status === undefined || caught.status >= 500)
+      const localSaved = apiUnavailable
+        && saveLocalRankings()
+        && persistLocalProfile(snapshot)
+      if (localSaved) {
+        const localMessage = "Saved in this browser; the local API is unavailable"
+        setError(localMessage)
+        throw new Error(localMessage)
+      }
       const message = caught instanceof Error ? caught.message : "Unable to save profile"
       setError(message)
       throw caught
@@ -279,6 +379,8 @@ export const useRankingProfiles = ({
     rankings.copiedRanker,
     saveLocalRankings,
     settings,
+    localProfile,
+    persistLocalProfile,
     updateProfileState,
   ])
 
@@ -297,11 +399,11 @@ export const useRankingProfiles = ({
     setIsSaving(true)
     try {
       const profile = direction === "undo"
-        ? await undoRankingProfile(
+        ? await undoRankingProfileV2(
           activeProfile.id,
           activeProfile.current_revision,
         )
-        : await redoRankingProfile(
+        : await redoRankingProfileV2(
           activeProfile.id,
           activeProfile.current_revision,
         )

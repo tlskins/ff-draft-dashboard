@@ -8,6 +8,7 @@ import {
   RANKING_PROFILE_V2_STORAGE_KEY,
   RankingProfileStorageAdapter,
   restoreRankingProfileStorageBackup,
+  runRankingProfileStartupMigration,
 } from "../behavior/rankingProfileStorage"
 
 
@@ -71,6 +72,62 @@ const portableOptions = {
 }
 
 describe("restart-safe ranking profile v2 browser migration", () => {
+  const legacyRankings = JSON.stringify({
+    players: [{
+      id: "rb-1",
+      position: "RB",
+      ranks: {
+        Custom: {
+          pprPositionRank: 1,
+          pprPositionTier: {tierNumber: 1},
+        },
+      },
+    }],
+    rankingsSummaries: [],
+    cachedAt: "2026-08-14T00:00:00.000Z",
+    editedAt: "2026-08-14T00:00:00.000Z",
+    copiedRanker: "Harris",
+    settings: {},
+  })
+
+  it("orchestrates startup only with a trusted universe and is idempotent", () => {
+    const storage = new MemoryStorage(new Map([
+      [LEGACY_RANKING_PROFILE_STORAGE_KEY, legacyRankings],
+    ]))
+    const players = [{id: "rb-1", position: "RB"}]
+    const first = runRankingProfileStartupMigration(storage, players, "ppr")
+    expect(first.status).toBe("migrated")
+    if (first.status !== "migrated") throw new Error("expected startup migration")
+    const destination = storage.getItem(RANKING_PROFILE_V2_STORAGE_KEY)
+    const backup = storage.getItem(RANKING_PROFILE_V2_BACKUP_KEY)
+    const second = runRankingProfileStartupMigration(storage, players, "ppr")
+    expect(second.status).toBe("already_current")
+    expect(storage.getItem(RANKING_PROFILE_V2_STORAGE_KEY)).toBe(destination)
+    expect(storage.getItem(RANKING_PROFILE_V2_BACKUP_KEY)).toBe(backup)
+    expect(runRankingProfileStartupMigration(storage, [], "ppr")).toMatchObject({
+      status: "unavailable",
+      evidence: {code: "trusted_universe_unavailable"},
+    })
+  })
+
+  it("fails closed for corrupt backup and source/destination divergence", () => {
+    const storage = new MemoryStorage(new Map([
+      [LEGACY_RANKING_PROFILE_STORAGE_KEY, legacyRankings],
+      [RANKING_PROFILE_V2_BACKUP_KEY, "{"],
+    ]))
+    expect(runRankingProfileStartupMigration(storage, [{id: "rb-1", position: "RB"}], "ppr"))
+      .toMatchObject({status: "rejected", evidence: {code: "backup_invalid"}})
+
+    const migrated = new MemoryStorage(new Map([
+      [LEGACY_RANKING_PROFILE_STORAGE_KEY, legacyRankings],
+    ]))
+    expect(runRankingProfileStartupMigration(migrated, [{id: "rb-1", position: "RB"}], "ppr").status)
+      .toBe("migrated")
+    migrated.setItem(LEGACY_RANKING_PROFILE_STORAGE_KEY, "newer-source")
+    expect(runRankingProfileStartupMigration(migrated, [{id: "rb-1", position: "RB"}], "ppr"))
+      .toMatchObject({status: "rejected", evidence: {code: "backup_conflict"}})
+  })
+
   it("migrates valid portable v1 without losing order, tiers, tombstones, or provenance", () => {
     const legacyValue = JSON.stringify(fixture.legacy_portable_v1.snapshot)
     const storage = new MemoryStorage(new Map([

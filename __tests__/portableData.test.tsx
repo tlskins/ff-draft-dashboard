@@ -5,8 +5,9 @@ import PortableDataControls from "../components/PortableDataControls"
 import {
   PORTABLE_DATA_MAX_BYTES,
   PortableDataPackage,
+  PortableDataPackageV2,
   PortableDataValidationError,
-  applyPortableRankingSnapshot,
+  applyRankingProfileV2Snapshot,
   createPortableDataPackage,
   parsePortableDataPackage,
   serializePortableDataPackage,
@@ -86,7 +87,7 @@ const rankings: Rankings = {
 
 const context = { playersById: new Map(players.map(item => [item.id, item])) }
 
-const packageFor = (): PortableDataPackage => createPortableDataPackage({
+const packageFor = (): PortableDataPackageV2 => createPortableDataPackage({
   rankings,
   settings,
   boardSettings: {
@@ -112,27 +113,70 @@ const packageFor = (): PortableDataPackage => createPortableDataPackage({
 })
 
 const parse = (value: unknown) => parsePortableDataPackage(JSON.stringify(value), context)
+const parseV2 = (value: unknown): PortableDataPackageV2 => {
+  const parsed = parse(value)
+  if (parsed.version !== 2) throw new Error("expected portable v2")
+  return parsed
+}
 
 describe("portable local-data package", () => {
   it("round-trips a lean ranking/profile/plan package and rebuilds trusted players", () => {
-    const value = parse(packageFor())
-    expect(value.data.custom_rankings?.positions.QB).toEqual([
-      { player_id: "qb-1", rank: 1, user_tier: 1 },
+    const value = parseV2(packageFor())
+    expect(value.data.ranking_profile?.positions.QB).toEqual([
+      { player_id: "qb-1", user_tier: 1 },
     ])
     expect(value.data.draft_plan?.entries).toEqual([
       "Prioritize the remaining wide receiver tier.",
     ])
     expect(JSON.stringify(value)).not.toContain("current-session")
 
-    const applied = applyPortableRankingSnapshot(rankings, value.data.custom_rankings)
+    const applied = applyRankingProfileV2Snapshot(rankings, value.data.ranking_profile)
     expect(applied.players.find(item => item.id === "wr-1")?.ranks.Custom?.pprPositionRank).toBe(1)
     expect(applied.copiedRanker).toBe(ThirdPartyRanker.HARRIS)
+  })
+
+  it("round-trips canonical order, tiers, tombstones, and provenance", () => {
+    const base = packageFor().data.ranking_profile!
+    base.positions.RB = [
+      {player_id: "rb-1", user_tier: 1},
+    ]
+    base.unresolved_players = [{
+      player_id: "retired-rb",
+      last_position: "RB",
+      last_user_rank: 2,
+      last_user_tier: 2,
+      reason: "missing_from_target",
+    }]
+    base.provenance = {
+      binding_state: "bound",
+      base_source_id: "espn",
+      base_provider_id: "espn",
+      source_observation_fingerprint: "a".repeat(64),
+      source_season: 2026,
+      source_scoring_type: "ppr",
+      player_universe_fingerprint: "b".repeat(64),
+    }
+    const exported = createPortableDataPackage({
+      rankings,
+      settings,
+      boardSettings: {
+        ranker: ThirdPartyRanker.CUSTOM,
+        adpRanker: ThirdPartyADPRanker.ESPN,
+      },
+      myPickNum: 6,
+      playerTargets: [],
+      rankingProfile: base,
+      plan: null,
+      now: "2026-07-30T20:00:00.000Z",
+    })
+    const parsed = parseV2(exported)
+    expect(parsed.data.ranking_profile).toEqual(base)
   })
 
   it.each([
     ["malformed JSON", "{"],
     ["wrong schema", JSON.stringify({ ...packageFor(), schema: "other" })],
-    ["newer version", JSON.stringify({ ...packageFor(), version: 2 })],
+    ["newer version", JSON.stringify({ ...packageFor(), version: 3 })],
     ["prototype-shaped key", JSON.stringify(packageFor()).replace("{", "{\"__proto__\":{\"polluted\":true},")],
   ])("fails closed for %s", (_label, serialized) => {
     expect(() => parsePortableDataPackage(serialized, context)).toThrow(PortableDataValidationError)
@@ -151,6 +195,49 @@ describe("portable local-data package", () => {
       .toThrow("bounded array")
   })
 
+  it("continues accepting an explicitly versioned portable-v1 package", () => {
+    const current = packageFor()
+    const legacy = {
+      schema: "drafty.local-data",
+      version: 1,
+      exported_at: current.exported_at,
+      data: {
+        preferences: current.data.preferences,
+        custom_rankings: {
+          source_ranker: ThirdPartyRanker.HARRIS,
+          scoring: "ppr",
+          positions: {
+            QB: [{player_id: "qb-1", rank: 1, user_tier: 1}],
+            RB: [{player_id: "rb-1", rank: 1, user_tier: 1}],
+            WR: [{player_id: "wr-1", rank: 1, user_tier: 1}],
+            TE: [{player_id: "te-1", rank: 1, user_tier: 1}],
+          },
+        },
+        draft_plan: current.data.draft_plan,
+      },
+    }
+    const parsed = parse(legacy)
+    expect(parsed.version).toBe(1)
+    if (parsed.version !== 1) throw new Error("expected portable v1")
+    expect(parsed.data.custom_rankings?.positions.RB[0].player_id).toBe("rb-1")
+  })
+
+  it("rejects malformed claimed-v2 input without legacy fallback", () => {
+    const current = packageFor()
+    const malformed = {
+      ...current,
+      data: {
+        ...current.data,
+        ranking_profile: {
+          source_ranker: ThirdPartyRanker.HARRIS,
+          scoring: "ppr",
+          positions: current.data.ranking_profile?.positions,
+        },
+      },
+    }
+    expect(() => parse(malformed)).toThrow(PortableDataValidationError)
+  })
+
   it("rejects oversized UTF-8 input before parsing", () => {
     expect(() => parsePortableDataPackage("é".repeat(PORTABLE_DATA_MAX_BYTES), context))
       .toThrow("larger than 512 KB")
@@ -158,11 +245,11 @@ describe("portable local-data package", () => {
 
   it("rejects unknown players, scoring mismatch, and unsupported league sizes", () => {
     const unknown = packageFor()
-    unknown.data.custom_rankings!.positions.QB[0].player_id = "not-present"
+    unknown.data.ranking_profile!.positions.QB[0].player_id = "not-present"
     expect(() => parse(unknown)).toThrow("unknown player")
 
     const mismatch = packageFor()
-    mismatch.data.custom_rankings!.scoring = "standard"
+    mismatch.data.ranking_profile!.scoring_type = "standard"
     expect(() => parse(mismatch)).toThrow("must match")
 
     const unsupportedSize = packageFor()
