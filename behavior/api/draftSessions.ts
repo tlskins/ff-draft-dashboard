@@ -33,7 +33,7 @@ interface PersistDraftEventsOptions {
 
 interface AdvisorSnapshotOptions extends PersistDraftEventsOptions {}
 
-interface PersistAdvisorSnapshotsParams {
+export interface PersistAdvisorSnapshotsParams {
   sessionId: string | null
   sourceEventCount: number
   inputFingerprint: string
@@ -136,6 +136,66 @@ export const createAdvisorInputFingerprint = (
     hash = Math.imul(hash, 0x01000193)
   }
   return (hash >>> 0).toString(16).padStart(8, "0")
+}
+
+export interface AdvisorSnapshotPersistenceCoordinator {
+  enqueue: (params: PersistAdvisorSnapshotsParams) => boolean
+  waitForIdle: () => Promise<void>
+}
+
+export const createAdvisorSnapshotPersistenceCoordinator = ({
+  publish,
+  onError = () => undefined,
+}: {
+  publish: (params: PersistAdvisorSnapshotsParams) => Promise<void>
+  onError?: (
+    error: unknown,
+    params: PersistAdvisorSnapshotsParams,
+  ) => void
+}): AdvisorSnapshotPersistenceCoordinator => {
+  let inFlight = false
+  let pending: PersistAdvisorSnapshotsParams | null = null
+  let lastAcceptedKey: string | null = null
+  let idle = Promise.resolve()
+
+  const keyFor = (params: PersistAdvisorSnapshotsParams) => (
+    createAdvisorInputFingerprint({
+      sessionId: params.sessionId,
+      sourceEventCount: params.sourceEventCount,
+      inputFingerprint: params.inputFingerprint,
+      recommendations: params.recommendations,
+      opponentForecast: params.opponentForecast,
+    })
+  )
+
+  const drain = async () => {
+    while (pending) {
+      const current = pending
+      pending = null
+      try {
+        await publish(current)
+      } catch (error) {
+        onError(error, current)
+      }
+    }
+    inFlight = false
+  }
+
+  return {
+    enqueue: params => {
+      const key = keyFor(params)
+      if (key === lastAcceptedKey) return false
+
+      lastAcceptedKey = key
+      pending = params
+      if (!inFlight) {
+        inFlight = true
+        idle = drain()
+      }
+      return true
+    },
+    waitForIdle: () => idle,
+  }
 }
 
 export const toRecommendationSnapshot = (

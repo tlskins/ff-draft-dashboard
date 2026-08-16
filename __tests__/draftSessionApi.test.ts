@@ -1,15 +1,18 @@
 import {
+  createAdvisorSnapshotPersistenceCoordinator,
   createAdvisorInputFingerprint,
   loadAdvisorSnapshots,
   persistAdvisorSnapshots,
   persistDraftEvents,
   toOpponentForecastSnapshot,
+  type PersistAdvisorSnapshotsParams,
 } from "../behavior/api/draftSessions"
 import type { CanonicalDraftEvent } from "../behavior/draft-feed/session"
 import type {
   DraftRecommendationSet,
 } from "../behavior/draft-advisor/recommendations"
 import type { OpponentForecast } from "../behavior/draft-advisor/types"
+import { FantasyPosition } from "types"
 
 
 const event: CanonicalDraftEvent = {
@@ -29,6 +32,43 @@ const event: CanonicalDraftEvent = {
     position: "WR",
   },
 }
+
+const recommendations = (
+  viewExplanation = "Compare positions.",
+): DraftRecommendationSet => ({
+  schemaVersion: 1,
+  currentPick: 2,
+  nextUserPick: 8,
+  preferredView: "cross_position",
+  viewExplanation,
+  candidates: [],
+})
+
+const opponentForecast = (
+  probability = 0.5,
+): OpponentForecast => ({
+  schemaVersion: 1,
+  model: "combined",
+  targetRosterIndex: 0,
+  picks: [],
+  runProbabilities: [{
+    position: FantasyPosition.RUNNING_BACK,
+    minimumPicks: 3,
+    probability,
+  }],
+  tierBoundaryProbabilities: [],
+})
+
+const advisorSnapshotParams = (
+  overrides: Partial<PersistAdvisorSnapshotsParams> = {},
+): PersistAdvisorSnapshotsParams => ({
+  sessionId: event.draftId,
+  sourceEventCount: 1,
+  inputFingerprint: "1234abcd",
+  recommendations: recommendations(),
+  opponentForecast: opponentForecast(),
+  ...overrides,
+})
 
 describe("draft session API adapter", () => {
   it("creates the session before appending generated canonical events", async () => {
@@ -74,22 +114,8 @@ describe("draft session API adapter", () => {
   })
 
   it("publishes typed advisor snapshots against one session", async () => {
-    const recommendations: DraftRecommendationSet = {
-      schemaVersion: 1,
-      currentPick: 2,
-      nextUserPick: 8,
-      preferredView: "cross_position",
-      viewExplanation: "Compare positions.",
-      candidates: [],
-    }
-    const opponentForecast: OpponentForecast = {
-      schemaVersion: 1,
-      model: "combined",
-      targetRosterIndex: 0,
-      picks: [],
-      runProbabilities: [],
-      tierBoundaryProbabilities: [],
-    }
+    const recommendationSet = recommendations()
+    const forecast = opponentForecast()
     const fetcher = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -101,8 +127,8 @@ describe("draft session API adapter", () => {
       sourceEventCount: 1,
       inputFingerprint: "1234abcd",
       generatedAt: "2026-07-30T12:00:00Z",
-      recommendations,
-      opponentForecast,
+      recommendations: recommendationSet,
+      opponentForecast: forecast,
     }, {
       apiHost: "http://127.0.0.1:5000/",
       fetcher: fetcher as unknown as typeof fetch,
@@ -128,6 +154,85 @@ describe("draft session API adapter", () => {
       source_event_count: 1,
       model: "combined",
     })
+  })
+
+  it("publishes equivalent advisor evidence only once", async () => {
+    const publish = jest.fn().mockResolvedValue(undefined)
+    const coordinator = createAdvisorSnapshotPersistenceCoordinator({publish})
+
+    expect(coordinator.enqueue(advisorSnapshotParams())).toBe(true)
+    expect(coordinator.enqueue(advisorSnapshotParams())).toBe(false)
+    await coordinator.waitForIdle()
+
+    expect(publish).toHaveBeenCalledTimes(1)
+  })
+
+  it("publishes evidence-only changes even when the input fingerprint is stable", async () => {
+    const publish = jest.fn().mockResolvedValue(undefined)
+    const coordinator = createAdvisorSnapshotPersistenceCoordinator({publish})
+
+    coordinator.enqueue(advisorSnapshotParams())
+    await coordinator.waitForIdle()
+    coordinator.enqueue(advisorSnapshotParams({
+      opponentForecast: opponentForecast(0.75),
+    }))
+    await coordinator.waitForIdle()
+
+    expect(publish).toHaveBeenCalledTimes(2)
+  })
+
+  it("coalesces queued advisor evidence to the latest material state", async () => {
+    let releaseFirst: (() => void) | undefined
+    const firstPublish = new Promise<void>(resolve => {
+      releaseFirst = resolve
+    })
+    const publish = jest.fn()
+      .mockImplementationOnce(() => firstPublish)
+      .mockResolvedValue(undefined)
+    const coordinator = createAdvisorSnapshotPersistenceCoordinator({publish})
+
+    coordinator.enqueue(advisorSnapshotParams())
+    coordinator.enqueue(advisorSnapshotParams({
+      sourceEventCount: 2,
+      inputFingerprint: "second",
+    }))
+    const latest = advisorSnapshotParams({
+      sourceEventCount: 3,
+      inputFingerprint: "latest",
+    })
+    coordinator.enqueue(latest)
+    releaseFirst?.()
+    await coordinator.waitForIdle()
+
+    expect(publish).toHaveBeenCalledTimes(2)
+    expect(publish.mock.calls[1][0]).toMatchObject({
+      sourceEventCount: 3,
+      inputFingerprint: "latest",
+    })
+  })
+
+  it("does not retry a failed snapshot until material evidence changes", async () => {
+    const onError = jest.fn()
+    const publish = jest.fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue(undefined)
+    const coordinator = createAdvisorSnapshotPersistenceCoordinator({
+      publish,
+      onError,
+    })
+    const unchanged = advisorSnapshotParams()
+
+    coordinator.enqueue(unchanged)
+    await coordinator.waitForIdle()
+    expect(coordinator.enqueue(advisorSnapshotParams())).toBe(false)
+    expect(publish).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenCalledTimes(1)
+
+    expect(coordinator.enqueue(advisorSnapshotParams({
+      recommendations: recommendations("The board changed."),
+    }))).toBe(true)
+    await coordinator.waitForIdle()
+    expect(publish).toHaveBeenCalledTimes(2)
   })
 
   it("refuses to serialize the offline v2 challenger as a live v1 snapshot", () => {

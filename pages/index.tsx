@@ -40,6 +40,7 @@ import {
 } from "../behavior/hooks/useRealtimeConversation"
 import { Player, ThirdPartyRanker } from "types"
 import {
+  createAdvisorSnapshotPersistenceCoordinator,
   createAdvisorInputFingerprint,
   persistAdvisorSnapshots,
 } from "@/behavior/api/draftSessions"
@@ -282,7 +283,21 @@ const Home: FC = () => {
     ...(viewPlayerId ? [viewPlayerId] : []),
   ], [recommendations.candidates, viewPlayerId])
   const playerStatus = usePlayerStatusCache(statusPlayerIds)
-  const advisorPersistenceQueue = useRef(Promise.resolve())
+  const advisorPersistenceCoordinator = useRef<ReturnType<
+    typeof createAdvisorSnapshotPersistenceCoordinator
+  > | null>(null)
+  if (!advisorPersistenceCoordinator.current) {
+    advisorPersistenceCoordinator.current =
+      createAdvisorSnapshotPersistenceCoordinator({
+        publish: persistAdvisorSnapshots,
+        onError: error => {
+          console.warn(
+            "Advisor snapshots remain local because persistence failed",
+            error,
+          )
+        },
+      })
+  }
   const sourceEventCount = draftHistory.filter(Boolean).length
   const analysisEventStreamId = activeDraftSessionId || "unscoped-draft"
   const [analysisViewEventArbitration, setAnalysisViewEventArbitration] =
@@ -471,21 +486,13 @@ const Home: FC = () => {
         .slice(0, 60)
         .map(player => player.id),
     })
-    const publish = () => persistAdvisorSnapshots({
-        sessionId: activeDraftSessionId,
-        sourceEventCount,
-        inputFingerprint,
-        recommendations,
-        opponentForecast,
-      })
-    advisorPersistenceQueue.current = advisorPersistenceQueue.current
-      .then(publish, publish)
-      .catch(error => {
-        console.warn(
-          "Advisor snapshots remain local because persistence failed",
-          error,
-        )
-      })
+    advisorPersistenceCoordinator.current?.enqueue({
+      sessionId: activeDraftSessionId,
+      sourceEventCount,
+      inputFingerprint,
+      recommendations,
+      opponentForecast,
+    })
   }, [
     activeDraftSessionId,
     boardSettings,

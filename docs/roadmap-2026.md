@@ -465,6 +465,12 @@ Dependency: Phases 10-12 are integrated. Frozen prediction v1 is an acceptable
 release model while Phase 9 remains evidence-blocked; neither prediction-v2 nor
 Realtime GPT promotion is a release prerequisite.
 
+Status: completed locally on 2026-08-16 through Phase 13C. The deterministic
+extension package, provider-free preflight, human-directed Chrome/ESPN mock,
+completed-draft recovery, API persistence repair, and clean-tree release gates
+passed. VoiceOver and physical-device verification remain explicitly deferred;
+deployment and push remain separate release decisions.
+
 Complete extension selector smoke, startup/recovery/migration checks, one full
 local mock acceptance, refreshed-data/API smoke, fallback and rollback checks,
 and the deferred manual VoiceOver/device audit. Verify that current rankings,
@@ -508,6 +514,26 @@ source bytes and is validated by Phase 13A for tracked ZIP readability,
 semantic manifest equality, and referenced-asset byte parity. It does not
 change extension permissions/matches, begin browser acceptance, or complete
 Phase 13.
+
+#### Phase 13C: live acceptance and advisor-persistence hardening
+
+Phase 13C closes the release blocker found during the human-directed 0.0.0.8
+Chrome/ESPN acceptance. The full standard mock captured 167 unique
+QB/RB/WR/TE events without duplicates; the remaining 25 provider-board picks
+were intentionally excluded K and D/ST selections. Completed-draft refresh and
+reselection reconstructed the modeled roster without duplicates. The external
+MetaMask extension could still trigger Next's development error overlay, so
+the acceptance used the production export to isolate Drafty runtime behavior.
+
+The API now advertises `PUT` for allowed local CORS origins, matching the
+existing recommendation and opponent-forecast routes. The dashboard replaces
+its unbounded persistence promise chain with a latest-state coordinator:
+equivalent rerenders are ignored, materially changed evidence is retained,
+queued intermediate states coalesce to the latest snapshot, and a failed
+unchanged snapshot is not retried on every render. Unit, type, lint, production
+build, real preflight, and live local API replay gates cover the repair. See
+`docs/phase13c-advisor-persistence-hardening.md` for the closeout evidence and
+rollback boundary.
 
 ## Deferred product tracks
 
