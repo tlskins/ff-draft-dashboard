@@ -71,7 +71,6 @@ export interface EditRankingsViewProps extends SharedViewProps {
   onFinishCustomRanking: () => void
   loadCurrentRankings: () => void
   onUpdateTierBoundary: (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => void
-  saveCustomRankings: () => boolean
   selectedPosition: keyof PlayerRanks
   setSelectedPosition: (position: keyof PlayerRanks) => void
   customAndLatestRankingsDiffs: { [key: string]: PlayerRankingDiff }

@@ -12,7 +12,6 @@ import RankingView from './views/RankingView'
 import BestAvailByRoundView from './views/BestAvailByRoundView'
 import EditRankingsView, { DiffFilterOption } from './views/EditRankingsView'
 import RosterDisplay from './RosterDisplay'
-import Dropdown from './dropdown'
 import MobileViewFooter from './MobileViewFooter'
 import type { RankingProfileControls } from '../behavior/hooks/useRankingProfiles'
 import type { DraftSourceHealth } from '../behavior/draft-feed/types'
@@ -56,10 +55,6 @@ interface RankingsBoardProps {
   onFinishCustomRanking: () => void,
   onUpdateTierBoundary: (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => void,
   onCancelCustomRanking: () => void,
-  saveCustomRankings: () => boolean,
-  loadCustomRankings: () => boolean,
-  hasCustomRankingsSaved: () => boolean,
-  clearSavedCustomRankings: () => boolean,
   rosters: Roster[],
   playerLib: { [key: string]: Player },
   draftStarted: boolean,
@@ -110,10 +105,6 @@ const RankingsBoard = ({
   onFinishCustomRanking,
   onUpdateTierBoundary,
   onCancelCustomRanking,
-  saveCustomRankings,
-  loadCustomRankings,
-  hasCustomRankingsSaved,
-  clearSavedCustomRankings,
   rosters,
   playerLib,
   draftStarted,
@@ -156,7 +147,6 @@ const RankingsBoard = ({
   const draftViewRef = useRef<HTMLDivElement>(null)
   const sortRef = useRef<HTMLDivElement>(null)
   const highlightRef = useRef<HTMLDivElement>(null)
-  const savedRankingsRef = useRef<HTMLDivElement>(null)
 
   // Handle dropdown opening (simplified for new component)
   const handleDropdownToggle = (dropdownType: string, ref: React.RefObject<HTMLDivElement | null>) => {
@@ -212,7 +202,6 @@ const RankingsBoard = ({
           onReorderPlayer={onReorderPlayer}
           onFinishCustomRanking={onFinishCustomRanking}
           onUpdateTierBoundary={onUpdateTierBoundary}
-          saveCustomRankings={saveCustomRankings}
           loadCurrentRankings={loadCurrentRankings}
           selectedPosition={selectedPosition}
           setSelectedPosition={setSelectedPosition}
@@ -245,47 +234,6 @@ const RankingsBoard = ({
       />
     )
   }
-
-  const hasSavedCustomRankings = hasCustomRankingsSaved()
-
-  const savedRankingsOptions = useMemo(() => {
-    const dropdownOptions = []
-
-    if (!hasSavedCustomRankings) {
-      return []
-    }
-
-    dropdownOptions.push({
-      title: "Delete Saved Rankings",
-      callback: () => {
-        clearSavedCustomRankings()
-        loadCurrentRankings()
-      }
-    })
-                  
-    if (canEditCustomRankings && !rankings.copiedRanker) {
-      dropdownOptions.push({
-        title: "Load Saved Rankings",
-        callback: () => {
-          const success = loadCustomRankings()
-          if (success) {
-            // Optionally show a success message or update UI state
-            console.log('Custom rankings loaded successfully')
-          }
-        }
-      })
-    }
-    
-    if (rankings.copiedRanker) {
-      dropdownOptions.push({
-        title: "Load Latest Rankings",
-        callback: loadCurrentRankings
-      })
-    }
-
-    return dropdownOptions
-  }, [hasSavedCustomRankings, canEditCustomRankings, rankings.copiedRanker, loadCurrentRankings, clearSavedCustomRankings, loadCustomRankings])
-
 
   return(
     noPlayers ?
@@ -338,13 +286,6 @@ const RankingsBoard = ({
                       View Rosters
                     </button>
                   </>
-                )}
-                { savedRankingsOptions.length > 0 && (
-                  <Dropdown
-                    title="Manage Saved Rankings"
-                    options={savedRankingsOptions}
-                    className="bg-purple-300 hover:text-white hover:bg-purple-800 mx-2"
-                  />
                 )}
               </div>
             ) }
@@ -578,22 +519,16 @@ const RankingsBoard = ({
                     setIsEditsDropdownOpen(false)
                   }
                 },
-                {
-                  label: 'Save',
-                  onClick: () => {
-                    const success = saveCustomRankings()
-                    if (success) {
-                      toast.success('Custom rankings saved successfully!')
-                    } else {
-                      toast.error('Failed to save custom rankings')
-                    }
-                    setIsEditsDropdownOpen(false)
-                  }
-                },
                 ...(hasCustomRanking ? [{
                   label: 'Clear',
                   onClick: () => {
-                    loadCurrentRankings()
+                    try {
+                      rankingProfileControls.clearLocal()
+                      loadCurrentRankings()
+                      toast.success("Saved rankings cleared in this browser")
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : "Unable to clear saved rankings")
+                    }
                     setIsEditsDropdownOpen(false)
                   }
                 }] : []),
@@ -652,19 +587,6 @@ const RankingsBoard = ({
                   isSelected: highlightOption === option
                 }))
               },
-              ...(savedRankingsOptions.length > 0 ? [{
-                label: 'Rankings',
-                isOpen: openDropdown === 'savedRankings',
-                onToggle: () => handleDropdownToggle('savedRankings', savedRankingsRef),
-                variant: 'secondary' as const,
-                items: savedRankingsOptions.map((option) => ({
-                  label: option.title,
-                  onClick: () => {
-                    option.callback()
-                    setOpenDropdown(null)
-                  }
-                }))
-              }] : [])
             ] : [])
           ]
         }

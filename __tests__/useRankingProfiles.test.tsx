@@ -12,6 +12,7 @@ import { useRankingProfiles } from "../behavior/hooks/useRankingProfiles"
 import {
   LEGACY_RANKING_PROFILE_STORAGE_KEY,
   RANKING_PROFILE_V2_AUTHORITY_KEY,
+  RANKING_PROFILE_V2_BACKUP_KEY,
   RANKING_PROFILE_V2_STORAGE_KEY,
   runRankingProfileStartupMigration,
 } from "../behavior/rankingProfileStorage"
@@ -174,5 +175,47 @@ describe("useRankingProfiles canonical browser commits", () => {
     await expect(act(async () => { await result.current.save("Local") })).rejects.toThrow("Saved in this browser")
     expect(localStorage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBe(legacy)
     expect(runRankingProfileStartupMigration(localStorage, [], "ppr").status).toBe("already_current")
+  })
+
+  it("clears to canonical-empty across restart while retaining migration evidence", () => {
+    process.env.NEXT_PUBLIC_API_HOST = ""
+    const legacy = JSON.stringify({
+      players: [{id: "rb-1", position: FantasyPosition.RUNNING_BACK, ranks: {Custom: {pprPositionRank: 1, pprPositionTier: {tierNumber: 1}}}}],
+      rankingsSummaries: [], cachedAt: "x", editedAt: "y", copiedRanker: "Harris", settings: {},
+    })
+    localStorage.setItem(LEGACY_RANKING_PROFILE_STORAGE_KEY, legacy)
+    const migrated = runRankingProfileStartupMigration(localStorage, [{id: "rb-1", position: "RB"}], "ppr")
+    if (migrated.status !== "migrated") throw new Error("expected migration")
+    const backup = localStorage.getItem(RANKING_PROFILE_V2_BACKUP_KEY)
+    const callbacks = options()
+    const {result} = renderHook(() => useRankingProfiles(callbacks))
+
+    act(() => result.current.clearLocal())
+
+    expect(runRankingProfileStartupMigration(localStorage, [], "ppr"))
+      .toMatchObject({status: "already_current", profile: null})
+    expect(localStorage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBe(legacy)
+    expect(localStorage.getItem(RANKING_PROFILE_V2_BACKUP_KEY)).toBe(backup)
+    expect(callbacks.onLocalProfileCommitted).toHaveBeenCalledWith(null)
+  })
+
+  it("does not clear visible state or report success when canonical-empty commit fails", async () => {
+    const callbacks = options()
+    const {result} = renderHook(() => useRankingProfiles(callbacks))
+    await waitFor(() => expect(result.current.profiles).toHaveLength(1))
+    act(() => result.current.select("home"))
+    const before = canonicalBytes()
+    const callbackCount = callbacks.onLocalProfileCommitted.mock.calls.length
+    const originalSetItem = Storage.prototype.setItem
+    const setItem = jest.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
+      if (key === RANKING_PROFILE_V2_AUTHORITY_KEY) throw new Error("quota denied")
+      return originalSetItem.call(this, key, value)
+    })
+
+    expect(() => act(() => result.current.clearLocal())).toThrow("Browser canonical clear failed")
+    setItem.mockRestore()
+    expect(canonicalBytes()).toEqual(before)
+    expect(result.current.activeProfile).toMatchObject({id: "home", snapshot})
+    expect(callbacks.onLocalProfileCommitted).toHaveBeenCalledTimes(callbackCount)
   })
 })

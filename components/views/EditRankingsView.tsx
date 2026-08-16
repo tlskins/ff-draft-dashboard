@@ -44,7 +44,6 @@ const EditRankingsView = ({
   onReorderPlayer,
   onFinishCustomRanking,
   onUpdateTierBoundary,
-  saveCustomRankings,
   loadCurrentRankings,
   selectedPosition,
   setSelectedPosition,
@@ -621,23 +620,18 @@ const EditRankingsView = ({
                 >
                   Finish
               </button>
-              <button
-                className="p-2 m-1 border rounded-md bg-blue-500 text-white hover:bg-blue-600"
-                onClick={() => {
-                  const success = saveCustomRankings()
-                  if (success) {
-                    toast.success('Custom rankings saved successfully!')
-                  } else {
-                    toast.error('Failed to save custom rankings')
-                  }
-                }}
-              >
-                Save
-              </button>
               { hasCustomRanking &&
                 <button
                   className="p-2 m-1 border rounded-md bg-gray-500 text-white hover:bg-gray-600"
-                  onClick={loadCurrentRankings}
+                  onClick={() => {
+                    try {
+                      rankingProfileControls.clearLocal()
+                      loadCurrentRankings()
+                      toast.success("Saved rankings cleared in this browser")
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : "Unable to clear saved rankings")
+                    }
+                  }}
                 >
                   Clear
                 </button>

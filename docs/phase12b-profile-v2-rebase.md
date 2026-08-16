@@ -270,6 +270,17 @@ explicitly and the returned revision is not presented as durably committed in
 the browser. There is no background sync, conflict auto-resolution, or
 provider/source promotion.
 
+The final UI-authority reconciliation leaves one visible persistence workflow
+on both desktop and mobile: the ranking-profile panel's create/save-revision
+control. The duplicate desktop `Save`, mobile `Edits > Save`, and legacy
+saved-ranking Load/Delete menus are removed. The remaining desktop and mobile
+`Clear` actions call the same canonical commit function with
+`canonical_empty`; only after that commit succeeds do they reload the board or
+display success. A storage failure leaves visible state unchanged and is shown
+as an error. Canonical clear retains the legacy source and original migration
+backup byte-for-byte, so restart remains empty without destroying rollback
+evidence.
+
 Portable packages now use a versioned union. Production export emits version 2
 with `data.ranking_profile` containing the canonical profile (ordered
 positional entries, tiers, unresolved tombstones, scoring, and provenance),
@@ -302,6 +313,12 @@ legacy source. Normal edits therefore cannot invalidate one-time migration
 evidence. Corrupt authority, canonical data, backup, journal, or impossible
 mixed transaction state fails closed. Repeated calls and strict-mode-style
 invocations are idempotent. No browser storage is read during SSR or render.
+The legacy callsite boundary is now read-only and startup-only:
+`runRankingProfileStartupMigration` owns migration/CAS evidence access, and
+`useRanks.loadCustomRankingsData` is called only by the startup effect when no
+canonical authority exists and migration is unavailable. There are no
+production legacy ranking writes or deletes, and no visible control can load
+the retained legacy evidence after authority is established.
 
 ### 12B2b boundary and rollback
 
@@ -311,11 +328,14 @@ The executable API boundary is `openapi/v1.json`,
 `tests/test_openapi_contract.py`. The dashboard boundary is
 `behavior/api/rankingProfiles.ts`, `behavior/api/schema.d.ts`,
 `behavior/hooks/useRankingProfiles.ts`, `behavior/portableData.ts`,
-`behavior/rankingProfileStorage.ts`, `pages/index.tsx`,
-`components/PortableDataControls.tsx`, `__tests__/rankingProfiles.test.ts`,
+`behavior/rankingProfileStorage.ts`, `behavior/hooks/useRanks.ts`,
+`pages/index.tsx`, `components/PortableDataControls.tsx`,
+`components/RankingsBoard.tsx`, `components/views/EditRankingsView.tsx`,
+`types/DraftBoardTypes.ts`, `__tests__/rankingProfiles.test.ts`,
 `__tests__/portableData.test.tsx`, and
 `__tests__/rankingProfileStorage.test.ts`, plus the hardening regression file
-`__tests__/useRankingProfiles.test.tsx`. This document and
+`__tests__/useRankingProfiles.test.tsx` and UI-authority regression file
+`__tests__/rankingProfileUiAuthority.test.tsx`. This document and
 `docs/roadmap-2026.md` record the closeout boundary; unrelated data artifacts
 were not edited.
 
@@ -328,6 +348,9 @@ bound portable-v2 import with tombstones across restart, migration followed by
 API and local edits, durable select/undo/redo, byte-identical state after API
 409/422 rejection, failure at every import write/readback position, recoverable
 journals, corrupt authority, retained source/backup evidence, and rollback CAS.
+UI reconciliation tests cover removal of the duplicate desktop/mobile legacy
+controls, the shared canonical replacement, canonical-empty restart,
+byte-identical rollback evidence, and truthful storage-failure behavior.
 Validation uses only disposable SQLite databases and injected in-memory or
 JSDOM browser storage.
 

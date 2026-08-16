@@ -490,6 +490,21 @@ describe("restart-safe ranking profile v2 browser migration", () => {
     }
   })
 
+  it("never promotes retained legacy evidence over established canonical authority", () => {
+    const storage = new MemoryStorage(new Map([
+      [LEGACY_RANKING_PROFILE_STORAGE_KEY, legacyRankings],
+    ]))
+    expect(runRankingProfileStartupMigration(storage, [{id: "rb-1", position: "RB"}], "ppr").status).toBe("migrated")
+    const canonical = validateRankingProfileV2(fixture.rebase.expected_profile)
+    expect(commitCanonicalRankingProfile(storage, canonical).status).toBe("committed")
+    const canonicalBytes = storage.getItem(RANKING_PROFILE_V2_STORAGE_KEY)
+    storage.setItem(LEGACY_RANKING_PROFILE_STORAGE_KEY, JSON.stringify({players: []}))
+
+    expect(runRankingProfileStartupMigration(new MemoryStorage(storage.sharedValues()), [], "ppr"))
+      .toMatchObject({status: "already_current", profile: canonical})
+    expect(storage.getItem(RANKING_PROFILE_V2_STORAGE_KEY)).toBe(canonicalBytes)
+  })
+
   it("makes selection, undo, and redo canonical snapshots durable", () => {
     const storage = new MemoryStorage()
     const selected = validateRankingProfileV2(fixture.rebase.expected_profile)

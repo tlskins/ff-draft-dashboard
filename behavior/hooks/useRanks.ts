@@ -33,6 +33,7 @@ import {
 } from '../../types'
 import { PlayerRankingDiff } from '../../types/DraftBoardTypes'
 import { cloneDeep } from 'lodash'
+import { LEGACY_RANKING_PROFILE_STORAGE_KEY } from '../rankingProfileStorage'
 
 interface UseRanksProps {
   settings: FantasySettings
@@ -739,38 +740,13 @@ export const useRanks = ({
     setPlayerTargets(prevTargets => prevTargets.filter(target => !playerIds.includes(target.playerId)))
   }, [])
 
-  // Save/Load custom rankings functionality
-  const saveCustomRankings = useCallback(() => {
-    if (!isEditingCustomRanking && boardSettings.ranker !== ThirdPartyRanker.CUSTOM) {
-      console.warn("Cannot save custom rankings when not using custom ranker")
-      return false
-    }
-
-    const saveData = { ...rankings } as Rankings
-
-    try {
-      localStorage.setItem('ff-draft-custom-rankings', JSON.stringify(saveData))
-      console.log('Custom rankings saved successfully')
-      return true
-    } catch (error) {
-      console.error('Failed to save custom rankings:', error)
-      return false
-    }
-  }, [
-    playerLib,
-    rankingSummaries,
-    rankings,
-    isEditingCustomRanking,
-    boardSettings.ranker,
-    settings,
-  ])
-
+  // Legacy reads are retained only for the pre-authority startup migration fallback.
   const loadCustomRankingsData = useCallback(() => {
     if ( typeof localStorage === 'undefined' ) {
       return null
     }
     try {
-      const savedData = localStorage.getItem('ff-draft-custom-rankings')
+      const savedData = localStorage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)
       if (!savedData) {
         return null
       }
@@ -813,53 +789,6 @@ export const useRanks = ({
       return null
     }
   }, [canEditCustomRankings, settings])
-
-  const loadCustomRankings = useCallback(() => {
-    const customRankings = loadCustomRankingsData()
-    if (!customRankings) {
-      return false
-    }
-
-    // Load the data into state
-    onLoadPlayers(customRankings)
-    
-    // Switch to custom ranker
-    setBoardSettings({ ...boardSettings, ranker: ThirdPartyRanker.CUSTOM })
-
-    return true
-  }, [loadCustomRankingsData, onLoadPlayers, boardSettings])
-
-  const hasCustomRankingsSaved = useCallback(() => {
-    if ( typeof localStorage === 'undefined' ) {
-      return false
-    }
-    try {
-      const savedData = localStorage.getItem('ff-draft-custom-rankings')
-      if (!savedData) return false
-
-      const parsedData = JSON.parse(savedData)
-      const { players } = parsedData
-
-      // Check if saved data has custom rankings
-      return players.some((player: Player) => 
-        player.ranks && player.ranks[ThirdPartyRanker.CUSTOM]
-      )
-    } catch (error) {
-      console.error('Error checking for saved custom rankings:', error)
-      return false
-    }
-  }, [])
-
-  const clearSavedCustomRankings = useCallback(() => {
-    try {
-      localStorage.removeItem('ff-draft-custom-rankings')
-      console.log('Saved custom rankings cleared')
-      return true
-    } catch (error) {
-      console.error('Failed to clear saved custom rankings:', error)
-      return false
-    }
-  }, [])
 
   const resetBoardSettings = useCallback(() => {
     setBoardSettings({
@@ -911,11 +840,7 @@ export const useRanks = ({
     removePlayerTarget,
     removePlayerTargets,
     // save/load custom rankings funcs
-    saveCustomRankings,
-    loadCustomRankings,
     loadCustomRankingsData,
-    hasCustomRankingsSaved,
-    clearSavedCustomRankings,
     resetBoardSettings,
     // sync functions
     onSyncPendingRankings,

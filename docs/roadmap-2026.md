@@ -445,6 +445,15 @@ byte-identical. Rebase apply remains a later independent Phase 12B slice. Phase 
 12B1, and 12B2a grant no ranking-source refresh/apply/promotion, profile rebase
 apply, overlay, recommendation, provider, deployment, or Phase 11C authority.
 
+The final Phase 12B2b UI reconciliation removes the duplicate desktop and
+mobile legacy Save controls and the legacy Load/Delete menu. The shared
+ranking-profile create/save-revision control is the only visible save
+authority. Desktop and mobile Clear commit `canonical_empty` before reloading
+or reporting success, retain the legacy source and migration backup, and stay
+empty after restart. Remaining legacy-key access is read-only and limited to
+initial migration evidence plus the pre-authority startup fallback; established
+canonical authority is never replaced from that evidence.
+
 Phase 12B2b integration order is additive API first, followed by the dashboard
 consumer and browser-authority hardening together. The pre-hardening dashboard
 consumer is not a deployable endpoint. Full rollback reverses that order:

@@ -159,11 +159,7 @@ const Home: FC = () => {
     replacePlayerTargets,
     removePlayerTargets,
     // save/load custom rankings funcs
-    saveCustomRankings,
-    loadCustomRankings,
     loadCustomRankingsData,
-    hasCustomRankingsSaved,
-    clearSavedCustomRankings,
     resetBoardSettings,
     // sync functions
     onSyncPendingRankings,
@@ -662,14 +658,16 @@ const Home: FC = () => {
         onSetRanker(ThirdPartyRanker.CUSTOM)
       } else {
         onLoadPlayers({...currentRankings, settings})
+        resetBoardSettings()
       }
       setLatestRankings(currentRankings)
-    } else if (!migrationRejected && browserLoaded && hasCustomRankingsSaved()) {
-      // Load custom rankings without setting state first to get the data
+    } else if (!migrationRejected && browserLoaded) {
+      // This is the sole legacy-data compatibility read. It is reachable only
+      // before canonical authority exists and startup migration is unavailable.
       const customRankingsData = loadCustomRankingsData()
       if (customRankingsData) {
-        // Now load the custom rankings into state
-        loadCustomRankings()
+        onLoadPlayers(customRankingsData)
+        onSetRanker(ThirdPartyRanker.CUSTOM)
         setLatestRankings(currentRankings)
         
         // Calculate diffs between custom rankings and latest data
@@ -689,13 +687,16 @@ const Home: FC = () => {
             position: 'top-right'
           })
         }
+      } else {
+        onLoadPlayers(currentRankings)
+        resetBoardSettings()
       }
     } else {
       // otherwise load the latest rankings
       onLoadPlayers(currentRankings)
       resetBoardSettings()
     }
-  }, [onLoadPlayers, onSetRanker, resetBoardSettings, browserLoaded, loadCustomRankings, loadCustomRankingsData, hasCustomRankingsSaved, setLatestRankings, calculateRankingDiffs, settings, boardSettings, setCustomAndLatestRankingsDiffs])
+  }, [onLoadPlayers, onSetRanker, resetBoardSettings, browserLoaded, loadCustomRankingsData, setLatestRankings, calculateRankingDiffs, settings, boardSettings, setCustomAndLatestRankingsDiffs])
 
   useEffect(() => {
     void loadCurrentRankings()
@@ -1001,10 +1002,6 @@ const Home: FC = () => {
                 onCancelCustomRanking={() => {
                   setDraftView(DraftView.RANKING)
                 }}
-                saveCustomRankings={saveCustomRankings}
-                loadCustomRankings={loadCustomRankings}
-                hasCustomRankingsSaved={hasCustomRankingsSaved}
-                clearSavedCustomRankings={clearSavedCustomRankings}
                 rosters={rosters}
                 playerLib={playerLib}
                 draftStarted={draftStarted}
@@ -1109,10 +1106,6 @@ const Home: FC = () => {
                 onCancelCustomRanking={() => {
                   setDraftView(DraftView.RANKING)
                 }}
-                saveCustomRankings={saveCustomRankings}
-                loadCustomRankings={loadCustomRankings}
-                hasCustomRankingsSaved={hasCustomRankingsSaved}
-                clearSavedCustomRankings={clearSavedCustomRankings}
                 rosters={rosters}
                 playerLib={playerLib}
                 draftStarted={draftStarted}

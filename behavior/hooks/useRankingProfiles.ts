@@ -48,7 +48,7 @@ interface UseRankingProfilesOptions {
   onLoadPlayers: (rankings: Rankings) => void
   onSetRanker: (ranker: ThirdPartyRanker) => void
   localProfile?: RankingProfileV2 | null
-  onLocalProfileCommitted?: (profile: RankingProfileV2) => void
+  onLocalProfileCommitted?: (profile: RankingProfileV2 | null) => void
 }
 
 export type RankingProfile = RankingProfileV2Record
@@ -412,6 +412,23 @@ export const useRankingProfiles = ({
     setError(null)
   }, [])
 
+  const clearLocal = useCallback(() => {
+    if (typeof localStorage === "undefined") {
+      const message = "Browser storage is unavailable"
+      setError(message)
+      throw new Error(message)
+    }
+    const committed = commitCanonicalRankingProfile(localStorage, null)
+    if (committed.status === "rejected") {
+      const message = `Browser canonical clear failed (${committed.code}): ${committed.message}`
+      setError(message)
+      throw new Error(message)
+    }
+    onLocalProfileCommitted?.(null)
+    setActiveProfile(null)
+    setError(null)
+  }, [onLocalProfileCommitted])
+
   const move = useCallback(async (direction: "undo" | "redo") => {
     if (!activeProfile) return
     setIsSaving(true)
@@ -447,6 +464,7 @@ export const useRankingProfiles = ({
     save,
     select,
     startNew,
+    clearLocal,
     undo: () => move("undo"),
     redo: () => move("redo"),
   }), [
@@ -461,6 +479,7 @@ export const useRankingProfiles = ({
     save,
     select,
     startNew,
+    clearLocal,
   ])
 }
 
