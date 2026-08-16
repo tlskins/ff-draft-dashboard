@@ -35,7 +35,8 @@ preflight non-zero. The runner uses `spawnSync` argument arrays, never a shell.
 The report records dashboard/API paths, branches, exact Git heads, dirty state,
 the resolved OpenAPI path, ranking-artifact SHA-256 values, byte parity, and
 stored season/cache/player-count metadata. It reports metadata as-is and does
-not invent a freshness policy.
+not invent a freshness policy. Both dashboard and API checkouts must be clean:
+a dirty checkout is an automated preflight failure in quick and full mode.
 
 ## Automated Phase 13A gates
 
@@ -45,6 +46,12 @@ content-script order, service worker, popup, icons, every local manifest asset,
 and absence of a newly broadened `permissions`/`host_permissions` boundary. It
 also records the existing ESPN DOM selector fixture and recorded mock command
 as the focused command manifest.
+
+A current archive must be a Git-tracked, readable ZIP. The preflight reads its
+`manifest.json`, requires the same MV3/version/content-script boundary as the
+source manifest, requires every referenced asset, and compares each referenced
+asset's SHA-256 against `public/`. A renamed stale archive cannot satisfy this
+gate.
 
 It compares `behavior/playerData.json` byte-for-byte with the API's
 `latest_player_rankings.json`, reports both SHA-256 values and the artifact
