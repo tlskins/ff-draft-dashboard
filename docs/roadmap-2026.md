@@ -475,6 +475,27 @@ Exit gate: all release checks pass, operational and accessibility limitations
 are documented, frozen v1 rollback remains tested, and no unresolved
 release-critical blocker remains.
 
+#### Phase 13A: provider-free automated preflight foundation
+
+Phase 13A adds a dashboard-only, non-destructive command and versioned JSON
+report for the release checks automation can honestly own. Its full evidence
+mode validates the MV3 extension manifest/assets and checked-in selector/mock
+test boundary; coordinates the existing startup, migration, portability,
+fallback, recovery, data-readiness, player-availability, generated-type,
+lint, type, and production-build gates; records explicit dashboard/API Git
+inputs; and checks byte-identical dashboard/API ranking artifacts with stored
+season/cache metadata. It performs no network/provider request, browser run,
+server startup, data mutation, extension packaging, deployment, push, or tag.
+
+The current manifest/archive version gap is reported as a release-blocking
+stale packaged-extension boundary rather than silently accepted or repaired.
+Human browser acceptance, the local live mock, VoiceOver/device checks,
+deployment/tag/push, and Phase 11C/external-data decisions remain unrun and
+must not be represented as passed. Frozen prediction v1 remains acceptable;
+Phase 9 remains evidence-blocked and Realtime GPT/voice is deferred. This
+preparatory slice does not complete Phase 13 or waive separate Phase 12 rebase
+apply, source promotion, or ranking-editor work.
+
 ## Deferred product tracks
 
 ### Prediction-v2 promotion decision

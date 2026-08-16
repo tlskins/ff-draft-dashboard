@@ -11,6 +11,7 @@
 # next.js
 /.next/
 /out/
+release-preflight-report*.json
 *.tsbuildinfo
 
 # production

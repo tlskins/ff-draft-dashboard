@@ -1,0 +1,166 @@
+const { createHash } = require("node:crypto")
+const { existsSync, readFileSync, readdirSync } = require("node:fs")
+const { join, resolve, relative, sep } = require("node:path")
+const { spawnSync } = require("node:child_process")
+
+const REPORT_VERSION = 1
+const expectedMatches = [
+  "https://ff-draft-dashboard.vercel.app/*",
+  "http://localhost:3000/*",
+  "https://fantasy.espn.com/football/draft*",
+]
+const approvedMatches = new Set([
+  ...expectedMatches,
+  "https://fantasy.nfl.com/draftclient*",
+])
+const focusedTests = [
+  "__tests__/espnDraftExtractor.test.js",
+  "__tests__/espnMockAcceptance.test.ts",
+  "__tests__/rankingProfileStorage.test.ts",
+  "__tests__/rankingProfileUiAuthority.test.tsx",
+  "__tests__/useRankingProfiles.test.tsx",
+  "__tests__/portableData.test.tsx",
+  "__tests__/useDraftListener.test.ts",
+  "__tests__/draftBoundaryStatus.test.tsx",
+  "__tests__/dataReadiness.test.ts",
+  "__tests__/playerAvailability.test.ts",
+  "__tests__/playerData.test.ts",
+]
+
+const sha256 = value => createHash("sha256").update(value).digest("hex")
+const commandText = (command, args) => [command, ...args].map(JSON.stringify).join(" ")
+
+const execute = ({ command, args, cwd, env }) => {
+  const started = process.hrtime.bigint()
+  const result = spawnSync(command, args, {
+    cwd,
+    env: { ...process.env, ...env },
+    encoding: "utf8",
+    timeout: 10 * 60 * 1_000,
+    shell: false,
+  })
+  const durationMs = Number(process.hrtime.bigint() - started) / 1e6
+  return {
+    command: commandText(command, args), command_array: [command, ...args], cwd,
+    status: result.status === 0 && !result.error ? "passed" : "failed",
+    duration_ms: durationMs, exit_code: result.status, signal: result.signal || null,
+    error: result.error?.message || null,
+    stdout_tail: (result.stdout || "").slice(-4000), stderr_tail: (result.stderr || "").slice(-4000),
+  }
+}
+
+const gitValue = (root, args) => {
+  const result = execute({ command: "git", args: ["-C", root, ...args], cwd: root })
+  if (result.status !== "passed") throw new Error(`Git inspection failed: ${result.command}`)
+  return result.stdout_tail.trim()
+}
+
+const repositoryMetadata = root => ({
+  path: root,
+  head: gitValue(root, ["rev-parse", "HEAD"]),
+  branch: gitValue(root, ["branch", "--show-current"]),
+  dirty: Boolean(gitValue(root, ["status", "--porcelain"])),
+})
+
+const assetReferences = manifest => {
+  const assets = []
+  for (const [size, path] of Object.entries(manifest.icons || {})) assets.push([`icons.${size}`, path])
+  assets.push(["action.default_icon", manifest.action?.default_icon])
+  assets.push(["action.default_popup", manifest.action?.default_popup])
+  assets.push(["background.service_worker", manifest.background?.service_worker])
+  for (const [index, content] of (manifest.content_scripts || []).entries()) {
+    for (const path of content.js || []) assets.push([`content_scripts[${index}].js`, path])
+    for (const path of content.css || []) assets.push([`content_scripts[${index}].css`, path])
+  }
+  return assets.filter(([, path]) => typeof path === "string" && !path.includes("://") && !path.startsWith("/") && !path.startsWith("data:"))
+}
+
+const validateManifest = root => {
+  const publicRoot = join(root, "public")
+  const manifestPath = join(publicRoot, "manifest.json")
+  const errors = []
+  let manifest
+  try { manifest = JSON.parse(readFileSync(manifestPath, "utf8")) } catch (error) {
+    return { status: "failed", errors: [`Cannot parse public/manifest.json: ${error.message}`] }
+  }
+  if (manifest.manifest_version !== 3) errors.push("manifest_version must be 3")
+  if (!/^\d{1,5}(?:\.\d{1,5}){0,3}$/.test(manifest.version || "")) errors.push("version is not valid Chrome numeric syntax")
+  if (!manifest.background?.service_worker) errors.push("background.service_worker is required")
+  if (!manifest.action?.default_popup) errors.push("action.default_popup is required")
+  if (!["16", "32", "128"].every(size => manifest.icons?.[size])) errors.push("icons 16, 32, and 128 are required")
+  const matches = new Set((manifest.content_scripts || []).flatMap(content => content.matches || []))
+  for (const match of expectedMatches) if (!matches.has(match)) errors.push(`required match missing: ${match}`)
+  for (const match of matches) if (!approvedMatches.has(match)) errors.push(`unapproved content-script match broadens the extension boundary: ${match}`)
+  if (manifest.permissions || manifest.host_permissions) errors.push("unexpected permissions or host_permissions broaden the extension boundary")
+  if (!(manifest.content_scripts || []).some(content => JSON.stringify(content.js || []) === JSON.stringify(["espnDraftExtractor.js", "contentScript.js"]))) errors.push("extractor must precede contentScript.js")
+  const assets = assetReferences(manifest)
+  for (const [source, asset] of assets) {
+    const candidate = resolve(publicRoot, asset)
+    if (!candidate.startsWith(`${publicRoot}${sep}`) || !existsSync(candidate)) errors.push(`missing asset: ${source} -> ${asset}`)
+  }
+  const archives = readdirSync(root).filter(name => /^ext_release_.*\.zip$/.test(name)).sort()
+  const expectedArchive = `ext_release_${manifest.version.replaceAll(".", "_")}.zip`
+  const archiveCurrent = archives.includes(expectedArchive)
+  if (!archiveCurrent) errors.push(`stale packaged-extension boundary: expected ${expectedArchive}; tracked archives: ${archives.join(", ") || "none"}`)
+  return { status: errors.length ? "failed" : "passed", manifest: relative(root, manifestPath), version: manifest.version, matches: [...matches].sort(), assets, archives, expected_archive: expectedArchive, archive_current: archiveCurrent, errors }
+}
+
+const artifactParity = (root, apiRepo) => {
+  const dashboardPath = join(root, "behavior", "playerData.json")
+  const apiPath = join(apiRepo, "latest_player_rankings.json")
+  try {
+    const dashboard = readFileSync(dashboardPath)
+    const api = readFileSync(apiPath)
+    const metadata = JSON.parse(api.toString("utf8"))
+    return {
+      status: dashboard.equals(api) ? "passed" : "failed",
+      dashboard_path: dashboardPath, api_path: apiPath,
+      dashboard_sha256: sha256(dashboard), api_sha256: sha256(api), byte_identical: dashboard.equals(api),
+      metadata: { season: metadata.season ?? null, cached_at: metadata.cached_at ?? null, player_count: Array.isArray(metadata.players) ? metadata.players.length : null },
+      limitation: "Reports stored season/cache metadata only; it does not create a freshness policy.",
+    }
+  } catch (error) { return { status: "failed", error: error.message } }
+}
+
+const statusFromInspection = value => value.status === "passed" ? "passed" : "failed"
+const notRun = ({ name, command, args, cwd, env }) => ({ name, status: "not_run", command: commandText(command, args), command_array: [command, ...args], cwd, env_inputs: env || {} })
+const commandGate = (name, specification) => ({ name, ...execute(specification) })
+
+const runPreflight = ({ root, mode, apiRepo }) => {
+  const started = process.hrtime.bigint()
+  const apiOpenapi = join(apiRepo, "openapi", "v1.json")
+  const gates = []
+  try {
+    gates.push({ name: "repository-metadata", status: "passed", dashboard: repositoryMetadata(root), api: repositoryMetadata(apiRepo) })
+  } catch (error) { gates.push({ name: "repository-metadata", status: "failed", error: error.message }) }
+  const manifest = validateManifest(root)
+  gates.push({ name: "extension-manifest-assets-and-archive", ...manifest, status: statusFromInspection(manifest) })
+  const artifact = artifactParity(root, apiRepo)
+  gates.push({ name: "ranking-artifact-parity-and-metadata", ...artifact, status: statusFromInspection(artifact) })
+  gates.push({ name: "api-openapi-file", status: existsSync(apiOpenapi) ? "passed" : "failed", path: apiOpenapi })
+
+  const jest = join(root, "node_modules", "jest", "bin", "jest.js")
+  const commands = [
+    { name: "focused-jest", command: process.execPath, args: [jest, "--runInBand", ...focusedTests], cwd: root },
+    { name: "api-types-check", command: process.execPath, args: ["scripts/generate-api-types.mjs", "--check"], cwd: root, env: { DRAFTY_OPENAPI_SCHEMA: apiOpenapi } },
+    { name: "typescript-no-emit", command: process.execPath, args: [join(root, "node_modules", "typescript", "bin", "tsc"), "--noEmit"], cwd: root },
+    { name: "lint", command: "npm", args: ["run", "lint"], cwd: root },
+    { name: "production-build", command: "npm", args: ["run", "build"], cwd: root },
+  ]
+  for (const command of commands) gates.push(mode === "full" ? commandGate(command.name, command) : notRun(command))
+  const overall = gates.some(gate => gate.status === "failed") ? "failed" : "passed"
+  return {
+    report_version: REPORT_VERSION, kind: "drafty-phase-13a-release-preflight", mode,
+    release_evidence: mode === "full", overall,
+    duration_ms: Number(process.hrtime.bigint() - started) / 1e6,
+    inputs: { dashboard_root: root, api_repo: apiRepo, api_openapi: apiOpenapi },
+    gates,
+    human_checks: {
+      browser_acceptance: "pending", voiceover_and_device: "deferred", live_local_mock: "pending",
+      deployment_tag_push: "decision_required", external_data_phase_11c: "pending",
+    },
+    limitations: ["No network, provider credential, browser automation, server, active-data mutation, deployment, tag, or push is performed.", "Frozen prediction v1 is release-acceptable; Phase 9 remains evidence-blocked and Realtime GPT/voice is deferred."],
+  }
+}
+
+module.exports = { artifactParity, execute, expectedMatches, runPreflight, validateManifest }
