@@ -603,8 +603,8 @@ rollback boundary.
 
 Dependency: the accepted Phase 13 live draft path and Phase 10 analytics
 models. Realtime GPT/voice remains deferred and is not required for this work.
-Status: Phase 14A candidate implemented on 2026-08-16; pending visual and
-human acceptance. Later Phase 14 slices have not begun.
+Status: Phase 14A candidate implemented and desktop-hardened on 2026-08-16;
+pending visual and human acceptance. Later Phase 14 slices have not begun.
 
 Replace the current mutually exclusive standard-layout versus analysis-page
 interaction with one responsive draft desk. The rankings board, live draft

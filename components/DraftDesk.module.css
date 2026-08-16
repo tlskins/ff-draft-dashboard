@@ -35,17 +35,68 @@
 
 .pane table { color: #0f172a; }
 
+.deskViewport,
+.deskMain,
+.deskBody,
+.deskShell,
+.deskControls,
 .centerPanes {
-  display: grid;
-  grid-template-columns: minmax(13rem, 0.9fr) minmax(24rem, 1.65fr) minmax(15rem, 1fr);
-  gap: var(--desk-space-2);
-  height: calc(100vh - 12.5rem);
-  min-height: 34rem;
+  min-width: 0;
 }
 
-@media (max-width: 1120px) {
+@media (min-width: 768px) {
+  .deskViewport {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .deskMain {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding-inline: var(--desk-space-2);
+  }
+
+  .deskBody {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .deskShell {
+    box-sizing: border-box;
+    flex-direction: column;
+    gap: var(--desk-space-2);
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--desk-space-2) var(--desk-space-2)
+      calc(var(--draft-desk-dock-height, 0px) + var(--desk-space-2));
+  }
+
+  .deskControls {
+    flex: 0 0 auto;
+  }
+}
+
+.centerPanes {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.55fr) minmax(19rem, 1.35fr) minmax(15rem, 1.1fr);
+  gap: var(--desk-space-2);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+@media (min-width: 960px) {
   .centerPanes {
-    grid-template-columns: minmax(11.5rem, 0.8fr) minmax(21rem, 1.55fr) minmax(13rem, 0.9fr);
+    grid-template-columns: minmax(10rem, 0.55fr) minmax(25rem, 1.35fr) minmax(21.5rem, 1.1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .centerPanes {
+    grid-template-columns: minmax(12rem, 0.65fr) minmax(26rem, 1.35fr) minmax(22rem, 1.2fr);
   }
 }
 

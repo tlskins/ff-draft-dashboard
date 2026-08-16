@@ -23,6 +23,7 @@ interface OptimalRosterDisplayProps {
   boardSettings: BoardSettings
   settings: FantasySettings
   rankingSummaries: RankingSummary[]
+  compact?: boolean
 }
 
 const OptimalRosterDisplay: React.FC<OptimalRosterDisplayProps> = ({
@@ -33,6 +34,7 @@ const OptimalRosterDisplay: React.FC<OptimalRosterDisplayProps> = ({
   boardSettings,
   settings,
   rankingSummaries,
+  compact = false,
 }) => {
   if (!currentOptimalRoster || Object.keys(currentOptimalRoster.roster).length === 0) {
     return null
@@ -40,13 +42,13 @@ const OptimalRosterDisplay: React.FC<OptimalRosterDisplayProps> = ({
 
   return (
     <div className="flex flex-col mr-1 mb-2 text-sm px-2 py-2 shadow-md border border-blue-200 bg-white">
-      <div className="flex items-center justify-between mb-2">
+      <div className={`flex mb-2 ${compact ? "flex-col items-start gap-2" : "items-center justify-between"}`}>
         <p className="font-semibold underline">
           Optimal Total {currentOptimalRoster.metric} Roster Using Ranking Tiers vs ADP ({currentOptimalRoster.value.toFixed(1)} {currentOptimalRoster.metric})
         </p>
         {optimalRosters.length > 1 && (
           <select
-            className="ml-2 px-2 py-1 text-xs border border-blue-300 rounded bg-white"
+            className={`${compact ? "" : "ml-2"} px-2 py-1 text-xs border border-blue-300 rounded bg-white`}
             value={selectedOptimalRosterIdx}
             onChange={(e) => setSelectedOptimalRosterIdx(parseInt(e.target.value))}
           >
@@ -95,4 +97,4 @@ const OptimalRosterDisplay: React.FC<OptimalRosterDisplayProps> = ({
   )
 }
 
-export default OptimalRosterDisplay 
+export default OptimalRosterDisplay

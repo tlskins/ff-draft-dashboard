@@ -36,6 +36,7 @@ const RankingView = ({
   playerTargets,
   addPlayerTarget,
   removePlayerTarget,
+  compact = false,
 }: RankingViewProps) => {
   const [shownPlayerBg, setShownPlayerBg] = useState("")
   const [animatingOutPlayers, setAnimatingOutPlayers] = useState<Set<string>>(new Set())
@@ -119,13 +120,13 @@ const RankingView = ({
   return (
     <>
       {/* Controls for ranking view */}
-      <div className="flex flex-row md:mb-16 align-center">
-        <div className="flex flex-col text-left h-16 md:h-6 w-full">
-          <div className="grid md:grid-cols-2 grid-cols-1">
+      <div className={`flex flex-row align-center ${compact ? "mb-3" : "md:mb-16"}`}>
+        <div className={`flex flex-col text-left w-full ${compact ? "h-auto" : "h-16 md:h-6"}`}>
+          <div className={`grid ${compact ? "grid-cols-1 gap-2" : "md:grid-cols-2 grid-cols-1"}`}>
             <div className="flex flex-col">
               <div className="flex flex-col mb-4">
-                <h2 className="text-2xl font-bold">{rankings.copiedRanker ? 'Custom' : ''} Rankings By Position</h2>
-                <div className="h-1 flex flex-row">
+                <h2 className={`${compact ? "text-lg" : "text-2xl"} font-bold`}>{rankings.copiedRanker ? 'Custom' : ''} Rankings By Position</h2>
+                <div className={`${compact ? "h-auto" : "h-1"} flex flex-row`}>
                   { isUsingCustomRanks &&
                     <p className="text-xs">
                       Base { rankings.copiedRanker } ranks from { new Date(rankings.cachedAt).toLocaleString() } last edited { new Date(rankings.editedAt).toLocaleString() }
@@ -147,7 +148,7 @@ const RankingView = ({
                 </div>
               </div>
 
-              <div className="hidden md:flex flex-row">
+              <div className={`${compact ? "flex flex-wrap" : "hidden md:flex"} flex-row`}>
                 <select
                     className="p-1 m-1 border rounded bg-blue-100 shadow"
                     value={sortOption}
@@ -171,7 +172,7 @@ const RankingView = ({
                 </button>
               </div>
             </div>
-            <div className="hidden md:flex flex-col h-full items-end content-end justify-end pb-2">
+            <div className={`${compact ? "flex flex-col items-start content-start justify-start pb-0" : "hidden md:flex flex-col h-full items-end content-end justify-end pb-2"}`}>
               { !showNextPreds &&
                 <>
                   <div className="flex flex-row justify-end">

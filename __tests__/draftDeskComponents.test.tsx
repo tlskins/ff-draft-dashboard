@@ -121,10 +121,70 @@ describe("Phase 14A desk components", () => {
     expect(screen.getByTestId("draft-dock-roster").textContent).toContain("Observed roster slots")
     expect(screen.getByTestId("draft-dock-roster").textContent).toContain("FLEX")
     expect(tape.textContent).toContain("#5 · 1 away")
+    const rosterDetails = screen.getByText("Expand roster detail").closest("details")
+    expect(rosterDetails?.open).toBe(false)
+    fireEvent.click(screen.getByText("Expand roster detail"))
+    expect(rosterDetails?.open).toBe(true)
+    expect(tape.textContent).toContain("#5 · 1 away")
 
     fireEvent.click(screen.getByRole("button", {name: "League needs"}))
     expect(screen.getByTestId("draft-dock-league-needs").textContent).toContain("Other teams")
     expect(screen.getByTestId("draft-dock-league-needs").textContent).toContain("FLEX")
     expect(tape.textContent).toContain("#5 · 1 away")
+  })
+
+  it("reports the measured dock height so the desktop shell can reserve every mode", () => {
+    const onHeightChange = jest.fn()
+    let measuredHeight = 144
+    const getBoundingClientRect = jest.spyOn(
+      HTMLElement.prototype,
+      "getBoundingClientRect",
+    ).mockImplementation(() => ({
+      bottom: measuredHeight, height: measuredHeight, left: 0, right: 320,
+      top: 0, width: 320, x: 0, y: 0, toJSON: () => ({}),
+    }))
+    const originalResizeObserver = (global as typeof globalThis & {
+      ResizeObserver?: typeof ResizeObserver
+    }).ResizeObserver
+    class ResizeObserverMock {
+      static callback: ((entries: Array<{contentRect: {height: number}}>) => void) | null = null
+      constructor(callback: (entries: Array<{contentRect: {height: number}}>) => void) {
+        ResizeObserverMock.callback = callback
+      }
+      observe() {}
+      disconnect() {}
+    }
+    ;(global as typeof globalThis & {ResizeObserver?: typeof ResizeObserver}).ResizeObserver =
+      ResizeObserverMock as unknown as typeof ResizeObserver
+
+    try {
+      render(
+        <DraftDock
+          currPick={1}
+          currRound={[null, null, null]}
+          currRoundPick={1}
+          isEvenRound={false}
+          myPickNum={2}
+          myPicks={[2, 5, 8]}
+          onHeightChange={onHeightChange}
+          onRemovePick={jest.fn()}
+          playerLib={{}}
+          rosters={[roster({}), roster({}), roster({})]}
+          roundIdx={0}
+          setCurrPick={jest.fn()}
+          setViewPlayerId={jest.fn()}
+          settings={settings}
+        />,
+      )
+
+      expect(onHeightChange).toHaveBeenCalledWith(144)
+      measuredHeight = 232
+      ResizeObserverMock.callback?.([{contentRect: {height: 232}}])
+      expect(onHeightChange).toHaveBeenLastCalledWith(232)
+    } finally {
+      getBoundingClientRect.mockRestore()
+      ;(global as typeof globalThis & {ResizeObserver?: typeof ResizeObserver}).ResizeObserver =
+        originalResizeObserver
+    }
   })
 })

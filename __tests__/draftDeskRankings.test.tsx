@@ -46,4 +46,11 @@ describe("Phase 14A unified rankings pane", () => {
     expect(setDraftView).toHaveBeenCalledWith("Best Available By Round")
     expect(screen.getAllByTestId("rankings-board")).toHaveLength(1)
   })
+
+  it("uses the candidate compact presentation without changing board ownership", () => {
+    render(<RankingsBoard {...props()} compact />)
+
+    expect(screen.getByTestId("rankings-board").className).toContain("p-2")
+    expect(screen.getAllByTestId("rankings-board")).toHaveLength(1)
+  })
 })

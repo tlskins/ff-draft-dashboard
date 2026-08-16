@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 
 import type { FantasySettings, Player } from "../types"
 import type { Roster } from "../behavior/draft"
@@ -25,6 +25,7 @@ interface DraftDockProps {
   onRemovePick: (pickNum: number) => void
   setCurrPick: (pickNum: number) => void
   setViewPlayerId: (playerId: string | null) => void
+  onHeightChange?: (height: number) => void
 }
 
 const modeLabels: Array<{id: DraftDockMode, label: string}> = [
@@ -54,8 +55,10 @@ const DraftDock = ({
   onRemovePick,
   setCurrPick,
   setViewPlayerId,
+  onHeightChange,
 }: DraftDockProps) => {
   const [mode, setMode] = useState<DraftDockMode>("round")
+  const dockRef = useRef<HTMLElement>(null)
   const myRosterIndex = myPickNum - 1
   const ownRoster = rosters[myRosterIndex]
   const slots = useMemo(() => buildDraftDeskRosterSlots(ownRoster, settings), [
@@ -67,10 +70,25 @@ const DraftDock = ({
   const nextMyPick = myPicks.find(pick => pick >= currPick) || null
   const picksAway = nextMyPick === null ? null : nextMyPick - currPick
 
+  useEffect(() => {
+    const dock = dockRef.current
+    if (!dock || !onHeightChange) return
+
+    const reportHeight = () => onHeightChange(dock.getBoundingClientRect().height)
+    reportHeight()
+    if (typeof ResizeObserver === "undefined") return
+
+    const observer = new ResizeObserver(reportHeight)
+    observer.observe(dock)
+    return () => observer.disconnect()
+  }, [onHeightChange])
+
   return (
     <aside
       aria-label="Draft dock"
       className={`${styles.desk} fixed inset-x-0 bottom-0 z-40 hidden border-t border-slate-600 shadow-2xl md:block`}
+      data-testid="draft-dock"
+      ref={dockRef}
     >
       <div className={`${styles.surface} flex items-center justify-center gap-6 border-x-0 px-4 py-2 text-sm`} data-testid="draft-dock-tape">
         <p><span className={styles.muted}>Overall</span> <strong>#{currPick}</strong></p>

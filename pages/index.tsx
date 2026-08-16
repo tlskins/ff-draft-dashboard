@@ -291,6 +291,15 @@ const Home: FC = () => {
   const [mobileView, setMobileView] = useState<MobileView>(MobileView.OVERVIEW)
   const [analysisOpen, setAnalysisOpen] = useState(false)
   const draftDeskEnabled = isDraftDeskEnabled()
+  const [draftDeskDockHeight, setDraftDeskDockHeight] = useState(0)
+  const onDraftDeskDockHeightChange = useCallback((height: number) => {
+    setDraftDeskDockHeight(current => Math.abs(current - height) < 0.5
+      ? current
+      : height)
+  }, [])
+  const draftDeskShellStyle = useMemo(() => ({
+    "--draft-desk-dock-height": `${draftDeskDockHeight}px`,
+  }) as React.CSSProperties, [draftDeskDockHeight])
   const [draftDeskPanePlacement, setDraftDeskPanePlacement] =
     useState<DraftDeskPanePlacement>(() => {
       if (typeof window === "undefined") {
@@ -842,9 +851,9 @@ const Home: FC = () => {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen relative">
+    <div className={`flex flex-col items-center justify-center min-h-screen relative ${draftDeskEnabled ? draftDeskStyles.deskViewport : ""}`}>
       <PageHead />
-      <main className="flex flex-col items-center justify-center w-full flex-1 text-center bg-gray-50 md:px-20">
+      <main className={`flex flex-col items-center justify-center w-full flex-1 text-center bg-gray-50 ${draftDeskEnabled ? draftDeskStyles.deskMain : "md:px-20"}`}>
         {draftDeskEnabled && (
           <div className="hidden w-full md:block">
             <DraftDeskAppBar
@@ -891,7 +900,7 @@ const Home: FC = () => {
           />
         </div>}
 
-        <div className={`flex flex-col items-center mt-1 w-full ${draftDeskEnabled ? "h-screen md:h-auto md:mt-0" : "h-screen md:mt-4"}`}>
+        <div className={`flex flex-col items-center mt-1 w-full ${draftDeskEnabled ? `${draftDeskStyles.deskBody} h-screen md:mt-0` : "h-screen md:mt-4"}`}>
           {!draftDeskEnabled && <div className="hidden w-full justify-end px-5 md:flex">
             <button
               className={`mb-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
@@ -921,10 +930,11 @@ const Home: FC = () => {
           )}
           {draftDeskEnabled && (
             <div
-              className={`${draftDeskStyles.desk} hidden w-full flex-1 px-2 py-2 md:block`}
+              className={`${draftDeskStyles.desk} ${draftDeskStyles.deskShell} hidden w-full flex-1 md:flex`}
               data-testid="draft-desk-shell"
+              style={draftDeskShellStyle}
             >
-              <div className="mb-2 flex items-center justify-between px-1 text-left">
+              <div className={`${draftDeskStyles.deskControls} flex items-center justify-between px-1 text-left`}>
                 <p className={`${draftDeskStyles.muted} text-xs`}>
                   Desktop panes stay connected to the same board and advisor state.
                 </p>
@@ -961,6 +971,7 @@ const Home: FC = () => {
                         </header>
                         <div className="min-h-0 flex-1">
                           <RankingsBoard
+                            compact
                             playerRanks={playerRanks}
                             predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
                             draftView={draftView}
@@ -1024,6 +1035,7 @@ const Home: FC = () => {
                         <div className="min-h-0 flex-1 overflow-y-auto p-2 text-left">
                           <div style={{color: "#0f172a"}}>
                             <OptimalRosterDisplay
+                              compact
                               currentOptimalRoster={currentOptimalRoster}
                               optimalRosters={optimalRosters}
                               selectedOptimalRosterIdx={selectedOptimalRosterIdx}
@@ -1034,6 +1046,7 @@ const Home: FC = () => {
                             />
                           </div>
                           <LiveAdvisorPanel
+                            compact
                             draftStarted={draftStarted}
                             onSelectPlayer={onSelectPlayer}
                             onExportReplay={canExportReplay ? () => exportReplay() : undefined}
@@ -1068,6 +1081,7 @@ const Home: FC = () => {
                           <AnalysisWorkspace
                             availablePlayers={analysisAvailablePlayers}
                             boardSettings={boardSettings}
+                            compact
                             followActivePlayer={false}
                             players={Object.values(playerLib)}
                             rankingSummaries={rankingSummaries}
@@ -1431,6 +1445,7 @@ const Home: FC = () => {
           myPickNum={myPickNum}
           myPicks={myPicks}
           onRemovePick={onRemovePick}
+          onHeightChange={onDraftDeskDockHeightChange}
           setCurrPick={setCurrPick}
           setViewPlayerId={setViewPlayerId}
         />

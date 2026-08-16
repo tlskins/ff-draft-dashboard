@@ -79,6 +79,7 @@ interface RankingsBoardProps {
   addPlayerTarget: (player: Player, targetAsEarlyAsRound: number) => void,
   removePlayerTarget: (playerId: string) => void
   rankingProfileControls: RankingProfileControls
+  compact?: boolean
 }
 
 const RankingsBoard = ({
@@ -131,6 +132,7 @@ const RankingsBoard = ({
   addPlayerTarget,
   removePlayerTarget,
   rankingProfileControls,
+  compact = false,
 }: RankingsBoardProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
@@ -190,6 +192,7 @@ const RankingsBoard = ({
     customAndLatestRankingsDiffs,
     addPlayerTarget,
     removePlayerTarget,
+    compact,
   }
 
   const renderCurrentView = () => {
@@ -239,7 +242,7 @@ const RankingsBoard = ({
     noPlayers ?
     <></>
     :
-    <div data-testid="rankings-board" className={`flex flex-col md:p-4 p-1 h-full border border-4 rounded shadow-md bg-white text-sm ${isEditingCustomRanking ? 'overflow-hidden' : 'overflow-y-scroll'}`} style={{color: "#0f172a"}}>
+    <div data-testid="rankings-board" className={`flex flex-col ${compact ? "p-2" : "md:p-4 p-1"} h-full border border-4 rounded shadow-md bg-white text-sm ${isEditingCustomRanking ? 'overflow-hidden' : 'overflow-y-scroll'}`} style={{color: "#0f172a"}}>
       <div className="flex flex-col items-center justify-center content-center mb-2">
         <div className="flex flex-col items-center w-full">
           <DraftCaptureStatus

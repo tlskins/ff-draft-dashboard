@@ -97,6 +97,8 @@ interface AnalysisWorkspaceProps {
   ) => void
   /** The draft desk keeps board focus in its profile pane, not Player Lab. */
   followActivePlayer?: boolean
+  /** The embedded desk pane keeps controls readable at laptop widths. */
+  compact?: boolean
   onClose?: () => void
 }
 
@@ -153,6 +155,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   analysisViewEvent,
   onAnalysisViewEventHandled,
   followActivePlayer = true,
+  compact = false,
   onClose,
 }) => {
   const readiness = useDataReadiness()
@@ -602,7 +605,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   }
 
   return (
-    <section className="mx-auto w-full max-w-7xl rounded-xl border border-slate-200 bg-slate-50 p-3 text-left shadow-sm md:p-5">
+    <section className={`mx-auto w-full max-w-7xl rounded-xl border border-slate-200 bg-slate-50 p-3 text-left shadow-sm ${compact ? "" : "md:p-5"}`}>
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
@@ -707,7 +710,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
       <nav aria-label="Analysis workspace views" className="mb-4 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
         <div
           aria-label="Analysis views"
-          className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+          className={`grid grid-cols-1 gap-2 ${compact ? "" : "sm:grid-cols-3"}`}
           role="group"
         >
           {ANALYSIS_VIEW_DEFINITIONS.filter(candidate =>

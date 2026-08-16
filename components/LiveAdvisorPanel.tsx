@@ -67,6 +67,7 @@ interface LiveAdvisorPanelProps {
   onSetRealtimeMode?: (mode: RealtimeMode) => boolean
   onSetRealtimeMicrophoneEnabled?: (enabled: boolean) => boolean
   onSendRealtimeText?: (text: string) => boolean
+  compact?: boolean
 }
 
 const roleLabel = {
@@ -106,6 +107,7 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
   onSetRealtimeMode,
   onSetRealtimeMicrophoneEnabled,
   onSendRealtimeText,
+  compact = false,
 }) => {
   const [preflightOpen, setPreflightOpen] = React.useState(false)
   const exportButton = React.useRef<HTMLButtonElement>(null)
@@ -311,7 +313,7 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
           No legal roster selections remain.
         </p>
       ) : (
-        <ol className="grid gap-2 md:grid-cols-3">
+        <ol className={`grid gap-2 ${compact ? "grid-cols-1" : "md:grid-cols-3"}`}>
           {recommendations.candidates.map((candidate, index) => {
             const statusEvents = recommendationPlayerStatusEvidence(
               playerStatus[candidate.player.id]?.response?.events || [],
