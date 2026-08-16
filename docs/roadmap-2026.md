@@ -459,6 +459,70 @@ consumer and browser-authority hardening together. The pre-hardening dashboard
 consumer is not a deployable endpoint. Full rollback reverses that order:
 dashboard hardening and consumer together first, then the additive API.
 
+#### Phase 12C1a: provenance-checked Harris candidate
+
+The checked-in artifact labels the aggregate snapshot as season 2026, but its
+214 Harris records are semantically the same records produced by the July 30
+full rebuild and do not match Harris Football's current 2026 pages. The live
+August 15 RB page, for example, begins Gibbs, Robinson, Taylor, and McCaffrey,
+while the artifact begins Barkley, Robinson, Gibbs, and Henry. Aggregate
+snapshot metadata must therefore not be treated as source-specific freshness.
+
+Phase 12C1a adds a read-only Harris collector that requires all five source
+pages to visibly identify the requested season, requires and normalizes each
+page's published update timestamp, enforces bounded position counts, records
+raw-page and semantic candidate fingerprints, matches against the stable
+player universe, and reports additions, removals, field-level changes,
+team differences, and unresolved or ambiguous identities. It neither updates
+the release artifact nor writes a ranking-source observation or user profile.
+
+The first two live collections were semantically identical at candidate
+fingerprint `b1051a7f…e0e81f2`: 252 source players, 248 matched, 66 additions,
+32 removals, 182 changed retained players, no unchanged retained player, four
+unmatched source players, and no ambiguous match. At the 12C1a boundary,
+promotion remained blocked pending review of removals and unresolved
+identities; Phase 12C2 records the later approval and promotion. Scoring-aware
+source observations and profile rebase apply remain later bounded slices.
+
+#### Phase 12C2: 2026 Harris and FantasyPros API refresh
+
+Status: implemented and promoted locally on 2026-08-16. The user authorized
+the current 2026 provider baseline after verifying Harris against its official
+site. The API now has a deterministic joint preview/apply command: Harris keeps
+the five-page provenance checks from 12C1a, while FantasyPros reads its two
+official server-rendered standard/PPR draft payloads without browser automation
+or credentials and rejects season/type/scoring/date/count drift. The old
+headed parser's rest-of-season overall source is retired.
+
+The first promotion writes 248 Harris and 373 FantasyPros ranks into the stable
+455-player universe, removes 32 and 9 obsolete provider-rank objects without
+removing players, nulls provider ADP/projection/tier fields that the rank-only
+sources did not refresh, and leaves custom profiles and user tiers untouched.
+Both candidates must validate before an
+atomic file replacement; failure preserves the byte-identical last-good API
+artifact. The dashboard remains API-first and its release fallback is synced to
+the promoted artifact. API responses now require revalidation with a content
+ETag, so the file-backed API serves the new artifact without restart.
+
+Daily collection is an external scheduler concern, not a Flask background
+thread. A repository wrapper and launchd example are landed but intentionally
+not installed. See `docs/phase12c2-provider-ranking-refresh.md`. Scoring-aware
+source observations/profile rebase, provider freshness UI, and a Mongo-backed
+promotion adapter remain later bounded work; the legacy single-overall-rank
+observation contract is not overloaded.
+
+Production ranking delivery is intentionally lightweight. Rankings do not
+need in-session polling, snapshot history, source-version browsing, or a
+ranking database. The operator's computer may run the existing daily refresh
+and upload the one validated JSON artifact to static/object storage; Drafty
+loads it only at startup and retains its checked-in fallback. If a production
+API is deployed for Drafty's other capabilities, prefer serving that same file
+from `GET /players/latest` instead of adding a second ranking service. A
+single-server persistent file, S3-compatible object, or equivalent durable
+blob is sufficient. Provider failure continues to preserve the last-good
+artifact. Scheduler installation, artifact upload, and the final production
+URL remain deployment tasks rather than a product-data redesign.
+
 ### Phase 13: draft-season release readiness
 
 Dependency: Phases 10-12 are integrated. Frozen prediction v1 is an acceptable
@@ -534,6 +598,127 @@ unchanged snapshot is not retried on every render. Unit, type, lint, production
 build, real preflight, and live local API replay gates cover the repair. See
 `docs/phase13c-advisor-persistence-hardening.md` for the closeout evidence and
 rollback boundary.
+
+### Phase 14: integrated draft desk and visual redesign
+
+Dependency: the accepted Phase 13 live draft path and Phase 10 analytics
+models. Realtime GPT/voice remains deferred and is not required for this work.
+Status: product direction approved on 2026-08-16; implementation has not begun.
+
+Replace the current mutually exclusive standard-layout versus analysis-page
+interaction with one responsive draft desk. The rankings board, live draft
+state, deterministic recommendations, roster context, tier/run pressure, and
+historical comparison must remain simultaneously reachable without page
+navigation. Treat the existing analytics presentation models as trusted inputs;
+this phase changes composition and interaction, not recommendation, opponent,
+tier, projection, or ranking authority.
+
+Use an approachable trading-terminal visual language: dense but calm,
+high-contrast tabular data, restrained semantic color, compact workspace
+panes, and optional expansion for deep analysis. Avoid neon-finance styling,
+independent card grids, and permanent display of every metric. Preserve the
+existing accessible table semantics, keyboard operation, live-region
+boundaries, responsive behavior, and reduced-motion behavior.
+
+The accepted desktop composition has three center panes with stable roles but
+user-swappable placement: one mandatory rankings pane; one player profile and
+history pane that follows board focus; and one deterministic insight pane that
+selects the strongest material analysis not already represented. Rankings can
+switch among positional, round, and tier-map presentations. The tier
+box/whisker visualization is a rankings presentation, not an independent
+decision view. The insight pane chooses between candidate comparison and a
+cross-position market view; urgent run outlook is a state of the latter rather
+than a separate navigation destination.
+
+The fixed header becomes a compact application bar. Configuration, source
+selection, extension/mock links, imports, and other setup operations move to a
+drawer or pre-draft setup surface. The fixed footer retains an always-visible
+current-pick/round/next-user-pick strip and adds a secondary toggle between
+Current round, My roster, and League needs. My roster begins as a horizontal
+starter-slot summary with expandable vertical detail. League needs reports the
+number of other teams still missing each explicit starter slot; FLEX remains
+separate from QB/RB/WR/TE starter counts and observed counts remain visually
+distinct from modeled run probabilities.
+
+#### Phase 14A: shared shell, pane state, and design-system foundation
+
+- Introduce the compact application bar and move existing configuration into
+  an accessible drawer without changing setting ownership or draft locks.
+- Turn the existing footer into a two-level draft dock: the pick/round/next-pick
+  tape is permanent, while Current round, My roster, and League needs are
+  user-selected modes. Compute roster/league-needs summaries deterministically
+  from existing settings and rosters; do not change opponent forecasts.
+- Establish the three center-pane shell and explicit pane-placement state. The
+  rankings pane is mandatory; initial placement follows the accepted profile /
+  rankings / insight order, and a bounded swap control may reorder panes.
+- Render existing rankings, player context, and accepted Phase 10 surfaces in
+  the shell without redesigning their internal calculations or introducing a
+  new insight-selection algorithm in this slice.
+- Establish typography, spacing, density, color tokens, table/row states,
+  chart styling, borders, elevation, focus rings, and motion rules before
+  rewriting individual views.
+- Remove the desktop-only `analysisOpen` replacement-page interaction behind a
+  feature flag while retaining an accepted Phase 13 rollback path.
+- Cover wide desktop and narrow laptop; preserve the accepted mobile layout in
+  this slice except for shared token changes that are proven non-regressive.
+
+#### Phase 14B: advisor-owned comparison sets
+
+- Seed the comparison surface automatically from the maximum-three live
+  recommendation candidates; never require search/dropdown selection before
+  useful analysis appears.
+- Build a bounded comparison pool from preferred-now candidates, top available
+  positional alternatives, imminent tier-cliff players, and explicit user
+  targets. Deduplicate deterministically and disclose why each player is in
+  play.
+- Support `Auto` and `Pinned` modes. Auto updates only on a material draft
+  event; pinning freezes the set while picks continue. One-click row actions,
+  keyboard shortcuts, and a single add-player affordance remain available for
+  manual overrides.
+- Use the same automatic set for live cross-position comparison and as the
+  default historical Player Lab query. Historical API execution remains
+  explicit and does not block live evidence.
+- Keep board focus independent: focus updates the player profile/history pane,
+  while only an explicit pin/compare action changes a pinned comparison set.
+- Add a provenance-preserving player profile contract. ESPN `playerOutlook` is
+  already present in the upstream parser model but is not retained in the
+  active player artifact; carry a bounded source/season/observed-at outlook and
+  existing structured status/news evidence into the profile. Do not add LLM
+  summarization in this phase.
+
+#### Phase 14C: round-aware run market and deterministic insight controller
+
+- Extend the opponent forecast presentation/model boundary from only the next
+  user-pick window to bounded upcoming-round buckets. For each relevant
+  position/tier and round, expose expected positional picks, probability of at
+  least the configured run threshold, expected tier depletion, and probability
+  of tier exhaustion without double-counting players.
+- Build the cross-position market from four positional lanes that combine tier
+  depth, survival, round-aware run evidence, and observed other-roster starter
+  needs while clearly labeling observed versus modeled evidence.
+- Score candidate-comparison and cross-position/run insights deterministically.
+  Switch only on material draft events, require a significance margin and
+  hysteresis, use a stable tie-break, announce one explanation, and respect a
+  user-pinned view until Auto is restored.
+- Keep a compact three-player comparison available in the insight pane,
+  including rank/tier authority, role, projection range, survival/run evidence,
+  and one-line inclusion rationale.
+
+#### Phase 14D: responsive acceptance and migration
+
+- Validate no-navigation drafting, automatic comparison churn, pin/unpin,
+  keyboard flow, screen-reader table structure, and live announcements during
+  replay and a human-directed mock.
+- Preserve mobile's task-focused modes while exposing the same automatic
+  shortlist in a bottom sheet; do not shrink the full desktop terminal onto a
+  phone.
+- Remove superseded layout controls only after parity is demonstrated. Keep a
+  feature-flagged rollback to the accepted Phase 13 layout through closeout.
+
+Exit gate: a user can monitor the board, understand the current recommendation,
+compare the players genuinely in play, inspect tier/run context, and open a
+historical deep dive without leaving the primary draft workspace or manually
+assembling an initial comparison set.
 
 ## Deferred product tracks
 
