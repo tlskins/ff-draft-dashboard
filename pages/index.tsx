@@ -25,6 +25,10 @@ import MobileTiersView from "../components/MobileTiersView"
 import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
 import LiveAdvisorPanel from "../components/LiveAdvisorPanel"
 import PortableDataControls from "../components/PortableDataControls"
+import DraftDeskAppBar from "../components/DraftDeskAppBar"
+import DraftDeskProfilePane from "../components/DraftDeskProfilePane"
+import DraftDock from "../components/DraftDock"
+import draftDeskStyles from "../components/DraftDesk.module.css"
 
 import { useRanks } from '../behavior/hooks/useRanks'
 import { useDraftBoard } from '../behavior/hooks/useDraftBoard'
@@ -88,6 +92,14 @@ import type {
   AnalysisViewNavigationEvent,
   AutomaticAnalysisViewEvent,
 } from "@/behavior/analysis/viewState"
+import {
+  DRAFT_DESK_PANE_STORAGE_KEY,
+  DraftDeskPaneId,
+  DraftDeskPanePlacement,
+  isDraftDeskEnabled,
+  restoreDraftDeskPanePlacement,
+  swapDraftDeskPanePlacement,
+} from "@/behavior/draftDesk"
 
 export enum DraftView {
   RANKING = "Rankings By Position",
@@ -278,6 +290,27 @@ const Home: FC = () => {
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
   const [mobileView, setMobileView] = useState<MobileView>(MobileView.OVERVIEW)
   const [analysisOpen, setAnalysisOpen] = useState(false)
+  const draftDeskEnabled = isDraftDeskEnabled()
+  const [draftDeskPanePlacement, setDraftDeskPanePlacement] =
+    useState<DraftDeskPanePlacement>(() => {
+      if (typeof window === "undefined") {
+        return restoreDraftDeskPanePlacement(null)
+      }
+      try {
+        return restoreDraftDeskPanePlacement(JSON.parse(
+          window.localStorage.getItem(DRAFT_DESK_PANE_STORAGE_KEY) || "null",
+        ))
+      } catch {
+        return restoreDraftDeskPanePlacement(null)
+      }
+    })
+  useEffect(() => {
+    if (!draftDeskEnabled || typeof window === "undefined") return
+    window.localStorage.setItem(
+      DRAFT_DESK_PANE_STORAGE_KEY,
+      JSON.stringify(draftDeskPanePlacement),
+    )
+  }, [draftDeskEnabled, draftDeskPanePlacement])
   const statusPlayerIds = useMemo(() => [
     ...recommendations.candidates.map(candidate => candidate.player.id),
     ...(viewPlayerId ? [viewPlayerId] : []),
@@ -354,6 +387,8 @@ const Home: FC = () => {
         },
       ))
     if (
+      !draftDeskEnabled
+      &&
       typeof window !== "undefined"
       && window.matchMedia?.("(min-width: 768px)").matches
     ) {
@@ -361,7 +396,7 @@ const Home: FC = () => {
     } else {
       setMobileView(MobileView.ANALYSIS)
     }
-  }, [analysisEventStreamId, currPick])
+  }, [analysisEventStreamId, currPick, draftDeskEnabled])
   const realtimeAdvisor = useRealtimeAdvisor({
     draftSessionId: activeDraftSessionId,
     sourceEventCount,
@@ -809,9 +844,40 @@ const Home: FC = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen relative">
       <PageHead />
-      <main className="flex flex-col items-center justify-center w-full flex-1 md:px-20 text-center bg-gray-50">
-        {/* Desktop Header Section */}
-        <div className="hidden md:block">
+      <main className="flex flex-col items-center justify-center w-full flex-1 text-center bg-gray-50 md:px-20">
+        {draftDeskEnabled && (
+          <div className="hidden w-full md:block">
+            <DraftDeskAppBar
+              activeDraftListenerTitle={activeDraftListenerTitle}
+              boardSettings={boardSettings}
+              draftCaptureState={draftCaptureState}
+              draftPersistence={draftPersistence}
+              draftSourceHealth={draftSourceHealth}
+              draftSourceHealthFreshness={draftSourceHealthFreshness}
+              draftStarted={draftStarted}
+              myPickNum={myPickNum}
+              onRetryDraftPersistence={retryDraftPersistence}
+              onSetAdpRanker={onSetAdpRanker}
+              onSetRanker={onSetRanker}
+              setIsPpr={setIsPpr}
+              setMyPickNum={setMyPickNum}
+              setNumTeams={setNumTeams}
+              settings={settings}
+              setupOperations={!noPlayers ? (
+                <PortableDataControls
+                  createPackage={createPortableData}
+                  importDisabledReason={draftStarted || draftHistory.some(Boolean)
+                    ? "Finish or start a new draft before importing data; live picks stay untouched."
+                    : null}
+                  onApply={applyPortableData}
+                  validationContext={portableValidationContext}
+                />
+              ) : undefined}
+            />
+          </div>
+        )}
+        {/* Accepted Phase 13 desktop header, retained as the feature-flag rollback. */}
+        {!draftDeskEnabled && <div className="hidden md:block">
           <Header
             settings={settings}
             boardSettings={boardSettings}
@@ -823,10 +889,10 @@ const Home: FC = () => {
             onSetRanker={onSetRanker}
             onSetAdpRanker={onSetAdpRanker}
           />
-        </div>
+        </div>}
 
-        <div className="flex flex-col items-center md:mt-4 mt-1 w-full h-screen">
-          <div className="hidden w-full justify-end px-5 md:flex">
+        <div className={`flex flex-col items-center mt-1 w-full ${draftDeskEnabled ? "h-screen md:h-auto md:mt-0" : "h-screen md:mt-4"}`}>
+          {!draftDeskEnabled && <div className="hidden w-full justify-end px-5 md:flex">
             <button
               className={`mb-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
                 analysisOpen
@@ -837,8 +903,8 @@ const Home: FC = () => {
             >
               {analysisOpen ? "Close analysis" : "Open analysis workspace"}
             </button>
-          </div>
-          {!noPlayers && (
+          </div>}
+          {!draftDeskEnabled && !noPlayers && (
             <PortableDataControls
               createPackage={createPortableData}
               importDisabledReason={draftStarted || draftHistory.some(Boolean)
@@ -853,8 +919,175 @@ const Home: FC = () => {
               {startupMigrationStatus}
             </p>
           )}
+          {draftDeskEnabled && (
+            <div
+              className={`${draftDeskStyles.desk} hidden w-full flex-1 px-2 py-2 md:block`}
+              data-testid="draft-desk-shell"
+            >
+              <div className="mb-2 flex items-center justify-between px-1 text-left">
+                <p className={`${draftDeskStyles.muted} text-xs`}>
+                  Desktop panes stay connected to the same board and advisor state.
+                </p>
+                <button
+                  className={`${draftDeskStyles.focusRing} rounded border border-slate-500 bg-slate-800 px-2 py-1 text-xs font-semibold hover:bg-slate-700`}
+                  onClick={() => setDraftDeskPanePlacement(current =>
+                    swapDraftDeskPanePlacement(current))}
+                  type="button"
+                >
+                  Swap rankings and insight panes
+                </button>
+              </div>
+              <div className={draftDeskStyles.centerPanes}>
+                {draftDeskPanePlacement.map((pane: DraftDeskPaneId) => (
+                  <React.Fragment key={pane}>
+                    {pane === "profile" && (
+                      <DraftDeskProfilePane
+                        boardSettings={boardSettings}
+                        player={viewPlayerId ? playerLib[viewPlayerId] : null}
+                        players={Object.values(playerLib)}
+                        playerStatus={playerStatus}
+                        rankingSummaries={rankingSummaries}
+                        settings={settings}
+                      />
+                    )}
+                    {pane === "rankings" && (
+                      <section aria-label="Rankings pane" className={`${draftDeskStyles.pane} flex h-full min-h-0 flex-col`}>
+                        <header className={`${draftDeskStyles.surface} flex items-center justify-between border-x-0 border-t-0 px-3 py-2 text-left`}>
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-sky-300">Rankings</p>
+                            <h2 className="text-sm font-bold">Available board</h2>
+                          </div>
+                          <span className={`${draftDeskStyles.muted} text-xs`}>Required pane</span>
+                        </header>
+                        <div className="min-h-0 flex-1">
+                          <RankingsBoard
+                            playerRanks={playerRanks}
+                            predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
+                            draftView={draftView}
+                            setDraftView={setDraftView}
+                            sortOption={sortOption}
+                            setSortOption={setSortOption}
+                            highlightOption={highlightOption}
+                            setHighlightOption={setHighlightOption}
+                            myPickNum={myPickNum}
+                            noPlayers={noPlayers}
+                            currPick={currPick}
+                            predNextTiers={isEditingCustomRanking || usingCustomRanking ? {} : predNextTiers}
+                            fantasySettings={settings}
+                            boardSettings={boardSettings}
+                            rankingSummaries={rankingSummaries}
+                            onSelectPlayer={onSelectPlayer}
+                            onPurgePlayer={onPurgeAvailPlayer}
+                            setViewPlayerId={setViewPlayerId}
+                            isEditingCustomRanking={isEditingCustomRanking}
+                            hasCustomRanking={usingCustomRanking}
+                            canEditCustomRankings={canEditCustomRankings()}
+                            onReorderPlayer={onReorderPlayerInPosition}
+                            onStartCustomRanking={handleStartCustomRanking}
+                            onFinishCustomRanking={handleFinishCustomRanking}
+                            onUpdateTierBoundary={onUpdateTierBoundary}
+                            onCancelCustomRanking={() => setDraftView(DraftView.RANKING)}
+                            rosters={rosters}
+                            playerLib={playerLib}
+                            draftStarted={draftStarted}
+                            getDraftRoundForPickNum={getDraftRoundForPickNum}
+                            viewPlayerId={viewPlayerId}
+                            draftHistory={draftHistory}
+                            viewRosterIdx={myPickNum - 1}
+                            activeDraftListenerTitle={activeDraftListenerTitle}
+                            draftCaptureState={draftCaptureState}
+                            draftSourceHealth={draftSourceHealth}
+                            draftSourceHealthFreshness={draftSourceHealthFreshness}
+                            draftPersistence={draftPersistence}
+                            onRetryDraftPersistence={retryDraftPersistence}
+                            loadCurrentRankings={loadCurrentRankings}
+                            rankings={rankings}
+                            latestRankings={latestRankings}
+                            rankingProfileControls={rankingProfileControls}
+                            removePlayerTargets={removePlayerTargets}
+                            playerTargets={playerTargets}
+                            customAndLatestRankingsDiffs={customAndLatestRankingsDiffs}
+                            onSyncPendingRankings={onSyncPendingRankings}
+                            onRevertPlayerToPreSync={onRevertPlayerToPreSync}
+                            addPlayerTarget={addPlayerTarget}
+                            removePlayerTarget={removePlayerTarget}
+                          />
+                        </div>
+                      </section>
+                    )}
+                    {pane === "insight" && (
+                      <section aria-label="Deterministic insight pane" className={`${draftDeskStyles.pane} flex h-full min-h-0 flex-col`}>
+                        <header className={`${draftDeskStyles.surface} border-x-0 border-t-0 px-3 py-2 text-left`}>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-sky-300">Insight</p>
+                          <h2 className="text-sm font-bold">Advisor and decision workspace</h2>
+                        </header>
+                        <div className="min-h-0 flex-1 overflow-y-auto p-2 text-left">
+                          <div style={{color: "#0f172a"}}>
+                            <OptimalRosterDisplay
+                              currentOptimalRoster={currentOptimalRoster}
+                              optimalRosters={optimalRosters}
+                              selectedOptimalRosterIdx={selectedOptimalRosterIdx}
+                              setSelectedOptimalRosterIdx={setSelectedOptimalRosterIdx}
+                              boardSettings={boardSettings}
+                              settings={settings}
+                              rankingSummaries={rankingSummaries}
+                            />
+                          </div>
+                          <LiveAdvisorPanel
+                            draftStarted={draftStarted}
+                            onSelectPlayer={onSelectPlayer}
+                            onExportReplay={canExportReplay ? () => exportReplay() : undefined}
+                            onExportRosterOnly={canExportReplay ? () => exportReplay(true) : undefined}
+                            replayCaptureStatus={replayCaptureStatus}
+                            empiricalBaseShadowCaptureStatus={empiricalBaseShadowCaptureStatus}
+                            runOnlyShadowCaptureStatus={runOnlyShadowCaptureStatus}
+                            replayExportPreflight={replayExportPreflight}
+                            recommendations={recommendations}
+                            playerStatus={playerStatus}
+                            draftPlan={realtimeAdvisor.plan}
+                            realtimeProposals={realtimeAdvisor.proposals}
+                            onAcceptProposal={realtimeAdvisor.acceptProposal}
+                            onRejectProposal={realtimeAdvisor.rejectProposal}
+                            realtimeStatus={realtimeConversation.status}
+                            realtimeMessages={realtimeConversation.messages}
+                            realtimeError={realtimeConversation.error}
+                            realtimeIsResponding={realtimeConversation.isResponding}
+                            realtimeReconnectAttempt={realtimeConversation.reconnectAttempt}
+                            realtimeAutoAdviceEnabled={realtimeConversation.autoAdviceEnabled}
+                            realtimeMode={realtimeConversation.mode}
+                            realtimeMicrophoneEnabled={realtimeConversation.microphoneEnabled}
+                            realtimeIsUserSpeaking={realtimeConversation.isUserSpeaking}
+                            onConnectRealtime={realtimeConversation.connect}
+                            onDisconnectRealtime={realtimeConversation.disconnect}
+                            onCancelRealtimeResponse={realtimeConversation.cancelResponse}
+                            onSetRealtimeAutoAdviceEnabled={realtimeConversation.setAutoAdviceEnabled}
+                            onSetRealtimeMode={realtimeConversation.setMode}
+                            onSetRealtimeMicrophoneEnabled={realtimeConversation.setMicrophoneEnabled}
+                            onSendRealtimeText={realtimeConversation.sendText}
+                          />
+                          <AnalysisWorkspace
+                            availablePlayers={analysisAvailablePlayers}
+                            boardSettings={boardSettings}
+                            followActivePlayer={false}
+                            players={Object.values(playerLib)}
+                            rankingSummaries={rankingSummaries}
+                            recommendations={recommendations}
+                            opponentForecast={opponentForecast}
+                            settings={settings}
+                            playerStatus={playerStatus}
+                            analysisViewEvent={analysisViewEvents.desktop}
+                            onAnalysisViewEventHandled={acknowledgeAnalysisViewNavigation}
+                          />
+                        </div>
+                      </section>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          )}
           {!analysisOpen && (
-            <div className="w-full px-2 md:px-5">
+            <div className={`w-full px-2 ${draftDeskEnabled ? "md:hidden" : "md:px-5"}`}>
               <LiveAdvisorPanel
                 draftStarted={draftStarted}
                 onSelectPlayer={onSelectPlayer}
@@ -907,7 +1140,7 @@ const Home: FC = () => {
               />
             </div>
           )}
-          {analysisOpen && (
+          {!draftDeskEnabled && analysisOpen && (
             <div className="hidden w-screen px-4 pb-8 md:block">
               <AnalysisWorkspace
                 activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
@@ -928,7 +1161,7 @@ const Home: FC = () => {
             </div>
           )}
           {/* Desktop Layout */}
-          {!analysisOpen && (
+          {!draftDeskEnabled && !analysisOpen && (
           <div className="hidden md:grid justify-center w-screen relative mb-4 grid grid-cols-12 gap-1 px-1">
             {/* Stats Column */}
             <div className="md:col-span-3">
@@ -1185,7 +1418,24 @@ const Home: FC = () => {
         </div>
       </main>
 
-      { draftStarted &&
+      {draftDeskEnabled && (
+        <DraftDock
+          roundIdx={roundIdx}
+          currRoundPick={currRoundPick}
+          currPick={currPick}
+          isEvenRound={isEvenRound}
+          currRound={currRound}
+          playerLib={playerLib}
+          rosters={rosters}
+          settings={settings}
+          myPickNum={myPickNum}
+          myPicks={myPicks}
+          onRemovePick={onRemovePick}
+          setCurrPick={setCurrPick}
+          setViewPlayerId={setViewPlayerId}
+        />
+      )}
+      {!draftDeskEnabled && draftStarted &&
         <PickHistoryFooter
           roundIdx={roundIdx}
           currRoundPick={currRoundPick}

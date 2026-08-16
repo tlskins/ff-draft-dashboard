@@ -95,6 +95,8 @@ interface AnalysisWorkspaceProps {
   onAnalysisViewEventHandled?: (
     event: AnalysisViewNavigationEvent,
   ) => void
+  /** The draft desk keeps board focus in its profile pane, not Player Lab. */
+  followActivePlayer?: boolean
   onClose?: () => void
 }
 
@@ -150,6 +152,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   playerStatus = {},
   analysisViewEvent,
   onAnalysisViewEventHandled,
+  followActivePlayer = true,
   onClose,
 }) => {
   const readiness = useDataReadiness()
@@ -273,10 +276,10 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
 
   useEffect(() => {
     const nextPrimary = activePlayer?.id || positionPlayers[0]?.id || ""
-    if (!primaryId || activePlayer) {
+    if (!primaryId || (followActivePlayer && activePlayer)) {
       setPrimaryId(nextPrimary)
     }
-  }, [activePlayer, positionPlayers, primaryId])
+  }, [activePlayer, followActivePlayer, positionPlayers, primaryId])
 
   useEffect(() => {
     const candidate = positionPlayers.find(player =>
@@ -313,10 +316,10 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   }, [positionPlayers, primaryId, secondaryId])
 
   useEffect(() => {
-    if (activePlayer) {
+    if (followActivePlayer && activePlayer) {
       setPosition(activePlayer.position as AnalysisPosition)
     }
-  }, [activePlayer])
+  }, [activePlayer, followActivePlayer])
 
   useEffect(() => {
     setScoringProfile(settings.ppr ? "ppr" : "standard")

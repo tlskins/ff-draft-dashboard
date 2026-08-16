@@ -239,7 +239,7 @@ const RankingsBoard = ({
     noPlayers ?
     <></>
     :
-    <div className={`flex flex-col md:p-4 p-1 h-full border border-4 rounded shadow-md bg-white text-sm ${isEditingCustomRanking ? 'overflow-hidden' : 'overflow-y-scroll'}`}>
+    <div data-testid="rankings-board" className={`flex flex-col md:p-4 p-1 h-full border border-4 rounded shadow-md bg-white text-sm ${isEditingCustomRanking ? 'overflow-hidden' : 'overflow-y-scroll'}`} style={{color: "#0f172a"}}>
       <div className="flex flex-col items-center justify-center content-center mb-2">
         <div className="flex flex-col items-center w-full">
           <DraftCaptureStatus
@@ -261,6 +261,7 @@ const RankingsBoard = ({
         <div className="flex flex-col text-left">
           <div className="flex flex-row">
             <select
+              aria-label="Rankings mode"
               className="hidden md:block px-3 py-1 mx-2 border rounded bg-blue-100 shadow"
               value={draftView}
               disabled={isEditingCustomRanking}
