@@ -4,6 +4,8 @@
     "node": "22.x"
   },
   "scripts": {
+    "extension:package": "node scripts/package-extension.mjs",
+    "test:extension-package": "jest --runInBand __tests__/extensionPackage.test.js",
     "release:preflight": "node scripts/release-preflight.mjs --mode full",
     "release:preflight:quick": "node scripts/release-preflight.mjs --mode quick",
     "test:release-preflight": "jest --runInBand __tests__/releasePreflight.test.js",

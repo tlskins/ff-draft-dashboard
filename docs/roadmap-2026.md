@@ -496,6 +496,19 @@ Phase 9 remains evidence-blocked and Realtime GPT/voice is deferred. This
 preparatory slice does not complete Phase 13 or waive separate Phase 12 rebase
 apply, source promotion, or ranking-editor work.
 
+#### Phase 13B: deterministic extension package
+
+Phase 13B closes the previously reported packaged-extension boundary with a
+repository-local deterministic ZIP builder. It derives the archive name from
+the unchanged MV3 manifest version, emits the manifest and every local
+manifest-referenced asset at the ZIP root in stable manifest order, preserves
+the extractor-before-content-script ordering, and never silently overwrites an
+archive. The tracked `0.0.0.8` package is byte-reproducible from unchanged
+source bytes and is validated by Phase 13A for tracked ZIP readability,
+semantic manifest equality, and referenced-asset byte parity. It does not
+change extension permissions/matches, begin browser acceptance, or complete
+Phase 13.
+
 ## Deferred product tracks
 
 ### Prediction-v2 promotion decision
