@@ -10,9 +10,10 @@ export enum MobileView {
 interface MobileFooterProps {
   currentView: MobileView
   onViewChange: (view: MobileView) => void
+  candidateDesktop?: boolean
 }
 
-const MobileFooter: React.FC<MobileFooterProps> = ({ currentView, onViewChange }) => {
+const MobileFooter: React.FC<MobileFooterProps> = ({ currentView, onViewChange, candidateDesktop = false }) => {
   const buttons = [
     {
       view: MobileView.OVERVIEW,
@@ -53,7 +54,7 @@ const MobileFooter: React.FC<MobileFooterProps> = ({ currentView, onViewChange }
   ]
 
   return (
-    <div className="fixed bottom-0 h-12 left-0 right-0 bg-white border-t border-gray-300 md:hidden z-40 w-full">
+    <div className={`fixed bottom-0 h-12 left-0 right-0 bg-white border-t border-gray-300 ${candidateDesktop ? "xl:hidden" : "md:hidden"} z-40 w-full`}>
       <div className="flex justify-around py-1 mb-2">
         {buttons.map(({ view, icon, label }) => (
           <button

@@ -27,10 +27,10 @@ const roster = (values: Partial<Roster>): Roster => ({
 describe("Phase 14A draft desk presentation state", () => {
   it("uses the accepted default placement and supports one bounded pane swap", () => {
     expect(DEFAULT_DRAFT_DESK_PANE_PLACEMENT).toEqual([
-      "profile", "rankings", "insight",
+      "rankings", "profile", "insight",
     ])
     expect(swapDraftDeskPanePlacement(DEFAULT_DRAFT_DESK_PANE_PLACEMENT))
-      .toEqual(["profile", "insight", "rankings"])
+      .toEqual(["rankings", "insight", "profile"])
   })
 
   it("falls back to default placement for malformed persisted state", () => {

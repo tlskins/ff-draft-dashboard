@@ -103,6 +103,7 @@ import {
 
 export enum DraftView {
   RANKING = "Rankings By Position",
+  ADP_ROUND = "Best By ADP Round",
   BEST_AVAILABLE = "Best Available By Round",
   CUSTOM_RANKING = "Edit Rankings",
 }
@@ -855,7 +856,7 @@ const Home: FC = () => {
       <PageHead />
       <main className={`flex flex-col items-center justify-center w-full flex-1 text-center bg-gray-50 ${draftDeskEnabled ? draftDeskStyles.deskMain : "md:px-20"}`}>
         {draftDeskEnabled && (
-          <div className="hidden w-full md:block">
+          <div className="hidden w-full xl:block">
             <DraftDeskAppBar
               activeDraftListenerTitle={activeDraftListenerTitle}
               boardSettings={boardSettings}
@@ -900,7 +901,7 @@ const Home: FC = () => {
           />
         </div>}
 
-        <div className={`flex flex-col items-center mt-1 w-full ${draftDeskEnabled ? `${draftDeskStyles.deskBody} h-screen md:mt-0` : "h-screen md:mt-4"}`}>
+        <div className={`flex flex-col items-center mt-1 w-full ${draftDeskEnabled ? `${draftDeskStyles.deskBody} h-screen xl:mt-0` : "h-screen md:mt-4"}`}>
           {!draftDeskEnabled && <div className="hidden w-full justify-end px-5 md:flex">
             <button
               className={`mb-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
@@ -930,7 +931,7 @@ const Home: FC = () => {
           )}
           {draftDeskEnabled && (
             <div
-              className={`${draftDeskStyles.desk} ${draftDeskStyles.deskShell} hidden w-full flex-1 md:flex`}
+              className={`${draftDeskStyles.desk} ${draftDeskStyles.deskShell} hidden w-full flex-1 xl:flex`}
               data-testid="draft-desk-shell"
               style={draftDeskShellStyle}
             >
@@ -1016,6 +1017,8 @@ const Home: FC = () => {
                             latestRankings={latestRankings}
                             rankingProfileControls={rankingProfileControls}
                             removePlayerTargets={removePlayerTargets}
+                            replacePlayerTargets={replacePlayerTargets}
+                            myPicks={myPicks}
                             playerTargets={playerTargets}
                             customAndLatestRankingsDiffs={customAndLatestRankingsDiffs}
                             onSyncPendingRankings={onSyncPendingRankings}
@@ -1101,7 +1104,7 @@ const Home: FC = () => {
             </div>
           )}
           {!analysisOpen && (
-            <div className={`w-full px-2 ${draftDeskEnabled ? "md:hidden" : "md:px-5"}`}>
+            <div className={`w-full px-2 ${draftDeskEnabled ? "xl:hidden" : "md:px-5"}`}>
               <LiveAdvisorPanel
                 draftStarted={draftStarted}
                 onSelectPlayer={onSelectPlayer}
@@ -1274,6 +1277,8 @@ const Home: FC = () => {
                 latestRankings={latestRankings}
                 rankingProfileControls={rankingProfileControls}
                 removePlayerTargets={removePlayerTargets}
+                replacePlayerTargets={replacePlayerTargets}
+                myPicks={myPicks}
                 playerTargets={playerTargets}
                 customAndLatestRankingsDiffs={customAndLatestRankingsDiffs}
                 onSyncPendingRankings={onSyncPendingRankings}
@@ -1307,7 +1312,7 @@ const Home: FC = () => {
           )}
 
           {/* Mobile Layout */}
-          <div className="md:hidden w-full h-full px-2">
+          <div className={`${draftDeskEnabled ? "xl:hidden" : "md:hidden"} w-full h-full px-2`}>
             {mobileView === MobileView.OVERVIEW && (
               <div className="w-full h-full">
                 <MobileTiersView
@@ -1378,6 +1383,8 @@ const Home: FC = () => {
                 latestRankings={latestRankings}
                 rankingProfileControls={rankingProfileControls}
                 removePlayerTargets={removePlayerTargets}
+                replacePlayerTargets={replacePlayerTargets}
+                myPicks={myPicks}
                 playerTargets={playerTargets}
                 customAndLatestRankingsDiffs={customAndLatestRankingsDiffs}
                 onSyncPendingRankings={onSyncPendingRankings}
@@ -1442,6 +1449,8 @@ const Home: FC = () => {
           playerLib={playerLib}
           rosters={rosters}
           settings={settings}
+          boardSettings={boardSettings}
+          draftHistory={draftHistory}
           myPickNum={myPickNum}
           myPicks={myPicks}
           onRemovePick={onRemovePick}
@@ -1468,6 +1477,7 @@ const Home: FC = () => {
 
       {/* Mobile Footer Navigation */}
       <MobileFooter 
+        candidateDesktop={draftDeskEnabled}
         currentView={mobileView}
         onViewChange={setMobileView}
       />

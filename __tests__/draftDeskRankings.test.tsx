@@ -24,7 +24,7 @@ const props = (setDraftView = jest.fn()): any => ({
   draftPersistence: {state: "local", pendingEventCount: 0, error: null, canRetry: false},
   onRetryDraftPersistence: jest.fn(), loadCurrentRankings: jest.fn(),
   rankings: {players: [], rankingsSummaries: [], cachedAt: "", editedAt: ""}, latestRankings: null,
-  removePlayerTargets: jest.fn(), playerTargets: [], customAndLatestRankingsDiffs: {},
+  removePlayerTargets: jest.fn(), replacePlayerTargets: jest.fn(), myPicks: [1, 24, 25], playerTargets: [], customAndLatestRankingsDiffs: {},
   onSyncPendingRankings: jest.fn(), onRevertPlayerToPreSync: jest.fn(),
   addPlayerTarget: jest.fn(), removePlayerTarget: jest.fn(),
   rankingProfileControls: {
@@ -50,7 +50,27 @@ describe("Phase 14A unified rankings pane", () => {
   it("uses the candidate compact presentation without changing board ownership", () => {
     render(<RankingsBoard {...props()} compact />)
 
-    expect(screen.getByTestId("rankings-board").className).toContain("p-2")
+    expect(screen.getByTestId("rankings-board").className).toContain("p-1")
     expect(screen.getAllByTestId("rankings-board")).toHaveLength(1)
+  })
+
+  it("makes Position and ADP round mutually exclusive in the desk mode switch", () => {
+    const setDraftView = jest.fn()
+    render(<RankingsBoard {...props(setDraftView)} compact />)
+
+    expect(screen.getByRole("button", {name: "Position"}).getAttribute("aria-pressed")).toBe("true")
+    expect(screen.getByRole("button", {name: "ADP round"}).getAttribute("aria-pressed")).toBe("false")
+    fireEvent.click(screen.getByRole("button", {name: "ADP round"}))
+    expect(setDraftView).toHaveBeenCalledWith("Best By ADP Round")
+  })
+
+  it("shows two positional lanes and switches between the approved pairs", () => {
+    render(<RankingsBoard {...props()} compact />)
+
+    expect(screen.getByTestId("ranking-position-lane-RB")).toBeTruthy()
+    expect(screen.getByTestId("ranking-position-lane-WR")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", {name: "QB + TE"}))
+    expect(screen.getByTestId("ranking-position-lane-QB")).toBeTruthy()
+    expect(screen.getByTestId("ranking-position-lane-TE")).toBeTruthy()
   })
 })

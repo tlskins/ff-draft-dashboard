@@ -624,12 +624,14 @@ boundaries, responsive behavior, and reduced-motion behavior.
 The accepted desktop composition has three center panes with stable roles but
 user-swappable placement: one mandatory rankings pane; one player profile and
 history pane that follows board focus; and one deterministic insight pane that
-selects the strongest material analysis not already represented. Rankings can
-switch among positional, round, and tier-map presentations. The tier
-box/whisker visualization is a rankings presentation, not an independent
-decision view. The insight pane chooses between candidate comparison and a
-cross-position market view; urgent run outlook is a state of the latter rather
-than a separate navigation destination.
+selects the strongest material analysis not already represented. Rankings use
+mutually exclusive Position and ADP-round modes. Position uses paired RB+WR or
+QB+TE lanes; tier is embedded in each player card and the standalone rankings
+tier-map mode is removed. Best Available and Targets Visualization remain
+reachable through the established ADP subview selector. The insight pane keeps
+candidate comparison and the existing cross-position market evidence visible;
+urgent run outlook remains a state of modeled evidence rather than new
+round-aware probability calculation.
 
 The fixed header becomes a compact application bar. Configuration, source
 selection, extension/mock links, imports, and other setup operations move to a
@@ -650,11 +652,15 @@ distinct from modeled run probabilities.
   user-selected modes. Compute roster/league-needs summaries deterministically
   from existing settings and rosters; do not change opponent forecasts.
 - Establish the three center-pane shell and explicit pane-placement state. The
-  rankings pane is mandatory; initial placement follows the accepted profile /
-  rankings / insight order, and a bounded swap control may reorder panes.
+  rankings pane is mandatory; initial placement follows the accepted rankings /
+  profile / insight order, and a bounded swap control may reorder panes.
 - Render existing rankings, player context, and accepted Phase 10 surfaces in
   the shell without redesigning their internal calculations or introducing a
-  new insight-selection algorithm in this slice.
+  new insight-selection algorithm in this slice. Primary visual targets are
+  1440px and wider, then compact desktop at 1280–1439px; below 1280px retain
+  task-focused/single-pane behavior. Keep cross-position charts structurally
+  visible, including their ranges, markers, replacement, tier, and modeled
+  survival/run evidence.
 - Establish typography, spacing, density, color tokens, table/row states,
   chart styling, borders, elevation, focus rings, and motion rules before
   rewriting individual views.

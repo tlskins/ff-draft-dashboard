@@ -92,6 +92,8 @@ describe("Phase 14A desk components", () => {
         currPick={4}
         currRound={["qb-mine", null, null]}
         currRoundPick={1}
+        draftHistory={["qb-mine", null, null, null]}
+        boardSettings={{ranker: ThirdPartyRanker.HARRIS, adpRanker: ThirdPartyADPRanker.ESPN}}
         isEvenRound={false}
         myPickNum={2}
         myPicks={[2, 5, 8]}
@@ -115,9 +117,9 @@ describe("Phase 14A desk components", () => {
     const tape = screen.getByTestId("draft-dock-tape")
     expect(tape.textContent).toContain("#4")
     expect(tape.textContent).toContain("#5 · 1 away")
-    expect(screen.getByTestId("draft-dock-current-round")).toBeTruthy()
+    expect(screen.getByTestId("draft-dock-roster")).toBeTruthy()
 
-    fireEvent.click(screen.getByRole("button", {name: "My roster"}))
+    fireEvent.click(screen.getByRole("button", {name: "Your roster"}))
     expect(screen.getByTestId("draft-dock-roster").textContent).toContain("Observed roster slots")
     expect(screen.getByTestId("draft-dock-roster").textContent).toContain("FLEX")
     expect(tape.textContent).toContain("#5 · 1 away")
@@ -163,6 +165,8 @@ describe("Phase 14A desk components", () => {
           currPick={1}
           currRound={[null, null, null]}
           currRoundPick={1}
+          draftHistory={[null, null, null]}
+          boardSettings={{ranker: ThirdPartyRanker.HARRIS, adpRanker: ThirdPartyADPRanker.ESPN}}
           isEvenRound={false}
           myPickNum={2}
           myPicks={[2, 5, 8]}

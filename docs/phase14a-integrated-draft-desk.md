@@ -13,7 +13,7 @@ The enabled and rollback layouts receive the same state, callbacks, roster
 data, available-player set, deterministic recommendations, opponent forecast,
 and status cache.
 
-The candidate has three bounded panes in the default order: profile, rankings,
+The candidate has three bounded panes in the default order: rankings, profile,
 and insight. Rankings is always rendered and can only swap places with insight;
 there is no close, resize, or free-form drag interaction. Validated placement
 is stored under `drafty-draft-desk-pane-placement`; an invalid, duplicated, or
@@ -31,11 +31,13 @@ player-outlook contract or advisor-owned comparison selection is introduced.
   League/source configuration, extension/mock links, and portable
   import/export are in its focus-trapped drawer. The pre-existing first-pick
   locks remain native disabled controls.
-- `RankingsBoard` remains the single authoritative board instance. Its visible
-  Rankings mode select switches position versus round presentation without
-  rendering duplicate boards; custom-rank editing, target controls, sync, and
-  keyboard behavior are unchanged. Tier visualization remains in the accepted
-  analysis presentation instead of being copied into a second board model.
+- `RankingsBoard` remains the single authoritative board instance. Its primary
+  desk control is mutually exclusive: **Position** or **ADP round**. Position
+  shows RB + WR or QB + TE paired lanes; ADP round reuses the established ADP
+  round view and retains Best Available and Targets Visualization in its
+  reachable subview selector. The standalone rankings tier-map mode is removed:
+  every player identity card embeds tier with rank/ADP context instead. Custom
+  rank editing, target controls, sync, and keyboard behavior are unchanged.
 - The profile pane composes existing rank summary, rank table, structured
   status, historical stats, and optional historical comparison components.
 - The insight pane hosts the existing optimal-roster display, deterministic
@@ -44,10 +46,12 @@ player-outlook contract or advisor-owned comparison selection is introduced.
 
 ## Draft dock
 
-`DraftDock` is a fixed, two-level desktop dock. Its tape is present before and
-after draft start and always reports overall pick, round, round pick, and the
-next user-pick/picks-away state. The secondary view switches among Current
-round, My roster, and League needs.
+`DraftDock` is a compact fixed desktop row. Its left stack reports the current
+round/pick and next user pick, its middle shows the six most recent actual picks
+with the shared player identity treatment, and its right view switches among
+Current round, Your roster, and League needs. Your roster is immediately useful
+as the initial dock view; League needs stays a vertically stacked observed-count
+list rather than a run-probability presentation.
 
 The dock owns its rendered height. It reports that height through a local
 `ResizeObserver` callback; the candidate shell reserves the exact value with a
@@ -65,27 +69,32 @@ not probabilities. These helpers do not call or feed the opponent model.
 
 ## Responsive and visual boundary
 
-The three-pane grid is desktop-only (`md` and wider), with constrained
-responsive column floors at 960px and 1200px. Candidate desktop composition
-uses a small shell inset instead of the legacy `md:px-20` page padding. Its
-compact presentation mode stacks rankings controls and advisor candidates
-inside their panes, rather than treating viewport-wide `md` utilities as pane
-width. The established mobile task-oriented layout remains mounted and
-unmodified by the feature flag; the candidate app bar, three-pane shell, and
-desktop dock are hidden below the desktop breakpoint.
+The three-pane grid is desktop-only at 1280px and wider: 1440px is the primary
+visual target and 1280–1439px is the compact desktop target. Below 1280px the
+accepted task-focused/single-pane behavior remains in use rather than shrinking
+the terminal. Candidate desktop composition uses a small shell inset instead
+of the legacy `md:px-20` page padding. Its compact presentation mode stacks
+rankings controls and advisor candidates inside their panes, rather than
+treating viewport-wide utilities as pane width.
 
-`DraftDesk.module.css` establishes graphite/navy surface, border, text,
-muted-text, selection, focus, urgency, danger, position-identity, spacing,
-row-density, tabular-number, and reduced-motion tokens. It is scoped to the
-new candidate so legacy and mobile styles retain their accepted presentation.
+`DraftDesk.module.css` establishes graphite operational chrome, a shared
+light-neutral pane canvas, flat borders, 3–5px radii, restrained
+position-identity edges, selection/focus/urgency tokens, compact typography and
+spacing, tabular-number treatment, and reduced-motion behavior. It is scoped to
+the new candidate so legacy and mobile styles retain their accepted
+presentation. The insight pane retains the existing cross-position projection
+ranges, median/point markers, replacement-value, tier-depth/loss, and modeled
+survival/run evidence without structural clipping; this slice does not add the
+future Phase 14C round-probability matrix.
 
 ## Tests and rollback
 
 Focused Phase 14A tests cover placement validation/swap and malformed fallback,
 feature-flag parsing, settings drawer focus/Escape/locks, permanent dock tape,
 observed own-roster slots, other-team-only league needs with distinct FLEX,
-single-board rankings mode switching, focus/comparison isolation, native
-expanded roster detail, and measured dock-height reservation.
+single-board Position/ADP mutual exclusivity, RB+WR and QB+TE paired lanes,
+focus/comparison isolation, native expanded roster detail, and measured
+dock-height reservation.
 
 Enable with:
 

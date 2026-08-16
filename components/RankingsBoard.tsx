@@ -10,6 +10,7 @@ import { isTitleCard, PlayerRankingDiff, PredictedPicks } from '../types/DraftBo
 import { getPosStyle } from '../behavior/styles'
 import RankingView from './views/RankingView'
 import BestAvailByRoundView from './views/BestAvailByRoundView'
+import ADPView from './views/ADPView'
 import EditRankingsView, { DiffFilterOption } from './views/EditRankingsView'
 import RosterDisplay from './RosterDisplay'
 import MobileViewFooter from './MobileViewFooter'
@@ -21,6 +22,7 @@ import type {
   DraftSourceHealthFreshness,
 } from '../behavior/boundaryState'
 import DraftSourceHealthBadge from './DraftSourceHealthBadge'
+import styles from "./DraftDesk.module.css"
 import {
   DraftCaptureStatus,
   DraftPersistenceStatus,
@@ -40,7 +42,7 @@ interface RankingsBoardProps {
   rankingSummaries: RankingSummary[],
   onSelectPlayer: (player: Player) => void,
   onPurgePlayer: (player: Player) => void,
-  setViewPlayerId: (id: string) => void,
+  setViewPlayerId: (id: string | null) => void,
   draftView: DraftView,
   setDraftView: (view: DraftView) => void,
   sortOption: SortOption,
@@ -72,6 +74,8 @@ interface RankingsBoardProps {
   rankings: Rankings,
   latestRankings: Rankings | null,
   removePlayerTargets: (playerIds: string[]) => void,
+  replacePlayerTargets: (targets: PlayerTarget[]) => void,
+  myPicks: number[],
   playerTargets: PlayerTarget[],
   customAndLatestRankingsDiffs: { [key: string]: PlayerRankingDiff },
   onSyncPendingRankings: () => void,
@@ -125,7 +129,10 @@ const RankingsBoard = ({
   onPurgePlayer,
   setViewPlayerId,
   viewPlayerId,
+  removePlayerTargets,
   playerTargets,
+  replacePlayerTargets,
+  myPicks,
   customAndLatestRankingsDiffs,
   onSyncPendingRankings,
   onRevertPlayerToPreSync,
@@ -165,6 +172,7 @@ const RankingsBoard = ({
   }, [playerRanks, predictedPicks, myPickNum, fantasySettings.numTeams, currPick])
 
   const showPredAvailByRound = draftView === DraftView.BEST_AVAILABLE
+  const showAdpRound = draftView === DraftView.ADP_ROUND
   const draftBoardView = showPredAvailByRound ? draftBoard.predictAvailByRoundView : draftBoard.standardView
 
   const purgeColumn = draftBoardView.find((column: any) => column.columnTitle === 'Purge')
@@ -222,6 +230,30 @@ const RankingsBoard = ({
       )
     }
 
+    if (showAdpRound) {
+      return (
+        <ADPView
+          addPlayerTarget={addPlayerTarget}
+          boardSettings={boardSettings}
+          compact={compact}
+          currPick={currPick}
+          fantasySettings={fantasySettings}
+          myPickNum={myPickNum}
+          myPicks={myPicks}
+          onSelectPlayer={onSelectPlayer}
+          playerLib={playerLib}
+          playerRanks={playerRanks}
+          playerTargets={playerTargets}
+          rankingSummaries={rankingSummaries}
+          removePlayerTarget={removePlayerTarget}
+          removePlayerTargets={removePlayerTargets}
+          replacePlayerTargets={replacePlayerTargets}
+          setViewPlayerId={setViewPlayerId}
+          viewPlayerId={viewPlayerId}
+        />
+      )
+    }
+
     if (showPredAvailByRound) {
       return <BestAvailByRoundView {...sharedProps} />
     }
@@ -242,7 +274,7 @@ const RankingsBoard = ({
     noPlayers ?
     <></>
     :
-    <div data-testid="rankings-board" className={`flex flex-col ${compact ? "p-2" : "md:p-4 p-1"} h-full border border-4 rounded shadow-md bg-white text-sm ${isEditingCustomRanking ? 'overflow-hidden' : 'overflow-y-scroll'}`} style={{color: "#0f172a"}}>
+    <div data-testid="rankings-board" className={`flex flex-col ${compact ? "p-1" : "md:p-4 p-1"} h-full border border-slate-200 rounded bg-slate-50 text-sm ${isEditingCustomRanking ? 'overflow-hidden' : 'overflow-y-auto'}`} style={{color: "#0f172a"}}>
       <div className="flex flex-col items-center justify-center content-center mb-2">
         <div className="flex flex-col items-center w-full">
           <DraftCaptureStatus
@@ -260,18 +292,25 @@ const RankingsBoard = ({
         </div>
       </div>  
     
-      <div className="flex flex-row md:mb-4 align-center justify-center items-center content-center w-full">
+      <div className="flex flex-row mb-2 align-center justify-center items-center content-center w-full">
         <div className="flex flex-col text-left">
           <div className="flex flex-row">
-            <select
-              aria-label="Rankings mode"
-              className="hidden md:block px-3 py-1 mx-2 border rounded bg-blue-100 shadow"
-              value={draftView}
-              disabled={isEditingCustomRanking}
-              onChange={ e => setDraftView(e.target.value as DraftView) }
-            >
-              { Object.values(DraftView).map( (view: DraftView) => <option key={view} value={ view }> { view } </option>) }
-            </select>
+            {compact ? (
+              <div aria-label="Rankings mode" className={styles.modeToggle} data-testid="rankings-mode-toggle" role="group">
+                <button aria-pressed={draftView === DraftView.RANKING} disabled={isEditingCustomRanking} onClick={() => setDraftView(DraftView.RANKING)} type="button">Position</button>
+                <button aria-pressed={draftView === DraftView.ADP_ROUND} disabled={isEditingCustomRanking} onClick={() => setDraftView(DraftView.ADP_ROUND)} type="button">ADP round</button>
+              </div>
+            ) : (
+              <select
+                aria-label="Rankings mode"
+                className="hidden md:block px-3 py-1 mx-2 border rounded bg-blue-100 shadow"
+                value={draftView}
+                disabled={isEditingCustomRanking}
+                onChange={ e => setDraftView(e.target.value as DraftView) }
+              >
+                { Object.values(DraftView).map( (view: DraftView) => <option key={view} value={ view }> { view } </option>) }
+              </select>
+            )}
             
             { draftView === DraftView.RANKING && (
               <div className="hidden md:flex flex-row">
@@ -293,6 +332,15 @@ const RankingsBoard = ({
                 )}
               </div>
             ) }
+            {compact && !isEditingCustomRanking && (
+              <button
+                className={`${styles.focusRing} ml-1 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold hover:bg-slate-100`}
+                onClick={() => setDraftView(DraftView.CUSTOM_RANKING)}
+                type="button"
+              >
+                Edit rankings
+              </button>
+            )}
           </div>
         </div>
       </div>

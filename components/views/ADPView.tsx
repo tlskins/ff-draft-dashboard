@@ -28,6 +28,7 @@ interface ADPViewProps {
   removePlayerTargets: (playerIds: string[]) => void
   rankingSummaries: any[]
   myPickNum: number
+  compact?: boolean
 }
 
 const ADPView: React.FC<ADPViewProps> = ({
@@ -46,6 +47,7 @@ const ADPView: React.FC<ADPViewProps> = ({
   removePlayerTargets,
   rankingSummaries,
   myPickNum,
+  compact = false,
 }) => {
   const [currentView, setCurrentView] = useState<ViewType>('playersByADPRound')
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
@@ -113,21 +115,22 @@ const ADPView: React.FC<ADPViewProps> = ({
   }
 
   return (
-    <div className="h-screen bg-white p-2 w-full flex flex-col">
+    <div className={`${compact ? "min-h-0 flex-1 p-1" : "h-screen p-2"} w-full bg-white flex flex-col`} data-testid="adp-round-view">
       {/* Desktop Header */}
-      <div className="mb-4 hidden md:block flex-shrink-0">
+      <div className={`${compact ? "mb-1" : "mb-4 hidden md:block"} flex-shrink-0`}>
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-semibold text-gray-800">
-            {currentView === 'playersByRound' ? 'Best Available' : 
-             currentView === 'playersByADPRound' ? 'Best By ADP Round' : 
+          <h2 className={`${compact ? "text-sm" : "text-lg"} font-semibold text-gray-800`}>
+            {currentView === 'playersByRound' ? 'Best Available' :
+             currentView === 'playersByADPRound' ? 'Best By ADP Round' :
              'Player Targets Visualization'}
             {(currentView === 'playersByRound' || currentView === 'playersByADPRound') && positionFilter !== 'All' && ` - ${positionFilter} Only`}
           </h2>
           <div className="flex items-center space-x-2">
             <select
+              aria-label="ADP subview"
               value={currentView}
               onChange={(e) => setCurrentView(e.target.value as ViewType)}
-              className="px-2 py-1 text-sm border border-gray-300 rounded bg-white text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-2 py-1 text-xs border border-gray-300 rounded bg-white text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="playersByRound">Highest Ranked Avail Players by Round</option>
               <option value="playersByADPRound">Highest Ranked By ADP Round</option>
@@ -135,7 +138,7 @@ const ADPView: React.FC<ADPViewProps> = ({
             </select>
           </div>
         </div>
-        {currentView === 'playersByRound' && (
+        {!compact && currentView === 'playersByRound' && (
           <div className="flex flex-col text-left">
             <p className="text-sm text-gray-600">
               Grayed out players you can still get in the next round
@@ -149,7 +152,7 @@ const ADPView: React.FC<ADPViewProps> = ({
             </p>
           </div>
         )}
-        {currentView === 'playersByADPRound' && (
+        {!compact && currentView === 'playersByADPRound' && (
           <div className="flex flex-col text-left">
             <p className="text-sm text-gray-600">
               Shows all players expected to be drafted in each round, sorted by overall rank
@@ -166,19 +169,19 @@ const ADPView: React.FC<ADPViewProps> = ({
       </div>
 
       {/* Mobile Header */}
-      <div className="mb-4 md:hidden flex-shrink-0">
+      {!compact && <div className="mb-4 md:hidden flex-shrink-0">
         <div className="flex items-center justify-center">
           <h2 className="text-lg font-semibold text-gray-800 text-center">
-            {currentView === 'playersByRound' ? 'Best Available' : 
-             currentView === 'playersByADPRound' ? 'Best By ADP Round' : 
+            {currentView === 'playersByRound' ? 'Best Available' :
+             currentView === 'playersByADPRound' ? 'Best By ADP Round' :
              'Targets Visualization'}
             {(currentView === 'playersByRound' || currentView === 'playersByADPRound') && positionFilter !== 'All' && ` - ${positionFilter}`}
           </h2>
         </div>
-      </div>
-      
+      </div>}
+
       {/* Main Content */}
-      <div className="flex-1 mb-20 md:mb-4 overflow-hidden">
+      <div className={`${compact ? "min-h-0" : "mb-20 md:mb-4"} flex-1 overflow-hidden`}>
         {currentView === 'playersByRound' ? (
           <PlayersByRoundView
             playerRanks={playerRanks}
@@ -215,6 +218,7 @@ const ADPView: React.FC<ADPViewProps> = ({
             positionFilter={positionFilter}
             setPositionFilter={setPositionFilter}
             onSwitchToTargetsView={handleSwitchToTargetsView}
+            compact={compact}
           />
         ) : (
           <PlayerTargetsView
@@ -231,11 +235,11 @@ const ADPView: React.FC<ADPViewProps> = ({
       </div>
 
       {/* Mobile Footer */}
-      <MobileViewFooter
+      {!compact && <MobileViewFooter
         dropdowns={[
           {
-            label: currentView === 'playersByRound' ? 'Rounds View' : 
-                   currentView === 'playersByADPRound' ? 'ADP Rounds View' : 
+            label: currentView === 'playersByRound' ? 'Rounds View' :
+                   currentView === 'playersByADPRound' ? 'ADP Rounds View' :
                    'Targets View',
             isOpen: isMobileViewOpen,
             onToggle: () => {
@@ -329,7 +333,7 @@ const ADPView: React.FC<ADPViewProps> = ({
           setIsMobileViewOpen(false)
           setIsMobileTargetsOpen(false)
         }}
-      />
+      />}
 
       {/* Player Search Modal */}
       <PlayerSearchModal
@@ -349,4 +353,4 @@ const ADPView: React.FC<ADPViewProps> = ({
   )
 }
 
-export default ADPView 
+export default ADPView

@@ -605,15 +605,15 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   }
 
   return (
-    <section className={`mx-auto w-full max-w-7xl rounded-xl border border-slate-200 bg-slate-50 p-3 text-left shadow-sm ${compact ? "" : "md:p-5"}`}>
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <section className={`mx-auto w-full max-w-7xl border border-slate-200 bg-slate-50 text-left ${compact ? "rounded p-1 shadow-none" : "rounded-xl p-3 shadow-sm md:p-5"}`}>
+      <header className={`${compact ? "mb-2 gap-1" : "mb-4 gap-3"} flex flex-wrap items-start justify-between`}>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
             Decision workspace · {viewState.pinned
               ? "Pinned navigation"
               : "Automatic navigation"}
           </p>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className={`${compact ? "text-lg" : "text-2xl"} font-bold text-slate-900`}>
             Draft decision workspace
           </h1>
           <p className="max-w-3xl text-sm text-slate-600">

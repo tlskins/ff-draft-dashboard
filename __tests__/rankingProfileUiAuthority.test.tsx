@@ -84,6 +84,8 @@ const props = (controls = rankingProfileControls()): any => ({
   },
   latestRankings: null,
   removePlayerTargets: jest.fn(),
+  replacePlayerTargets: jest.fn(),
+  myPicks: [1, 24, 25],
   playerTargets: [],
   customAndLatestRankingsDiffs: {},
   onSyncPendingRankings: jest.fn(),

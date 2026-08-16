@@ -24,6 +24,7 @@ interface PlayersByADPRoundViewProps {
   positionFilter: PositionFilter
   setPositionFilter: (filter: PositionFilter) => void
   onSwitchToTargetsView: () => void
+  compact?: boolean
 }
 
 const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
@@ -42,6 +43,7 @@ const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
   positionFilter,
   setPositionFilter,
   onSwitchToTargetsView,
+  compact = false,
 }) => {
   // Use the shared ADP view hook for navigation and targets organization
   const {
@@ -56,14 +58,14 @@ const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
     handleSaveFavorites,
     handleLoadFavorites,
     handleClearFavorites,
-  } = useADPView({ 
-    playerRanks, 
-    fantasySettings, 
-    boardSettings, 
-    myPicks, 
-    playerTargets, 
-    playerLib, 
-    replacePlayerTargets, 
+  } = useADPView({
+    playerRanks,
+    fantasySettings,
+    boardSettings,
+    myPicks,
+    playerTargets,
+    playerLib,
+    replacePlayerTargets,
     removePlayerTargets,
     positionFilter
   })
@@ -76,14 +78,14 @@ const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
     positionFilter,
     roundsToShow,
   })
-  
+
   const [isMobileTargetsOpen, setIsMobileTargetsOpen] = useState(false)
   const [isMobilePositionOpen, setIsMobilePositionOpen] = useState(false)
   const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null)
-  
+
   const handleMovePlayerToRound = useCallback((playerId: string, round: number) => {
-    const updatedTargets = playerTargets.map(target => 
-      target.playerId === playerId 
+    const updatedTargets = playerTargets.map(target =>
+      target.playerId === playerId
         ? { ...target, targetAsEarlyAsRound: round }
         : target
     )
@@ -94,10 +96,11 @@ const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
   return (
     <>
       {/* Desktop Header - Hidden on mobile */}
-      <div className="mb-4 hidden md:block flex-shrink-0">
+      <div className={`${compact ? "mb-1" : "mb-4 hidden md:block"} flex-shrink-0`}>
         <div className="flex justify-between items-center mb-2">
           <div className="flex items-center space-x-2">
             <select
+              aria-label="ADP position filter"
               value={positionFilter}
               onChange={(e) => setPositionFilter(e.target.value as PositionFilter)}
               className="px-2 py-1 text-sm border border-gray-300 rounded bg-white text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -138,7 +141,7 @@ const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
       </div>
 
       {/* Mobile Header - Simplified */}
-      <div className="mb-4 md:hidden flex-shrink-0">
+      {!compact && <div className="mb-4 md:hidden flex-shrink-0">
         <div className="flex justify-between items-center mb-2">
           <button
             onClick={handlePrevPage}
@@ -167,13 +170,13 @@ const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
             Next →
           </button>
         </div>
-      </div>
-      
+      </div>}
+
       {/* Horizontal Target Bars */}
       <div className={`grid gap-2 min-w-full ${roundsToShow.length === 3 ? 'grid-cols-4' : 'grid-cols-5'}`}>
         {/* Empty space for targets column */}
         <div></div>
-        
+
         {/* Horizontal target bars spanning round columns */}
         <div className={`${roundsToShow.length === 3 ? 'col-span-3' : 'col-span-4'} relative`}>
           <HorizontalTargetBars
@@ -190,9 +193,9 @@ const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
       </div>
 
       {/* Main Grid - Dynamic based on rounds */}
-      <div 
-        className={`grid gap-2 min-w-full mb-20 md:mb-4 ${roundsToShow.length === 3 ? 'grid-cols-4' : 'grid-cols-5'} overflow-hidden`}
-        style={{ height: 'calc(100vh - 220px)' }}
+      <div
+        className={`grid gap-2 min-w-full ${compact ? "min-h-0 flex-1" : "mb-20 md:mb-4"} ${roundsToShow.length === 3 ? 'grid-cols-4' : 'grid-cols-5'} overflow-hidden`}
+        style={compact ? undefined : { height: 'calc(100vh - 220px)' }}
       >
         {/* Player Targets Column */}
         <TargetsColumn
@@ -224,14 +227,14 @@ const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
                 ({getRoundCount(round)} players)
               </p>
             </div>
-            
+
             <div className="flex flex-col space-y-1 p-0.5 overflow-y-auto" style={{ height: 'calc(100% - 80px)' }}>
               {(playersByADPRound[round] || []).map((player, idx) => {
                 // Use the round number for targeting
                 const userPickForRound = myPicks[round - 1] ? round : undefined // Only if user has a pick in this round
                 const playerTarget = playerTargets.find(target => target.playerId === player.id)
                 const isPlayerTargeted = !!playerTarget
-                
+
                                  return (
                    <ADPPlayerCard
                      key={`${player.id}-${round}-${idx}`}
@@ -256,7 +259,7 @@ const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
       </div>
 
       {/* Mobile Footer */}
-      <MobileViewFooter
+      {!compact && <MobileViewFooter
         dropdowns={[
           {
             label: 'Targets',
@@ -354,9 +357,9 @@ const PlayersByADPRoundView: React.FC<PlayersByADPRoundViewProps> = ({
           setIsMobileTargetsOpen(false)
           setIsMobilePositionOpen(false)
         }}
-      />
+      />}
     </>
   )
 }
 
-export default PlayersByADPRoundView 
+export default PlayersByADPRoundView

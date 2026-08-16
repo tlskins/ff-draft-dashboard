@@ -12,8 +12,8 @@ export type DraftDeskPaneId = typeof DRAFT_DESK_PANE_IDS[number]
 export type DraftDeskPanePlacement = DraftDeskPaneId[]
 
 export const DEFAULT_DRAFT_DESK_PANE_PLACEMENT: DraftDeskPanePlacement = [
-  "profile",
   "rankings",
+  "profile",
   "insight",
 ]
 
