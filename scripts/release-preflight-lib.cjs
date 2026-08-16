@@ -2,6 +2,7 @@ const { createHash } = require("node:crypto")
 const { existsSync, readFileSync, readdirSync } = require("node:fs")
 const { join, resolve, relative, sep } = require("node:path")
 const { spawnSync } = require("node:child_process")
+const { isChromeExtensionVersion } = require("./chrome-version.cjs")
 
 const REPORT_VERSION = 1
 const expectedMatches = [
@@ -112,7 +113,7 @@ const validateManifest = root => {
     return { status: "failed", errors: [`Cannot parse public/manifest.json: ${error.message}`] }
   }
   if (manifest.manifest_version !== 3) errors.push("manifest_version must be 3")
-  if (!/^\d{1,5}(?:\.\d{1,5}){0,3}$/.test(manifest.version || "")) errors.push("version is not valid Chrome numeric syntax")
+  if (!isChromeExtensionVersion(manifest.version)) errors.push("version is not valid Chrome extension syntax")
   if (!manifest.background?.service_worker) errors.push("background.service_worker is required")
   if (!manifest.action?.default_popup) errors.push("action.default_popup is required")
   if (!["16", "32", "128"].every(size => manifest.icons?.[size])) errors.push("icons 16, 32, and 128 are required")

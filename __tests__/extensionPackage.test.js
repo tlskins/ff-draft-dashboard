@@ -1,4 +1,4 @@
-const { mkdtempSync, mkdirSync, readFileSync, writeFileSync } = require("node:fs")
+const { mkdtempSync, mkdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } = require("node:fs")
 const { tmpdir } = require("node:os")
 const { join } = require("node:path")
 const { spawnSync } = require("node:child_process")
@@ -29,6 +29,9 @@ describe("deterministic Chrome extension packaging", () => {
     expect(first.archive.equals(second.archive)).toBe(true)
     expect(zipEntries(first.output)).toEqual(["manifest.json", ...assets])
     expect(first.files).toEqual(["manifest.json", ...assets])
+    expect(first.archive.readUInt16LE(12)).toBe(0x21)
+    const centralHeader = first.archive.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]))
+    expect(first.archive.readUInt16LE(centralHeader + 14)).toBe(0x21)
   })
 
   it("rejects missing and unsafe manifest asset paths", () => {
@@ -41,6 +44,16 @@ describe("deterministic Chrome extension packaging", () => {
     manifest.action.default_popup = "../outside.html"
     writeFileSync(path, JSON.stringify(manifest))
     expect(() => buildExtensionPackage({ root: unsafe, outputPath: join(unsafe, "unsafe.zip") })).toThrow("Unsafe extension asset path")
+  })
+
+  it("rejects a manifest-referenced symlink even when its target exists outside public", () => {
+    const root = fixture()
+    const target = join(root, "outside-background.js")
+    writeFileSync(target, "outside")
+    const linked = join(root, "public", "background.js")
+    unlinkSync(linked)
+    symlinkSync(target, linked)
+    expect(() => buildExtensionPackage({ root, outputPath: join(root, "symlink.zip") })).toThrow("must not be a symlink")
   })
 
   it("refuses overwrite and only verifies an existing byte-identical archive", () => {

@@ -19,15 +19,19 @@ The default output is derived only from the manifest version:
 it is absent. It never overwrites an existing archive; `--verify` rebuilds in
 memory and succeeds only when the existing archive is byte-identical. `--out`
 supports an explicit throwaway destination for reproducibility checks.
+The version must satisfy Chrome extension syntax: one to four integer components
+from 0 through 65535, no non-zero leading zeros, and not all components zero.
 
-The repository-local Node implementation writes an uncompressed ZIP with fixed
-ZIP timestamps, stable entry order, and no absolute paths. Entries are
+The repository-local Node implementation writes an uncompressed ZIP with the
+valid fixed DOS timestamp `1980-01-01 00:00:00`, stable entry order, and no
+absolute paths. Entries are
 `manifest.json` followed by each unique local manifest-referenced asset in
 manifest order. This preserves `espnDraftExtractor.js` before
 `contentScript.js` because that is their content-script order. Two builds from
 unchanged source bytes are byte-identical, independent of source file mtimes.
-Missing, absolute, traversal, backslash, empty-segment, or non-file assets fail
-closed. No third-party packaging dependency or shell command is used.
+Missing, absolute, traversal, backslash, empty-segment, symlinked, or non-file
+assets fail closed. No third-party packaging dependency or shell command is
+used.
 
 The generated `ext_release_0_0_0_8.zip` is tracked intentionally. Phase 13A
 then verifies it is a readable tracked ZIP whose manifest is semantically equal

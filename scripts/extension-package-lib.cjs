@@ -1,5 +1,6 @@
-const { readFileSync, statSync, writeFileSync } = require("node:fs")
+const { lstatSync, readFileSync, writeFileSync } = require("node:fs")
 const { basename, join, relative, resolve, sep } = require("node:path")
+const { isChromeExtensionVersion } = require("./chrome-version.cjs")
 
 const localAssetReferences = manifest => {
   const assets = []
@@ -33,7 +34,8 @@ const collectExtensionFiles = root => {
     const source = resolve(publicRoot, name)
     if (!source.startsWith(`${publicRoot}${sep}`) || relative(publicRoot, source).startsWith("..")) throw new Error(`Unsafe extension asset path: ${JSON.stringify(asset)}`)
     let metadata
-    try { metadata = statSync(source) } catch { throw new Error(`Missing extension asset: ${asset}`) }
+    try { metadata = lstatSync(source) } catch { throw new Error(`Missing extension asset: ${asset}`) }
+    if (metadata.isSymbolicLink()) throw new Error(`Extension asset must not be a symlink: ${asset}`)
     if (!metadata.isFile()) throw new Error(`Extension asset must be a regular file: ${asset}`)
     files.push({ name, data: readFileSync(source) })
     names.add(name)
@@ -59,6 +61,7 @@ const crc32 = buffer => {
 
 const uint16 = value => { const buffer = Buffer.alloc(2); buffer.writeUInt16LE(value); return buffer }
 const uint32 = value => { const buffer = Buffer.alloc(4); buffer.writeUInt32LE(value >>> 0); return buffer }
+const DOS_DATE_1980_01_01 = 0x21
 
 const createDeterministicZip = files => {
   const localParts = []
@@ -69,11 +72,11 @@ const createDeterministicZip = files => {
     const data = Buffer.from(file.data)
     const crc = crc32(data)
     const local = Buffer.concat([
-      uint32(0x04034b50), uint16(20), uint16(0), uint16(0), uint16(0), uint16(0), uint32(crc), uint32(data.length), uint32(data.length), uint16(name.length), uint16(0), name, data,
+      uint32(0x04034b50), uint16(20), uint16(0), uint16(0), uint16(0), uint16(DOS_DATE_1980_01_01), uint32(crc), uint32(data.length), uint32(data.length), uint16(name.length), uint16(0), name, data,
     ])
     localParts.push(local)
     centralParts.push(Buffer.concat([
-      uint32(0x02014b50), uint16(20), uint16(20), uint16(0), uint16(0), uint16(0), uint16(0), uint32(crc), uint32(data.length), uint32(data.length), uint16(name.length), uint16(0), uint16(0), uint16(0), uint16(0), uint32(0), uint32(offset), name,
+      uint32(0x02014b50), uint16(20), uint16(20), uint16(0), uint16(0), uint16(0), uint16(DOS_DATE_1980_01_01), uint32(crc), uint32(data.length), uint32(data.length), uint16(name.length), uint16(0), uint16(0), uint16(0), uint16(0), uint32(0), uint32(offset), name,
     ]))
     offset += local.length
   }
@@ -84,7 +87,7 @@ const createDeterministicZip = files => {
 }
 
 const archiveNameForVersion = version => {
-  if (!/^\d{1,5}(?:\.\d{1,5}){0,3}$/.test(version || "")) throw new Error("Manifest version is not valid Chrome numeric syntax")
+  if (!isChromeExtensionVersion(version)) throw new Error("Manifest version is not valid Chrome extension syntax")
   return `ext_release_${version.replaceAll(".", "_")}.zip`
 }
 

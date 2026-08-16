@@ -41,7 +41,8 @@ a dirty checkout is an automated preflight failure in quick and full mode.
 ## Automated Phase 13A gates
 
 The runner validates `public/manifest.json` as MV3, Chrome numeric version
-syntax, required dashboard/local and ESPN draft matches, extractor-before-
+syntax (one to four 0–65535 components, no non-zero leading zeros, and not all
+zero), required dashboard/local and ESPN draft matches, extractor-before-
 content-script order, service worker, popup, icons, every local manifest asset,
 and absence of a newly broadened `permissions`/`host_permissions` boundary. It
 also records the existing ESPN DOM selector fixture and recorded mock command

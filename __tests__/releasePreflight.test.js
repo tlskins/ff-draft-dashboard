@@ -4,6 +4,7 @@ const { join } = require("node:path")
 const { spawnSync } = require("node:child_process")
 
 const { execute, runPreflight, validateManifest } = require("../scripts/release-preflight-lib.cjs")
+const { isChromeExtensionVersion } = require("../scripts/chrome-version.cjs")
 
 const requiredMatches = [
   "https://ff-draft-dashboard.vercel.app/*",
@@ -45,6 +46,14 @@ const createFixture = ({ archiveVersion = "1.2.3.4", archivePopup, archiveBackgr
 }
 
 describe("Phase 13A release preflight helpers", () => {
+  it.each(["0.0.0.8", "1", "1.2.3.4", "65535.0.1"])("accepts valid Chrome extension version %s", version => {
+    expect(isChromeExtensionVersion(version)).toBe(true)
+  })
+
+  it.each(["0.0.0.0", "01.2", "1.02", "65536", "1.2.3.4.5", "", "1.-1"])("rejects invalid Chrome extension version %s", version => {
+    expect(isChromeExtensionVersion(version)).toBe(false)
+  })
+
   it("validates a real, tracked ZIP fixture under a path with spaces", () => {
     const result = validateManifest(createFixture().root)
     expect(result.status).toBe("passed")
