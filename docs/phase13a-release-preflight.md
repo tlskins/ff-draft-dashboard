@@ -48,10 +48,11 @@ also records the existing ESPN DOM selector fixture and recorded mock command
 as the focused command manifest.
 
 A current archive must be a Git-tracked, readable ZIP. The preflight reads its
-`manifest.json`, requires the same MV3/version/content-script boundary as the
-source manifest, requires every referenced asset, and compares each referenced
-asset's SHA-256 against `public/`. A renamed stale archive cannot satisfy this
-gate.
+`manifest.json` and requires semantic equality with the source manifest (key
+ordering and whitespace are irrelevant), including action, background, icons,
+permissions, and the content-script boundary. It then requires every referenced
+asset and compares each referenced asset's SHA-256 against `public/`. A renamed
+stale archive cannot satisfy this gate.
 
 It compares `behavior/playerData.json` byte-for-byte with the API's
 `latest_player_rankings.json`, reports both SHA-256 values and the artifact

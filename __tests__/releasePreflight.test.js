@@ -17,7 +17,7 @@ const command = (commandName, args, cwd) => {
   if (result.status !== 0 || result.error) throw new Error(`${commandName} failed: ${result.error?.message || result.stderr}`)
 }
 
-const createFixture = ({ archiveVersion = "1.2.3.4", omitArchiveAsset, archiveAssetContents, trackArchive = true } = {}) => {
+const createFixture = ({ archiveVersion = "1.2.3.4", archivePopup, archiveBackground, archivePermissions, omitArchiveAsset, archiveAssetContents, trackArchive = true } = {}) => {
   const root = mkdtempSync(join(tmpdir(), "drafty preflight with spaces "))
   const publicRoot = join(root, "public")
   const packageRoot = join(root, "package")
@@ -25,10 +25,13 @@ const createFixture = ({ archiveVersion = "1.2.3.4", omitArchiveAsset, archiveAs
   mkdirSync(packageRoot)
   const manifest = { manifest_version: 3, version: "1.2.3.4", icons: { "16": "16.png", "32": "32.png", "128": "128.png" }, action: { default_icon: "icon.png", default_popup: "popup.html" }, background: { service_worker: "background.js" }, content_scripts: [{ matches: requiredMatches, js: ["espnDraftExtractor.js", "contentScript.js"] }] }
   writeFileSync(join(publicRoot, "manifest.json"), JSON.stringify(manifest))
-  for (const asset of assets) writeFileSync(join(publicRoot, asset), `source:${asset}`)
+  for (const asset of [...assets, "popup-alt.html", "background-alt.js"]) writeFileSync(join(publicRoot, asset), `source:${asset}`)
   const archivedManifest = { ...manifest, version: archiveVersion }
+  if (archivePopup) archivedManifest.action = { ...manifest.action, default_popup: archivePopup }
+  if (archiveBackground) archivedManifest.background = { ...manifest.background, service_worker: archiveBackground }
+  if (archivePermissions) archivedManifest.permissions = archivePermissions
   writeFileSync(join(packageRoot, "manifest.json"), JSON.stringify(archivedManifest))
-  for (const asset of assets) if (asset !== omitArchiveAsset) writeFileSync(join(packageRoot, asset), archiveAssetContents?.[asset] || readFileSync(join(publicRoot, asset)))
+  for (const asset of [...assets, "popup-alt.html", "background-alt.js"]) if (asset !== omitArchiveAsset) writeFileSync(join(packageRoot, asset), archiveAssetContents?.[asset] || readFileSync(join(publicRoot, asset)))
   const archive = "ext_release_1_2_3_4.zip"
   command("zip", ["-q", "-r", join(root, archive), "."], packageRoot)
   rmSync(packageRoot, { recursive: true, force: true })
@@ -64,6 +67,16 @@ describe("Phase 13A release preflight helpers", () => {
     expect(result.errors.join(" ")).toContain("packaged manifest version")
   })
 
+  it.each([
+    ["popup", { archivePopup: "popup-alt.html" }, "action"],
+    ["background", { archiveBackground: "background-alt.js" }, "background"],
+    ["permissions", { archivePermissions: ["storage"] }, "permissions"],
+  ])("rejects archive-only %s manifest divergence", (_name, options, field) => {
+    const result = validateManifest(createFixture(options).root)
+    expect(result.errors.join(" ")).toContain(`differing fields: ${field}`)
+    expect(result.archive_checks.manifest_matches_source).toBe(false)
+  })
+
   it("rejects a missing packaged asset", () => {
     const result = validateManifest(createFixture({ omitArchiveAsset: "background.js" }).root)
     expect(result.errors.join(" ")).toContain("packaged asset is missing")
@@ -84,6 +97,21 @@ describe("Phase 13A release preflight helpers", () => {
     ]
     writeFileSync(path, JSON.stringify(manifest))
     expect(validateManifest(root).errors.join(" ")).toContain("extractor content-script entry is missing required match")
+  })
+
+  it("fails when a source manifest asset is missing", () => {
+    const { root } = createFixture()
+    unlinkSync(join(root, "public", "background.js"))
+    expect(validateManifest(root).errors.join(" ")).toContain("missing asset")
+  })
+
+  it("fails when a source content-script match broadens the approved boundary", () => {
+    const { root } = createFixture()
+    const path = join(root, "public", "manifest.json")
+    const manifest = JSON.parse(readFileSync(path, "utf8"))
+    manifest.content_scripts[0].matches.push("https://example.test/*")
+    writeFileSync(path, JSON.stringify(manifest))
+    expect(validateManifest(root).errors.join(" ")).toContain("unapproved content-script match")
   })
 
   it("makes a missing current archive release-blocking", () => {

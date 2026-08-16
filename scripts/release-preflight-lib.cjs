@@ -30,6 +30,12 @@ const focusedTests = [
 
 const sha256 = value => createHash("sha256").update(value).digest("hex")
 const commandText = (command, args) => [command, ...args].map(JSON.stringify).join(" ")
+const canonicalValue = value => {
+  if (Array.isArray(value)) return value.map(canonicalValue)
+  if (value && typeof value === "object") return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonicalValue(value[key])]))
+  return value
+}
+const canonicalJson = value => JSON.stringify(canonicalValue(value))
 
 const execute = ({ command, args, cwd, env }) => {
   const started = process.hrtime.bigint()
@@ -138,7 +144,9 @@ const validateManifest = root => {
       const archivedManifest = JSON.parse(extractZipEntry(archivePath, "manifest.json").toString("utf8"))
       if (archivedManifest.version !== manifest.version || archivedManifest.manifest_version !== manifest.manifest_version) errors.push("packaged manifest version does not match public/manifest.json")
       if (JSON.stringify(archivedManifest.content_scripts || []) !== JSON.stringify(manifest.content_scripts || [])) errors.push("packaged content-script boundary does not match public/manifest.json")
-      archiveChecks.manifest_matches_source = archivedManifest.version === manifest.version && archivedManifest.manifest_version === manifest.manifest_version && JSON.stringify(archivedManifest.content_scripts || []) === JSON.stringify(manifest.content_scripts || [])
+      const divergentFields = [...new Set([...Object.keys(manifest), ...Object.keys(archivedManifest)])].filter(key => canonicalJson(manifest[key]) !== canonicalJson(archivedManifest[key])).sort()
+      if (divergentFields.length) errors.push(`packaged manifest is not semantically identical to public/manifest.json (differing fields: ${divergentFields.join(", ")})`)
+      archiveChecks.manifest_matches_source = divergentFields.length === 0
       let assetsMatch = true
       for (const [source, asset] of assetReferences(archivedManifest)) {
         if (!entries.has(asset)) { errors.push(`packaged asset is missing: ${source} -> ${asset}`); assetsMatch = false; continue }
