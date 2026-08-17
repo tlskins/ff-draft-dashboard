@@ -121,7 +121,7 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
   }, [fantasySettings.numTeams])
 
   const maxPick = 15 * fantasySettings.numTeams // Round 15 end
-  const chartHeight = isMobile ? 600 : 700 // Increased height for better visibility
+  const chartHeight = isMobile ? 600 : 700
   const chartWidth = Math.max(chartData.length * (isMobile ? 60 : 80), isMobile ? 250 : 600) // Dynamic width based on number of targets
 
   const getPickPosition = (pick: number) => {
@@ -156,6 +156,7 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
           {/* Position Filter Dropdown */}
           <div className="flex justify-center md:justify-end mt-2 md:mt-0">
             <select
+              aria-label="Target position filter"
               value={positionFilter}
               onChange={(e) => setPositionFilter(e.target.value as PositionFilter)}
               className="px-3 py-2 text-sm border border-gray-300 rounded bg-white text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -257,7 +258,7 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
                   const fullEndY = getPickPosition(fullRangeEnd)
 
                   return (
-                    <>
+                    <React.Fragment key={data.player.id}>
                       {/* Player name above the segment */}
                       <div
                         className="absolute text-xs font-bold text-center pointer-events-none"
@@ -272,7 +273,6 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
                       </div>
 
                       <div 
-                        key={data.player.id} 
                         className="absolute border-2 border-black cursor-pointer hover:shadow-lg transition-shadow" 
                         style={{ 
                           left: x - barWidth/2,
@@ -329,7 +329,7 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
                           }}
                         />
                       </div>
-                    </>
+                    </React.Fragment>
                   )
                 })}
                </div>
@@ -420,4 +420,4 @@ const PlayerTargetsView: React.FC<PlayerTargetsViewProps> = ({
   )
 }
 
-export default PlayerTargetsView 
+export default PlayerTargetsView

@@ -14,10 +14,14 @@ interface DraftDeskPlayerCardProps {
   target?: PlayerTarget
   rankContext?: string
   urgency?: string
+  urgencyCue?: string
+  leadingRank?: number | string
   actions?: ReactNode
+  evidence?: ReactNode
   compact?: boolean
   dock?: boolean
   className?: string
+  rootProps?: Omit<React.HTMLAttributes<HTMLDivElement>, "aria-label" | "className" | "role">
 }
 
 const positionClass = (position: string): string => (
@@ -41,10 +45,14 @@ const DraftDeskPlayerCard = ({
   target,
   rankContext,
   urgency,
+  urgencyCue,
+  leadingRank,
   actions,
+  evidence,
   compact = false,
   dock = false,
   className = "",
+  rootProps,
 }: DraftDeskPlayerCardProps) => {
   const { tier, adp, overallRank, posRank } = getPlayerMetrics(
     player,
@@ -61,28 +69,44 @@ const DraftDeskPlayerCard = ({
 
   return (
     <div
-      aria-label={`${player.fullName}, ${player.position}, ${player.team}. ${rankContext || defaultRankContext}. ${adpText}${tierNumber ? `. Tier ${tierNumber}` : ""}`}
+      {...rootProps}
+      aria-label={`${player.fullName}, ${player.position}, ${player.team}. ${rankContext || defaultRankContext}. ${adpText}${tierNumber ? `. Tier ${tierNumber}` : ""}${target ? `. Target round ${target.targetAsEarlyAsRound}` : ""}${urgency ? `. ${urgency}` : ""}`}
       className={`${styles.playerCard} ${positionClass(player.position)} ${focused ? styles.playerCardFocused : ""} ${compact ? styles.playerCardCompact : ""} ${dock ? styles.playerCardDock : ""} ${className}`}
-      onFocus={() => onFocusPlayer?.(player.id)}
-      onMouseEnter={() => onFocusPlayer?.(player.id)}
+      onFocus={event => {
+        rootProps?.onFocus?.(event)
+        onFocusPlayer?.(player.id)
+      }}
+      onMouseEnter={event => {
+        rootProps?.onMouseEnter?.(event)
+        onFocusPlayer?.(player.id)
+      }}
       role="group"
       tabIndex={onFocusPlayer ? 0 : undefined}
     >
-      {dock && <span className={styles.playerCardDockPick}>{rankContext || defaultRankContext}</span>}
-      <div className={styles.playerCardHeader}>
-        <span className={styles.playerCardName}>{playerShortName(player.fullName)}</span>
-        {target && <span className={styles.targetFlag}>Target R{target.targetAsEarlyAsRound}</span>}
+      {leadingRank !== undefined && <span aria-hidden="true" className={styles.playerCardRank}>{leadingRank}</span>}
+      <div className={styles.playerCardBody}>
+        {dock && <span className={styles.playerCardDockPick}>{rankContext || defaultRankContext}</span>}
+        <div className={styles.playerCardHeader}>
+          <span className={styles.playerCardName}>{dock ? playerShortName(player.fullName) : player.fullName}</span>
+          {!dock && tierNumber && <span className={styles.tierFlag}>T{tierNumber}</span>}
+        </div>
+        {!dock && (
+          <div className={styles.playerCardDetails}>
+            <p className={styles.playerCardMeta}>
+              <span className="sr-only">{player.position} </span>{player.team} · {rankContext || defaultRankContext}
+            </p>
+            <div className={styles.playerCardEvidence}>
+              {evidence || <>
+                <span>{adpText}</span>
+                {target && <span className={styles.targetFlag}>Target R{target.targetAsEarlyAsRound}</span>}
+                {urgency && urgencyCue && <span aria-hidden="true" className={styles.playerCardUrgency} title={urgency}>{urgencyCue}</span>}
+              </>}
+            </div>
+          </div>
+        )}
+        {dock && <p className={styles.playerCardMeta}>{player.team}</p>}
+        {actions && <div className={styles.playerCardActions}>{actions}</div>}
       </div>
-      <p className={styles.playerCardMeta}>
-        <span className="sr-only">{player.position} </span>{player.team}{dock ? "" : ` · ${rankContext || defaultRankContext}`}
-      </p>
-      {!dock && (
-        <p className={styles.playerCardMeta}>
-          {adpText}{tierNumber ? ` · Tier ${tierNumber}` : ""}
-        </p>
-      )}
-      {urgency && <p className={styles.playerCardUrgency}>{urgency}</p>}
-      {actions && <div className={styles.playerCardActions}>{actions}</div>}
     </div>
   )
 }

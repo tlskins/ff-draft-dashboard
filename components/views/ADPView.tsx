@@ -8,6 +8,8 @@ import PlayersByRoundView from './PlayersByRoundView'
 import PlayersByADPRoundView from './PlayersByADPRoundView'
 import PlayerTargetsView from './PlayerTargetsView'
 import PlayerSearchModal from '../PlayerSearchModal'
+import DraftDeskAdpRoundView from '../draft-desk/DraftDeskAdpRoundView'
+import DraftDeskTargetChart from '../draft-desk/DraftDeskTargetChart'
 
 type ViewType = 'playersByRound' | 'playersByADPRound' | 'playerTargets'
 
@@ -117,7 +119,7 @@ const ADPView: React.FC<ADPViewProps> = ({
   return (
     <div className={`${compact ? "min-h-0 flex-1 p-1" : "h-screen p-2"} w-full bg-white flex flex-col`} data-testid="adp-round-view">
       {/* Desktop Header */}
-      <div className={`${compact ? "mb-1" : "mb-4 hidden md:block"} flex-shrink-0`}>
+      {!compact && <div className="mb-4 hidden flex-shrink-0 md:block">
         <div className="flex justify-between items-center mb-2">
           <h2 className={`${compact ? "text-sm" : "text-lg"} font-semibold text-gray-800`}>
             {currentView === 'playersByRound' ? 'Best Available' :
@@ -166,7 +168,7 @@ const ADPView: React.FC<ADPViewProps> = ({
             </p>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Mobile Header */}
       {!compact && <div className="mb-4 md:hidden flex-shrink-0">
@@ -201,6 +203,22 @@ const ADPView: React.FC<ADPViewProps> = ({
             setPositionFilter={setPositionFilter}
             onSwitchToTargetsView={handleSwitchToTargetsView}
           />
+        ) : currentView === 'playersByADPRound' && compact ? (
+          <DraftDeskAdpRoundView
+            addPlayerTarget={addPlayerTarget}
+            boardSettings={boardSettings}
+            fantasySettings={fantasySettings}
+            myPicks={myPicks}
+            onSwitchToTargetsView={handleSwitchToTargetsView}
+            playerLib={playerLib}
+            playerRanks={playerRanks}
+            playerTargets={playerTargets}
+            removePlayerTarget={removePlayerTarget}
+            removePlayerTargets={removePlayerTargets}
+            replacePlayerTargets={replacePlayerTargets}
+            setViewPlayerId={setViewPlayerId}
+            viewPlayerId={viewPlayerId}
+          />
         ) : currentView === 'playersByADPRound' ? (
           <PlayersByADPRoundView
             playerRanks={playerRanks}
@@ -220,16 +238,28 @@ const ADPView: React.FC<ADPViewProps> = ({
             onSwitchToTargetsView={handleSwitchToTargetsView}
             compact={compact}
           />
-        ) : (
-          <PlayerTargetsView
-            playerTargets={playerTargets}
-            playerLib={playerLib}
-            fantasySettings={fantasySettings}
+        ) : compact ? (
+          <DraftDeskTargetChart
             boardSettings={boardSettings}
-            playerRanks={playerRanks}
             currPick={currPick}
+            fantasySettings={fantasySettings}
+            onBack={handleSwitchToADPRoundsView}
+            playerLib={playerLib}
+            playerRanks={playerRanks}
+            playerTargets={playerTargets}
             positionFilter={positionFilter}
             setPositionFilter={setPositionFilter}
+          />
+        ) : (
+          <PlayerTargetsView
+              boardSettings={boardSettings}
+              currPick={currPick}
+              fantasySettings={fantasySettings}
+              playerLib={playerLib}
+              playerRanks={playerRanks}
+              playerTargets={playerTargets}
+              positionFilter={positionFilter}
+              setPositionFilter={setPositionFilter}
           />
         )}
       </div>

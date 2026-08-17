@@ -2,7 +2,7 @@ import React from "react"
 import { fireEvent, render, screen } from "@testing-library/react"
 
 import RankingsBoard from "../components/RankingsBoard"
-import { ThirdPartyRanker } from "../types"
+import { FantasyPosition, NFLTeam, ThirdPartyRanker } from "../types"
 
 const props = (setDraftView = jest.fn()): any => ({
   playerRanks: {QB: [], RB: [], WR: [], TE: [], Purge: [], availPlayersByOverallRank: [], availPlayersByAdp: []},
@@ -73,5 +73,114 @@ describe("Phase 14A unified rankings pane", () => {
     fireEvent.click(screen.getByRole("button", {name: "QB + TE"}))
     expect(screen.getByTestId("ranking-position-lane-QB")).toBeTruthy()
     expect(screen.getByTestId("ranking-position-lane-TE")).toBeTruthy()
+  })
+
+  it("retains interactive tier-boundary placement in custom-ranking mode", () => {
+    const makePlayer = (id: string, positionRank: number, tierNumber: number): any => ({
+      id, firstName: id, lastName: "Runner", fullName: `${id} Runner`,
+      position: FantasyPosition.RUNNING_BACK, team: NFLTeam.BUF,
+      ranks: {
+        [ThirdPartyRanker.HARRIS]: {
+          playerId: id, ranker: ThirdPartyRanker.HARRIS,
+          position: FantasyPosition.RUNNING_BACK,
+          pprOverallRank: positionRank, standardOverallRank: positionRank,
+          pprPositionRank: positionRank, standardPositionRank: positionRank,
+          pprPositionTier: {tierNumber, upperLimitPlayerIdx: tierNumber - 1, lowerLimitPlayerIdx: tierNumber - 1, upperLimitValue: 20 - tierNumber, lowerLimitValue: 19 - tierNumber},
+          standardPositionTier: {tierNumber, upperLimitPlayerIdx: tierNumber - 1, lowerLimitPlayerIdx: tierNumber - 1, upperLimitValue: 20 - tierNumber, lowerLimitValue: 19 - tierNumber},
+        },
+      },
+    })
+    const players = [makePlayer("Alpha", 1, 1), makePlayer("Beta", 2, 2), makePlayer("Gamma", 3, 2)]
+    const onUpdateTierBoundary = jest.fn()
+    const onFinishCustomRanking = jest.fn()
+    const base = props()
+    const view = render(<RankingsBoard
+      {...base}
+      compact
+      isEditingCustomRanking
+      onFinishCustomRanking={onFinishCustomRanking}
+      onUpdateTierBoundary={onUpdateTierBoundary}
+      playerLib={Object.fromEntries(players.map(player => [player.id, player]))}
+      playerRanks={{
+        QB: [], RB: players, WR: [], TE: [], Purge: [],
+        availPlayersByOverallRank: players, availPlayersByAdp: players,
+      }}
+      rankings={{...base.rankings, players, settings: base.fantasySettings}}
+    />)
+
+    expect(screen.getByRole("button", {name: "QB"}).getAttribute("aria-pressed")).toBe("true")
+    fireEvent.click(screen.getByRole("button", {name: "RB"}))
+    expect(screen.getByRole("button", {name: "RB"}).getAttribute("aria-pressed")).toBe("true")
+    expect(view.container.querySelector('[data-column-title="QB"]')).toBeNull()
+    expect(view.container.querySelector('[data-column-title="RB"]')).toBeTruthy()
+    const editableCard = screen.getByRole("group", {name: /Alpha Runner, RB, BUF/})
+    expect(editableCard.className).toContain("editablePlayerCard")
+    expect(editableCard.className).not.toMatch(/bg-yellow|bg-purple/)
+    expect(screen.getByText(/RB1 · User T1/)).toBeTruthy()
+    expect(screen.getByRole("button", {name: "View Alpha Runner history"})).toBeTruthy()
+    const divider = view.container.querySelector('[title="Click to move Tier 1"]')
+    expect(divider).toBeTruthy()
+    fireEvent.click(divider as Element)
+    expect((divider as HTMLElement).getAttribute("aria-pressed")).toBe("true")
+    const placement = view.container.querySelector('[title="Place Tier 1 here"]')
+    expect(placement).toBeTruthy()
+    fireEvent.click(placement as Element)
+    expect(onUpdateTierBoundary).toHaveBeenCalledWith("RB", 1, expect.any(Number))
+    fireEvent.click(screen.getByRole("button", {name: "Finish"}))
+    expect(onFinishCustomRanking).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps mouse reordering enabled in the compact desktop editor", () => {
+    const makePlayer = (id: string, positionRank: number): any => ({
+      id, firstName: id, lastName: "Runner", fullName: `${id} Runner`,
+      position: FantasyPosition.RUNNING_BACK, team: NFLTeam.BUF,
+      ranks: {
+        [ThirdPartyRanker.HARRIS]: {
+          playerId: id, ranker: ThirdPartyRanker.HARRIS,
+          position: FantasyPosition.RUNNING_BACK,
+          pprOverallRank: positionRank, standardOverallRank: positionRank,
+          pprPositionRank: positionRank, standardPositionRank: positionRank,
+          pprPositionTier: {tierNumber: 1, upperLimitPlayerIdx: 0, lowerLimitPlayerIdx: 1, upperLimitValue: 20, lowerLimitValue: 18},
+          standardPositionTier: {tierNumber: 1, upperLimitPlayerIdx: 0, lowerLimitPlayerIdx: 1, upperLimitValue: 20, lowerLimitValue: 18},
+        },
+      },
+    })
+    const players = [makePlayer("Alpha", 1), makePlayer("Beta", 2)]
+    const onReorderPlayer = jest.fn()
+    const loadCurrentRankings = jest.fn()
+    const onFinishCustomRanking = jest.fn()
+    const onCancelCustomRanking = jest.fn()
+    const base = props()
+    const view = render(<RankingsBoard
+      {...base}
+      compact
+      isEditingCustomRanking
+      loadCurrentRankings={loadCurrentRankings}
+      onCancelCustomRanking={onCancelCustomRanking}
+      onFinishCustomRanking={onFinishCustomRanking}
+      onReorderPlayer={onReorderPlayer}
+      playerLib={Object.fromEntries(players.map(player => [player.id, player]))}
+      playerRanks={{QB: [], RB: players, WR: [], TE: [], Purge: [], availPlayersByOverallRank: players, availPlayersByAdp: players}}
+      rankings={{...base.rankings, players, settings: base.fantasySettings}}
+    />)
+
+    fireEvent.click(screen.getByRole("button", {name: "RB"}))
+    const cards = Array.from(view.container.querySelectorAll('[data-column-title="RB"]'))
+    expect(cards).toHaveLength(2)
+    expect(cards[0].getAttribute("draggable")).toBe("true")
+    const dataTransfer = {
+      effectAllowed: "none",
+      dropEffect: "none",
+      setData: jest.fn(),
+      getData: jest.fn(),
+    }
+    fireEvent.dragStart(cards[0], {dataTransfer})
+    fireEvent.dragOver(cards[1], {dataTransfer})
+    fireEvent.drop(cards[1], {dataTransfer})
+    expect(onReorderPlayer).toHaveBeenCalledWith("Alpha", "RB", 1)
+    fireEvent.click(screen.getByRole("button", {name: "Cancel"}))
+    expect(loadCurrentRankings).toHaveBeenCalledTimes(1)
+    expect(onFinishCustomRanking).toHaveBeenCalledTimes(1)
+    expect(onCancelCustomRanking).toHaveBeenCalledTimes(1)
   })
 })

@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react"
 
 import {
   getPlayerMetrics,
-  getRoundAndPickShortText,
   myCurrentRound,
 } from "../../behavior/draft"
 import { getIconTypes, getDraftBoard } from "../../behavior/DraftBoardUtils"
@@ -12,12 +11,23 @@ import type { FantasyPosition, Player, PlayerTarget } from "../../types"
 import PlayerSearchModal from "../PlayerSearchModal"
 import DraftDeskPlayerCard from "../shared/DraftDeskPlayerCard"
 import styles from "../DraftDesk.module.css"
+import {
+  predictionAvailabilityCompactCue,
+  predictionAvailabilityWindowLabel,
+} from "../../behavior/presenters"
 
 type PositionPair = "RB_WR" | "QB_TE"
 
 const lanesForPair: Record<PositionPair, FantasyPosition[]> = {
   RB_WR: ["RB" as FantasyPosition, "WR" as FantasyPosition],
   QB_TE: ["QB" as FantasyPosition, "TE" as FantasyPosition],
+}
+
+const positionLabels: Record<string, string> = {
+  QB: "QUARTERBACK",
+  RB: "RUNNING BACK",
+  WR: "WIDE RECEIVER",
+  TE: "TIGHT END",
 }
 
 const RankingView = ({
@@ -44,11 +54,12 @@ const RankingView = ({
   playerTargets,
   addPlayerTarget,
   removePlayerTarget,
+  onEditRankings,
   compact = false,
 }: RankingViewProps) => {
   const [pair, setPair] = useState<PositionPair>("RB_WR")
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
-  const [isRosterVisible, setIsRosterVisible] = useState(true)
+  const [isRosterVisible, setIsRosterVisible] = useState(false)
   const [animatingOutPlayers, setAnimatingOutPlayers] = useState<Set<string>>(new Set())
   const { AnyAiFillCheckCircle, AnyBsLink, AnyTiDelete } = getIconTypes()
   const draftBoard = useMemo(() => getDraftBoard(
@@ -82,10 +93,9 @@ const RankingView = ({
     const ranking = sortOption === "Sort By ADP"
       ? `${boardSettings.adpRanker} ADP #${metrics.adp?.toFixed(1) || "—"}`
       : metrics.posRank === undefined ? "Unranked" : `${player.position}${metrics.posRank} · #${metrics.overallRank || "—"}`
-    const currentPickDifference = Math.abs(currPick - (metrics.adp || 0)).toFixed(1)
-    const alreadyPastAdp = currPick >= (metrics.adp || Number.MAX_SAFE_INTEGER)
     const focused = viewPlayerId === player.id
     const animating = animatingOutPlayers.has(player.id)
+    const predictionWindow = predictedPicks[player.id]
     return (
       <DraftDeskPlayerCard
         actions={focused && !animating ? <>
@@ -101,9 +111,11 @@ const RankingView = ({
         boardSettings={boardSettings}
         onFocusPlayer={id => !animating && setViewPlayerId(id)}
         player={player}
+        leadingRank={metrics.posRank || index + 1}
         rankContext={ranking}
         target={favorite(player.id)}
-        urgency={metrics.adp ? `${currentPickDifference} ${alreadyPastAdp ? "past" : "to"} ADP ${getRoundAndPickShortText(metrics.adp, fantasySettings.numTeams)}` : undefined}
+        urgency={predictionAvailabilityWindowLabel(predictionWindow) || undefined}
+        urgencyCue={predictionAvailabilityCompactCue(predictionWindow) || undefined}
       />
     )
   }
@@ -114,9 +126,12 @@ const RankingView = ({
     return (
       <section className={styles.positionLane} data-testid={`ranking-position-lane-${position}`} key={position}>
         <header className={styles.positionLaneHeader}>
-          <span>{position}</span>
+          <span>{positionLabels[position] || position}</span>
           <span>{predNextTiers[position] ? `Next tier ${predNextTiers[position]}` : `${players.length} available`}</span>
         </header>
+        <div aria-hidden="true" className={styles.positionLaneColumns}>
+          <span>RK</span><span>PLAYER / ADP / TIER</span>
+        </div>
         <div className={styles.positionLaneCards}>
           {players.slice(0, 50).map(renderPlayer)}
         </div>
@@ -129,35 +144,33 @@ const RankingView = ({
     .map(column => renderLane(column.columnTitle as FantasyPosition))
 
   return (
-    <div className={`flex min-h-0 flex-1 flex-col ${compact ? "gap-1" : "gap-3"}`}>
-      <div className="flex flex-wrap items-center justify-between gap-1 text-left">
-        <div>
+    <div className={`flex min-h-0 flex-1 flex-col ${compact ? "" : "gap-3"}`}>
+      <div className={compact ? styles.rankingsToolbar : "flex flex-wrap items-center justify-between gap-1 text-left"}>
+        {!compact && <div>
           <p className="text-xs font-bold text-slate-900">{rankings.copiedRanker ? "Custom " : ""}Position rankings</p>
           {isUsingCustomRanks && <p className="text-[10px] text-slate-500">Custom ranking source remains authoritative.</p>}
-        </div>
-        <div className="flex flex-wrap gap-1">
-          <select aria-label="Ranking sort" className="rounded border border-slate-300 bg-white px-1 py-0.5 text-[11px]" onChange={event => setSortOption(event.target.value as typeof sortOption)} value={sortOption}>
-            <option value="Sort By Ranks">Ranks</option><option value="Sort By ADP">ADP</option>
-          </select>
-          <select aria-label="Ranking highlight" className="rounded border border-slate-300 bg-white px-1 py-0.5 text-[11px]" onChange={event => setHighlightOption(event.target.value as typeof highlightOption)} value={highlightOption}>
-            {Object.values(HighlightOption).map(option => <option key={option} value={option}>{option}</option>)}
-          </select>
-          <button aria-label="Search players" className={`${styles.focusRing} rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-semibold hover:bg-slate-50`} onClick={() => setIsSearchModalOpen(true)} type="button">Search</button>
-        </div>
-      </div>
-
-      {compact && (
-        <div className="flex items-center justify-between gap-2">
-          <div aria-label="Position pair" className={styles.modeToggle} role="group">
+        </div>}
+        {compact && (
+          <div aria-label="Position pair" className={styles.positionPairToggle} role="group">
             <button aria-pressed={pair === "RB_WR"} onClick={() => setPair("RB_WR")} type="button">RB + WR</button>
             <button aria-pressed={pair === "QB_TE"} onClick={() => setPair("QB_TE")} type="button">QB + TE</button>
           </div>
-          <span className="text-[10px] text-slate-500">Tier stays in each player card.</span>
+        )}
+        <div className={compact ? styles.rankingsUtilities : "flex flex-wrap gap-1"}>
+          <span>{rankings.copiedRanker ? "Custom rank" : `${boardSettings.ranker} rank`}</span>
+          <select aria-label="Ranking sort" className={compact ? styles.deskSelect : "rounded border border-slate-300 bg-white px-1 py-0.5 text-[11px]"} onChange={event => setSortOption(event.target.value as typeof sortOption)} value={sortOption}>
+            <option value="Sort By Ranks">Ranks</option><option value="Sort By ADP">ADP</option>
+          </select>
+          <select aria-label="Ranking highlight" className={compact ? styles.deskSelect : "rounded border border-slate-300 bg-white px-1 py-0.5 text-[11px]"} onChange={event => setHighlightOption(event.target.value as typeof highlightOption)} value={highlightOption}>
+            {Object.values(HighlightOption).map(option => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <button aria-label="Search players" className={compact ? styles.deskUtilityButton : `${styles.focusRing} rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-semibold hover:bg-slate-50`} onClick={() => setIsSearchModalOpen(true)} type="button">Search</button>
+          {compact && onEditRankings && <button className={styles.deskUtilityButton} onClick={onEditRankings} type="button">Edit</button>}
         </div>
-      )}
+      </div>
 
-      {draftStarted && myRoster && (
-        <details className="rounded border border-slate-200 bg-white px-2 py-1 text-left text-xs" open={isRosterVisible} onToggle={event => setIsRosterVisible(event.currentTarget.open)}>
+      {draftStarted && myRoster && !compact && (
+        <details className={compact ? styles.rankingRosterDetails : "rounded border border-slate-200 bg-white px-2 py-1 text-left text-xs"} open={isRosterVisible} onToggle={event => setIsRosterVisible(event.currentTarget.open)}>
           <summary className="cursor-pointer font-semibold">Your drafted players</summary>
           <div className="mt-1 grid grid-cols-2 gap-1">
             {(["QB", "RB", "WR", "TE"] as Array<"QB" | "RB" | "WR" | "TE">).flatMap(position => (myRoster[position] || [])

@@ -2,14 +2,19 @@ import React, { useMemo, useState } from "react"
 import type {GetStaticProps, GetStaticPropsResult} from "next"
 
 import type { Roster } from "../behavior/draft"
+import type {PlayerRanks} from "../behavior/draft"
+import {HighlightOption} from "../behavior/hooks/usePredictions"
 import DraftDeskAppBar from "../components/DraftDeskAppBar"
+import DraftDeskProfilePane from "../components/DraftDeskProfilePane"
 import DraftDock from "../components/DraftDock"
+import RankingsBoard from "../components/RankingsBoard"
 import styles from "../components/DraftDesk.module.css"
 import PageHead from "../components/pageHead"
 import DeskPaneHeader from "../components/draft-desk/DeskPaneHeader"
 import DeskSegmentedControl from "../components/draft-desk/DeskSegmentedControl"
-import DraftDeskPlayerCard from "../components/shared/DraftDeskPlayerCard"
+import {DraftView, SortOption} from "./index"
 import {
+  DataRanker,
   FantasyPosition,
   NFLTeam,
   ThirdPartyADPRanker,
@@ -20,6 +25,8 @@ import type {
   FantasySettings,
   Player,
   PlayerRanking,
+  RankingSummary,
+  Rankings,
 } from "../types"
 
 const settings: FantasySettings = {
@@ -53,14 +60,14 @@ const ranking = (
   standardPositionRank: positionRank,
   pprPositionRank: positionRank,
   standardPositionTier: {
-    tierNumber: positionRank <= 4 ? 1 : 2,
+    tierNumber: positionRank <= 4 ? 1 : positionRank <= 9 ? 2 : 3,
     upperLimitPlayerIdx: 0,
     upperLimitValue: 0,
     lowerLimitPlayerIdx: 5,
     lowerLimitValue: 0,
   },
   pprPositionTier: {
-    tierNumber: positionRank <= 4 ? 1 : 2,
+    tierNumber: positionRank <= 4 ? 1 : positionRank <= 9 ? 2 : 3,
     upperLimitPlayerIdx: 0,
     upperLimitValue: 0,
     lowerLimitPlayerIdx: 5,
@@ -80,8 +87,11 @@ const player = (
   const [firstName, ...lastName] = fullName.split(" ")
   const harris = ranking(position, overallRank, positionRank, adp)
   const espn = {...harris, ranker: ThirdPartyRanker.ESPN}
+  const fpros = {...harris, ranker: ThirdPartyRanker.FPROS}
   harris.playerId = id
   espn.playerId = id
+  fpros.playerId = id
+  const basePpg = Math.max(7.5, 22 - overallRank / 5)
   return {
     id,
     firstName,
@@ -92,17 +102,58 @@ const player = (
     ranks: {
       [ThirdPartyRanker.HARRIS]: harris,
       [ThirdPartyRanker.ESPN]: espn,
+      [ThirdPartyRanker.FPROS]: fpros,
     },
+    historicalStats: Object.fromEntries([2023, 2024, 2025].map((year, index) => [String(year), {
+      rk: overallRank,
+      player: fullName,
+      name: fullName,
+      tm: team,
+      team,
+      fantPos: position,
+      position,
+      playerId: id,
+      g: 15 + (index % 2),
+      gs: 13 + index,
+      rushAtt: position === FantasyPosition.RUNNING_BACK ? 180 + index * 18 : position === FantasyPosition.QUARTERBACK ? 68 + index * 5 : 4,
+      rushYds: position === FantasyPosition.RUNNING_BACK ? 910 + index * 90 : position === FantasyPosition.QUARTERBACK ? 420 + index * 30 : 18,
+      rushTd: position === FantasyPosition.RUNNING_BACK ? 7 + index : position === FantasyPosition.QUARTERBACK ? 4 + index : 0,
+      passAtt: position === FantasyPosition.QUARTERBACK ? 480 + index * 20 : undefined,
+      passYds: position === FantasyPosition.QUARTERBACK ? 3700 + index * 180 : undefined,
+      passTd: position === FantasyPosition.QUARTERBACK ? 27 + index * 2 : undefined,
+      recTgt: position === FantasyPosition.WIDE_RECEIVER || position === FantasyPosition.TIGHT_END ? 112 + index * 9 : position === FantasyPosition.RUNNING_BACK ? 58 + index * 4 : undefined,
+      rec: position === FantasyPosition.WIDE_RECEIVER || position === FantasyPosition.TIGHT_END ? 76 + index * 6 : position === FantasyPosition.RUNNING_BACK ? 43 + index * 3 : undefined,
+      recYds: position === FantasyPosition.WIDE_RECEIVER || position === FantasyPosition.TIGHT_END ? 1010 + index * 85 : position === FantasyPosition.RUNNING_BACK ? 330 + index * 35 : undefined,
+      recTd: position === FantasyPosition.WIDE_RECEIVER || position === FantasyPosition.TIGHT_END ? 7 + index : position === FantasyPosition.RUNNING_BACK ? 3 + index : undefined,
+      pprPointsPerGame: Number((basePpg + index * .8).toFixed(1)),
+      fantasyPointsPerGame: Number((basePpg - 2 + index * .7).toFixed(1)),
+    }])),
+    pros: id === "achane" ? "Explosive efficiency and receiving usage create a weekly ceiling." : undefined,
+    cons: id === "achane" ? "Workload has varied more than the other top running backs." : undefined,
   }
 }
 
 const players = [
   player("achane", "De'Von Achane", NFLTeam.MIA, FantasyPosition.RUNNING_BACK, 8, 4, 9.2),
   player("taylor", "Jonathan Taylor", NFLTeam.IND, FantasyPosition.RUNNING_BACK, 9, 5, 10.8),
+  player("brown", "Chase Brown", NFLTeam.CIN, FantasyPosition.RUNNING_BACK, 13, 7, 15.4),
+  player("jacobs", "Josh Jacobs", NFLTeam.GB, FantasyPosition.RUNNING_BACK, 15, 8, 18.1),
+  player("irving", "Bucky Irving", NFLTeam.TB, FantasyPosition.RUNNING_BACK, 20, 11, 23.7),
+  player("walker", "Kenneth Walker", NFLTeam.SEA, FantasyPosition.RUNNING_BACK, 23, 13, 27),
   player("london", "Drake London", NFLTeam.ATL, FantasyPosition.WIDE_RECEIVER, 11, 6, 12.6),
   player("nabers", "Malik Nabers", NFLTeam.NYG, FantasyPosition.WIDE_RECEIVER, 12, 7, 13.1),
+  player("ajbrown", "A.J. Brown", NFLTeam.PHL, FantasyPosition.WIDE_RECEIVER, 14, 8, 15.8),
+  player("collins", "Nico Collins", NFLTeam.HOU, FantasyPosition.WIDE_RECEIVER, 16, 9, 17.2),
+  player("mcconkey", "Ladd McConkey", NFLTeam.LAC, FantasyPosition.WIDE_RECEIVER, 18, 10, 20.4),
+  player("evans", "Mike Evans", NFLTeam.TB, FantasyPosition.WIDE_RECEIVER, 24, 14, 26.3),
   player("hurts", "Jalen Hurts", NFLTeam.PHL, FantasyPosition.QUARTERBACK, 31, 2, 39.1),
+  player("daniels", "Jayden Daniels", NFLTeam.WAS, FantasyPosition.QUARTERBACK, 28, 1, 37.2),
+  player("burrow", "Joe Burrow", NFLTeam.CIN, FantasyPosition.QUARTERBACK, 49, 3, 62.4),
+  player("allen", "Josh Allen", NFLTeam.BUF, FantasyPosition.QUARTERBACK, 53, 4, 66.1),
   player("kittle", "George Kittle", NFLTeam.SF, FantasyPosition.TIGHT_END, 34, 3, 42.2),
+  player("mcbride", "Trey McBride", NFLTeam.ARI, FantasyPosition.TIGHT_END, 29, 1, 44.8),
+  player("bowers", "Brock Bowers", NFLTeam.LV, FantasyPosition.TIGHT_END, 33, 2, 47.1),
+  player("laporta", "Sam LaPorta", NFLTeam.DET, FantasyPosition.TIGHT_END, 55, 4, 68.2),
   player("jones", "Aaron Jones", NFLTeam.MIN, FantasyPosition.RUNNING_BACK, 35, 15, 43.1),
   player("waddle", "Jaylen Waddle", NFLTeam.MIA, FantasyPosition.WIDE_RECEIVER, 36, 17, 44.2),
   player("cook", "James Cook", NFLTeam.BUF, FantasyPosition.RUNNING_BACK, 37, 16, 45.1),
@@ -111,38 +162,101 @@ const players = [
 
 const playerLib = Object.fromEntries(players.map(item => [item.id, item]))
 const recentIds = ["hurts", "kittle", "jones", "waddle", "cook", "smith"]
+const availableIds = players.map(item => item.id).filter(id => !recentIds.includes(id))
+const available = availableIds.map(id => playerLib[id])
+const playerRanks: PlayerRanks = {
+  QB: available.filter(item => item.position === FantasyPosition.QUARTERBACK),
+  RB: available.filter(item => item.position === FantasyPosition.RUNNING_BACK),
+  WR: available.filter(item => item.position === FantasyPosition.WIDE_RECEIVER),
+  TE: available.filter(item => item.position === FantasyPosition.TIGHT_END),
+  Purge: [],
+  availPlayersByOverallRank: [...available].sort((left, right) => (left.ranks.Harris?.pprOverallRank || 999) - (right.ranks.Harris?.pprOverallRank || 999)),
+  availPlayersByAdp: [...available].sort((left, right) => (left.ranks.ESPN?.adp || 999) - (right.ranks.ESPN?.adp || 999)),
+}
 const emptyRoster = (): Roster => ({picks: [], QB: [], RB: [], WR: [], TE: []})
 
-const FixtureLane = ({title, ids, focusedId, onFocus}: {
-  title: string
-  ids: string[]
-  focusedId: string
-  onFocus: (id: string) => void
-}) => (
-  <section className={styles.positionLane}>
-    <header className={styles.positionLaneHeader}>
-      <span>{title}</span><span>{ids.length} available</span>
-    </header>
-    <div className={styles.positionLaneCards}>
-      {ids.map((id, index) => (
-        <DraftDeskPlayerCard
-          boardSettings={boardSettings}
-          compact
-          fantasySettings={settings}
-          focused={id === focusedId}
-          key={id}
-          onFocusPlayer={onFocus}
-          player={playerLib[id]}
-          rankContext={`Rank ${index + 8}`}
-        />
-      ))}
-    </div>
-  </section>
-)
+const projectionTiers = [
+  {tierNumber: 1, upperLimitPlayerIdx: 0, lowerLimitPlayerIdx: 4, upperLimitValue: 20.4, lowerLimitValue: 16.8},
+  {tierNumber: 2, upperLimitPlayerIdx: 5, lowerLimitPlayerIdx: 9, upperLimitValue: 16.7, lowerLimitValue: 13.4},
+  {tierNumber: 3, upperLimitPlayerIdx: 10, lowerLimitPlayerIdx: 20, upperLimitValue: 13.3, lowerLimitValue: 9.2},
+]
+const rankingSummaries: RankingSummary[] = [{
+  ranker: DataRanker.LAST_SSN_PPG,
+  ppr: true,
+  replacementLevels: {QB: [12, 16], RB: [24, 10], WR: [24, 10], TE: [12, 9], DST: [12, 0], K: [12, 0], "": [0, 0]},
+  stdDevs: {QB: 3.2, RB: 3.6, WR: 3.1, TE: 2.8, DST: 0, K: 0, "": 0},
+  tiers: {QB: projectionTiers, RB: projectionTiers, WR: projectionTiers, TE: projectionTiers, DST: [], K: [], "": []},
+}]
+const rankings: Rankings = {
+  players: available,
+  rankingsSummaries: rankingSummaries,
+  cachedAt: "2026-08-16T12:00:00Z",
+  editedAt: "",
+  settings,
+}
+const playerStatus = Object.fromEntries(["achane", "daniels", "mcbride", "london"].map(id => {
+  const routineTransaction = {
+    schema_version: 1 as const,
+    id: `fixture-transaction-${id}`,
+    player_id: id,
+    type: "transaction" as const,
+    status: "active",
+    short_summary: "Active with no current injury designation in the fixture state.",
+    source: "nflverse_weekly_rosters",
+    source_url: null,
+    source_published_at: "2026-08-16T11:00:00Z",
+    fetched_at: "2026-08-16T12:00:00Z",
+    confidence: .98,
+    recommendation_impact: "none" as const,
+    stale: false,
+  }
+  const materialInjury = {
+    schema_version: 1 as const,
+    id: `fixture-injury-${id}`,
+    player_id: id,
+    type: "injury" as const,
+    status: "questionable",
+    short_summary: "Questionable after a limited hamstring practice in the fixture state.",
+    source: "nflverse_injuries",
+    source_url: "https://example.test/phase14a/injury-source",
+    source_published_at: "2026-08-16T09:00:00Z",
+    fetched_at: "2026-08-16T10:00:00Z",
+    confidence: .94,
+    recommendation_impact: "material" as const,
+    stale: false,
+  }
+  return [id, {
+    playerId: id,
+    state: "ready" as const,
+    loadedAt: 1,
+    response: {
+      schema_version: 1 as const,
+      player_id: id,
+      last_updated_at: "2026-08-16T12:00:00Z",
+      events: id === "achane" ? [routineTransaction, materialInjury] : [routineTransaction],
+      summary: id === "achane" ? {
+        text: "Fixture-only outlook derived from the structured injury event.",
+        method: "deterministic" as const,
+        model: null,
+        generated_at: "2026-08-16T12:30:00Z",
+        event_ids: [materialInjury.id],
+      } : undefined,
+    },
+  }]
+}))
 
 const Phase14AVisualFixture = () => {
   const [focusedId, setFocusedId] = useState("achane")
   const [dockHeight, setDockHeight] = useState(0)
+  const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
+  const [isEditingCustomRanking, setIsEditingCustomRanking] = useState(false)
+  const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
+  const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN)
+  const [playerTargets, setPlayerTargets] = useState([
+    {playerId: "achane", targetAsEarlyAsRound: 4},
+    {playerId: "taylor", targetAsEarlyAsRound: 4},
+    {playerId: "mcbride", targetAsEarlyAsRound: 5},
+  ])
   const rosters = useMemo(() => Array.from({length: 12}, (_, index) => {
     if (index === 5) {
       return {
@@ -191,25 +305,102 @@ const Phase14AVisualFixture = () => {
             <div className={styles.centerPanes}>
               <section aria-label="Rankings pane" className={`${styles.pane} flex min-h-0 flex-col`}>
                 <DeskPaneHeader
-                  actions={<DeskSegmentedControl ariaLabel="Rankings mode" items={[{id: "position", label: "Position"}, {id: "round", label: "ADP round"}]} onSelect={() => undefined} selectedId="position" />}
+                  actions={<DeskSegmentedControl
+                    ariaLabel="Rankings mode"
+                    items={[{id: DraftView.RANKING, label: "Position"}, {id: DraftView.ADP_ROUND, label: "ADP round"}]}
+                    onSelect={setDraftView}
+                    selectedId={draftView === DraftView.ADP_ROUND ? DraftView.ADP_ROUND : DraftView.RANKING}
+                  />}
                   kicker="Board"
                   title="Rankings"
                 />
-                <div className={styles.positionLanes}>
-                  <FixtureLane focusedId={focusedId} ids={["achane", "taylor", "jones", "cook"]} onFocus={setFocusedId} title="RUNNING BACK" />
-                  <FixtureLane focusedId={focusedId} ids={["london", "nabers", "waddle", "smith"]} onFocus={setFocusedId} title="WIDE RECEIVER" />
+                <div className="min-h-0 flex-1">
+                  <RankingsBoard
+                    activeDraftListenerTitle="Home League"
+                    addPlayerTarget={(focusedPlayer, targetAsEarlyAsRound) => setPlayerTargets(current => current.some(target => target.playerId === focusedPlayer.id)
+                      ? current
+                      : [...current, {playerId: focusedPlayer.id, targetAsEarlyAsRound}])}
+                    boardSettings={boardSettings}
+                    canEditCustomRankings
+                    compact
+                    currPick={43}
+                    customAndLatestRankingsDiffs={{}}
+                    draftCaptureState="live"
+                    draftHistory={draftHistory}
+                    draftPersistence={{state: "local", pendingEventCount: 0, error: null, canRetry: false}}
+                    draftSourceHealth={null}
+                    draftSourceHealthFreshness="fresh"
+                    draftStarted
+                    draftView={draftView}
+                    fantasySettings={settings}
+                    getDraftRoundForPickNum={() => currRound}
+                    hasCustomRanking={false}
+                    hideCompactModeControl
+                    highlightOption={highlightOption}
+                    isEditingCustomRanking={isEditingCustomRanking}
+                    latestRankings={null}
+                    loadCurrentRankings={() => undefined}
+                    myPickNum={6}
+                    myPicks={[6, 19, 30, 46, 57]}
+                    noPlayers={false}
+                    onCancelCustomRanking={() => {
+                      setIsEditingCustomRanking(false)
+                      setDraftView(DraftView.RANKING)
+                    }}
+                    onFinishCustomRanking={() => {
+                      setIsEditingCustomRanking(false)
+                      setDraftView(DraftView.RANKING)
+                    }}
+                    onPurgePlayer={() => undefined}
+                    onReorderPlayer={() => undefined}
+                    onRetryDraftPersistence={() => undefined}
+                    onRevertPlayerToPreSync={() => undefined}
+                    onSelectPlayer={selectedPlayer => setFocusedId(selectedPlayer.id)}
+                    onStartCustomRanking={() => setIsEditingCustomRanking(true)}
+                    onSyncPendingRankings={() => undefined}
+                    onUpdateTierBoundary={() => undefined}
+                    playerLib={playerLib}
+                    playerRanks={playerRanks}
+                    playerTargets={playerTargets}
+                    predNextTiers={{RB: 3, WR: 3, QB: 2, TE: 2}}
+                    predictedPicks={{achane: 2, taylor: 0, brown: 1, london: 5, mcbride: 7}}
+                    rankingProfileControls={{
+                      profiles: [], activeProfile: null, isLoading: false, isSaving: false,
+                      error: null, apiConfigured: false, refresh: async () => undefined,
+                      save: async () => { throw new Error("Fixture profile save is disabled") },
+                      select: () => undefined, startNew: () => undefined,
+                      clearLocal: () => undefined, undo: async () => undefined, redo: async () => undefined,
+                    }}
+                    rankingSummaries={rankingSummaries}
+                    rankings={rankings}
+                    removePlayerTarget={playerId => setPlayerTargets(current => current.filter(target => target.playerId !== playerId))}
+                    removePlayerTargets={playerIds => setPlayerTargets(current => current.filter(target => !playerIds.includes(target.playerId)))}
+                    replacePlayerTargets={setPlayerTargets}
+                    rosters={rosters}
+                    setDraftView={setDraftView}
+                    setHighlightOption={setHighlightOption}
+                    setSortOption={setSortOption}
+                    setViewPlayerId={id => id && setFocusedId(id)}
+                    sortOption={sortOption}
+                    viewPlayerId={focusedId}
+                    viewRosterIdx={5}
+                  />
                 </div>
               </section>
-              <section aria-label="Player profile and history" className={`${styles.pane} text-left`}>
-                <DeskPaneHeader kicker="Player profile" meta={`${playerLib[focusedId].team} · ${playerLib[focusedId].position}`} title={playerLib[focusedId].fullName} />
-                <div className="grid grid-cols-4 border-b border-slate-300 bg-white text-[10px]">
-                  <div className="p-2"><span>POS RANK</span><strong className="block text-xs">RB 4</strong></div>
-                  <div className="p-2"><span>PROJ RANGE</span><strong className="block text-xs">16.8–20.4</strong></div>
-                  <div className="p-2"><span>AVAIL. NEXT</span><strong className="block text-xs">18%</strong></div>
-                  <div className="p-2"><span>BYE</span><strong className="block text-xs">12</strong></div>
-                </div>
-                <div className="p-3 text-xs text-slate-600">Populated profile history is reserved for checkpoint B.</div>
-              </section>
+              <DraftDeskProfilePane
+                boardSettings={boardSettings}
+                fixtureDetails={{
+                  byeWeek: focusedId === "achane" ? 12 : 8,
+                  outlook: focusedId === "achane"
+                    ? "Explosive runner and receiver with weekly RB1 upside. Touch volume remains the primary source of volatility."
+                    : "Illustrative fixture copy for validating focused-player profile updates.",
+                }}
+                player={playerLib[focusedId]}
+                players={available}
+                playerStatus={playerStatus}
+                rankingSummaries={rankingSummaries}
+                settings={settings}
+              />
               <section aria-label="Deterministic insight pane" className={`${styles.pane} text-left`}>
                 <DeskPaneHeader kicker="Decision view · auto" title="Cross-position value" />
                 <div className="space-y-2 p-3 text-xs text-slate-700">

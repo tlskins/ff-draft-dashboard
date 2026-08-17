@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { Player, FantasySettings } from '../types'
 import { getPlayerMetrics, PlayerRanks } from '../behavior/draft'
+import styles from './DraftDesk.module.css'
 
 interface TierDividersHookProps {
   position: keyof PlayerRanks
@@ -8,6 +9,7 @@ interface TierDividersHookProps {
   boardSettings: any
   onUpdateTierBoundary: (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => void
   allCards: any[] // The full cards array to get correct DOM indices
+  compact?: boolean
 }
 
 interface TierDividerData {
@@ -22,7 +24,8 @@ const useTierDividers = ({
   fantasySettings,
   boardSettings,
   onUpdateTierBoundary,
-  allCards
+  allCards,
+  compact = false,
 }: TierDividersHookProps) => {
   const [activeTier, setActiveTier] = useState<number | null>(null)
 
@@ -135,6 +138,21 @@ const useTierDividers = ({
   // Render function for tier dividers
   const renderTierDivider = (divider: TierDividerData, key?: string) => {
     const isActive = activeTier === divider.tierNumber
+    if (compact) {
+      return (
+        <button
+          aria-pressed={isActive}
+          className={`${styles.editTierDivider} ${isActive ? styles.editTierDividerActive : ""}`}
+          key={key || `tier-divider-${divider.tierNumber}`}
+          onClick={() => handleTierDividerClick(divider)}
+          title={isActive ? `Click to deactivate Tier ${divider.tierNumber}` : `Click to move Tier ${divider.tierNumber}`}
+          type="button"
+        >
+          <span>Tier {divider.tierNumber} boundary</span>
+          <small>{isActive ? "Choose a new placement" : "Move"}</small>
+        </button>
+      )
+    }
     const activeStyle = isActive ? 'from-yellow-400 to-yellow-600 ring-2 ring-yellow-300' : 'from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700'
 
     return (
@@ -155,6 +173,19 @@ const useTierDividers = ({
 
   // Render function for placement indicators
   const renderPlacementIndicator = (playerIndex: number, key?: string) => {
+    if (compact) {
+      return (
+        <button
+          className={styles.editTierPlacement}
+          key={key || `placement-indicator-${playerIndex}`}
+          onClick={() => handlePlacementClick(playerIndex)}
+          title={`Place Tier ${activeTier} here`}
+          type="button"
+        >
+          Place Tier {activeTier} here
+        </button>
+      )
+    }
     return (
       <div
         key={key || `placement-indicator-${playerIndex}`}
@@ -195,4 +226,4 @@ const useTierDividers = ({
   }
 }
 
-export default useTierDividers 
+export default useTierDividers

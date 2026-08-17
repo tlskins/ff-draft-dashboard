@@ -10,6 +10,8 @@ import { isTitleCard } from "../../types/DraftBoardTypes"
 import useTierDividers from '../TierSlider'
 import HistoricalStats from "../HistoricalStats"
 import { playerShortName } from "@/behavior/presenters"
+import styles from "../DraftDesk.module.css"
+import DraftDeskPlayerCard from "../shared/DraftDeskPlayerCard"
 
 let viewPlayerIdTimer: NodeJS.Timeout
 
@@ -43,6 +45,7 @@ const EditRankingsView = ({
   hasCustomRanking,
   onReorderPlayer,
   onFinishCustomRanking,
+  onCancelCustomRanking,
   onUpdateTierBoundary,
   loadCurrentRankings,
   selectedPosition,
@@ -57,6 +60,7 @@ const EditRankingsView = ({
   rankings,
   latestRankings,
   rankingProfileControls,
+  compact = false,
 }: EditRankingsViewProps) => {
   const [shownPlayerId, setShownPlayerId] = useState<string | null>(null)
   const [shownPlayerBg, setShownPlayerBg] = useState("")
@@ -274,6 +278,7 @@ const EditRankingsView = ({
     boardSettings,
     onUpdateTierBoundary,
     allCards: cardsForPosition(FantasyPosition.QUARTERBACK),
+    compact,
   })
   const runningBackTierDividers = useTierDividers({
     position: FantasyPosition.RUNNING_BACK,
@@ -281,6 +286,7 @@ const EditRankingsView = ({
     boardSettings,
     onUpdateTierBoundary,
     allCards: cardsForPosition(FantasyPosition.RUNNING_BACK),
+    compact,
   })
   const wideReceiverTierDividers = useTierDividers({
     position: FantasyPosition.WIDE_RECEIVER,
@@ -288,6 +294,7 @@ const EditRankingsView = ({
     boardSettings,
     onUpdateTierBoundary,
     allCards: cardsForPosition(FantasyPosition.WIDE_RECEIVER),
+    compact,
   })
   const tightEndTierDividers = useTierDividers({
     position: FantasyPosition.TIGHT_END,
@@ -295,6 +302,7 @@ const EditRankingsView = ({
     boardSettings,
     onUpdateTierBoundary,
     allCards: cardsForPosition(FantasyPosition.TIGHT_END),
+    compact,
   })
   const tierDividersByPosition: Partial<
     Record<FantasyPosition, ReturnType<typeof useTierDividers>>
@@ -469,15 +477,17 @@ const EditRankingsView = ({
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className={`${compact ? styles.compactEditor : ""} h-full flex flex-col`} data-testid="custom-ranking-editor">
       {/* Controls for edit rankings view */}
-      <div className="flex flex-row mb-4 align-center flex-shrink-0">
+      <div className={`${compact ? styles.compactEditorHeader : "mb-4"} flex flex-row align-center flex-shrink-0`}>
         <div className="flex flex-col text-left">
-          <h2 className="text-2xl font-bold">Edit Rankings</h2>
-          <p className="text-sm text-gray-600">
+          <h2 className={compact ? "text-sm font-bold" : "text-2xl font-bold"}>Edit Rankings</h2>
+          <p className={compact ? "text-[8px] text-gray-600" : "text-sm text-gray-600"}>
             Drag players to reorder rankings • Click tier to edit and click new placement to move
           </p>
-          <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+          <details className={compact ? styles.compactEditorProfile : ""} open={!compact}>
+            <summary className={compact ? styles.compactEditorProfileSummary : "sr-only"}>Profile and sync controls</summary>
+          <div className={`${compact ? styles.compactEditorProfileBody : "mt-3 rounded-lg border border-indigo-200 bg-indigo-50 p-3"}`}>
             <div className="flex flex-wrap items-end gap-2">
               <label className="flex min-w-44 flex-col text-xs font-semibold text-gray-700">
                 Ranking profile
@@ -612,13 +622,24 @@ const EditRankingsView = ({
               )}
             </div>
           </div>
-          <div className="hidden md:flex flex-col">
+          </details>
+          <div className={`${compact ? styles.compactEditorActions : "hidden md:flex flex-col"}`}>
             <div className="flex flex-row">
               <button
                   className="p-2 m-1 border rounded-md bg-green-500 text-white hover:bg-green-600"
                   onClick={onFinishCustomRanking}
                 >
                   Finish
+              </button>
+              <button
+                className="p-2 m-1 border rounded-md bg-white text-gray-700 hover:bg-gray-100"
+                onClick={() => {
+                  loadCurrentRankings()
+                  onFinishCustomRanking()
+                  onCancelCustomRanking()
+                }}
+              >
+                Cancel
               </button>
               { hasCustomRanking &&
                 <button
@@ -665,20 +686,39 @@ const EditRankingsView = ({
               </select>
             </div>
           </div>
+          {compact && (
+            <nav aria-label="Custom ranking position" className={styles.compactEditorPositions}>
+              {[
+                FantasyPosition.QUARTERBACK,
+                FantasyPosition.RUNNING_BACK,
+                FantasyPosition.WIDE_RECEIVER,
+                FantasyPosition.TIGHT_END,
+              ].map(position => (
+                <button
+                  aria-pressed={selectedPosition === position}
+                  key={position}
+                  onClick={() => setSelectedPosition(position as keyof PlayerRanks)}
+                  type="button"
+                >
+                  {position}
+                </button>
+              ))}
+            </nav>
+          )}
         </div>
       </div>
 
-      <div className="flex flex-col h-full mb-32 md:mb-4 overflow-hidden">
+      <div className={`flex flex-col h-full overflow-hidden ${compact ? "mb-0" : "mb-32 md:mb-4"}`}>
         {/* Drafted players section - responsive grid */}
         { draftStarted && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-1 mb-4 flex-shrink-0">
+          <div className={`grid grid-cols-1 gap-1 flex-shrink-0 ${compact ? "mb-1" : "md:grid-cols-4 mb-4"}`}>
             { draftBoardView.filter(column => column.columnTitle !== 'Purge').map( (draftBoardColumn, i) => {
               const { columnTitle } = draftBoardColumn
               const position = columnTitle as FantasyPosition
               const rosterPlayers = (myRoster as any)[position] || []
 
               // On mobile, only show the selected position's roster
-              if (isMobileDevice() && position !== selectedPosition) {
+              if ((compact || isMobileDevice()) && position !== selectedPosition) {
                 return null
               }
 
@@ -694,6 +734,19 @@ const EditRankingsView = ({
                     const { fullName, team } = player
                     const roundDrafted = getPlayerDraftRound(playerId)
                     const tierStyle = getTierStyle(tierNumber)
+
+                    if (compact) {
+                      return <DraftDeskPlayerCard
+                        boardSettings={boardSettings}
+                        className={styles.editorRosterCard}
+                        compact
+                        fantasySettings={fantasySettings}
+                        key={playerId}
+                        leadingRank={`R${roundDrafted}`}
+                        player={player}
+                        rankContext={`Roster · R${roundDrafted}${tierNumber ? ` · User T${tierNumber}` : ""}`}
+                      />
+                    }
 
                     return(
                       <div key={playerId}
@@ -742,12 +795,12 @@ const EditRankingsView = ({
               ref={setScrollContainerRef}
               className="overflow-x-auto overflow-y-auto h-full w-full"
             >
-              <div className="grid grid-cols-1 md:grid-cols-4 min-w-full md:min-w-0 w-full">
+              <div className={`grid grid-cols-1 min-w-full w-full ${compact ? "" : "md:grid-cols-4 md:min-w-0"}`}>
               { draftBoardView.filter(column => column.columnTitle !== 'Purge').map( (draftBoardColumn, i) => {
                 const { columnTitle, cards } = draftBoardColumn
 
                 // On mobile, only show the selected position column
-                if (isMobileDevice() && columnTitle !== selectedPosition) {
+                if ((compact || isMobileDevice()) && columnTitle !== selectedPosition) {
                   return null
                 }
 
@@ -765,7 +818,9 @@ const EditRankingsView = ({
                 return(
                   <div key={i} className="flex flex-row w-full md:w-auto">
                     <div className="flex flex-col w-full">
-                      <div className={`p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500`}>
+                      <div className={compact
+                        ? `${styles.editorPositionHeader} ${columnTitle === "QB" ? styles.positionQB : columnTitle === "RB" ? styles.positionRB : columnTitle === "WR" ? styles.positionWR : styles.positionTE}`
+                        : `p-1 rounded m-1 ${posStyle} border-b-4 border-indigo-500`}>
                         <span className="font-bold underline">{ columnTitle }</span>
                         { Boolean(predNextTiers[columnTitle]) &&
                           <p className="text-xs font-semibold">next-next pick @ tier { predNextTiers[columnTitle] }</p>
@@ -787,7 +842,9 @@ const EditRankingsView = ({
                             {!dividerBefore && shouldShowPlacement && tierDividers.renderPlacementIndicator(playerPosIdx, `placement-before-${playerPosIdx}`)}
                             
                             {/* Render the card */}
-                            {isTitleCard(card) ? (
+                            {isTitleCard(card) ? compact ? (
+                              <div className={styles.editorTitleCard} key={`${card.title}-${playerPosIdx}`}>{card.title}</div>
+                            ) : (
                               <div key={`${card.title}-${playerPosIdx}`} id={`${card.title}-${playerPosIdx}`}
                                 className={`px-2 m-1 text-center border rounded shadow-md relative ${card.bgColor}`}
                               >
@@ -847,6 +904,68 @@ const EditRankingsView = ({
                                 const majorSyncPosRankDiff = syncPlayerDiffs && Boolean(syncPlayerDiffs.posRankDiff && syncPlayerDiffs.posRankDiff > (fantasySettings.numTeams / 3))
                                 const majorSyncDiff = majorSyncAdpDiff || majorSyncPosRankDiff
                                 const cardBorderStyle = isHoveringPlayer || majorSyncDiff ? 'border border-4 border-indigo-500' : 'border'
+
+                                if (compact) {
+                                  const projectionEvidence = projTierText
+                                    ? `Projection ${projTierText}`
+                                    : hasHistory
+                                      ? "Projection unavailable"
+                                      : "Projection uncertain"
+                                  return <DraftDeskPlayerCard
+                                    actions={<>
+                                      <button
+                                        aria-label={`View ${fullName} history`}
+                                        onClick={event => {
+                                          event.preventDefault()
+                                          event.stopPropagation()
+                                          handleOpenStatsModal(player)
+                                        }}
+                                        type="button"
+                                      >History</button>
+                                      {syncPlayerDiffs && hasSignificantDiffs(id) && (
+                                        <button
+                                          onClick={event => {
+                                            event.preventDefault()
+                                            event.stopPropagation()
+                                            onRevertPlayerToPreSync(id)
+                                            toast.success(`Reverted ${fullName} to pre-sync ranking`)
+                                          }}
+                                          type="button"
+                                        >Revert</button>
+                                      )}
+                                    </>}
+                                    boardSettings={boardSettings}
+                                    className={`${styles.editablePlayerCard} ${isDraggedOver ? styles.editablePlayerCardOver : ""} ${isDragged ? styles.editablePlayerCardDragged : ""}`}
+                                    compact
+                                    evidence={<>
+                                      <span>ADP {adp ? getRoundAndPickShortText(adp, fantasySettings.numTeams) : "—"}</span>
+                                      <span>{projectionEvidence}</span>
+                                      {majorSyncDiff && <span className={styles.editorDiffFlag}>Updated</span>}
+                                    </>}
+                                    fantasySettings={fantasySettings}
+                                    focused={isHoveringPlayer}
+                                    leadingRank={posRank ?? playerPosIdx + 1}
+                                    onFocusPlayer={playerId => {
+                                      setShownPlayerId(playerId)
+                                      setViewPlayerId(playerId)
+                                    }}
+                                    player={player}
+                                    rankContext={`${rankText}${tier ? ` · User T${tierNumber}` : ""}`}
+                                    rootProps={{
+                                      draggable: !isMobileDevice(),
+                                      "data-player-card": "true",
+                                      "data-player-index": playerPosIdx,
+                                      "data-column-title": columnTitle,
+                                      onDragStart: event => !isMobileDevice() && handleDragStart(event, player),
+                                      onDragOver: event => !isMobileDevice() && handleDragOver(event, playerPosIdx),
+                                      onDragLeave: () => !isMobileDevice() && handleDragLeave(),
+                                      onDrop: event => !isMobileDevice() && handleDrop(event, columnTitle, playerPosIdx, tierDividers),
+                                      onTouchStart: event => isMobileDevice() && handleTouchStart(event, player),
+                                      onTouchMove: event => isMobileDevice() && handleTouchMove(event),
+                                      onTouchEnd: event => isMobileDevice() && handleTouchEnd(event, columnTitle),
+                                    } as React.HTMLAttributes<HTMLDivElement>}
+                                  />
+                                }
 
                                 return(
                                   <div key={`${id}-${playerPosIdx}`} id={`${id}-${playerPosIdx}`}

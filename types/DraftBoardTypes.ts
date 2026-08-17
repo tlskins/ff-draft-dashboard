@@ -62,6 +62,7 @@ export interface RankingViewProps extends SharedViewProps {
   highlightOption: HighlightOption
   setHighlightOption: (option: HighlightOption) => void
   rankings: Rankings
+  onEditRankings?: () => void
 }
 
 // Props specific to edit rankings view
@@ -70,6 +71,7 @@ export interface EditRankingsViewProps extends SharedViewProps {
   canEditCustomRankings: boolean
   onReorderPlayer: (playerId: string, position: keyof PlayerRanks, newIndex: number) => void
   onFinishCustomRanking: () => void
+  onCancelCustomRanking: () => void
   loadCurrentRankings: () => void
   onUpdateTierBoundary: (position: keyof PlayerRanks, tierNumber: number, newBoundaryIndex: number) => void
   selectedPosition: keyof PlayerRanks

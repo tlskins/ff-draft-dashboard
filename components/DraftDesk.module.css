@@ -268,23 +268,30 @@
 .positionTE { border-left-color: var(--desk-te) !important; }
 
 .playerCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: 21px minmax(0, 1fr);
   min-width: 0;
-  padding: 5px 6px;
-  border: 1px solid var(--desk-border);
+  min-height: 38px;
+  padding: 2px 5px 2px 2px;
+  border: 0;
+  border-bottom: 1px solid #d9ddde;
   border-left: 3px solid #7a858b;
-  border-radius: 3px;
+  border-radius: 0;
   color: var(--desk-text);
-  background: #fff;
+  background: #e8ebeb;
   text-align: left;
 }
 
-.playerCard:hover { border-color: #94a3b8; }
+.playerCard:hover { background: #e1e6e7; }
 .playerCardFocused {
-  border-color: var(--desk-selection);
-  box-shadow: inset 0 0 0 1px var(--desk-selection);
+  background: #e4edf3;
+  box-shadow: inset 2px 0 var(--desk-selection);
 }
-.playerCardCompact { padding: 4px 5px; }
-.playerCardHeader { display: flex; min-width: 0; align-items: baseline; gap: 4px; }
+.playerCardCompact { padding-block: 2px; }
+.playerCardRank { display: grid; place-items: center; color: #657078; font-size: 10px; }
+.playerCardBody { min-width: 0; padding-left: 3px; }
+.playerCardHeader { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 4px; }
 .playerCardName {
   min-width: 0;
   overflow: hidden;
@@ -294,10 +301,18 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.playerCardMeta { margin: 2px 0 0; color: var(--desk-text-muted); font-size: 8px; line-height: 1.25; }
-.playerCardUrgency { margin: 3px 0 0; color: var(--desk-urgency); font-size: 9px; font-weight: 650; }
-.playerCardActions { display: flex; gap: 4px; margin-top: 5px; padding-top: 4px; border-top: 1px solid #dfe2e2; }
-.targetFlag { flex: 0 0 auto; padding: 1px 3px; border-radius: 2px; color: #47535a; background: #d0d7da; font-size: 7px; font-weight: 650; line-height: 1.2; }
+.playerCardDetails { display: flex; min-width: 0; align-items: center; gap: 4px; margin-top: 1px; }
+.playerCardMeta { min-width: 0; flex: 1 1 auto; margin: 0; overflow: hidden; color: var(--desk-text-muted); font-size: 7px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.playerCardEvidence { display: flex; min-width: 0; flex: 0 1 auto; align-items: center; gap: 3px; margin: 0; overflow: hidden; color: var(--desk-text-muted); font-size: 7px; line-height: 1.2; white-space: nowrap; }
+.playerCardUrgency { flex: 0 0 auto; padding: 1px 3px; border: 1px solid #d4b77c; border-radius: 2px; overflow: hidden; color: #805b1f; background: #eee3cf; font-size: 6px; font-weight: 750; letter-spacing: .02em; line-height: 1.1; text-overflow: ellipsis; }
+.playerCardActions { display: none; align-items: center; gap: 3px; margin-top: 3px; }
+.playerCard:hover .playerCardActions,
+.playerCard:focus-within .playerCardActions { display: flex; }
+.playerCardActions button,
+.playerCardActions select { min-height: 18px; padding: 1px 3px; border: 1px solid #b8c1c5; border-radius: 2px; color: #36556a; background: #f4f3ef; font-size: 7px; line-height: 1; }
+.targetFlag,
+.tierFlag { flex: 0 0 auto; padding: 1px 3px; border-radius: 2px; color: #47535a; background: #d0d7da; font-size: 7px; font-weight: 650; line-height: 1.2; }
+.targetFlag { color: #2e668e; background: #d6e2e8; }
 
 .modeToggle {
   display: inline-flex;
@@ -336,7 +351,199 @@
 .positionLane { display: flex; min-width: 0; min-height: 0; flex-direction: column; background: var(--desk-surface); }
 .positionLaneHeader { display: flex; min-height: 28px; align-items: center; justify-content: space-between; gap: 4px; padding: 5px 8px; border-bottom: 1px solid #cfd4d5; color: #334047; background: var(--desk-surface-muted); font-size: 9px; font-weight: 650; letter-spacing: .04em; }
 .positionLaneHeader span:last-child { color: #737e84; font-size: 8px; font-weight: 450; letter-spacing: 0; }
-.positionLaneCards { display: grid; gap: 3px; min-height: 0; padding: 4px; overflow-y: auto; }
+.positionLaneColumns { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 3px; padding: 3px 5px; border-bottom: 1px solid #d3d7d8; color: #707a80; background: #e7e9e8; font-size: 7px; letter-spacing: .05em; }
+.positionLaneCards { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; padding: 0; overflow-y: auto; }
+
+.rankingsToolbar { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 4px; padding: 4px 7px; border-bottom: 1px solid #d7dbdd; color: #737d83; background: var(--desk-surface); font-size: 9px; }
+.positionPairToggle { display: flex; gap: 2px; }
+.positionPairToggle button { min-height: 26px; padding: 4px 7px; border: 1px solid transparent; border-radius: 3px; color: #59656c; background: transparent; font-size: 9px; }
+.positionPairToggle button[aria-pressed="true"] { color: #fff; background: var(--desk-selection); }
+.rankingsUtilities { display: flex; min-width: 0; align-items: center; gap: 3px; }
+.rankingsUtilities > span { white-space: nowrap; }
+.deskSelect,
+.deskUtilityButton { min-height: 24px; max-width: 86px; padding: 2px 5px; border: 1px solid #bcc4c8; border-radius: 3px; color: #47545c; background: #f3f3f0; font-size: 8px; }
+.deskUtilityButton { max-width: none; }
+.rankingRosterDetails { padding: 3px 7px; border-bottom: 1px solid #d7dbdd; color: #59656c; background: #e9ebeb; font-size: 9px; }
+.rankingRosterDetails summary { cursor: pointer; }
+
+.metricStrip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border-bottom: 1px solid #d2d6d8; background: #f4f3ef; }
+.metricStrip > div { min-width: 0; padding: 7px 9px; border-right: 1px solid #d2d6d8; }
+.metricStrip > div:last-child { border-right: 0; }
+.metricStrip dt { overflow: hidden; color: #747e84; font-size: 7px; letter-spacing: .04em; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.metricStrip dd { margin: 2px 0 0; overflow: hidden; font-size: 11px; font-weight: 650; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.metricStrip .metricUrgent { color: var(--desk-urgency); }
+.profileBody { min-height: 0; }
+.profileWatch { padding: 3px 6px; border-radius: 3px; color: #59707e; background: #dce4e7; font-size: 8px; white-space: nowrap; }
+.profileState,
+.profileUnavailable { margin: 0; padding: 18px 12px; color: var(--desk-text-muted); font-size: 11px; line-height: 1.45; }
+.profileStatus { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 6px; padding: 6px 9px; border-bottom: 1px solid #cad4d8; background: #e5ebee; }
+.profileStatus > span { color: #60727c; font-size: 7px; letter-spacing: .06em; }
+.profileStatus p { margin: 0; font-size: 9px; line-height: 1.3; }
+.profileStatusMeta { display: flex; flex-wrap: wrap; gap: 3px 6px; margin-top: 3px !important; color: #65727a; font-size: 7px !important; }
+.profileStatusMeta strong { color: var(--desk-danger); text-transform: uppercase; }
+.profileStatusMeta span:first-of-type { padding: 0 3px; border-radius: 2px; color: #5d6870; background: #d6dbdd; font-weight: 650; text-transform: uppercase; }
+.profileStatusMeta a { color: var(--desk-selection); }
+.profileStatusUnavailable { background: #f0ebe3; }
+.profileHistory { border-bottom: 1px solid #d4d8da; }
+.profileSectionHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; padding: 9px 10px 3px; }
+.profileSectionHeader strong,
+.profileSectionHeader span { display: block; }
+.profileSectionHeader strong { font-size: 11px; font-weight: 650; }
+.profileSectionHeader span { color: #788288; font-size: 8px; }
+.deskLineChart { display: block; width: 100%; max-height: 138px; aspect-ratio: 320 / 118; overflow: visible; }
+.chartGridLine { stroke: #d3d8da; stroke-width: .75; vector-effect: non-scaling-stroke; }
+.chartLine { fill: none; stroke: var(--desk-selection); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.chartPoint { fill: #f4f3ef; stroke: var(--desk-selection); stroke-width: 1.7; vector-effect: non-scaling-stroke; }
+.chartTickLabel,
+.chartSeasonLabel,
+.chartUnitLabel { fill: #6c787f; font-size: 7px; }
+.chartUnitLabel { font-size: 6px; letter-spacing: .04em; }
+.profileHistoryTable { width: 100%; border-collapse: collapse; font-size: 8px; }
+.profileHistoryTable th,
+.profileHistoryTable td { padding: 3px 8px; border-top: 1px solid #d9ddde; text-align: right; }
+.profileHistoryTable th:first-child { text-align: left; }
+.profileHistoryTable thead th { color: #68747a; background: #e7e9e8; font-weight: 500; }
+.profileOutlook { padding: 7px 10px; border-bottom: 1px solid #d4d8da; background: #e8ecec; }
+.profileOutlook header { display: flex; justify-content: space-between; gap: 8px; }
+.profileOutlook header span,
+.profileOutlook header a { color: #61727b; font-size: 7px; letter-spacing: .04em; text-transform: uppercase; }
+.profileOutlook header a { color: var(--desk-selection); letter-spacing: 0; }
+.profileOutlook p { margin: 3px 0 0; color: #3f4a51; font-size: 9px; line-height: 1.35; }
+.profileOutlook footer { margin-top: 4px; color: #69767d; font-size: 7px; line-height: 1.3; }
+.profileNotes p { display: grid; grid-template-columns: 18px auto 1fr; gap: 5px; align-items: start; margin: 0; padding: 6px 10px; border-bottom: 1px solid #dfe2e2; color: #68737a; font-size: 9px; line-height: 1.3; }
+.profileNotes p > span { display: grid; width: 16px; height: 16px; place-items: center; border-radius: 3px; color: var(--desk-selection); background: #dde8ef; }
+.profileNotes p > strong { color: #263038; font-weight: 650; text-transform: capitalize; }
+.profileNotes a { color: var(--desk-selection); }
+.profileEvidenceBody { display: grid; gap: 1px; min-width: 0; color: #3f4a51; }
+.profileEvidenceBody small { color: #6c787f; font-size: 7px; }
+.profileDetails { margin: 8px 10px 12px; border-top: 1px solid #cfd4d6; color: #536068; font-size: 9px; }
+.profileDetails > summary { padding: 7px 0; cursor: pointer; font-weight: 650; }
+
+.adpDesk { display: flex; min-height: 0; height: 100%; flex-direction: column; background: var(--desk-surface); }
+.adpToolbar { display: flex; min-height: 34px; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 6px; border-bottom: 1px solid #c9ced0; background: #e7e9e8; }
+.adpToolbar > div { display: flex; align-items: center; gap: 4px; }
+.adpToolbar strong { font-size: 8px; font-weight: 650; }
+.adpToolbar button { min-width: 22px; min-height: 22px; border: 1px solid #bcc4c8; border-radius: 3px; color: #47545c; background: #f3f3f0; font-size: 8px; }
+.adpToolbar button:disabled { opacity: .4; }
+.adpToolbar span { color: #66727a; font-size: 8px; }
+.targetWindows { display: flex; min-height: 26px; align-items: center; gap: 5px; padding: 4px 6px; border-bottom: 1px solid #c9ced0; background: #eceeed; overflow: hidden; }
+.targetWindows > span { flex: 0 0 auto; color: #6b767d; font-size: 7px; letter-spacing: .05em; }
+.targetWindows button { min-width: 0; padding: 2px 4px; overflow: hidden; border: 0; border-left: 3px solid var(--desk-selection); color: #43525a; background: #d6e2e8; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.adpGrid { display: grid; min-height: 0; flex: 1 1 auto; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; }
+.adpColumn { display: flex; min-width: 0; min-height: 0; flex-direction: column; border-left: 1px solid #c9ced0; }
+.adpColumn:first-child { border-left: 0; }
+.adpColumn > header { min-height: 54px; padding: 6px 7px; border-bottom: 1px solid #c9ced0; background: #dde2e3; }
+.adpColumn > header span,
+.adpColumn > header strong,
+.adpColumn > header small { display: block; }
+.adpColumn > header span { color: #637078; font-size: 7px; letter-spacing: .06em; }
+.adpColumn > header strong { margin-top: 1px; font-size: 9px; font-weight: 650; }
+.adpColumn > header small { color: #7b858a; font-size: 7px; }
+.adpCards { min-height: 0; overflow-y: auto; }
+.adpCards .playerCard { grid-template-columns: 18px minmax(0, 1fr); min-height: 54px; }
+.adpCards .playerCardName { font-size: 8px; }
+.adpCards .playerCardMeta { font-size: 7px; }
+.adpCards .playerCardEvidence { display: none; }
+.targetActions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; padding: 3px; border-bottom: 1px solid #d4d8da; }
+.targetActions button { min-height: 20px; padding: 2px; border: 1px solid #bcc4c8; color: #47545c; background: #f3f3f0; font-size: 7px; }
+.targetChart { display: flex; min-height: 0; height: 100%; flex-direction: column; overflow: hidden; color: var(--desk-text); background: var(--desk-surface); }
+.targetChartHeader { display: flex; min-height: 34px; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 6px; border-bottom: 1px solid var(--desk-border); background: var(--desk-surface-muted); }
+.targetChartHeader button,
+.targetChartHeader select { min-height: 23px; padding: 2px 6px; border: 1px solid #b8c1c5; border-radius: 3px; color: #365f78; background: #f4f3ef; font-size: 8px; }
+.targetChartHeader button { font-weight: 650; }
+.targetChartHeader label { display: flex; align-items: center; gap: 4px; color: #68747a; font-size: 7px; letter-spacing: .04em; text-transform: uppercase; }
+.targetChartIntro { display: flex; min-height: 46px; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 7px; border-bottom: 1px solid var(--desk-border); }
+.targetChartIntro strong,
+.targetChartIntro > div > span { display: block; }
+.targetChartIntro strong { font-size: 10px; }
+.targetChartIntro > div > span { margin-top: 1px; color: #6c777e; font-size: 7px; }
+.targetChartLegend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 3px 7px; }
+.targetChartLegend span { display: flex !important; align-items: center; gap: 3px; margin: 0 !important; white-space: nowrap; }
+.targetChartLegend i { display: inline-block; width: 10px; height: 5px; }
+.targetWindowLegend { border: 1px solid #8ba8b9; background: #d7e4eb; }
+.adpLegend { width: 3px !important; background: var(--desk-rb); }
+.currentPickLegend { height: 1px !important; border-top: 1px dashed var(--desk-urgency); }
+.targetChartBody { min-height: 0; flex: 1 1 auto; overflow-x: hidden; overflow-y: auto; }
+.targetChartScale { display: grid; min-height: 25px; grid-template-columns: 118px minmax(0, 1fr); align-items: center; border-bottom: 1px solid #d3d7d8; color: #788289; background: #e7e9e8; font-size: 7px; }
+.targetChartScale > span { padding-left: 8px; letter-spacing: .05em; }
+.targetChartScale > div { position: relative; height: 100%; margin: 0 32px 0 8px; }
+.targetChartScale > div > span { position: absolute; top: 9px; transform: translateX(-50%); }
+.targetRoundGroups { min-width: 0; }
+.targetRoundGroup { border-bottom: 1px solid #bcc5c9; background: #e7eae9; }
+.targetRoundHeader,
+.targetGroupPlayer { display: grid; min-width: 0; grid-template-columns: 118px minmax(0, 1fr); }
+.targetRoundHeader { min-height: 48px; align-items: stretch; border-bottom: 1px solid #d1d6d8; background: #dde3e5; }
+.targetRoundHeader > div:first-child { display: flex; min-width: 0; flex-direction: column; justify-content: center; padding: 5px 7px; }
+.targetRoundHeader strong { font-size: 8px; letter-spacing: .025em; line-height: 1.2; }
+.targetRoundHeader span { margin-top: 2px; color: #66747b; font-size: 6px; line-height: 1.25; }
+.targetGroupTrack,
+.targetPlayerPlot { position: relative; min-width: 0; margin: 0 32px 0 8px; }
+.targetGroupTrack { margin-block: 10px 8px; border-top: 1px solid #b9c3c7; border-bottom: 1px solid #b9c3c7; background: #f1f2ef; }
+.targetGroupPlayers { margin: 0; padding: 0; list-style: none; }
+.targetGroupPlayer { min-height: 38px; border-left: 3px solid #7a858b; border-bottom: 1px solid #d7dbdc; background: #e9eceb; }
+.targetGroupPlayer:last-child { border-bottom: 0; }
+.targetGroupPlayer:hover { background: #e2e7e8; }
+.targetChartIdentity { display: flex; min-width: 0; flex-direction: column; justify-content: center; padding: 4px 6px; }
+.targetChartIdentity strong { overflow: hidden; font-size: 9px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.targetChartIdentity span { overflow: hidden; color: #6e7980; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.targetRoundWindow { position: absolute; top: 5px; height: 15px; min-width: 8px; border: 1px solid #86a9bc; border-radius: 2px; background: #cfe0e9; }
+.targetRoundWindow i { position: absolute; top: 2px; left: 3px; color: #365f78; font-size: 6px; font-style: normal; font-weight: 700; white-space: nowrap; }
+.targetPlayerPlot { display: flex; min-height: 38px; align-items: center; }
+.targetPlayerBaseline { position: absolute; right: 0; left: 0; top: 18px; border-top: 1px solid #c2c9cc; }
+.targetAdpMarker { position: absolute; z-index: 1; top: 8px; width: 3px; height: 21px; transform: translateX(-1px); background: #617078; }
+.targetAdpMarker i { position: absolute; top: 5px; left: 5px; color: #46555e; font-size: 7px; font-style: normal; font-weight: 650; white-space: nowrap; }
+.targetMarkerQB { background: var(--desk-qb); }
+.targetMarkerRB { background: var(--desk-rb); }
+.targetMarkerWR { background: var(--desk-wr); }
+.targetMarkerTE { background: var(--desk-te); }
+.currentPickLine { position: absolute; z-index: 2; top: -5px; height: 34px; border-left: 1px dashed var(--desk-urgency); }
+.currentPickLine i { position: absolute; top: -8px; left: 3px; color: var(--desk-urgency); font-size: 6px; font-style: normal; white-space: nowrap; }
+.targetPlayerValue { position: absolute; right: 0; bottom: 2px; padding-left: 3px; color: #66737a; background: #e9eceb; font-size: 6px; }
+.targetChartEmpty { margin: 10px; padding: 18px 10px; border: 1px dashed #bfc6c9; color: #68757c; background: #e9ebea; font-size: 9px; line-height: 1.4; text-align: center; }
+
+.compactEditor { min-height: 0; padding: 0; overflow: hidden; color: var(--desk-text); background: var(--desk-surface); }
+.compactEditorHeader { padding: 5px 7px 3px; border-bottom: 1px solid #cdd2d4; background: #e8eae9; }
+.compactEditorHeader > div { width: 100%; min-width: 0; }
+.compactEditorProfile { margin-top: 4px; border: 1px solid #c8ced1; border-radius: 3px; background: #f1f2ef; }
+.compactEditorProfileSummary { padding: 4px 6px; color: #4c6574; font-size: 8px; font-weight: 650; cursor: pointer; }
+.compactEditorProfileBody { padding: 5px; border-top: 1px solid #d3d7d8; }
+.compactEditorProfileBody label { min-width: 100px; font-size: 8px; }
+.compactEditorProfileBody input,
+.compactEditorProfileBody select,
+.compactEditorProfileBody button { min-height: 22px; padding: 2px 5px; font-size: 8px; }
+.compactEditorActions { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 4px; }
+.compactEditorActions > div { align-items: center; margin: 0 !important; }
+.compactEditorActions button { min-height: 23px; margin: 3px 2px; padding: 2px 6px; border-radius: 3px; font-size: 8px; }
+.compactEditorActions label { margin-right: 3px; font-size: 8px; }
+.compactEditorActions select { padding: 2px 4px; font-size: 8px; }
+.compactEditorPositions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; margin-top: 2px; }
+.compactEditorPositions button { min-height: 24px; border: 1px solid #bcc4c8; border-radius: 3px; color: #526068; background: #f3f3f0; font-size: 9px; font-weight: 650; }
+.compactEditorPositions button[aria-pressed="true"] { border-color: var(--desk-selection); color: #fff; background: var(--desk-selection); }
+.editorPositionHeader { display: flex; min-height: 30px; align-items: center; justify-content: space-between; gap: 5px; padding: 5px 7px; border-bottom: 1px solid #c8ced0; border-left: 3px solid #7a858b; color: #344149; background: #dde2e3; }
+.editorPositionHeader > span { font-size: 10px; font-weight: 700; }
+.editorPositionHeader p { margin: 0; color: #68747b; font-size: 7px; }
+.editorRosterCard { min-height: 38px; margin: 1px 3px 0; background: #e1e6e7; }
+.editablePlayerCard { min-height: 42px; margin: 1px 3px 0; padding: 2px 6px 2px 2px; box-shadow: none; cursor: grab; }
+.editablePlayerCard:active { cursor: grabbing; }
+.editablePlayerCardOver { outline: 1px dashed var(--desk-selection); outline-offset: -2px; background: #dbe7ed; }
+.editablePlayerCardDragged { opacity: .5; }
+.editablePlayerCard .playerCardName { font-size: 10px; }
+.editablePlayerCard .playerCardDetails { flex-wrap: wrap; row-gap: 1px; }
+.editablePlayerCard .playerCardEvidence { flex: 1 1 auto; justify-content: flex-end; font-size: 7px; }
+.editablePlayerCard .playerCardActions { margin-top: 2px; }
+.editorDiffFlag { padding: 1px 3px; border-radius: 2px; color: #7a4f17; background: #eadcc5; font-weight: 650; }
+.editorTitleCard { margin: 2px 3px 0; padding: 3px 6px; border-left: 3px solid #7a858b; color: #637078; background: #dfe3e4; font-size: 7px; font-weight: 650; text-transform: uppercase; }
+.editTierDivider,
+.editTierPlacement { width: calc(100% - 6px); min-height: 21px; margin: 2px 3px 0; border-radius: 2px; font-size: 7px; }
+.editTierDivider { display: flex; align-items: center; justify-content: space-between; gap: 5px; padding: 3px 6px; border: 1px solid #aeb9be; border-left: 3px solid var(--desk-selection); color: #44545d; background: #dce3e6; text-align: left; }
+.editTierDivider span { font-weight: 700; }
+.editTierDivider small { color: #6b777e; font-size: 7px; }
+.editTierDivider:hover { background: #d3dde1; }
+.editTierDividerActive { border-color: var(--desk-selection); color: #fff; background: var(--desk-selection); }
+.editTierDividerActive small { color: #dcebf3; }
+.editTierPlacement { border: 1px dashed var(--desk-selection); color: #376984; background: #e3edf2; font-weight: 650; }
+.editTierPlacement:hover,
+.editTierPlacement:focus-visible { background: #d5e6ee; outline: 2px solid var(--desk-focus); outline-offset: 1px; }
 
 .draftDock {
   position: absolute;
@@ -394,6 +601,7 @@
   border-radius: 0;
   color: #c4cdd2;
   background: var(--desk-chrome-panel);
+  display: block;
 }
 .playerCardDock:hover { border-color: #53626b; background: #33414a; }
 .playerCardDockPick { display: block; margin-bottom: 6px; color: #f1f3f4; font-size: 8px; font-weight: 650; line-height: 1; }

@@ -215,6 +215,7 @@ const RankingsBoard = ({
           canEditCustomRankings={canEditCustomRankings}
           onReorderPlayer={onReorderPlayer}
           onFinishCustomRanking={onFinishCustomRanking}
+          onCancelCustomRanking={onCancelCustomRanking}
           onUpdateTierBoundary={onUpdateTierBoundary}
           loadCurrentRankings={loadCurrentRankings}
           selectedPosition={selectedPosition}
@@ -269,6 +270,7 @@ const RankingsBoard = ({
         highlightOption={highlightOption}
         setHighlightOption={setHighlightOption}
         rankings={rankings}
+        onEditRankings={() => setDraftView(DraftView.CUSTOM_RANKING)}
       />
     )
   }
@@ -295,7 +297,7 @@ const RankingsBoard = ({
         </div>
       </div>}
     
-      <div className="flex flex-row mb-2 align-center justify-center items-center content-center w-full">
+      {(!compact || !hideCompactModeControl) && <div className="flex flex-row mb-2 align-center justify-center items-center content-center w-full">
         <div className="flex flex-col text-left">
           <div className="flex flex-row">
             {compact && !hideCompactModeControl ? (
@@ -345,18 +347,9 @@ const RankingsBoard = ({
                 )}
               </div>
             ) }
-            {compact && !isEditingCustomRanking && (
-              <button
-                className={`${styles.focusRing} ml-1 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold hover:bg-slate-100`}
-                onClick={() => setDraftView(DraftView.CUSTOM_RANKING)}
-                type="button"
-              >
-                Edit rankings
-              </button>
-            )}
           </div>
         </div>
-      </div>
+      </div>}
 
       {renderCurrentView()}
 
