@@ -21,7 +21,7 @@ import type {
 } from "../behavior/analysis/intraPosition"
 import { buildAnalysisViewQuery } from "../behavior/analysis/presets"
 import type { PlayerStatusEvent } from "../behavior/api/playerStatus"
-import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
+import AnalysisWorkspace from "../test-support/TestAnalysisWorkspace"
 import IntraPositionLiveSurface from "../components/analysis/IntraPositionLiveSurface"
 import {
   BoardSettings,
@@ -976,6 +976,14 @@ describe("intra-position workspace and historical boundaries", () => {
     players: [libraryLiveOne, liveTwo, historicalOnly, qb],
     rankingSummaries: [projectionSummary()],
     settings,
+    comparisonController: {
+      mode: "pinned" as const,
+      items: [libraryLiveOne, historicalOnly, liveTwo].map(player => ({
+        player, reasonCode: "manual_pin" as const, reasonLabel: "Manual pin",
+      })),
+      announcement: "",
+      pinCurrent: jest.fn(), restoreAuto: jest.fn(), addPinnedPlayer: jest.fn(), removePinnedPlayer: jest.fn(),
+    },
   }
 
   beforeEach(() => {
@@ -984,7 +992,7 @@ describe("intra-position workspace and historical boundaries", () => {
     mockedExecute.mockResolvedValue(historicalResponse)
   })
 
-  it("renders the live shortlist without a historical request and keeps Player A / Player B manually controlled", async () => {
+  it("renders the live shortlist without a historical request and keeps the shared pinned set controlled", async () => {
     const view = render(<AnalysisWorkspace {...workspaceProps} />)
     fireEvent.click(view.getByRole("button", {
       name: "Player lab",
@@ -994,8 +1002,8 @@ describe("intra-position workspace and historical boundaries", () => {
       .toBeTruthy()
     expect(view.getByText("rb-one Player", {selector: "h3"})).toBeTruthy()
     expect(mockedExecute).not.toHaveBeenCalled()
-    expect((view.getByLabelText("Analysis primary player") as HTMLSelectElement)
-      .value).toBe("rb-one")
+    expect(view.getByRole("group", {name: "Shared Player Lab set · 3/3"}))
+      .toBeTruthy()
 
     view.rerender(
       <AnalysisWorkspace
@@ -1003,8 +1011,8 @@ describe("intra-position workspace and historical boundaries", () => {
         availablePlayers={[liveTwo, qb]}
       />,
     )
-    expect((view.getByLabelText("Analysis primary player") as HTMLSelectElement)
-      .value).toBe("rb-one")
+    expect(view.getByRole("group", {name: "Shared Player Lab set · 3/3"}))
+      .toBeTruthy()
     expect(view.queryByText("rb-one Player", {selector: "h3"})).toBeNull()
     expect(mockedExecute).not.toHaveBeenCalled()
 

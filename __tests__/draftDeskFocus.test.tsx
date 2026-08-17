@@ -1,7 +1,7 @@
 import React from "react"
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 
-import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
+import AnalysisWorkspace from "../test-support/TestAnalysisWorkspace"
 import DraftDeskProfilePane from "../components/DraftDeskProfilePane"
 import { useDataReadiness } from "../behavior/api/dataReadiness"
 import {
@@ -73,9 +73,8 @@ describe("Phase 14A profile focus boundary", () => {
       </>,
     )
     fireEvent.click(screen.getByRole("button", {name: "Player lab"}))
-    const primary = await screen.findByLabelText("Analysis primary player")
-    fireEvent.change(primary, {target: {value: "rb-3"}})
-    await waitFor(() => expect((primary as HTMLSelectElement).value).toBe("rb-3"))
+    const comparison = screen.getByRole("region", {name: "Advisor comparison set"})
+    expect(within(comparison).getByText("Runner Three")).toBeTruthy()
 
     view.rerender(
       <>
@@ -100,8 +99,8 @@ describe("Phase 14A profile focus boundary", () => {
     )
 
     expect(screen.getAllByRole("heading", {name: "Runner Two"}).length).toBeGreaterThan(0)
-    expect((screen.getByLabelText("Analysis primary player") as HTMLSelectElement).value)
-      .toBe("rb-3")
+    expect(within(screen.getByRole("region", {name: "Advisor comparison set"}))
+      .getByText("Runner Three")).toBeTruthy()
   })
 
   it("presents populated profile evidence and preserves unavailable status", () => {

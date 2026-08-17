@@ -21,6 +21,11 @@ import styles from "./DraftDesk.module.css"
 import DeskPaneHeader from "./draft-desk/DeskPaneHeader"
 import DeskMetricStrip from "./draft-desk/DeskMetricStrip"
 import DeskLineChart from "./draft-desk/DeskLineChart"
+import {
+  normalizePlayerOutlook,
+  playerOutlookFreshness,
+  playerOutlookSourceLabel,
+} from "../behavior/playerOutlook"
 
 export interface DraftDeskFixtureProfileDetails {
   byeWeek?: number
@@ -35,6 +40,7 @@ interface DraftDeskProfilePaneProps {
   rankingSummaries: RankingSummary[]
   playerStatus: PlayerStatusCacheSnapshot
   fixtureDetails?: DraftDeskFixtureProfileDetails
+  rankingsSeason?: number | null
 }
 
 const profileHistory = (player: Player, settings: FantasySettings) =>
@@ -111,6 +117,7 @@ const DraftDeskProfilePane = ({
   rankingSummaries,
   playerStatus,
   fixtureDetails,
+  rankingsSeason,
 }: DraftDeskProfilePaneProps) => {
   const [detailsOpen, setDetailsOpen] = useState(false)
   return <section aria-label="Player profile and history" className={`${styles.pane} h-full overflow-y-auto text-left`}>
@@ -147,22 +154,15 @@ const DraftDeskProfilePane = ({
         || events.find(event => event.recommendation_impact !== "none")
         || events[0]
       const statusSummary = status?.response?.summary
-      const outlookEvent = events.find(event => event.source === "espn_profile_news")
-      const outlook = statusSummary?.text || fixtureDetails?.outlook || outlookEvent?.short_summary
-      const outlookOwner = statusSummary?.text
-        ? "structured-summary"
-        : fixtureDetails?.outlook
-          ? "fixture"
-          : outlookEvent
-            ? "espn-event"
-            : null
-      const outlookLabel = outlookOwner === "structured-summary"
-        ? "Structured player outlook"
-        : outlookOwner === "fixture"
-          ? "Illustrative fixture outlook"
-          : outlookOwner === "espn-event"
-            ? "ESPN player news"
-            : null
+      const artifactOutlook = player.outlook || (fixtureDetails?.outlook
+        ? normalizePlayerOutlook(fixtureDetails.outlook, {
+            source: "fixture",
+            season: rankingsSeason,
+          })
+        : null)
+      const outlookFreshness = artifactOutlook
+        ? playerOutlookFreshness(artifactOutlook, rankingsSeason)
+        : null
 
       return (
         <div className={styles.profileBody}>
@@ -203,28 +203,55 @@ const DraftDeskProfilePane = ({
 
           <HistoryChart player={player} settings={settings} />
 
-          {outlook && outlookLabel && (
-            <section aria-label={outlookLabel} className={styles.profileOutlook}>
-              <header><span>{outlookLabel}</span>{outlookOwner === "espn-event" && outlookEvent?.source_url && (
-                <a href={outlookEvent.source_url} rel="noreferrer" target="_blank">Source</a>
-              )}</header>
-              <p>{outlook}</p>
-              {statusSummary && (
-                <footer aria-label="Structured summary provenance">
-                  {structuredSummaryProvenance(statusSummary.method)}
-                  {statusSummary.model ? ` · ${statusSummary.model}` : ""}
-                  {statusSummary.generated_at && (
-                    <>
-                      {" · "}
-                      <time dateTime={statusSummary.generated_at}>
-                        generated {statusTimestampLabel(statusSummary.generated_at)}
-                      </time>
-                    </>
-                  )}
-                </footer>
-              )}
+          {statusSummary?.text && (
+            <section aria-label="Structured player outlook" className={styles.profileOutlook}>
+              <header><span>Structured player outlook</span></header>
+              <p>{statusSummary.text}</p>
+              <footer aria-label="Structured summary provenance">
+                {structuredSummaryProvenance(statusSummary.method)}
+                {statusSummary.model ? ` · ${statusSummary.model}` : ""}
+                {statusSummary.generated_at && (
+                  <>
+                    {" · "}
+                    <time dateTime={statusSummary.generated_at}>
+                      generated {statusTimestampLabel(statusSummary.generated_at)}
+                    </time>
+                  </>
+                )}
+              </footer>
             </section>
           )}
+
+          <section aria-label="ESPN player outlook" className={styles.profileOutlook}>
+            <header><span>{artifactOutlook?.source === "fixture"
+              ? "Illustrative fixture outlook"
+              : "ESPN player outlook"}</span></header>
+            {artifactOutlook ? (
+              <>
+                <p>{artifactOutlook.text}</p>
+                <footer aria-label="Player outlook provenance">
+                  {playerOutlookSourceLabel(artifactOutlook.source)}
+                  {artifactOutlook.season
+                    ? ` · ${artifactOutlook.season} season`
+                    : " · season unknown; not labeled current"}
+                  {outlookFreshness === "prior" && " · stale prior-season evidence"}
+                  {outlookFreshness === "mismatched" && " · season does not match active rankings"}
+                  {artifactOutlook.observedAt ? (
+                    <>
+                      {" · "}
+                      <time dateTime={artifactOutlook.observedAt}>
+                        observed {statusTimestampLabel(artifactOutlook.observedAt)}
+                      </time>
+                    </>
+                  ) : " · observation time unavailable"}
+                </footer>
+              </>
+            ) : (
+              <p className={styles.profileOutlookUnavailable}>
+                ESPN player outlook unavailable for this player.
+              </p>
+            )}
+          </section>
 
           <div className={styles.profileNotes}>
             {player.pros && <p><span>+</span><strong>Upside</strong> {player.pros}</p>}

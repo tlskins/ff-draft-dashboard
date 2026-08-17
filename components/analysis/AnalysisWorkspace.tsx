@@ -26,6 +26,9 @@ import type {
 import type {
   PlayerStatusCacheSnapshot,
 } from "../../behavior/api/playerStatusCache"
+import type {
+  AdvisorComparisonController,
+} from "../../behavior/hooks/useAdvisorComparisonController"
 import {
   AnalysisPosition,
   buildAnalysisViewQuery,
@@ -61,7 +64,6 @@ import {
   userFacingAnalysisViewId,
   userFacingAnalysisViewLabel,
 } from "../../behavior/analysis/viewState"
-import {getPlayerMetrics} from "../../behavior/draft"
 import {
   BoardSettings,
   FantasySettings,
@@ -76,6 +78,7 @@ import PlayerLabHistorical from "./PlayerLabHistorical"
 import TierLandscapeLiveSurface from "./TierLandscapeLiveSurface"
 import type {TierRunwayForecast} from "./TierLandscapeLiveSurface"
 import styles from "./AnalysisRedesign.module.css"
+import AdvisorComparisonSurface from "../AdvisorComparisonSurface"
 
 
 interface AnalysisWorkspaceProps {
@@ -99,6 +102,7 @@ interface AnalysisWorkspaceProps {
   followActivePlayer?: boolean
   /** The embedded desk pane keeps controls readable at laptop widths. */
   compact?: boolean
+  comparisonController: AdvisorComparisonController
   onClose?: () => void
 }
 
@@ -156,6 +160,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   onAnalysisViewEventHandled,
   followActivePlayer = true,
   compact = false,
+  comparisonController,
   onClose,
 }) => {
   const readiness = useDataReadiness()
@@ -177,9 +182,6 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     () => eligiblePlayers.filter(player => player.position === position),
     [eligiblePlayers, position],
   )
-  const [primaryId, setPrimaryId] = useState(activePlayer?.id || "")
-  const [secondaryId, setSecondaryId] = useState("")
-  const [additionalComparisonIds, setAdditionalComparisonIds] = useState<string[]>([])
   const [viewState, setViewState] =
     useState<AnalysisViewState>(loadViewState)
   const [seasonWindow, setSeasonWindow] = useState<1 | 3 | 5>(5)
@@ -278,47 +280,6 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   }, [])
 
   useEffect(() => {
-    const nextPrimary = activePlayer?.id || positionPlayers[0]?.id || ""
-    if (!primaryId || (followActivePlayer && activePlayer)) {
-      setPrimaryId(nextPrimary)
-    }
-  }, [activePlayer, followActivePlayer, positionPlayers, primaryId])
-
-  useEffect(() => {
-    const candidate = positionPlayers.find(player =>
-      player.id !== primaryId)
-    if (
-      !secondaryId ||
-      secondaryId === primaryId ||
-      !positionPlayers.some(player => player.id === secondaryId)
-    ) {
-      setSecondaryId(candidate?.id || "")
-    }
-  }, [positionPlayers, primaryId, secondaryId])
-
-  useEffect(() => {
-    setAdditionalComparisonIds(current => {
-      const next = current.filter(id => (
-        id !== primaryId
-        && id !== secondaryId
-        && positionPlayers.some(player => player.id === id)
-      )).slice(0, 3)
-      const selected = new Set([primaryId, secondaryId, ...next].filter(Boolean))
-      for (const player of positionPlayers) {
-        if (selected.size >= Math.min(3, positionPlayers.length)) break
-        if (selected.has(player.id)) continue
-        next.push(player.id)
-        selected.add(player.id)
-      }
-      const bounded = next.slice(0, 3)
-      return bounded.length === current.length
-        && bounded.every((id, index) => id === current[index])
-        ? current
-        : bounded
-    })
-  }, [positionPlayers, primaryId, secondaryId])
-
-  useEffect(() => {
     if (followActivePlayer && activePlayer) {
       setPosition(activePlayer.position as AnalysisPosition)
     }
@@ -389,27 +350,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     onAnalysisViewEventHandled,
   ])
 
-  const selectedPlayerIds = Array.from(new Set([
-    primaryId,
-    secondaryId,
-    ...additionalComparisonIds,
-  ].filter(Boolean))).slice(0, 5)
-  const crossPositionPlayerIds = useMemo(() => POSITIONS.flatMap(
-    candidatePosition => {
-      const ranked = eligiblePlayers
-        .filter(player => player.position === candidatePosition)
-        .map(player => ({
-          player,
-          rank: getPlayerMetrics(
-            player,
-            settings,
-            boardSettings,
-          ).posRank || Number.MAX_SAFE_INTEGER,
-        }))
-        .sort((left, right) => left.rank - right.rank)
-      return ranked[0] ? [ranked[0].player.id] : []
-    },
-  ), [boardSettings, eligiblePlayers, settings])
+  const selectedPlayerIds = comparisonController.items.map(item => (
+    item.player.id
+  ))
   const activeView = userFacingAnalysisViewDefinition(viewState.view)
   const drawerPlayerIsValid = drawerPlayerOrigin !== "live"
     || (
@@ -459,11 +402,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   const canRun = Boolean(selectedSeasonWindow) && !readiness.loading
     && !readiness.error && (
     viewState.view === "cross_position"
-      ? crossPositionPlayerIds.length > 0
+      ? selectedPlayerIds.length > 0
       : viewState.view === "intra_position"
-        ? positionPlayers.length >= 3
-          && selectedPlayerIds.length >= 3
-          && selectedPlayerIds.length <= 5
+        ? selectedPlayerIds.length === 3
         : positionPlayers.length > 0
   )
 
@@ -561,7 +502,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
       const query = buildAnalysisViewQuery({
         view: viewState.view,
         playerIds: selectedPlayerIds,
-        crossPositionPlayerIds,
+        crossPositionPlayerIds: selectedPlayerIds,
         position,
         seasons: selectedSeasons,
         scoringProfile,
@@ -668,6 +609,11 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             : "Automatic: advisor may change this view"}
         </span>
       </div>
+
+      <AdvisorComparisonSurface
+        availablePlayers={availablePlayers}
+        controller={comparisonController}
+      />
       <div
         aria-atomic="true"
         aria-live="polite"
@@ -756,7 +702,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
               <>
                 <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Player Lab</p>
                 <h2 className="text-xl font-bold text-slate-950">How different are their weekly outcomes?</h2>
-                <p className="mt-1 text-xs text-slate-500">Choose three to five players, then load the requested season data. Scoring distribution and playing-time evidence stay separate so the view never invents a cause.</p>
+                <p className="mt-1 text-xs text-slate-500">Use the shared maximum-three comparison set, then load the requested season data. Scoring distribution and playing-time evidence stay separate so the view never invents a cause.</p>
               </>
             ) : (
               <>
@@ -833,8 +779,6 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                 value={position}
                 onChange={event => {
                   setPosition(event.target.value as AnalysisPosition)
-                  setPrimaryId("")
-                  setSecondaryId("")
                 }}
               >
                 {POSITIONS.map(value => (
@@ -844,126 +788,49 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             </label>
             )}
             {viewState.view === "intra_position" && (
-              <>
-                <label className="mb-2 block text-sm">
-                  Player A
-                  <select
-                    aria-label="Analysis primary player"
-                    className="mt-1 w-full rounded border border-slate-300 p-2"
-                    value={primaryId}
-                    onChange={event => setPrimaryId(event.target.value)}
-                  >
-                    {positionPlayers.map(player => (
-                      <option key={player.id} value={player.id}>
-                        {player.fullName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block text-sm">
-                  Player B
-                  <select
-                    aria-label="Analysis comparison player"
-                    className="mt-1 w-full rounded border border-slate-300 p-2"
-                    value={secondaryId}
-                    onChange={event => setSecondaryId(event.target.value)}
-                  >
-                    {positionPlayers
-                      .filter(player => player.id !== primaryId)
-                      .map(player => (
-                        <option key={player.id} value={player.id}>
-                          {player.fullName}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <fieldset className="mt-3">
-                  <legend className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Add players · {selectedPlayerIds.length}/5
-                  </legend>
-                  <p className="mt-1 text-xs text-slate-600" id="player-lab-selection-guidance">
-                    {positionPlayers.length < 3
-                      ? `Player Lab needs at least 3 eligible ${position} players; only ${positionPlayers.length} ${positionPlayers.length === 1 ? "is" : "are"} available in this pool.`
-                      : "Keep 3–5 players selected. Remove controls are disabled at the three-player minimum."}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Selected Player Lab players">
-                    {selectedPlayerIds.map((playerId, index) => {
-                      const player = eligiblePlayers.find(candidate => candidate.id === playerId)
-                      return player ? <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold shadow-sm" key={player.id}><span className="h-2 w-2 rounded-full" style={{backgroundColor: PLAYER_LAB_COLORS[index % PLAYER_LAB_COLORS.length]}} />{player.fullName}</span> : null
-                    })}
-                  </div>
-                  <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
-                    <div className="flex flex-wrap gap-1.5">
-                    {positionPlayers.filter(player => (
-                      player.id !== primaryId && player.id !== secondaryId
-                    )).map(player => {
-                      const checked = additionalComparisonIds.includes(player.id)
-                      return (
-                        <button
-                          aria-describedby="player-lab-selection-guidance"
-                          aria-pressed={checked}
-                          className={`cursor-pointer rounded-full border px-2.5 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 ${checked ? "border-indigo-500 bg-indigo-100 ring-2 ring-indigo-200" : "border-slate-300 bg-white hover:border-indigo-400"}`}
-                          disabled={
-                            (!checked && selectedPlayerIds.length >= 5)
-                            || (
-                              checked
-                              && positionPlayers.length >= 3
-                              && selectedPlayerIds.length <= 3
-                            )
-                          }
-                          key={player.id}
-                          onClick={() => setAdditionalComparisonIds(current => {
-                            if (
-                              checked
-                              && positionPlayers.length >= 3
-                              && selectedPlayerIds.length <= 3
-                            ) return current
-                            return checked
-                              ? current.filter(id => id !== player.id)
-                              : [...current, player.id].slice(0, 3)
-                          })}
-                          type="button"
-                        >
-                          <span aria-hidden="true" className="mr-1">{checked ? "✓" : "+"}</span>
-                          {player.fullName}
-                        </button>
-                      )
-                    })}
-                    </div>
-                  </div>
-                </fieldset>
-              </>
+              <fieldset className="mt-3">
+                <legend className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Shared Player Lab set · {selectedPlayerIds.length}/3
+                </legend>
+                <p className="mt-1 text-xs text-slate-600" id="player-lab-selection-guidance">
+                  The advisor comparison set is shared with Player Lab. Pin and edit it above; the historical API runs only when requested.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Selected Player Lab players">
+                  {comparisonController.items.map((item, index) => (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold shadow-sm" key={item.player.id}>
+                      <span className="h-2 w-2 rounded-full" style={{backgroundColor: PLAYER_LAB_COLORS[index % PLAYER_LAB_COLORS.length]}} />
+                      {item.player.fullName}
+                    </span>
+                  ))}
+                </div>
+              </fieldset>
             )}
             {viewState.view === "cross_position" && (
               <div className="rounded-lg bg-slate-50 p-3">
                 <p className="mb-2 text-xs text-slate-500">
-                  Historical comparison uses the top library player at each
-                  position and runs only when requested.
+                  Historical comparison uses the shared advisor set and runs
+                  only when requested.
                 </p>
                 <div className="flex flex-wrap gap-1">
-                  {crossPositionPlayerIds.map(playerId => {
-                    const player = eligiblePlayers.find(
-                      candidate => candidate.id === playerId,
-                    )
-                    return player ? (
+                  {comparisonController.items.map(item => {
+                    const player = item.player
+                    return (
                       <span
                         className="rounded bg-white px-2 py-1 text-xs shadow-sm"
                         key={player.id}
                       >
                         {player.position}: {player.fullName}
                       </span>
-                    ) : null
+                    )
                   })}
                 </div>
               </div>
             )}
             {viewState.view === "intra_position" && (
               <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-                The live shortlist uses only explicitly available players at
-                the selected position. The three-to-five-player historical
-                comparison uses the full eligible same-position library,
-                remains independent of live updates, and runs only when you
-                choose Run analysis.
+                The shared maximum-three comparison set remains independent of
+                profile focus. Player Lab history runs only when you choose Run
+                analysis.
               </p>
             )}
             {["tier_landscape", "positional_bests", "cross_position"].includes(
@@ -1037,6 +904,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
           )}
           {viewState.view === "cross_position" && (
             <CrossPositionLiveSurface
+              announceUpdates={false}
               model={crossPositionModel}
               onInspectPlayer={inspectLivePlayer}
               tierModel={tierLandscapeModel}
@@ -1098,7 +966,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             <div className={styles.labEmpty}>
               <h2 className="font-bold text-slate-900">Player Lab is ready</h2>
               <p className="mx-auto mt-2 max-w-xl text-sm">
-                Choose three to five {position} players above and run the
+                Use the three shared players above and run the
                 analysis to compare their scoring ranges, full {selectedSeasons[selectedSeasons.length - 1]} season,
                 and recorded playing-time gaps.
               </p>

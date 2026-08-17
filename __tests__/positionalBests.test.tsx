@@ -18,7 +18,7 @@ import type {
 } from "../behavior/draft-advisor/recommendations"
 import { executeHistoricalAnalysis } from "../behavior/api/historicalAnalysis"
 import {useDataReadiness} from "../behavior/api/dataReadiness"
-import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
+import AnalysisWorkspace from "../test-support/TestAnalysisWorkspace"
 import PositionalBestsLiveSurface from "../components/analysis/PositionalBestsLiveSurface"
 import {
   FantasyPosition,

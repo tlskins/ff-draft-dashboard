@@ -9,7 +9,7 @@ import {
   executeHistoricalAnalysis,
 } from "../behavior/api/historicalAnalysis"
 import {useDataReadiness} from "../behavior/api/dataReadiness"
-import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
+import AnalysisWorkspace from "../test-support/TestAnalysisWorkspace"
 import {
   completedDataReadiness,
   completedDataReadinessState,
@@ -230,6 +230,56 @@ describe("decision analysis workspace navigation", () => {
     fireEvent.click(getByRole("button", {name: "Inspect Player One"}))
     expect(getByText("Player comparison")).toBeTruthy()
     expect(getByRole("dialog")).toBeTruthy()
+  })
+
+  it("uses the shared advisor set as Player Lab defaults without auto-querying", () => {
+    const controller = {
+      mode: "auto" as const,
+      items: [players[2], players[0], players[1]].map(player => ({
+        player,
+        reasonCode: "recommended_now" as const,
+        reasonLabel: "Recommended now",
+      })),
+      announcement: "",
+      pinCurrent: jest.fn(), restoreAuto: jest.fn(),
+      addPinnedPlayer: jest.fn(), removePinnedPlayer: jest.fn(),
+    }
+    const view = render(
+      <AnalysisWorkspace
+        activePlayer={players[0]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        comparisonController={controller}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    fireEvent.click(view.getByRole("button", {name: "Player lab"}))
+    const selected = view.getByLabelText("Selected Player Lab players")
+    expect(selected.textContent).toContain(players[2].fullName)
+    expect(selected.textContent?.indexOf(players[2].fullName))
+      .toBeLessThan(selected.textContent?.indexOf(players[0].fullName) || 0)
+    expect(mockedExecute).not.toHaveBeenCalled()
+
+    view.rerender(
+      <AnalysisWorkspace
+        activePlayer={players[1]}
+        boardSettings={{
+          ranker: ThirdPartyRanker.HARRIS,
+          adpRanker: ThirdPartyADPRanker.ESPN,
+        }}
+        comparisonController={{...controller, items: controller.items.slice(1)}}
+        players={players}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    expect(view.getByLabelText("Selected Player Lab players").textContent)
+      .not.toContain(players[2].fullName)
+    expect(mockedExecute).not.toHaveBeenCalled()
   })
 
   it("exposes the three consolidated workspaces as selectable accessible controls", () => {

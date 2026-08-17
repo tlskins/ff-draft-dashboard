@@ -19,6 +19,17 @@ describe("Phase 14A visual acceptance fixture", () => {
     expect(screen.getByText("Home League")).toBeTruthy()
     expect(screen.getAllByText("De'Von Achane").length).toBeGreaterThan(0)
     expect(screen.getByText("Cross-position value")).toBeTruthy()
+    const advisorSet = screen.getByRole("region", {name: "Advisor comparison set"})
+    expect(within(advisorSet).getByRole("button", {name: "Auto"})
+      .getAttribute("aria-pressed")).toBe("true")
+    expect(within(advisorSet).getAllByText("Recommended now")).toHaveLength(3)
+    expect(screen.getByText(/Explosive runner and receiver with weekly RB1 upside/))
+      .toBeTruthy()
+    expect(screen.getByLabelText("Player outlook provenance").textContent)
+      .toContain("ESPN · 2026 season · observed 2026-08-16 12:00 UTC")
+    fireEvent.click(within(advisorSet).getByRole("button", {name: "Pinned"}))
+    expect(within(advisorSet).getByRole("button", {name: "Pinned"})
+      .getAttribute("aria-pressed")).toBe("true")
     const decisionTable = screen.getByRole("table", {
       name: "Cross-position decision matrix",
     })
@@ -38,6 +49,9 @@ describe("Phase 14A visual acceptance fixture", () => {
 
     fireEvent.mouseEnter(screen.getByRole("group", {name: /Drake London, WR/}))
     expect(screen.getAllByRole("heading", {name: /Drake London/}).length).toBeGreaterThan(0)
+    expect(screen.getByText("ESPN player outlook unavailable for this player."))
+      .toBeTruthy()
+    expect(within(advisorSet).getByText("De'Von Achane")).toBeTruthy()
 
     fireEvent.click(screen.getByRole("button", {name: "QB + TE"}))
     expect(screen.getByTestId("ranking-position-lane-QB")).toBeTruthy()

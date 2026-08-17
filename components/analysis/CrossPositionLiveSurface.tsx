@@ -23,6 +23,8 @@ interface CrossPositionLiveSurfaceProps {
   model: CrossPositionPresentationModel | null
   tierModel?: TierLandscapePresentationModel | null
   onInspectPlayer: (player: Player) => void
+  /** Shared advisor comparison ownership supplies the single live announcement. */
+  announceUpdates?: boolean
 }
 
 const rosterRoleLabel: Record<
@@ -1387,6 +1389,7 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
   model,
   tierModel = null,
   onInspectPlayer,
+  announceUpdates = true,
 }) => {
   const previousUpdateKey = useRef<string | null>(null)
   const announcementCount = useRef(0)
@@ -1394,7 +1397,9 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
   const updateKey = candidateUpdateKey(model, tierModel)
 
   useEffect(() => {
-    if (previousUpdateKey.current !== null && previousUpdateKey.current !== updateKey) {
+    if (announceUpdates
+      && previousUpdateKey.current !== null
+      && previousUpdateKey.current !== updateKey) {
       announcementCount.current += 1
       if (!model) {
         setAnnouncement(
@@ -1414,7 +1419,7 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
       }
     }
     previousUpdateKey.current = updateKey
-  }, [model, updateKey])
+  }, [announceUpdates, model, updateKey])
 
   if (!model) {
     return (

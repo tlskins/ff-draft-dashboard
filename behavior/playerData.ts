@@ -2,12 +2,31 @@ import { FantasyPosition, Rankings } from "types";
 import ranks from "./playerData.json";
 import { toCamelCase } from "./presenters";
 import type { components as ApiComponents } from "./api/schema";
+import {normalizePlayerOutlook} from "./playerOutlook";
 
 type RankingsApiResponse = ApiComponents["schemas"]["RankingsResponse"]
 
-const toDomainRankings = (rankings: RankingsApiResponse): Rankings => {
+export const toDomainRankings = (rankings: RankingsApiResponse): Rankings => {
   const skiplist = Object.values(FantasyPosition);
-  return toCamelCase(rankings, skiplist) as unknown as Rankings;
+  const domain = toCamelCase(rankings, skiplist) as unknown as Rankings;
+  const players = domain.players as Array<
+    Rankings["players"][number] & {playerOutlook?: unknown}
+  >
+  return {
+    ...domain,
+    players: players.map(player => {
+      const outlook = normalizePlayerOutlook(
+        player.outlook ?? player.playerOutlook,
+        {
+          source: "espn",
+          season: domain.season,
+          observedAt: domain.cachedAt,
+        },
+      )
+      const {playerOutlook: _legacyPlayerOutlook, ...withoutLegacy} = player
+      return {...withoutLegacy, outlook}
+    }),
+  };
 }
 
 export const getEmbeddedPlayerData = (): Rankings => {

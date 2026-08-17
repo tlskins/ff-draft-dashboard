@@ -43,6 +43,9 @@ import {
   usePlayerStatusCache,
 } from "../behavior/hooks/usePlayerStatusCache"
 import {
+  useAdvisorComparisonController,
+} from "../behavior/hooks/useAdvisorComparisonController"
+import {
   useRealtimeConversation,
 } from "../behavior/hooks/useRealtimeConversation"
 import { Player, ThirdPartyRanker } from "types"
@@ -103,6 +106,10 @@ import {
   restoreDraftDeskPanePlacement,
   swapDraftDeskPanePlacement,
 } from "@/behavior/draftDesk"
+import {
+  buildAdvisorComparisonSet,
+  createMaterialDraftEventKey,
+} from "@/behavior/advisorComparisonSet"
 
 export enum DraftView {
   RANKING = "Rankings By Position",
@@ -287,6 +294,27 @@ const Home: FC = () => {
     return Array.from(availableById.values())
       .sort((left, right) => left.id.localeCompare(right.id))
   }, [playerRanks])
+  const automaticComparisonSet = useMemo(() => buildAdvisorComparisonSet({
+    recommendations,
+    availablePlayers: analysisAvailablePlayers,
+    playerTargets,
+    settings,
+    boardSettings,
+  }), [
+    analysisAvailablePlayers,
+    boardSettings,
+    playerTargets,
+    recommendations,
+    settings,
+  ])
+  const materialDraftEventKey = useMemo(
+    () => createMaterialDraftEventKey(draftHistory),
+    [draftHistory],
+  )
+  const comparisonController = useAdvisorComparisonController({
+    automaticSet: automaticComparisonSet,
+    materialEventKey: materialDraftEventKey,
+  })
 
   const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
   const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
@@ -991,6 +1019,7 @@ const Home: FC = () => {
                         players={Object.values(playerLib)}
                         playerStatus={playerStatus}
                         rankingSummaries={rankingSummaries}
+                        rankingsSeason={rankings.season}
                         settings={settings}
                       />
                     )}
@@ -1086,6 +1115,7 @@ const Home: FC = () => {
                             availablePlayers={analysisAvailablePlayers}
                             boardSettings={boardSettings}
                             compact
+                            comparisonController={comparisonController}
                             followActivePlayer={false}
                             players={Object.values(playerLib)}
                             rankingSummaries={rankingSummaries}
@@ -1115,6 +1145,7 @@ const Home: FC = () => {
                 activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
                 availablePlayers={analysisAvailablePlayers}
                 boardSettings={boardSettings}
+                comparisonController={comparisonController}
                 onClose={() => setAnalysisOpen(false)}
                 players={Object.values(playerLib)}
                 rankingSummaries={rankingSummaries}
@@ -1373,6 +1404,7 @@ const Home: FC = () => {
                   activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
                   availablePlayers={analysisAvailablePlayers}
                   boardSettings={boardSettings}
+                  comparisonController={comparisonController}
                   players={Object.values(playerLib)}
                   rankingSummaries={rankingSummaries}
                   recommendations={recommendations}

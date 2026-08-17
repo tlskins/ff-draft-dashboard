@@ -444,6 +444,7 @@
 .profileOutlook header a { color: var(--desk-selection); letter-spacing: 0; }
 .profileOutlook p { margin: 3px 0 0; color: #3f4a51; font-size: 9px; line-height: 1.35; }
 .profileOutlook footer { margin-top: 4px; color: #69767d; font-size: 7px; line-height: 1.3; }
+.profileOutlook .profileOutlookUnavailable { color: #69767d; font-style: italic; }
 .profileNotes p { display: grid; grid-template-columns: 18px auto 1fr; gap: 5px; align-items: start; margin: 0; padding: 6px 10px; border-bottom: 1px solid #dfe2e2; color: #68737a; font-size: 9px; line-height: 1.3; }
 .profileNotes p > span { display: grid; width: 16px; height: 16px; place-items: center; border-radius: 3px; color: var(--desk-selection); background: #dde8ef; }
 .profileNotes p > strong { color: #263038; font-weight: 650; text-transform: capitalize; }
@@ -452,6 +453,58 @@
 .profileEvidenceBody small { color: #6c787f; font-size: 7px; }
 .profileDetails { margin: 8px 10px 12px; border-top: 1px solid #cfd4d6; color: #536068; font-size: 9px; }
 .profileDetails > summary { padding: 7px 0; cursor: pointer; font-weight: 650; }
+
+.comparisonSet {
+  margin-bottom: 5px;
+  border: 1px solid #c6cccf;
+  border-radius: 3px;
+  overflow: hidden;
+  color: var(--desk-text, #17202a);
+  background: #eef0ef;
+}
+.comparisonSetHeader {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 6px;
+  border-bottom: 1px solid #cbd1d3;
+  background: #e1e5e5;
+}
+.comparisonSetHeader strong,
+.comparisonSetHeader span { display: block; }
+.comparisonSetHeader strong { font-size: 9px; line-height: 1.2; }
+.comparisonSetHeader span { margin-top: 1px; color: #6a747b; font-size: 7px; }
+.comparisonSetHeader .modeToggle button { padding: 3px 6px; font-size: 8px; }
+.comparisonSetList { display: grid; margin: 0; padding: 0; list-style: none; }
+.comparisonSetItem {
+  display: grid;
+  min-width: 0;
+  min-height: 32px;
+  grid-template-columns: 3px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px 3px 0;
+  border-bottom: 1px solid #d8dcdd;
+  background: #f2f2ef;
+}
+.comparisonSetItem:last-child { border-bottom: 0; }
+.comparisonSetItem > span:first-child { align-self: stretch; border-left: 3px solid #7a858b; }
+.comparisonSetItem > div { min-width: 0; }
+.comparisonSetItem strong,
+.comparisonSetItem > div > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comparisonSetItem strong { font-size: 9px; line-height: 1.2; }
+.comparisonSetItem > div > span { margin-top: 1px; color: #6c777e; font-size: 7px; }
+.comparisonSetItem small { padding: 2px 4px; border-radius: 2px; color: #4d6573; background: #dbe4e7; font-size: 7px; font-weight: 650; white-space: nowrap; }
+.comparisonSetItem button { width: 20px; height: 20px; padding: 0; border: 1px solid #b8c1c5; border-radius: 2px; color: #5b6870; background: #f8f8f5; line-height: 1; }
+.comparisonSetAdd { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px; padding: 4px 6px; border-top: 1px solid #cbd1d3; background: #e6e9e8; }
+.comparisonSetAdd label { color: #657078; font-size: 7px; text-transform: uppercase; }
+.comparisonSetAdd select,
+.comparisonSetAdd button { min-height: 22px; padding: 2px 5px; border: 1px solid #b8c1c5; border-radius: 2px; color: #36556a; background: #f4f3ef; font-size: 8px; }
+.comparisonSetAdd button { font-weight: 650; }
+.comparisonSetAdd :disabled { cursor: not-allowed; opacity: .5; }
+.comparisonSetEmpty { margin: 0; padding: 9px; color: #69757b; font-size: 8px; }
 
 .adpDesk { display: flex; min-height: 0; height: 100%; flex-direction: column; background: var(--desk-surface); }
 .adpToolbar { display: flex; min-height: 34px; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 6px; border-bottom: 1px solid #c9ced0; background: #e7e9e8; }

@@ -15,7 +15,7 @@ import type {
   DraftRecommendationCandidate,
   DraftRecommendationSet,
 } from "../behavior/draft-advisor/recommendations"
-import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
+import AnalysisWorkspace from "../test-support/TestAnalysisWorkspace"
 import CrossPositionLiveSurface, {
   expectedNextOption,
   waitCostEstimate,

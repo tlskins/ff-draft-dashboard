@@ -244,6 +244,13 @@ export interface RankingSummary {
     tiers: { [key in FantasyPosition]: Tier[] };
 }
 
+export interface PlayerOutlook {
+    text: string;
+    source: string;
+    season: number | null;
+    observedAt: string | null;
+}
+
 export interface Player {
     id: string;
     firstName: string;
@@ -262,6 +269,7 @@ export interface Player {
     cons?: string;
     sourcePresence?: { espn: EspnSourcePresence }
     availability?: PlayerAvailability
+    outlook?: PlayerOutlook | null
 
     // TODO - need to handle "target"
 }

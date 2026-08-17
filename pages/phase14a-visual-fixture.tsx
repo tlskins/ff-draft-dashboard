@@ -14,9 +14,17 @@ import DeskPaneHeader from "../components/draft-desk/DeskPaneHeader"
 import DeskSegmentedControl from "../components/draft-desk/DeskSegmentedControl"
 import DraftDeskAdvisorDisclosure from "../components/draft-desk/DraftDeskAdvisorDisclosure"
 import CrossPositionLiveSurface from "../components/analysis/CrossPositionLiveSurface"
+import AdvisorComparisonSurface from "../components/AdvisorComparisonSurface"
 import {buildCrossPositionPresentationModel} from "../behavior/analysis/crossPosition"
 import {buildTierLandscapePresentationModel} from "../behavior/analysis/tierLandscape"
 import {createDraftRecommendations} from "../behavior/draft-advisor/recommendations"
+import {
+  buildAdvisorComparisonSet,
+  createMaterialDraftEventKey,
+} from "../behavior/advisorComparisonSet"
+import {
+  useAdvisorComparisonController,
+} from "../behavior/hooks/useAdvisorComparisonController"
 import type {OpponentForecast} from "../behavior/draft-advisor/types"
 import {createDraftPlanProposal} from "../behavior/realtime/proposals"
 import type {DraftPlanDocument} from "../behavior/realtime/contracts"
@@ -138,6 +146,12 @@ const player = (
     }])),
     pros: id === "achane" ? "Explosive efficiency and receiving usage create a weekly ceiling." : undefined,
     cons: id === "achane" ? "Workload has varied more than the other top running backs." : undefined,
+    outlook: id === "achane" ? {
+      text: "Explosive runner and receiver with weekly RB1 upside. Touch volume remains the primary source of volatility.",
+      source: "espn",
+      season: 2026,
+      observedAt: "2026-08-16T12:00:00Z",
+    } : null,
   }
 }
 
@@ -354,6 +368,17 @@ const Phase14AVisualFixture = () => {
     predictedPicks: {achane: 2, taylor: 0, brown: 1, london: 5, mcbride: 7},
     opponentForecast: fixtureOpponentForecast,
   }), [rosters])
+  const automaticComparisonSet = useMemo(() => buildAdvisorComparisonSet({
+    recommendations: fixtureRecommendations,
+    availablePlayers: available,
+    playerTargets,
+    settings,
+    boardSettings,
+  }), [fixtureRecommendations, playerTargets])
+  const comparisonController = useAdvisorComparisonController({
+    automaticSet: automaticComparisonSet,
+    materialEventKey: createMaterialDraftEventKey(draftHistory),
+  })
   const crossPositionModel = useMemo(() => buildCrossPositionPresentationModel({
     recommendations: fixtureRecommendations,
     boardSettings,
@@ -484,14 +509,12 @@ const Phase14AVisualFixture = () => {
                 boardSettings={boardSettings}
                 fixtureDetails={{
                   byeWeek: focusedId === "achane" ? 12 : 8,
-                  outlook: focusedId === "achane"
-                    ? "Explosive runner and receiver with weekly RB1 upside. Touch volume remains the primary source of volatility."
-                    : "Illustrative fixture copy for validating focused-player profile updates.",
                 }}
                 player={playerLib[focusedId]}
                 players={available}
                 playerStatus={playerStatus}
                 rankingSummaries={rankingSummaries}
+                rankingsSeason={2026}
                 settings={settings}
               />
               <section aria-label="Deterministic insight pane" className={`${styles.pane} text-left`}>
@@ -514,7 +537,12 @@ const Phase14AVisualFixture = () => {
                   title="Cross-position value"
                 />
                 <div className="min-h-0 p-2">
+                  <AdvisorComparisonSurface
+                    availablePlayers={available}
+                    controller={comparisonController}
+                  />
                   <CrossPositionLiveSurface
+                    announceUpdates={false}
                     model={crossPositionModel}
                     onInspectPlayer={selectedPlayer => setFocusedId(selectedPlayer.id)}
                     tierModel={tierLandscapeModel}

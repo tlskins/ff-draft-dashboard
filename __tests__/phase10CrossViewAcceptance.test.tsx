@@ -60,7 +60,7 @@ import type {
   DraftRecommendationCandidate,
   DraftRecommendationSet,
 } from "../behavior/draft-advisor/recommendations"
-import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
+import AnalysisWorkspace from "../test-support/TestAnalysisWorkspace"
 import CrossPositionLiveSurface from "../components/analysis/CrossPositionLiveSurface"
 import IntraPositionLiveSurface from "../components/analysis/IntraPositionLiveSurface"
 import PositionalBestsLiveSurface from "../components/analysis/PositionalBestsLiveSurface"
@@ -418,7 +418,7 @@ const viewCases: Array<{
     id: "intra_position",
     button: "Player lab",
     heading: "How different are their weekly outcomes?",
-    source: /Choose three to five players/,
+    source: /Use the shared maximum-three comparison set, then/,
     historical: "Current-board projection context",
   },
 ]
@@ -459,7 +459,7 @@ describe("Phase 10F cross-view acceptance gate", () => {
     })).toBeTruthy()
 
     fireEvent.click(view.getByRole("button", {name: "Player lab"}))
-    expect(view.getByRole("group", {name: "Add players · 3/5"})).toBeTruthy()
+    expect(view.getByRole("group", {name: "Shared Player Lab set · 3/3"})).toBeTruthy()
   })
 
   it("highlights the preferred deterministic position without inventing a scenario", async () => {
@@ -528,42 +528,38 @@ describe("Phase 10F cross-view acceptance gate", () => {
     await waitFor(() => expect(document.activeElement).toBe(inspect))
   })
 
-  it("enforces the three-to-five Player Lab selection boundary", () => {
+  it("enforces the shared maximum-three Player Lab selection boundary", () => {
     const view = render(<AnalysisWorkspace {...workspaceProps} />)
     fireEvent.click(view.getByRole("button", {name: "Player lab"}))
 
-    const third = view.getByRole("button", {name: "Charlie Runner"})
-    expect((third as HTMLButtonElement).disabled).toBe(true)
+    expect(view.getByRole("group", {
+      name: "Shared Player Lab set · 3/3",
+    })).toBeTruthy()
     expect((view.getByRole("button", {
       name: "Run analysis",
     }) as HTMLButtonElement).disabled).toBe(false)
 
-    const fourth = view.getByRole("button", {name: "Delta Runner"})
-    fireEvent.click(fourth)
-    expect(view.getByRole("group", {name: "Add players · 4/5"})).toBeTruthy()
-    expect((third as HTMLButtonElement).disabled).toBe(false)
-    fireEvent.click(third)
-    expect(view.getByRole("group", {name: "Add players · 3/5"})).toBeTruthy()
-    expect((fourth as HTMLButtonElement).disabled).toBe(true)
-
     view.unmount()
+    const twoPlayers = players.filter(player => (
+      ["rb-one", "rb-two"].includes(player.id)
+    ))
     const undersized = render(
       <AnalysisWorkspace
         {...workspaceProps}
-        availablePlayers={players.filter(player => (
-          player.position !== FantasyPosition.RUNNING_BACK
-          || ["rb-one", "rb-two"].includes(player.id)
-        ))}
-        players={players.filter(player => (
-          player.position !== FantasyPosition.RUNNING_BACK
-          || ["rb-one", "rb-two"].includes(player.id)
-        ))}
+        availablePlayers={twoPlayers}
+        comparisonController={{
+          mode: "auto",
+          items: twoPlayers.map(player => ({player, reasonCode: "top_position", reasonLabel: "Top RB"})),
+          announcement: "",
+          pinCurrent: jest.fn(), restoreAuto: jest.fn(), addPinnedPlayer: jest.fn(), removePinnedPlayer: jest.fn(),
+        }}
+        players={twoPlayers}
       />,
     )
     fireEvent.click(undersized.getByRole("button", {name: "Player lab"}))
-    expect(undersized.getByText(
-      "Player Lab needs at least 3 eligible RB players; only 2 are available in this pool.",
-    )).toBeTruthy()
+    expect(undersized.getByRole("group", {
+      name: "Shared Player Lab set · 2/3",
+    })).toBeTruthy()
     expect((undersized.getByRole("button", {
       name: "Run analysis",
     }) as HTMLButtonElement).disabled).toBe(true)

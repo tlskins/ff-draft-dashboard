@@ -23,7 +23,7 @@ import type {
   DraftRecommendationSet,
 } from "../behavior/draft-advisor/recommendations"
 import type { OpponentForecast } from "../behavior/draft-advisor/types"
-import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
+import AnalysisWorkspace from "../test-support/TestAnalysisWorkspace"
 import TierLandscapeLiveSurface from "../components/analysis/TierLandscapeLiveSurface"
 import {
   BoardSettings,
