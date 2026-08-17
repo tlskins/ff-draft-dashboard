@@ -1,8 +1,8 @@
 # Phase 14B advisor comparisons candidate
 
-Status: implemented as a bounded dashboard candidate on 2026-08-17; awaiting
-independent review and human feedback. Phase 14C probability work and Phase 14D
-live-extension acceptance remain deferred.
+Status: independently reviewed, hardened, and integrated with the API producer
+on 2026-08-17. Phase 14C probability work and Phase 14D live-extension
+acceptance remain deferred.
 
 ## Ownership and selection policy
 
@@ -128,7 +128,7 @@ Completed in the isolated worktree on 2026-08-17:
 - Dashboard full Jest: 96 suites total; 95 passed and 1 skipped. 634 tests
   total; 632 passed and 2 skipped; 0 failures.
 - Python API focused outlook/model/ranking/OpenAPI tranche: 27 tests passed.
-- Python API full unit suite: 144 tests passed with 0 failures.
+- Python API full unit suite after integration: 145 tests passed with 0 failures.
 - Generated dashboard API type regeneration and check passed with
   `DRAFTY_OPENAPI_SCHEMA` set to the isolated API worktree's amended
   `openapi/v1.json`; generated declarations were not hand-edited.
@@ -144,10 +144,8 @@ artifacts, not release assets:
 
 ## Deferred limitations
 
-- Deployment still requires the two independently reviewable commits to be
-  integrated in dependency order (API schema/producer, then regenerated
-  dashboard client). Existing ranking artifacts remain valid and expose null
-  until the next normal ESPN-backed artifact refresh.
+- Existing ranking artifacts remain valid and expose null outlooks until the
+  next normal ESPN-backed artifact refresh publishes the newly retained data.
 - Phase 14C owns round-aware run probabilities, insight scoring, margins, and
   hysteresis. This candidate uses no new opponent or value calculation.
 - Phase 14D owns live extension replay, mobile bottom-sheet acceptance,

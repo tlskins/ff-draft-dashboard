@@ -604,8 +604,8 @@ rollback boundary.
 Dependency: the accepted Phase 13 live draft path and Phase 10 analytics
 models. Realtime GPT/voice remains deferred and is not required for this work.
 Status: Phase 14A implemented, visually accepted, and integrated on 2026-08-17.
-Phase 14B is implemented as a candidate awaiting independent review and human
-feedback on 2026-08-17. Live-extension draft acceptance remains assigned to
+Phase 14B was independently reviewed, hardened, and integrated with its API
+producer on 2026-08-17. Live-extension draft acceptance remains assigned to
 Phase 14D; Phase 14C and Phase 14D have not begun.
 
 Replace the current mutually exclusive standard-layout versus analysis-page
@@ -673,8 +673,7 @@ distinct from modeled run probabilities.
 
 #### Phase 14B: advisor-owned comparison sets
 
-Candidate status: implemented on `phase/14b-advisor-comparisons`; awaiting
-independent review and human feedback. See
+Status: independently reviewed, hardened, and integrated on 2026-08-17. See
 `docs/phase14b-advisor-comparisons.md`.
 
 - Seed the comparison surface automatically from the maximum-three live
