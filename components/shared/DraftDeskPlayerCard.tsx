@@ -68,12 +68,13 @@ const DraftDeskPlayerCard = ({
       role="group"
       tabIndex={onFocusPlayer ? 0 : undefined}
     >
+      {dock && <span className={styles.playerCardDockPick}>{rankContext || defaultRankContext}</span>}
       <div className={styles.playerCardHeader}>
         <span className={styles.playerCardName}>{playerShortName(player.fullName)}</span>
         {target && <span className={styles.targetFlag}>Target R{target.targetAsEarlyAsRound}</span>}
       </div>
       <p className={styles.playerCardMeta}>
-        <span className="sr-only">{player.position} </span>{player.team} · {rankContext || defaultRankContext}
+        <span className="sr-only">{player.position} </span>{player.team}{dock ? "" : ` · ${rankContext || defaultRankContext}`}
       </p>
       {!dock && (
         <p className={styles.playerCardMeta}>

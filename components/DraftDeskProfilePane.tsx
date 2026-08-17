@@ -13,6 +13,7 @@ import PlayerRankingTable from "./PlayerRankingTable"
 import PlayerStatusPanel from "./PlayerStatusPanel"
 import RankingSummaryDisplay from "./RankingSummary"
 import styles from "./DraftDesk.module.css"
+import DeskPaneHeader from "./draft-desk/DeskPaneHeader"
 
 interface DraftDeskProfilePaneProps {
   player: Player | null
@@ -32,10 +33,12 @@ const DraftDeskProfilePane = ({
   playerStatus,
 }: DraftDeskProfilePaneProps) => (
   <section aria-label="Player profile and history" className={`${styles.pane} h-full overflow-y-auto text-left`}>
-    <header className={`${styles.surface} sticky top-0 z-10 border-x-0 border-t-0 px-3 py-2`}>
-      <p className="text-xs font-semibold uppercase tracking-wider text-sky-300">Player profile</p>
-      <h2 className="text-sm font-bold">{player?.fullName || "Focus a player on the board"}</h2>
-    </header>
+    <DeskPaneHeader
+      className="sticky top-0 z-10"
+      kicker="Player profile"
+      meta={player ? `${player.team} · ${player.position}` : undefined}
+      title={player?.fullName || "Focus a player on the board"}
+    />
     <div className="space-y-1 p-2">
       <RankingSummaryDisplay
         activePlayer={player}

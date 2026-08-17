@@ -28,6 +28,8 @@ import PortableDataControls from "../components/PortableDataControls"
 import DraftDeskAppBar from "../components/DraftDeskAppBar"
 import DraftDeskProfilePane from "../components/DraftDeskProfilePane"
 import DraftDock from "../components/DraftDock"
+import DeskPaneHeader from "../components/draft-desk/DeskPaneHeader"
+import DeskSegmentedControl from "../components/draft-desk/DeskSegmentedControl"
 import draftDeskStyles from "../components/DraftDesk.module.css"
 
 import { useRanks } from '../behavior/hooks/useRanks'
@@ -873,6 +875,16 @@ const Home: FC = () => {
               setMyPickNum={setMyPickNum}
               setNumTeams={setNumTeams}
               settings={settings}
+              workspaceOperations={(
+                <button
+                  className={`${draftDeskStyles.focusRing} rounded border border-slate-500 px-3 py-2 text-sm font-semibold hover:bg-slate-800`}
+                  onClick={() => setDraftDeskPanePlacement(current =>
+                    swapDraftDeskPanePlacement(current))}
+                  type="button"
+                >
+                  Swap rankings and insight panes
+                </button>
+              )}
               setupOperations={!noPlayers ? (
                 <PortableDataControls
                   createPackage={createPortableData}
@@ -935,19 +947,6 @@ const Home: FC = () => {
               data-testid="draft-desk-shell"
               style={draftDeskShellStyle}
             >
-              <div className={`${draftDeskStyles.deskControls} flex items-center justify-between px-1 text-left`}>
-                <p className={`${draftDeskStyles.muted} text-xs`}>
-                  Desktop panes stay connected to the same board and advisor state.
-                </p>
-                <button
-                  className={`${draftDeskStyles.focusRing} rounded border border-slate-500 bg-slate-800 px-2 py-1 text-xs font-semibold hover:bg-slate-700`}
-                  onClick={() => setDraftDeskPanePlacement(current =>
-                    swapDraftDeskPanePlacement(current))}
-                  type="button"
-                >
-                  Swap rankings and insight panes
-                </button>
-              </div>
               <div className={draftDeskStyles.centerPanes}>
                 {draftDeskPanePlacement.map((pane: DraftDeskPaneId) => (
                   <React.Fragment key={pane}>
@@ -963,16 +962,28 @@ const Home: FC = () => {
                     )}
                     {pane === "rankings" && (
                       <section aria-label="Rankings pane" className={`${draftDeskStyles.pane} flex h-full min-h-0 flex-col`}>
-                        <header className={`${draftDeskStyles.surface} flex items-center justify-between border-x-0 border-t-0 px-3 py-2 text-left`}>
-                          <div>
-                            <p className="text-xs font-semibold uppercase tracking-wider text-sky-300">Rankings</p>
-                            <h2 className="text-sm font-bold">Available board</h2>
-                          </div>
-                          <span className={`${draftDeskStyles.muted} text-xs`}>Required pane</span>
-                        </header>
+                        <DeskPaneHeader
+                          actions={(
+                            <DeskSegmentedControl
+                              ariaLabel="Rankings mode"
+                              disabled={isEditingCustomRanking}
+                              items={[
+                                {id: DraftView.RANKING, label: "Position"},
+                                {id: DraftView.ADP_ROUND, label: "ADP round"},
+                              ]}
+                              onSelect={setDraftView}
+                              selectedId={draftView === DraftView.ADP_ROUND
+                                ? DraftView.ADP_ROUND
+                                : DraftView.RANKING}
+                            />
+                          )}
+                          kicker="Board"
+                          title="Rankings"
+                        />
                         <div className="min-h-0 flex-1">
                           <RankingsBoard
                             compact
+                            hideCompactModeControl
                             playerRanks={playerRanks}
                             predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
                             draftView={draftView}
@@ -1031,10 +1042,7 @@ const Home: FC = () => {
                     )}
                     {pane === "insight" && (
                       <section aria-label="Deterministic insight pane" className={`${draftDeskStyles.pane} flex h-full min-h-0 flex-col`}>
-                        <header className={`${draftDeskStyles.surface} border-x-0 border-t-0 px-3 py-2 text-left`}>
-                          <p className="text-xs font-semibold uppercase tracking-wider text-sky-300">Insight</p>
-                          <h2 className="text-sm font-bold">Advisor and decision workspace</h2>
-                        </header>
+                        <DeskPaneHeader kicker="Decision view · auto" title="Cross-position value" />
                         <div className="min-h-0 flex-1 overflow-y-auto p-2 text-left">
                           <div style={{color: "#0f172a"}}>
                             <OptimalRosterDisplay
@@ -1450,6 +1458,9 @@ const Home: FC = () => {
           rosters={rosters}
           settings={settings}
           boardSettings={boardSettings}
+          connected={draftCaptureState === "live"}
+          connectionDetail={draftCaptureState === "live" ? "Pick feed current" : "Local board current"}
+          connectionLabel={draftCaptureState === "live" ? "ESPN connected" : "Draft feed ready"}
           draftHistory={draftHistory}
           myPickNum={myPickNum}
           myPicks={myPicks}

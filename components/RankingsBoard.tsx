@@ -23,6 +23,7 @@ import type {
 } from '../behavior/boundaryState'
 import DraftSourceHealthBadge from './DraftSourceHealthBadge'
 import styles from "./DraftDesk.module.css"
+import DeskSegmentedControl from "./draft-desk/DeskSegmentedControl"
 import {
   DraftCaptureStatus,
   DraftPersistenceStatus,
@@ -84,6 +85,7 @@ interface RankingsBoardProps {
   removePlayerTarget: (playerId: string) => void
   rankingProfileControls: RankingProfileControls
   compact?: boolean
+  hideCompactModeControl?: boolean
 }
 
 const RankingsBoard = ({
@@ -140,6 +142,7 @@ const RankingsBoard = ({
   removePlayerTarget,
   rankingProfileControls,
   compact = false,
+  hideCompactModeControl = false,
 }: RankingsBoardProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
@@ -274,8 +277,8 @@ const RankingsBoard = ({
     noPlayers ?
     <></>
     :
-    <div data-testid="rankings-board" className={`flex flex-col ${compact ? "p-1" : "md:p-4 p-1"} h-full border border-slate-200 rounded bg-slate-50 text-sm ${isEditingCustomRanking ? 'overflow-hidden' : 'overflow-y-auto'}`} style={{color: "#0f172a"}}>
-      <div className="flex flex-col items-center justify-center content-center mb-2">
+    <div data-testid="rankings-board" className={`flex h-full flex-col text-sm ${compact ? styles.rankingsBoardCompact : "border border-slate-200 rounded bg-slate-50 md:p-4 p-1"} ${isEditingCustomRanking ? 'overflow-hidden' : 'overflow-y-auto'}`} style={{color: "#0f172a"}}>
+      {!compact && <div className="flex flex-col items-center justify-center content-center mb-2">
         <div className="flex flex-col items-center w-full">
           <DraftCaptureStatus
             activeDraftTitle={activeDraftListenerTitle}
@@ -290,17 +293,27 @@ const RankingsBoard = ({
             persistence={draftPersistence}
           />
         </div>
-      </div>  
+      </div>}
     
       <div className="flex flex-row mb-2 align-center justify-center items-center content-center w-full">
         <div className="flex flex-col text-left">
           <div className="flex flex-row">
-            {compact ? (
-              <div aria-label="Rankings mode" className={styles.modeToggle} data-testid="rankings-mode-toggle" role="group">
-                <button aria-pressed={draftView === DraftView.RANKING} disabled={isEditingCustomRanking} onClick={() => setDraftView(DraftView.RANKING)} type="button">Position</button>
-                <button aria-pressed={draftView === DraftView.ADP_ROUND} disabled={isEditingCustomRanking} onClick={() => setDraftView(DraftView.ADP_ROUND)} type="button">ADP round</button>
+            {compact && !hideCompactModeControl ? (
+              <div data-testid="rankings-mode-toggle">
+                <DeskSegmentedControl
+                  ariaLabel="Rankings mode"
+                  disabled={isEditingCustomRanking}
+                  items={[
+                    {id: DraftView.RANKING, label: "Position"},
+                    {id: DraftView.ADP_ROUND, label: "ADP round"},
+                  ]}
+                  onSelect={setDraftView}
+                  selectedId={draftView === DraftView.ADP_ROUND
+                    ? DraftView.ADP_ROUND
+                    : DraftView.RANKING}
+                />
               </div>
-            ) : (
+            ) : !compact ? (
               <select
                 aria-label="Rankings mode"
                 className="hidden md:block px-3 py-1 mx-2 border rounded bg-blue-100 shadow"
@@ -310,7 +323,7 @@ const RankingsBoard = ({
               >
                 { Object.values(DraftView).map( (view: DraftView) => <option key={view} value={ view }> { view } </option>) }
               </select>
-            )}
+            ) : null}
             
             { draftView === DraftView.RANKING && (
               <div className="hidden md:flex flex-row">

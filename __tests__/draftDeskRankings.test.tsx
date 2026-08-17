@@ -50,7 +50,8 @@ describe("Phase 14A unified rankings pane", () => {
   it("uses the candidate compact presentation without changing board ownership", () => {
     render(<RankingsBoard {...props()} compact />)
 
-    expect(screen.getByTestId("rankings-board").className).toContain("p-1")
+    expect(screen.getByTestId("rankings-board").className)
+      .toContain("rankingsBoardCompact")
     expect(screen.getAllByTestId("rankings-board")).toHaveLength(1)
   })
 

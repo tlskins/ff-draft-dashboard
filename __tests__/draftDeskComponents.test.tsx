@@ -38,6 +38,30 @@ const roster = (values: Partial<Roster>): Roster => ({
 })
 
 describe("Phase 14A desk components", () => {
+  it("renders the configured starting quarterback count", () => {
+    render(
+      <DraftDeskAppBar
+        activeDraftListenerTitle="Two-quarterback league"
+        boardSettings={{ranker: ThirdPartyRanker.HARRIS, adpRanker: ThirdPartyADPRanker.ESPN}}
+        draftCaptureState="live"
+        draftPersistence={{state: "local", pendingEventCount: 0, error: null, canRetry: false}}
+        draftSourceHealth={null}
+        draftSourceHealthFreshness="fresh"
+        draftStarted={false}
+        myPickNum={2}
+        onRetryDraftPersistence={jest.fn()}
+        onSetAdpRanker={jest.fn()}
+        onSetRanker={jest.fn()}
+        setIsPpr={jest.fn()}
+        setMyPickNum={jest.fn()}
+        setNumTeams={jest.fn()}
+        settings={{...settings, numStartingQbs: 2}}
+      />,
+    )
+
+    expect(screen.getByText("3 team · PPR · 2QB")).toBeTruthy()
+  })
+
   it("uses an accessible settings drawer and retains draft locks", async () => {
     const view = render(
       <DraftDeskAppBar
