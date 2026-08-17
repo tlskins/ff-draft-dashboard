@@ -13,6 +13,12 @@ import type {
   DraftRecommendationSet,
 } from "../behavior/draft-advisor/recommendations"
 import LiveAdvisorPanel from "../components/LiveAdvisorPanel"
+import DraftDeskAdvisorDisclosure from "../components/draft-desk/DraftDeskAdvisorDisclosure"
+import {
+  createDraftPlanProposal,
+  createRealtimeAdvisorState,
+  queueProposal,
+} from "../behavior/realtime/proposals"
 import {
   FantasyPosition,
   NFLTeam,
@@ -309,5 +315,78 @@ describe("live advisor status evidence", () => {
       />,
     )
     expect(screen.getByText(/No live forecast labels/)).toBeTruthy()
+  })
+
+  it("keeps non-voice advisor operations reachable from the Draft Desk desktop disclosure", () => {
+    const proposal = createDraftPlanProposal({
+      id: "desk-proposal",
+      draftSessionId: "desk-session",
+      sourceEventCount: 42,
+      createdAt: "2026-08-16T20:00:00Z",
+      text: "Prioritize the current running-back tier.",
+      explanation: "The tier may clear before the next user pick.",
+    })
+    const advisor = queueProposal(
+      createRealtimeAdvisorState(
+        "desk-session",
+        42,
+        "2026-08-16T20:00:00Z",
+      ),
+      proposal,
+    )
+    const onAccept = jest.fn()
+    const onReject = jest.fn()
+    const onExportRosterOnly = jest.fn()
+    const view = render(
+      <DraftDeskAdvisorDisclosure
+        draftPlan={advisor.plan}
+        draftStarted
+        onAcceptProposal={onAccept}
+        onExportReplay={jest.fn()}
+        onExportRosterOnly={onExportRosterOnly}
+        onRejectProposal={onReject}
+        onSelectPlayer={jest.fn()}
+        realtimeError="Sync delayed"
+        realtimeProposals={advisor.proposals}
+        realtimeStatus="connected"
+        recommendations={recommendations}
+        replayExportPreflight={{
+          state: "blocked",
+          message: "Evidence is incomplete.",
+          totalPlatformPicks: 160,
+          boardComplete: true,
+          authoritativePlatformBoard: true,
+          campaignEvidenceReady: false,
+          sessionMatch: true,
+          targetRosterMatch: true,
+          evidencePresent: true,
+          evidenceValid: false,
+          canExportRosterOnly: true,
+          labeledPickCount: 0,
+          labeledWindowCount: 0,
+          opponentMetricsAvailable: false,
+        }}
+      />,
+    )
+
+    const disclosure = view.getByTestId("draft-desk-advisor-disclosure")
+    const summary = view.getByLabelText("Advisor tools")
+    expect(summary.tagName).toBe("SUMMARY")
+    summary.focus()
+    expect(document.activeElement).toBe(summary)
+    fireEvent.click(summary)
+    expect(disclosure.getAttribute("open")).not.toBeNull()
+    expect(view.getByRole("region", {name: "Live draft plan"})).toBeTruthy()
+    expect(view.getByText(/Advisor status: connected/)).toBeTruthy()
+    expect(view.getByText(/Error: Sync delayed/)).toBeTruthy()
+
+    fireEvent.click(view.getByRole("button", {name: "Accept"}))
+    fireEvent.click(view.getByRole("button", {name: "Reject"}))
+    expect(onAccept).toHaveBeenCalledWith("desk-proposal")
+    expect(onReject).toHaveBeenCalledWith("desk-proposal")
+
+    fireEvent.click(view.getByRole("button", {name: "Export replay fixture"}))
+    fireEvent.click(view.getByRole("button", {name: "Export roster-only fixture"}))
+    expect(onExportRosterOnly).toHaveBeenCalledTimes(1)
   })
 })

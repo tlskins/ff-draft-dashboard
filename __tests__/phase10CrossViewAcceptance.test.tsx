@@ -437,23 +437,17 @@ describe("Phase 10F cross-view acceptance gate", () => {
 
     expect(view.getByRole("button", {name: "Decision cockpit"})
       .getAttribute("aria-pressed")).toBe("true")
-    expect(view.getByRole("heading", {name: "Top option at every position"}))
+    expect(view.getByText("Why now"))
       .toBeTruthy()
     const comparisonTable = view.getByRole("table", {
-      name: "Cross-position decision comparison",
+      name: "Cross-position decision matrix",
     })
     expect(within(comparisonTable).getAllByRole("row")).toHaveLength(5)
     expect(within(comparisonTable).getAllByRole("columnheader")).toHaveLength(5)
     expect(within(comparisonTable).getAllByRole("rowheader")).toHaveLength(4)
     expect(within(comparisonTable).getAllByRole("cell")).toHaveLength(16)
-    const scenarios = within(view.getByRole("group", {
-      name: "Draft choice scenario",
-    }))
-    expect(scenarios.getAllByRole("button")).toHaveLength(4)
-    fireEvent.click(scenarios.getByRole("button", {name: "RB"}))
-    expect(view.getByRole("region", {name: "Alpha Runner"})).toBeTruthy()
-    expect(view.getByRole("group", {
-      name: /Tier-cliff cost of waiting one turn, sorted by projected points per game lost/,
+    expect(within(comparisonTable).getByRole("rowheader", {
+      name: /Alpha Runner/,
     })).toBeTruthy()
 
     fireEvent.click(view.getByRole("button", {name: "Position tiers"}))
@@ -468,7 +462,7 @@ describe("Phase 10F cross-view acceptance gate", () => {
     expect(view.getByRole("group", {name: "Add players · 3/5"})).toBeTruthy()
   })
 
-  it("selects one rank-driven scenario for a preferred candidate who is not its position leader", async () => {
+  it("highlights the preferred deterministic position without inventing a scenario", async () => {
     const preferredRunner = recommendations([
       candidate(players[3], 20),
       candidate(players[6], 19),
@@ -479,19 +473,9 @@ describe("Phase 10F cross-view acceptance gate", () => {
         recommendations={preferredRunner}
       />,
     )
-    const scenarios = within(view.getByRole("group", {
-      name: "Draft choice scenario",
-    }))
-    const selected = () => scenarios.getAllByRole("button").filter(button => (
-      button.getAttribute("aria-pressed") === "true"
-    ))
-
-    expect(selected()).toHaveLength(1)
-    expect(selected()[0].getAttribute("aria-label")).toBe("RB")
-    expect(view.getByRole("region", {name: "Alpha Runner"})).toBeTruthy()
-    expect(view.getByLabelText(
-      "Advisor preferred Bravo Runner; selected RB scenario uses Alpha Runner",
-    )).toBeTruthy()
+    const matrix = view.getByRole("table", {name: "Cross-position decision matrix"})
+    expect(within(matrix).getByRole("rowheader", {name: /RB Bravo Runner.*Lean now/}))
+      .toBeTruthy()
 
     view.rerender(
       <AnalysisWorkspace
@@ -502,14 +486,9 @@ describe("Phase 10F cross-view acceptance gate", () => {
         ])}
       />,
     )
-    await waitFor(() => {
-      expect(selected()).toHaveLength(1)
-      expect(selected()[0].getAttribute("aria-label")).toBe("WR")
-    })
-    expect(view.getByRole("region", {name: "Will Receiver"})).toBeTruthy()
-    expect(view.getByLabelText(
-      "Advisor preferred Riley Receiver; selected WR scenario uses Will Receiver",
-    )).toBeTruthy()
+    await waitFor(() => expect(within(matrix).getByRole("rowheader", {
+      name: /WR Riley Receiver.*Lean now/,
+    })).toBeTruthy())
 
     view.rerender(
       <AnalysisWorkspace
@@ -520,14 +499,7 @@ describe("Phase 10F cross-view acceptance gate", () => {
         recommendations={preferredRunner}
       />,
     )
-    await waitFor(() => {
-      expect(selected()).toHaveLength(1)
-      expect(selected()[0].getAttribute("aria-label")).toBe("QB")
-    })
-    expect(view.getByRole("region", {name: "Quinn Quarterback"})).toBeTruthy()
-    expect(view.getByLabelText(
-      "Advisor preferred Bravo Runner; selected QB scenario uses Quinn Quarterback",
-    )).toBeTruthy()
+    await waitFor(() => expect(within(matrix).queryByText("Lean now")).toBeNull())
   })
 
   it("opens the historical drawer from the visible Player Lab and restores keyboard focus", async () => {

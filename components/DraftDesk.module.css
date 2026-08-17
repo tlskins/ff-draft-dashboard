@@ -248,6 +248,40 @@
   flex: 0 0 auto;
 }
 
+.advisorDisclosure { position: relative; }
+.advisorDisclosure > summary {
+  min-height: 24px;
+  padding: 4px 7px;
+  border: 1px solid #aeb9be;
+  border-radius: 3px;
+  color: #365f78;
+  background: #f4f3ef;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.5;
+  list-style: none;
+  cursor: pointer;
+}
+.advisorDisclosure > summary::-webkit-details-marker { display: none; }
+.advisorDisclosure > summary::before { margin-right: 4px; content: "▸"; }
+.advisorDisclosure[open] > summary { border-color: var(--desk-selection); color: #fff; background: var(--desk-selection); }
+.advisorDisclosure[open] > summary::before { content: "▾"; }
+.advisorDisclosure > summary:focus-visible { outline: 2px solid var(--desk-focus); outline-offset: 1px; }
+.advisorDrawer {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 5px);
+  right: 0;
+  width: min(410px, calc(100vw - 32px));
+  max-height: calc(100dvh - var(--draft-desk-dock-height, 108px) - 122px);
+  padding: 4px;
+  overflow-y: auto;
+  border: 1px solid #9eaaaf;
+  border-radius: 4px;
+  background: #eef0ef;
+  box-shadow: 0 8px 20px rgb(23 34 40 / 22%);
+}
+
 .muted { color: var(--desk-text-muted); }
 .selected { color: #fff; background: var(--desk-selection); }
 .urgency { color: var(--desk-urgency); }

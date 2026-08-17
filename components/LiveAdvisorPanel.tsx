@@ -36,7 +36,7 @@ import EmpiricalBaseShadowCaptureReadiness from "./EmpiricalBaseShadowCaptureRea
 import type { RunOnlyShadowCaptureStatus } from "../behavior/draft-advisor/runOnlyShadowCaptureStatus"
 import { useDialogAccessibility } from "../behavior/hooks/useDialogAccessibility"
 
-interface LiveAdvisorPanelProps {
+export interface LiveAdvisorPanelProps {
   recommendations: DraftRecommendationSet
   draftStarted: boolean
   onSelectPlayer: (player: Player) => void
@@ -68,6 +68,7 @@ interface LiveAdvisorPanelProps {
   onSetRealtimeMicrophoneEnabled?: (enabled: boolean) => boolean
   onSendRealtimeText?: (text: string) => boolean
   compact?: boolean
+  secondaryControlsOnly?: boolean
 }
 
 const roleLabel = {
@@ -108,6 +109,7 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
   onSetRealtimeMicrophoneEnabled,
   onSendRealtimeText,
   compact = false,
+  secondaryControlsOnly = false,
 }) => {
   const [preflightOpen, setPreflightOpen] = React.useState(false)
   const exportButton = React.useRef<HTMLButtonElement>(null)
@@ -159,7 +161,9 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
   return (
     <section
       aria-label="Deterministic draft advisor"
-      className="mb-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-left shadow-sm"
+      className={secondaryControlsOnly
+        ? "rounded border-0 bg-slate-50 p-2 text-left shadow-none"
+        : "mb-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-left shadow-sm"}
     >
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
@@ -308,7 +312,7 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
           recommendations.candidates[0]?.player.fullName || "none"
         }.
       </p>
-      {recommendations.candidates.length === 0 ? (
+      {!secondaryControlsOnly && (recommendations.candidates.length === 0 ? (
         <p className="text-sm text-violet-900">
           No legal roster selections remain.
         </p>
@@ -430,6 +434,14 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
             )
           })}
         </ol>
+      ))}
+      {secondaryControlsOnly && realtimeStatus && (
+        <p aria-live="polite" className="mb-2 rounded border border-slate-200 bg-white p-2 text-xs text-slate-700" role="status">
+          Advisor status: {realtimeStatus}.
+          {realtimeIsResponding ? " Response in progress." : ""}
+          {realtimeReconnectAttempt > 0 ? ` Reconnect attempt ${realtimeReconnectAttempt}.` : ""}
+          {realtimeError ? ` Error: ${realtimeError}` : ""}
+        </p>
       )}
       {draftPlan && onAcceptProposal && onRejectProposal && (
         <DraftPlanPanel
@@ -439,7 +451,7 @@ const LiveAdvisorPanel: React.FC<LiveAdvisorPanelProps> = ({
           onRejectProposal={onRejectProposal}
         />
       )}
-      {draftPlan
+      {!secondaryControlsOnly && draftPlan
         && realtimeStatus
         && onConnectRealtime
         && onDisconnectRealtime

@@ -2,6 +2,201 @@
   color: #0f172a;
 }
 
+.decisionMatrix {
+  min-width: 0;
+  color: #263238;
+}
+
+.decisionLead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 7px;
+  border-left: 3px solid #0891b2;
+  background: #edf2f3;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.decisionLead strong,
+.decisionLead span {
+  display: block;
+}
+
+.decisionEyebrow,
+.decisionPreferred {
+  color: #54666e;
+  font-size: 7px;
+  font-weight: 750;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.decisionFallback {
+  max-width: 37%;
+  color: #65757b;
+  font-size: 8px;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.decisionExplanation,
+.decisionFollowUp {
+  margin: 4px 1px 0;
+  color: #607078;
+  font-size: 8px;
+  line-height: 1.3;
+}
+
+.decisionFollowUp { color: #78858a; }
+
+.decisionTableWrap { min-width: 0; margin-top: 6px; }
+
+.decisionTable {
+  display: grid;
+  grid-template-columns: minmax(76px, 1.14fr) minmax(60px, .9fr) minmax(44px, .62fr) minmax(62px, .9fr) minmax(66px, 1fr);
+  overflow: hidden;
+  border: 1px solid #cbd2d4;
+  background: #f8f8f6;
+}
+
+.decisionHeaderRow,
+.decisionRow { display: contents; }
+
+.decisionHeaderRow > span {
+  min-width: 0;
+  padding: 4px 4px;
+  border-right: 1px solid #d3d9db;
+  border-bottom: 1px solid #cbd2d4;
+  color: #5d6a70;
+  background: #e4e8e8;
+  font-size: 7px;
+  font-weight: 750;
+  letter-spacing: .03em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.decisionHeaderRow > span:last-child { border-right: 0; }
+
+.decisionHeaderRow small {
+  display: block;
+  margin-top: 2px;
+  color: #77858a;
+  font-size: 6px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.decisionPlayer,
+.decisionCell {
+  min-width: 0;
+  min-height: 49px;
+  padding: 4px;
+  border-right: 1px solid #d8ddde;
+  border-bottom: 1px solid #d8ddde;
+  background: #f6f7f5;
+}
+
+.decisionRow:last-child > .decisionPlayer,
+.decisionRow:last-child > .decisionCell { border-bottom: 0; }
+
+.decisionRow > .decisionCell:last-child { border-right: 0; }
+
+.decisionRowPreferred > .decisionPlayer,
+.decisionRowPreferred > .decisionCell { background: #eaf1f3; }
+
+.decisionPlayer {
+  box-shadow: inset 3px 0 var(--series-color, #64748b);
+}
+
+.decisionPlayer > strong,
+.decisionCell > strong,
+.decisionCell > small { display: block; }
+
+.decisionPlayer > strong {
+  color: #53636a;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.decisionPlayer button {
+  display: block;
+  width: 100%;
+  margin-top: 1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  color: #1e2d33;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.decisionPlayer button:hover,
+.decisionPlayer button:focus-visible { color: #26617c; text-decoration: underline; }
+.decisionPlayer button small { display: block; color: #6f7c80; font-size: 7px; font-weight: 500; }
+.decisionPreferred { margin-top: 2px; color: #26617c; }
+.decisionPlayer em { color: #778388; font-size: 8px; font-style: normal; }
+.decisionEvidenceUnavailable { display: block; margin-top: 2px; color: #8a5f2c; font-size: 6px; line-height: 1.15; }
+
+.decisionCell > strong {
+  overflow: hidden;
+  color: #29363b;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.decisionCell > small { margin-top: 2px; color: #748187; font-size: 7px; line-height: 1.15; }
+
+.decisionBar {
+  display: block;
+  height: 4px;
+  margin-top: 5px;
+  overflow: hidden;
+  background: #dce1e1;
+}
+
+.decisionBar > span { display: block; height: 100%; max-width: 100%; background: #4c7487; }
+.decisionBarRisk > span { background: #a96237; }
+.decisionBarRun > span { background: #785f9d; }
+.decisionUnavailable { display: block; margin-top: 5px; color: #8a9599; font-size: 7px; }
+.decisionEmpty { margin-top: 6px; padding: 8px; border: 1px dashed #bac4c7; color: #637177; font-size: 10px; }
+
+.scenarioDisclosure { margin-bottom: 8px; border: 1px solid #cad2d5; border-radius: 6px; background: #f3f5f4; }
+.scenarioDisclosure > summary { padding: 7px 8px; color: #38576a; font-size: 9px; font-weight: 700; cursor: pointer; }
+.scenarioDisclosure > summary:focus-visible { outline: 2px solid #32769c; outline-offset: 1px; }
+.scenarioExplorer { padding: 7px; border-top: 1px solid #d4dadd; }
+.scenarioExplorerHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.scenarioExplorerHeader span { color: #6c797f; font-size: 7px; }
+.scenarioExplorerHeader h3 { margin: 1px 0 0; color: #24343c; font-size: 10px; line-height: 1.2; }
+.scenarioExplorerButtons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; margin-top: 6px; }
+.scenarioExplorerButtons button { min-width: 0; min-height: 34px; padding: 4px; border: 1px solid #bdc7cb; border-radius: 3px; color: #526168; background: #f8f8f5; text-align: left; }
+.scenarioExplorerButtons button[aria-pressed="true"] { border-color: #32769c; color: #214b63; background: #deebf1; box-shadow: inset 2px 0 #32769c; }
+.scenarioExplorerButtons strong,
+.scenarioExplorerButtons span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scenarioExplorerButtons strong { font-size: 8px; }
+.scenarioExplorerButtons span { margin-top: 1px; font-size: 7px; }
+.scenarioExplorerResults { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; margin-top: 5px; }
+.scenarioExplorerResults > div { min-width: 0; padding: 4px; border-left: 2px solid #8298a3; background: #e7ebeb; }
+.scenarioExplorerResults span,
+.scenarioExplorerResults strong,
+.scenarioExplorerResults small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scenarioExplorerResults span,
+.scenarioExplorerResults small { color: #6a777d; font-size: 6px; }
+.scenarioExplorerResults strong { margin: 1px 0; color: #29383f; font-size: 8px; }
+.scenarioUnavailable { margin: 0; padding: 7px; border-top: 1px solid #d4dadd; color: #68767c; font-size: 8px; }
+
 .sectionHeader,
 .panelHeader,
 .scenarioHeader {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import type {GetStaticProps, GetStaticPropsResult} from "next"
 
 import type { Roster } from "../behavior/draft"
@@ -12,6 +12,14 @@ import styles from "../components/DraftDesk.module.css"
 import PageHead from "../components/pageHead"
 import DeskPaneHeader from "../components/draft-desk/DeskPaneHeader"
 import DeskSegmentedControl from "../components/draft-desk/DeskSegmentedControl"
+import DraftDeskAdvisorDisclosure from "../components/draft-desk/DraftDeskAdvisorDisclosure"
+import CrossPositionLiveSurface from "../components/analysis/CrossPositionLiveSurface"
+import {buildCrossPositionPresentationModel} from "../behavior/analysis/crossPosition"
+import {buildTierLandscapePresentationModel} from "../behavior/analysis/tierLandscape"
+import {createDraftRecommendations} from "../behavior/draft-advisor/recommendations"
+import type {OpponentForecast} from "../behavior/draft-advisor/types"
+import {createDraftPlanProposal} from "../behavior/realtime/proposals"
+import type {DraftPlanDocument} from "../behavior/realtime/contracts"
 import {DraftView, SortOption} from "./index"
 import {
   DataRanker,
@@ -173,6 +181,34 @@ const playerRanks: PlayerRanks = {
   availPlayersByOverallRank: [...available].sort((left, right) => (left.ranks.Harris?.pprOverallRank || 999) - (right.ranks.Harris?.pprOverallRank || 999)),
   availPlayersByAdp: [...available].sort((left, right) => (left.ranks.ESPN?.adp || 999) - (right.ranks.ESPN?.adp || 999)),
 }
+
+const fixtureOpponentForecast: OpponentForecast = {
+  schemaVersion: 1,
+  model: "combined",
+  targetRosterIndex: 5,
+  picks: [
+    {overallPick: 44, rosterIndex: 6, positionProbabilities: [], playerProbabilities: [
+      {playerId: "achane", name: "De'Von Achane", position: FantasyPosition.RUNNING_BACK, conditionalProbability: .45, overallProbability: .45},
+      {playerId: "london", name: "Drake London", position: FantasyPosition.WIDE_RECEIVER, conditionalProbability: .12, overallProbability: .12},
+    ]},
+    {overallPick: 45, rosterIndex: 7, positionProbabilities: [], playerProbabilities: [
+      {playerId: "achane", name: "De'Von Achane", position: FantasyPosition.RUNNING_BACK, conditionalProbability: .4, overallProbability: .4},
+      {playerId: "mcbride", name: "Trey McBride", position: FantasyPosition.TIGHT_END, conditionalProbability: .18, overallProbability: .18},
+    ]},
+  ],
+  runProbabilities: [
+    {position: FantasyPosition.QUARTERBACK, minimumPicks: 3, probability: .12},
+    {position: FantasyPosition.RUNNING_BACK, minimumPicks: 3, probability: .61},
+    {position: FantasyPosition.WIDE_RECEIVER, minimumPicks: 3, probability: .24},
+    {position: FantasyPosition.TIGHT_END, minimumPicks: 3, probability: .43},
+  ],
+  tierBoundaryProbabilities: [
+    {position: FantasyPosition.QUARTERBACK, userTier: 1, playerIds: ["daniels", "burrow", "allen"], probability: .2},
+    {position: FantasyPosition.RUNNING_BACK, userTier: 1, playerIds: ["achane", "taylor", "brown", "jacobs"], probability: .72},
+    {position: FantasyPosition.WIDE_RECEIVER, userTier: 2, playerIds: ["london", "nabers", "ajbrown", "collins"], probability: .28},
+    {position: FantasyPosition.TIGHT_END, userTier: 1, playerIds: ["mcbride", "bowers", "laporta"], probability: .65},
+  ],
+}
 const emptyRoster = (): Roster => ({picks: [], QB: [], RB: [], WR: [], TE: []})
 
 const projectionTiers = [
@@ -245,6 +281,31 @@ const playerStatus = Object.fromEntries(["achane", "daniels", "mcbride", "london
   }]
 }))
 
+const advisorHarnessPlan: DraftPlanDocument = {
+  schema_version: 1,
+  draft_session_id: "phase14a-advisor-harness",
+  revision: 16,
+  updated_at: "2026-08-17T00:00:00Z",
+  entries: Array.from({length: 16}, (_, index) => ({
+    id: `fixture-plan-${index + 1}`,
+    proposal_id: `fixture-accepted-${index + 1}`,
+    text: `Fixture plan checkpoint ${index + 1}: preserve deterministic roster construction evidence through the next user pick.`,
+    source_event_count: 30 + index,
+    created_at: `2026-08-17T00:${String(index).padStart(2, "0")}:00Z`,
+  })),
+}
+
+const advisorHarnessProposals = Array.from({length: 10}, (_, index) => (
+  createDraftPlanProposal({
+    id: `fixture-pending-${index + 1}`,
+    draftSessionId: "phase14a-advisor-harness",
+    sourceEventCount: 46,
+    createdAt: `2026-08-17T01:${String(index).padStart(2, "0")}:00Z`,
+    text: `Review fixture proposal ${index + 1} before changing the live draft plan.`,
+    explanation: "Deterministic long-content harness for validating contained drawer scrolling.",
+  })
+))
+
 const Phase14AVisualFixture = () => {
   const [focusedId, setFocusedId] = useState("achane")
   const [dockHeight, setDockHeight] = useState(0)
@@ -257,6 +318,12 @@ const Phase14AVisualFixture = () => {
     {playerId: "taylor", targetAsEarlyAsRound: 4},
     {playerId: "mcbride", targetAsEarlyAsRound: 5},
   ])
+  const [showAdvisorHarness, setShowAdvisorHarness] = useState(false)
+  useEffect(() => {
+    setShowAdvisorHarness(
+      new URLSearchParams(window.location.search).get("advisor") === "long",
+    )
+  }, [])
   const rosters = useMemo(() => Array.from({length: 12}, (_, index) => {
     if (index === 5) {
       return {
@@ -275,6 +342,32 @@ const Phase14AVisualFixture = () => {
     ...recentIds,
     ...Array.from({length: 6}, () => null),
   ], [])
+  const fixtureRecommendations = useMemo(() => createDraftRecommendations({
+    settings,
+    boardSettings,
+    rankingSummaries,
+    playerRanks,
+    playerLib,
+    roster: rosters[5],
+    currentPick: 43,
+    myPickNum: 6,
+    predictedPicks: {achane: 2, taylor: 0, brown: 1, london: 5, mcbride: 7},
+    opponentForecast: fixtureOpponentForecast,
+  }), [rosters])
+  const crossPositionModel = useMemo(() => buildCrossPositionPresentationModel({
+    recommendations: fixtureRecommendations,
+    boardSettings,
+    settings,
+    playerStatus,
+  }), [fixtureRecommendations])
+  const tierLandscapeModel = useMemo(() => buildTierLandscapePresentationModel({
+    availablePlayers: available,
+    recommendations: fixtureRecommendations,
+    opponentForecast: fixtureOpponentForecast,
+    boardSettings,
+    settings,
+    rankingSummaries,
+  }), [fixtureRecommendations])
 
   return (
     <div className={`relative flex min-h-screen flex-col ${styles.deskViewport}`}>
@@ -402,12 +495,30 @@ const Phase14AVisualFixture = () => {
                 settings={settings}
               />
               <section aria-label="Deterministic insight pane" className={`${styles.pane} text-left`}>
-                <DeskPaneHeader kicker="Decision view · auto" title="Cross-position value" />
-                <div className="space-y-2 p-3 text-xs text-slate-700">
-                  <p>RB value falls before your next turn while the current WR tier is likely to survive.</p>
-                  <div className="border border-slate-300 bg-white p-2"><strong>De&apos;Von Achane</strong><span className="float-right">+6.4</span></div>
-                  <div className="border border-slate-300 bg-white p-2"><strong>Drake London</strong><span className="float-right">+4.8</span></div>
-                  <div className="border border-slate-300 bg-white p-2"><strong>George Kittle</strong><span className="float-right">+3.9</span></div>
+                <DeskPaneHeader
+                  actions={showAdvisorHarness ? (
+                    <DraftDeskAdvisorDisclosure
+                      draftPlan={advisorHarnessPlan}
+                      draftStarted
+                      onAcceptProposal={() => undefined}
+                      onExportReplay={() => undefined}
+                      onExportRosterOnly={() => undefined}
+                      onRejectProposal={() => undefined}
+                      onSelectPlayer={() => undefined}
+                      realtimeProposals={advisorHarnessProposals}
+                      realtimeStatus="connected"
+                      recommendations={fixtureRecommendations}
+                    />
+                  ) : undefined}
+                  kicker="Decision view · auto"
+                  title="Cross-position value"
+                />
+                <div className="min-h-0 p-2">
+                  <CrossPositionLiveSurface
+                    model={crossPositionModel}
+                    onInspectPlayer={selectedPlayer => setFocusedId(selectedPlayer.id)}
+                    tierModel={tierLandscapeModel}
+                  />
                 </div>
               </section>
             </div>

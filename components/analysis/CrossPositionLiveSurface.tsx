@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react"
 
 import {
   CrossPositionCandidateModel,
+  buildCrossPositionDecisionPresentationModel,
   CrossPositionMetricId,
   CrossPositionPresentationModel,
   MetricComparisonScale,
@@ -49,13 +50,16 @@ const timestampLabel = (value: string): string => (
 
 const candidateUpdateKey = (
   model: CrossPositionPresentationModel | null,
+  tierModel: TierLandscapePresentationModel | null,
 ): string => {
   if (!model) return "unavailable"
+  const decision = buildCrossPositionDecisionPresentationModel(model, tierModel)
   return JSON.stringify({
     currentPick: model.currentPick,
     nextUserPick: model.nextUserPick,
     leagueSize: model.leagueSize,
     scoringFormat: model.scoringFormat,
+    explanation: model.explanation,
     candidates: model.candidates.map(candidate => ({
       id: candidate.player.id,
       fullName: candidate.player.fullName,
@@ -88,6 +92,17 @@ const candidateUpdateKey = (
         confidence: event.confidence,
         stale: event.stale,
       })),
+    })),
+    matrix: decision.rows.map(row => ({
+      position: row.position,
+      playerId: row.player?.id || null,
+      identitySource: row.identitySource,
+      tier: row.tier,
+      availablePlayerCount: row.tierAvailablePlayerCount,
+      runProbability: row.runProbability,
+      runMinimumPicks: row.runMinimumPicks,
+      tierCliffProbability: row.tierCliffProbability,
+      preferred: row.position === decision.preferredRow?.position,
     })),
   })
 }
@@ -670,7 +685,7 @@ export const expectedNextOption = (
       // player's chance of being the best available cannot be derived safely.
       break
     }
-    if (player.projection.median === null) continue
+    if (player.projection?.median == null) continue
     outcomes.push({
       player,
       probability: earlierPlayersUnavailable * survival,
@@ -689,7 +704,7 @@ export const expectedNextOption = (
     right.probability - left.probability
   ))[0].player
   const expectedMedian = outcomes.reduce((total, outcome) => (
-    total + (outcome.player.projection.median || 0) * outcome.probability
+    total + (outcome.player.projection?.median || 0) * outcome.probability
   ), 0) / totalProbability
 
   return {
@@ -755,22 +770,27 @@ const costValueLabel = (value: number): string => (
   value < 1 ? value.toFixed(2) : value.toFixed(1)
 )
 
+const cockpitOptions = (
+  model: CrossPositionPresentationModel,
+  tierModel: TierLandscapePresentationModel | null,
+): CockpitOption[] => (tierModel?.lanes || []).flatMap(lane => {
+  const player = lane.players[0]
+  if (!player) return []
+  return [{
+    lane,
+    player,
+    suppliedCandidate: model.candidates.find(candidate => (
+      candidate.player.id === player.player.id
+    )) || null,
+  }]
+})
+
 const DecisionCockpit: React.FC<{
   model: CrossPositionPresentationModel
   tierModel: TierLandscapePresentationModel | null
   onInspectPlayer: (player: Player) => void
 }> = ({model, tierModel, onInspectPlayer}) => {
-  const options: CockpitOption[] = (tierModel?.lanes || []).flatMap(lane => {
-    const player = lane.players[0]
-    if (!player) return []
-    return [{
-      lane,
-      player,
-      suppliedCandidate: model.candidates.find(candidate => (
-        candidate.player.id === player.player.id
-      )) || null,
-    }]
-  })
+  const options = cockpitOptions(model, tierModel)
   const preferredCandidate = model.candidates[0] || null
   // The advisor's preferred position chooses the initial scenario even when
   // its candidate is not that position's rank-driven board leader. If that
@@ -826,7 +846,7 @@ const DecisionCockpit: React.FC<{
       position: option.lane.position,
       now: option.player,
       next: estimate.player,
-      nextMedian: estimate.player?.projection.median ?? null,
+      nextMedian: estimate.player?.projection?.median ?? null,
       expectedMedian: estimate.expectedMedian,
       suppliedPlayerCount: estimate.suppliedPlayerCount,
       waitEstimate,
@@ -1099,6 +1119,270 @@ const DecisionCockpit: React.FC<{
   )
 }
 
+/**
+ * Focused secondary access to the existing DecisionCockpit scenario model.
+ * It deliberately omits the duplicate top-options matrix and legacy panel
+ * stack while preserving the positional selector and next-pick consequences.
+ */
+const DecisionScenarioExplorer: React.FC<{
+  model: CrossPositionPresentationModel
+  tierModel: TierLandscapePresentationModel | null
+}> = ({model, tierModel}) => {
+  const options = cockpitOptions(model, tierModel)
+  const preferredCandidate = model.candidates[0] || null
+  const defaultOption = options.find(option => (
+    option.lane.position === preferredCandidate?.player.position
+  )) || options[0]
+  const defaultDraftedId = defaultOption?.player.player.id || ""
+  const selectionBasis = [
+    preferredCandidate?.player.id || "no-preference",
+    preferredCandidate?.player.position || "no-position",
+    ...options.map(option => `${option.lane.position}:${option.player.player.id}`),
+  ].join("|")
+  const selectionBasisRef = useRef(selectionBasis)
+  const [draftedId, setDraftedId] = useState(defaultDraftedId)
+  const selectionBasisChanged = selectionBasisRef.current !== selectionBasis
+  const effectiveDraftedId = selectionBasisChanged
+    || !options.some(option => option.player.player.id === draftedId)
+    ? defaultDraftedId
+    : draftedId
+
+  useEffect(() => {
+    if (
+      selectionBasisChanged
+      || !options.some(option => option.player.player.id === draftedId)
+    ) {
+      selectionBasisRef.current = selectionBasis
+      setDraftedId(defaultDraftedId)
+    }
+  }, [defaultDraftedId, draftedId, options, selectionBasis, selectionBasisChanged])
+
+  if (options.length === 0) {
+    return <p className={styles.scenarioUnavailable}>Positional scenario evidence is unavailable.</p>
+  }
+
+  const drafted = options.find(option => (
+    option.player.player.id === effectiveDraftedId
+  )) || options[0]
+  const projectedNext = options.map(option => {
+    const estimate = expectedNextOption(
+      option.lane,
+      drafted.player.player.id,
+      model.candidates,
+    )
+    return {
+      position: option.lane.position,
+      next: estimate.player,
+      nextMedian: estimate.player?.projection.median ?? null,
+      expectedMedian: estimate.expectedMedian,
+      suppliedPlayerCount: estimate.suppliedPlayerCount,
+    }
+  })
+
+  return (
+    <section aria-labelledby="scenario-explorer-title" className={styles.scenarioExplorer}>
+      <div className={styles.scenarioExplorerHeader}>
+        <div>
+          <span>Selected draft choice</span>
+          <h3 id="scenario-explorer-title">{drafted.player.player.fullName} · {drafted.lane.position}</h3>
+        </div>
+        <span>Next user pick {model.nextUserPick ?? "unavailable"}</span>
+      </div>
+      <div aria-label="Draft choice scenario" className={styles.scenarioExplorerButtons} role="group">
+        {options.map(option => {
+          const selected = option.player.player.id === effectiveDraftedId
+          return (
+            <button
+              aria-label={`Test ${option.lane.position} scenario: ${option.player.player.fullName}`}
+              aria-pressed={selected}
+              key={option.player.player.id}
+              onClick={() => setDraftedId(option.player.player.id)}
+              type="button"
+            >
+              <strong>{option.lane.position}</strong>
+              <span>{option.player.player.fullName}</span>
+            </button>
+          )
+        })}
+      </div>
+      <div aria-live="polite" className={styles.scenarioExplorerResults}>
+        {projectedNext.map(item => (
+          <div key={item.position}>
+            <span>{item.position} at pick {model.nextUserPick ?? "—"}</span>
+            <strong>{item.next?.player.fullName || "Forecast unavailable"}</strong>
+            <small>{item.next
+              ? `${formatProjectionValue(item.nextMedian)} median PPG${item.expectedMedian !== null && item.suppliedPlayerCount > 1
+                ? ` · ${formatProjectionValue(item.expectedMedian)} expected PPG across ${item.suppliedPlayerCount} outcomes`
+                : ""}`
+              : "No rank-ordered availability forecast supplied"}</small>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+const percentLabel = (value: number | null): string => (
+  value === null ? "Unavailable" : `${Math.round(value * 100)}%`
+)
+
+const valueLabel = (value: number | null): string => {
+  if (value === null) return "Unavailable"
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)} PAR`
+}
+
+const BoundedBar: React.FC<{
+  label: string
+  percent: number | null
+  testId: string
+  tone?: "value" | "risk" | "run"
+}> = ({label, percent, testId, tone = "value"}) => {
+  if (percent === null) {
+    return <span className={styles.decisionUnavailable}>Unavailable</span>
+  }
+  const bounded = Math.min(100, Math.max(0, percent))
+  return (
+    <span
+      aria-label={`${label}: ${Math.round(bounded)}%`}
+      className={`${styles.decisionBar} ${styles[`decisionBar${tone[0].toUpperCase()}${tone.slice(1)}`]}`}
+      data-testid={testId}
+      role="img"
+    >
+      <span aria-hidden="true" style={{width: `${bounded}%`}} />
+    </span>
+  )
+}
+
+/** Compact table-first draft desk surface; all figures come from presenters. */
+const DecisionMatrix: React.FC<{
+  model: CrossPositionPresentationModel
+  tierModel: TierLandscapePresentationModel | null
+  onInspectPlayer: (player: Player) => void
+}> = ({model, tierModel, onInspectPlayer}) => {
+  const decision = buildCrossPositionDecisionPresentationModel(model, tierModel)
+  if (decision.rows.length === 0) {
+    return (
+      <div className={styles.decisionEmpty} role="status">
+        No explicitly available QB, RB, WR, or TE players are loaded for the decision matrix.
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.decisionMatrix}>
+      <div className={styles.decisionLead}>
+        <div>
+          <span className={styles.decisionEyebrow}>Why now</span>
+          <strong>{decision.whyNow || model.explanation}</strong>
+        </div>
+        <span className={styles.decisionFallback}>
+          {decision.fallbackCandidate
+            ? `Fallback: ${decision.fallbackCandidate.player.fullName} · ${decision.fallbackCandidate.player.position}`
+            : "Fallback unavailable"}
+        </span>
+      </div>
+      <p className={styles.decisionExplanation}>{model.explanation}</p>
+      <div className={styles.decisionTableWrap}>
+        <div className={styles.decisionTable} role="table" aria-label="Cross-position decision matrix">
+          <div className={styles.decisionHeaderRow} role="row">
+            <span role="columnheader">Position / best</span>
+            <span role="columnheader">
+              Value now
+              <small>0–{decision.valueScale.hasFiniteValues
+                ? `${decision.valueScale.maximum.toFixed(1)} PAR`
+                : "PAR unavailable"}</small>
+            </span>
+            <span role="columnheader">Tier depth</span>
+            <span role="columnheader">Risk before next</span>
+            <span role="columnheader">Run pressure</span>
+          </div>
+          {decision.rows.map(row => {
+            const player = row.player
+            const preferred = row.position === decision.preferredRow?.position
+            const runPercent = row.runProbability === null
+              ? row.tierCliffProbability === null ? null : row.tierCliffProbability * 100
+              : row.runProbability * 100
+            const runText = row.runProbability !== null
+              ? `${percentLabel(row.runProbability)} · ${row.runMinimumPicks === null
+                ? "threshold unavailable"
+                : `${row.runMinimumPicks}+ picks`}`
+              : row.tierCliffProbability !== null
+                ? `${percentLabel(row.tierCliffProbability)} tier clears`
+                : "Unavailable"
+            return (
+              <div
+                className={`${styles.decisionRow} ${preferred ? styles.decisionRowPreferred : ""}`}
+                key={row.position}
+                role="row"
+              >
+                <span
+                  className={styles.decisionPlayer}
+                  role="rowheader"
+                  style={{"--series-color": POSITION_VISUALS[row.position].accent} as React.CSSProperties}
+                >
+                  <strong>{row.position}</strong>
+                  {player ? (
+                    <button
+                      aria-label={`Inspect ${player.fullName}, ${row.position}`}
+                      onClick={() => onInspectPlayer(player)}
+                      type="button"
+                    >
+                      {player.fullName}
+                      {player.team ? <small>{player.team}</small> : null}
+                    </button>
+                  ) : <em>Unavailable</em>}
+                  {row.identitySource !== "candidate" && (
+                    <small className={styles.decisionEvidenceUnavailable}>
+                      Recommendation evidence unavailable
+                    </small>
+                  )}
+                  {preferred && <small className={styles.decisionPreferred}>Lean now</small>}
+                </span>
+                <span className={styles.decisionCell} role="cell">
+                  <strong>{valueLabel(row.pointsAboveReplacement)}</strong>
+                  <BoundedBar
+                    label={`${row.position} value now, points above replacement`}
+                    percent={row.valuePercent}
+                    testId={`cross-position-value-${row.position}`}
+                  />
+                </span>
+                <span className={styles.decisionCell} role="cell">
+                  <strong>{row.tier === null ? "Tier unavailable" : `T${row.tier}`}</strong>
+                  <small>{row.tierAvailablePlayerCount === null
+                    ? "Available count unavailable"
+                    : `${row.tierAvailablePlayerCount} left`}</small>
+                </span>
+                <span className={styles.decisionCell} role="cell">
+                  <strong>{percentLabel(row.riskBeforeNextPick)}</strong>
+                  <BoundedBar
+                    label={`${row.position} risk before next pick`}
+                    percent={row.riskBeforeNextPick === null ? null : row.riskBeforeNextPick * 100}
+                    testId={`cross-position-risk-${row.position}`}
+                    tone="risk"
+                  />
+                </span>
+                <span className={styles.decisionCell} role="cell">
+                  <strong>{runText}</strong>
+                  <BoundedBar
+                    label={`${row.position} run pressure`}
+                    percent={runPercent}
+                    testId={`cross-position-run-${row.position}`}
+                    tone="run"
+                  />
+                  {row.runProbability !== null && row.tierCliffProbability !== null && (
+                    <small>Tier clears: {percentLabel(row.tierCliffProbability)}</small>
+                  )}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      <p className={styles.decisionFollowUp}>{decision.nextHorizonNote}</p>
+    </div>
+  )
+}
+
 const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
   model,
   tierModel = null,
@@ -1107,7 +1391,7 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
   const previousUpdateKey = useRef<string | null>(null)
   const announcementCount = useRef(0)
   const [announcement, setAnnouncement] = useState("")
-  const updateKey = candidateUpdateKey(model)
+  const updateKey = candidateUpdateKey(model, tierModel)
 
   useEffect(() => {
     if (previousUpdateKey.current !== null && previousUpdateKey.current !== updateKey) {
@@ -1145,7 +1429,7 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
           Draft recommendations are not available yet. Historical comparison
           below remains available when you run it manually.
         </p>
-        <div aria-live="polite" className="sr-only" role="status">
+        <div aria-live="polite" className="sr-only" data-testid="cross-position-live-update" role="status">
           {announcement}
         </div>
       </section>
@@ -1170,11 +1454,16 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
         </p>
       </header>
 
-      <DecisionCockpit model={model} onInspectPlayer={onInspectPlayer} tierModel={tierModel} />
+      <DecisionMatrix model={model} onInspectPlayer={onInspectPlayer} tierModel={tierModel} />
 
       <details className="mt-4 rounded-xl border-2 border-slate-300 bg-white">
         <summary className="cursor-pointer rounded-xl p-3 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">Detailed recommendation evidence</summary>
         <div className="border-t border-violet-100 p-3">
+
+      <details className={styles.scenarioDisclosure}>
+        <summary>Test positional scenarios</summary>
+        <DecisionScenarioExplorer model={model} tierModel={tierModel} />
+      </details>
 
       <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 xl:grid-cols-5">
         <div className="rounded bg-white p-2">
@@ -1215,7 +1504,7 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
         bars compare only the displayed candidates within the same metric, and
         exact supplied values remain visible.
       </p>
-      <div aria-live="polite" className="sr-only" role="status">
+      <div aria-live="polite" className="sr-only" data-testid="cross-position-live-update" role="status">
         {announcement}
       </div>
 

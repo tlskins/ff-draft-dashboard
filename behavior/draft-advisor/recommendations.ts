@@ -85,6 +85,8 @@ export interface DraftRecommendationSet {
   nextUserPick: number
   preferredView: AnalysisViewId
   viewExplanation: string
+  /** Best deterministic option at each position; independent of the shortlist. */
+  positionCandidates?: DraftRecommendationCandidate[]
   candidates: DraftRecommendationCandidate[]
 }
 
@@ -532,6 +534,7 @@ export const createDraftRecommendations = ({
     currentPick,
     nextUserPick,
     ...view,
+    positionCandidates: byScore,
     candidates: Array.from(selected.values())
       .sort((left, right) => right.score - left.score)
       .slice(0, 3),

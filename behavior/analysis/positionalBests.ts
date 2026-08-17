@@ -263,15 +263,22 @@ export const buildPositionalBestsPresentationModel = ({
   boardSettings,
   settings,
   playerStatus = {},
+  candidateLimit = 3,
+  candidateSource,
 }: {
   recommendations: DraftRecommendationSet
   boardSettings: BoardSettings
   settings: FantasySettings
   playerStatus?: PlayerStatusCacheSnapshot
+  candidateLimit?: number
+  candidateSource?: DraftRecommendationCandidate[]
 }): PositionalBestsPresentationModel => {
-  // The recommendation engine owns ordering and the maximum-three contract.
+  // The recommendation engine owns shortlist ordering and the default
+  // three-candidate surface. Cross-position presentation explicitly opts into
+  // the separate per-position source.
   // The slice is a defensive render bound, never a selection or reordering.
-  const suppliedCandidates = recommendations.candidates.slice(0, 3)
+  const suppliedCandidates = (candidateSource || recommendations.candidates)
+    .slice(0, candidateLimit)
   const normalizedRanges = suppliedCandidates.map(candidate =>
     normalizeProjectionRange({
       floor: candidate.evidence.projectedFloor,

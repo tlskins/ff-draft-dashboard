@@ -19,6 +19,20 @@ describe("Phase 14A visual acceptance fixture", () => {
     expect(screen.getByText("Home League")).toBeTruthy()
     expect(screen.getAllByText("De'Von Achane").length).toBeGreaterThan(0)
     expect(screen.getByText("Cross-position value")).toBeTruthy()
+    const decisionTable = screen.getByRole("table", {
+      name: "Cross-position decision matrix",
+    })
+    expect(within(decisionTable).getAllByRole("row")).toHaveLength(5)
+    expect(within(decisionTable).getAllByRole("rowheader")).toHaveLength(4)
+    expect(within(decisionTable).getAllByText(/3\+ picks/)).toHaveLength(4)
+    fireEvent.click(screen.getByText("Detailed recommendation evidence"))
+    fireEvent.click(screen.getByText("Test positional scenarios"))
+    const scenarios = screen.getByRole("group", {name: "Draft choice scenario"})
+    expect(within(scenarios).getAllByRole("button")).toHaveLength(4)
+    fireEvent.click(within(scenarios).getByRole("button", {name: /Test RB scenario/}))
+    expect(screen.getByRole("heading", {name: /De'Von Achane · RB/})).toBeTruthy()
+    fireEvent.click(screen.getByText("Test positional scenarios"))
+    fireEvent.click(screen.getByText("Detailed recommendation evidence"))
     expect(screen.getByTestId("ranking-position-lane-RB")).toBeTruthy()
     expect(screen.getByTestId("ranking-position-lane-WR")).toBeTruthy()
 

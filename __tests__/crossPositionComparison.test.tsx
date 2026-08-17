@@ -1,8 +1,9 @@
 import React from "react"
-import { fireEvent, render, waitFor } from "@testing-library/react"
+import { fireEvent, render, waitFor, within } from "@testing-library/react"
 
 import {
   buildCrossPositionPresentationModel,
+  buildCrossPositionDecisionPresentationModel,
   buildMetricComparisonScale,
   metricComparisonPercent,
 } from "../behavior/analysis/crossPosition"
@@ -22,6 +23,7 @@ import CrossPositionLiveSurface, {
 import type {
   TierLandscapeLaneModel,
   TierLandscapePlayerModel,
+  TierLandscapePresentationModel,
 } from "../behavior/analysis/tierLandscape"
 import {
   FantasyPosition,
@@ -222,8 +224,48 @@ const buildModel = (
   playerStatus,
 })
 
+const tierPlayer = (
+  selectedPlayer: Player,
+  median = 15,
+  survivalProbability: number | null = .5,
+): TierLandscapePlayerModel => ({
+  player: selectedPlayer,
+  positionRank: 1,
+  positionRankSourceLabel: "Harris rank",
+  primaryTier: 1,
+  primaryTierSourceLabel: "Harris tier",
+  projectionTier: 1,
+  projection: {
+    floor: median - 2,
+    median,
+    ceiling: median + 2,
+    rangeFloor: median - 2,
+    rangeCeiling: median + 2,
+    startPercent: 0,
+    medianPercent: 50,
+    endPercent: 100,
+  },
+  survivalProbability,
+})
+
+const tierLane = (
+  position: FantasyPosition,
+  lanePlayers: TierLandscapePlayerModel[],
+  overrides: Partial<TierLandscapeLaneModel> = {},
+): TierLandscapeLaneModel => ({
+  position,
+  players: lanePlayers,
+  currentTopAvailableTier: {
+    tier: 1,
+    availablePlayerCount: lanePlayers.length,
+    exhaustionProbability: .3,
+  },
+  run: {probability: .2, minimumPicks: 3},
+  ...overrides,
+} as TierLandscapeLaneModel)
+
 describe("cross-position presentation model", () => {
-  it("preserves exactly the supplied first-three candidate order without filling positions", () => {
+  it("preserves the supplied four-position candidate order without filling positions", () => {
     const supplied = [
       candidate(player("alpha", FantasyPosition.QUARTERBACK, 1), 12.345),
       candidate(player("beta", FantasyPosition.RUNNING_BACK, 1), 11),
@@ -233,16 +275,16 @@ describe("cross-position presentation model", () => {
     const model = buildModel(supplied)
 
     expect(model.candidates.map(item => item.player.id)).toEqual([
-      "alpha", "beta", "gamma",
+      "alpha", "beta", "gamma", "delta",
     ])
     expect(model.candidates.map(item => item.preferenceLabel)).toEqual([
-      "Preferred", "Fallback", "Fallback",
+      "Preferred", "Fallback", "Fallback", "Fallback",
     ])
     expect(model.candidates.map(item => item.fallbackNumber)).toEqual([
-      null, 1, 2,
+      null, 1, 2, 3,
     ])
     expect(model.candidates.map(item => item.advisorScore)).toEqual([
-      12.345, 11, 10,
+      12.345, 11, 10, 9,
     ])
   })
 
@@ -505,6 +547,195 @@ describe("live cross-position surface", () => {
     mockedExecute.mockResolvedValue(historicalResponse)
   })
 
+  it("renders four accessible decision rows with honest PAR, risk, tier, and run semantics", () => {
+    const supplied = [
+      candidate(player("qb", FantasyPosition.QUARTERBACK, 1), 12, {
+        pointsAboveReplacement: 2.1, survivalProbability: .18,
+      }),
+      candidate(player("rb", FantasyPosition.RUNNING_BACK, 1), 11, {
+        pointsAboveReplacement: 6.4, survivalProbability: 1,
+      }),
+      candidate(player("wr", FantasyPosition.WIDE_RECEIVER, 1), 10, {
+        pointsAboveReplacement: 4.8, survivalProbability: 0,
+      }),
+      candidate(player("te", FantasyPosition.TIGHT_END, 1), 9, {
+        pointsAboveReplacement: 3.9, survivalProbability: -1,
+      }),
+    ]
+    const model = buildModel(supplied)
+    const tierModel = {
+      lanes: supplied.map((item, index) => ({
+        position: item.player.position,
+        players: [{player: item.player}],
+        currentTopAvailableTier: {
+          tier: index === 2 ? 2 : 1,
+          availablePlayerCount: index + 1,
+          exhaustionProbability: [.2, .72, .28, .65][index],
+        },
+        run: {probability: [.12, .61, .24, .43][index], minimumPicks: 3},
+      })),
+    } as unknown as TierLandscapePresentationModel
+    const presentation = buildCrossPositionDecisionPresentationModel(model, tierModel)
+    expect(presentation.rows[0].riskBeforeNextPick).toBeCloseTo(.82)
+    expect(presentation.rows.slice(1).map(row => row.riskBeforeNextPick)).toEqual([
+      0, 1, null,
+    ])
+    expect(presentation.rows.map(row => row.tierAvailablePlayerCount)).toEqual([
+      1, 2, 3, 4,
+    ])
+
+    const view = render(
+      <CrossPositionLiveSurface
+        model={model}
+        onInspectPlayer={jest.fn()}
+        tierModel={tierModel}
+      />,
+    )
+    const table = view.getByRole("table", {name: "Cross-position decision matrix"})
+    expect(within(table).getAllByRole("row")).toHaveLength(5)
+    expect(within(table).getAllByRole("columnheader")).toHaveLength(5)
+    expect(within(table).getAllByRole("rowheader")).toHaveLength(4)
+    expect(within(table).getAllByRole("cell")).toHaveLength(16)
+    expect(within(table).getByText("+6.4 PAR")).toBeTruthy()
+    expect(within(table).getByText("82%")).toBeTruthy()
+    expect(within(table).getByText("0%")).toBeTruthy()
+    expect(within(table).getByText("100%")).toBeTruthy()
+    expect(within(table).getAllByText(/3\+ picks/)).toHaveLength(4)
+    expect(view.queryByTestId("cross-position-risk-TE")).toBeNull()
+    expect(view.getByTestId("cross-position-value-RB").firstElementChild
+      ?.getAttribute("style")).toContain("width: 100%")
+    expect(view.getByTestId("cross-position-risk-WR").firstElementChild
+      ?.getAttribute("style")).toContain("width: 100%")
+  })
+
+  it("keeps candidate identity, inspection, PAR, and risk aligned when the lane leader differs", () => {
+    const laneLeader = player("lane-leader", FantasyPosition.RUNNING_BACK, 1)
+    const recommendable = candidate(
+      player("recommendable", FantasyPosition.RUNNING_BACK, 2),
+      10,
+      {pointsAboveReplacement: 6.2, survivalProbability: .25},
+    )
+    const model = buildModel([recommendable])
+    const tierModel = {
+      lanes: [tierLane(
+        FantasyPosition.RUNNING_BACK,
+        [tierPlayer(laneLeader), tierPlayer(recommendable.player)],
+      )],
+    } as TierLandscapePresentationModel
+    const presentation = buildCrossPositionDecisionPresentationModel(model, tierModel)
+    expect(presentation.rows[0]).toMatchObject({
+      player: {id: "recommendable"},
+      identitySource: "candidate",
+      pointsAboveReplacement: 6.2,
+      riskBeforeNextPick: .75,
+    })
+
+    const onInspect = jest.fn()
+    const view = render(
+      <CrossPositionLiveSurface model={model} onInspectPlayer={onInspect} tierModel={tierModel} />,
+    )
+    const rowHeader = view.getByRole("rowheader", {name: /recommendable Player/})
+    expect(rowHeader.textContent).not.toContain("lane-leader Player")
+    const row = rowHeader.parentElement as HTMLElement
+    expect(within(row).getByText("+6.2 PAR")).toBeTruthy()
+    expect(within(row).getByText("75%")).toBeTruthy()
+    fireEvent.click(within(rowHeader).getByRole("button", {
+      name: "Inspect recommendable Player, RB",
+    }))
+    expect(onInspect).toHaveBeenCalledWith(recommendable.player)
+
+    const unavailable = render(
+      <CrossPositionLiveSurface
+        model={buildModel([])}
+        onInspectPlayer={jest.fn()}
+        tierModel={tierModel}
+      />,
+    )
+    expect(unavailable.getByRole("rowheader", {name: /lane-leader Player/}).textContent)
+      .toContain("Recommendation evidence unavailable")
+  })
+
+  it("renders truthful positive, trailing, tied, and unavailable PAR relationships", () => {
+    const whyNow = (preferredPar: number, alternativePar: number) => {
+      const preferred = candidate(
+        player("preferred", FantasyPosition.TIGHT_END, 1),
+        10,
+        {pointsAboveReplacement: preferredPar},
+      )
+      const alternative = candidate(
+        player("alternative", FantasyPosition.RUNNING_BACK, 1),
+        9,
+        {pointsAboveReplacement: alternativePar},
+      )
+      const model = buildModel([preferred, alternative])
+      const tierModel = {
+        lanes: [
+          tierLane(FantasyPosition.TIGHT_END, [tierPlayer(preferred.player)]),
+          tierLane(FantasyPosition.RUNNING_BACK, [tierPlayer(alternative.player)]),
+        ],
+      } as TierLandscapePresentationModel
+      return buildCrossPositionDecisionPresentationModel(model, tierModel).whyNow
+    }
+
+    expect(whyNow(7, 5)).toContain("TE leads RB by 2.0 PAR.")
+    expect(whyNow(4, 5)).toContain(
+      "TE trails RB by 1.0 PAR, but remains the deterministic preference.",
+    )
+    expect(whyNow(5.04, 5)).toContain("TE and RB are tied on PAR.")
+    expect(whyNow(Number.NaN, 5)).toContain("TE is the deterministic preference.")
+  })
+
+  it("restores all positional scenarios as compact secondary evidence and follows preference changes", async () => {
+    const positions = [
+      FantasyPosition.QUARTERBACK,
+      FantasyPosition.RUNNING_BACK,
+      FantasyPosition.WIDE_RECEIVER,
+      FantasyPosition.TIGHT_END,
+    ]
+    const leaders = positions.map(position => player(`${position.toLowerCase()}-one`, position, 1))
+    const fallbacks = positions.map(position => player(`${position.toLowerCase()}-two`, position, 2))
+    const supplied = leaders.map((item, index) => candidate(item, 10 - index))
+    const tierModel = {
+      lanes: positions.map((position, index) => tierLane(position, [
+        tierPlayer(leaders[index], 18 - index, .6),
+        tierPlayer(fallbacks[index], 14 - index, .7),
+      ])),
+    } as TierLandscapePresentationModel
+    const view = render(
+      <CrossPositionLiveSurface
+        model={buildModel(supplied)}
+        onInspectPlayer={jest.fn()}
+        tierModel={tierModel}
+      />,
+    )
+
+    fireEvent.click(view.getByText("Detailed recommendation evidence"))
+    fireEvent.click(view.getByText("Test positional scenarios"))
+    const selector = view.getByRole("group", {name: "Draft choice scenario"})
+    expect(within(selector).getAllByRole("button")).toHaveLength(4)
+    const qb = within(selector).getByRole("button", {name: /Test QB scenario/})
+    expect(qb.tagName).toBe("BUTTON")
+    expect(qb.getAttribute("aria-pressed")).toBe("true")
+
+    const rb = within(selector).getByRole("button", {name: /Test RB scenario/})
+    rb.focus()
+    expect(document.activeElement).toBe(rb)
+    fireEvent.click(rb)
+    expect(view.getByRole("heading", {name: "rb-one Player · RB"})).toBeTruthy()
+    expect(view.getByText("rb-two Player")).toBeTruthy()
+
+    view.rerender(
+      <CrossPositionLiveSurface
+        model={buildModel([supplied[2], supplied[0], supplied[1], supplied[3]])}
+        onInspectPlayer={jest.fn()}
+        tierModel={tierModel}
+      />,
+    )
+    await waitFor(() => expect(within(selector).getByRole("button", {
+      name: /Test WR scenario/,
+    }).getAttribute("aria-pressed")).toBe("true"))
+  })
+
   it("renders supplied evidence, valid zero bench utility, filtered status, and keyboard-accessible inspection", () => {
     const alpha = candidate(player("alpha", FantasyPosition.QUARTERBACK, 1), 12.345, {
       replacementLevel: 8.25,
@@ -583,9 +814,9 @@ describe("live cross-position surface", () => {
     const view = render(
       <CrossPositionLiveSurface model={buildModel([alpha, beta])} onInspectPlayer={jest.fn()} />,
     )
-    const liveRegion = () => view.container.querySelector(
-      "[aria-live='polite']",
-    )?.textContent
+    const liveRegion = () => view.getByTestId(
+      "cross-position-live-update",
+    ).textContent
 
     view.rerender(
       <CrossPositionLiveSurface model={buildModel([alpha, beta])} onInspectPlayer={jest.fn()} />,
@@ -646,6 +877,84 @@ describe("live cross-position surface", () => {
       }, espnBoardSettings)} onInspectPlayer={jest.fn()} />,
     )
     expect(liveRegion()).toContain("Update 4.")
+  })
+
+  it("announces rendered tier-only changes once and ignores equivalent or internal-only rerenders", async () => {
+    const alpha = candidate(player("alpha", FantasyPosition.QUARTERBACK, 1), 3)
+    const model = buildModel([alpha])
+    const lanePlayer = tierPlayer(alpha.player)
+    const tierModel = {
+      lanes: [tierLane(FantasyPosition.QUARTERBACK, [lanePlayer])],
+    } as TierLandscapePresentationModel
+    const view = render(
+      <CrossPositionLiveSurface model={model} onInspectPlayer={jest.fn()} tierModel={tierModel} />,
+    )
+    const liveRegion = () => view.getByTestId("cross-position-live-update").textContent
+    expect(liveRegion()).toBe("")
+
+    const renderedTierChange = {
+      lanes: [{
+        ...tierModel.lanes[0],
+        currentTopAvailableTier: {
+          ...tierModel.lanes[0].currentTopAvailableTier!,
+          availablePlayerCount: 2,
+        },
+      }],
+    } as TierLandscapePresentationModel
+    view.rerender(
+      <CrossPositionLiveSurface model={model} onInspectPlayer={jest.fn()} tierModel={renderedTierChange} />,
+    )
+    await waitFor(() => expect(liveRegion()).toContain("Update 1."))
+
+    view.rerender(
+      <CrossPositionLiveSurface
+        model={model}
+        onInspectPlayer={jest.fn()}
+        tierModel={{lanes: renderedTierChange.lanes.map(lane => ({...lane}))} as TierLandscapePresentationModel}
+      />,
+    )
+    expect(liveRegion()).toContain("Update 1.")
+
+    const internalOnlyChange = {
+      lanes: [{
+        ...renderedTierChange.lanes[0],
+        players: [{
+          ...renderedTierChange.lanes[0].players[0],
+          projection: {
+            ...renderedTierChange.lanes[0].players[0].projection,
+            median: 99,
+          },
+        }],
+      }],
+    } as TierLandscapePresentationModel
+    view.rerender(
+      <CrossPositionLiveSurface model={model} onInspectPlayer={jest.fn()} tierModel={internalOnlyChange} />,
+    )
+    expect(liveRegion()).toContain("Update 1.")
+  })
+
+  it("announces an explanation-only change once and ignores an equivalent rerender", async () => {
+    const alpha = candidate(player("alpha", FantasyPosition.QUARTERBACK, 1), 3)
+    const model = buildModel([alpha])
+    const view = render(
+      <CrossPositionLiveSurface model={model} onInspectPlayer={jest.fn()} />,
+    )
+    const liveRegion = () => view.getByTestId("cross-position-live-update").textContent
+    expect(liveRegion()).toBe("")
+
+    const explanationChanged = {
+      ...model,
+      explanation: "The current roster construction makes quarterback the deterministic preference.",
+    }
+    view.rerender(
+      <CrossPositionLiveSurface model={explanationChanged} onInspectPlayer={jest.fn()} />,
+    )
+    await waitFor(() => expect(liveRegion()).toContain("Update 1."))
+
+    view.rerender(
+      <CrossPositionLiveSurface model={{...explanationChanged}} onInspectPlayer={jest.fn()} />,
+    )
+    expect(liveRegion()).toContain("Update 1.")
   })
 
   it("keeps unavailable and empty live states useful without inventing candidates", () => {

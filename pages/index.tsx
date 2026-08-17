@@ -23,13 +23,14 @@ import PickHistoryFooter from "../components/PickHistoryFooter"
 import MobileFooter, { MobileView } from "../components/MobileFooter"
 import MobileTiersView from "../components/MobileTiersView"
 import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
-import LiveAdvisorPanel from "../components/LiveAdvisorPanel"
+import LiveAdvisorPanel, {type LiveAdvisorPanelProps} from "../components/LiveAdvisorPanel"
 import PortableDataControls from "../components/PortableDataControls"
 import DraftDeskAppBar from "../components/DraftDeskAppBar"
 import DraftDeskProfilePane from "../components/DraftDeskProfilePane"
 import DraftDock from "../components/DraftDock"
 import DeskPaneHeader from "../components/draft-desk/DeskPaneHeader"
 import DeskSegmentedControl from "../components/draft-desk/DeskSegmentedControl"
+import DraftDeskAdvisorDisclosure from "../components/draft-desk/DraftDeskAdvisorDisclosure"
 import draftDeskStyles from "../components/DraftDesk.module.css"
 
 import { useRanks } from '../behavior/hooks/useRanks'
@@ -853,6 +854,39 @@ const Home: FC = () => {
     setDraftView(DraftView.RANKING)
   }
 
+  const liveAdvisorPanelProps: LiveAdvisorPanelProps = {
+    draftStarted,
+    onSelectPlayer,
+    onExportReplay: canExportReplay ? () => exportReplay() : undefined,
+    onExportRosterOnly: canExportReplay ? () => exportReplay(true) : undefined,
+    replayCaptureStatus,
+    empiricalBaseShadowCaptureStatus,
+    runOnlyShadowCaptureStatus,
+    replayExportPreflight,
+    recommendations,
+    playerStatus,
+    draftPlan: realtimeAdvisor.plan,
+    realtimeProposals: realtimeAdvisor.proposals,
+    onAcceptProposal: realtimeAdvisor.acceptProposal,
+    onRejectProposal: realtimeAdvisor.rejectProposal,
+    realtimeStatus: realtimeConversation.status,
+    realtimeMessages: realtimeConversation.messages,
+    realtimeError: realtimeConversation.error,
+    realtimeIsResponding: realtimeConversation.isResponding,
+    realtimeReconnectAttempt: realtimeConversation.reconnectAttempt,
+    realtimeAutoAdviceEnabled: realtimeConversation.autoAdviceEnabled,
+    realtimeMode: realtimeConversation.mode,
+    realtimeMicrophoneEnabled: realtimeConversation.microphoneEnabled,
+    realtimeIsUserSpeaking: realtimeConversation.isUserSpeaking,
+    onConnectRealtime: realtimeConversation.connect,
+    onDisconnectRealtime: realtimeConversation.disconnect,
+    onCancelRealtimeResponse: realtimeConversation.cancelResponse,
+    onSetRealtimeAutoAdviceEnabled: realtimeConversation.setAutoAdviceEnabled,
+    onSetRealtimeMode: realtimeConversation.setMode,
+    onSetRealtimeMicrophoneEnabled: realtimeConversation.setMicrophoneEnabled,
+    onSendRealtimeText: realtimeConversation.sendText,
+  }
+
   return (
     <div className={`flex flex-col items-center justify-center min-h-screen relative ${draftDeskEnabled ? draftDeskStyles.deskViewport : ""}`}>
       <PageHead />
@@ -1042,53 +1076,12 @@ const Home: FC = () => {
                     )}
                     {pane === "insight" && (
                       <section aria-label="Deterministic insight pane" className={`${draftDeskStyles.pane} flex h-full min-h-0 flex-col`}>
-                        <DeskPaneHeader kicker="Decision view · auto" title="Cross-position value" />
+                        <DeskPaneHeader
+                          actions={<DraftDeskAdvisorDisclosure {...liveAdvisorPanelProps} />}
+                          kicker="Decision view · auto"
+                          title="Cross-position value"
+                        />
                         <div className="min-h-0 flex-1 overflow-y-auto p-2 text-left">
-                          <div style={{color: "#0f172a"}}>
-                            <OptimalRosterDisplay
-                              compact
-                              currentOptimalRoster={currentOptimalRoster}
-                              optimalRosters={optimalRosters}
-                              selectedOptimalRosterIdx={selectedOptimalRosterIdx}
-                              setSelectedOptimalRosterIdx={setSelectedOptimalRosterIdx}
-                              boardSettings={boardSettings}
-                              settings={settings}
-                              rankingSummaries={rankingSummaries}
-                            />
-                          </div>
-                          <LiveAdvisorPanel
-                            compact
-                            draftStarted={draftStarted}
-                            onSelectPlayer={onSelectPlayer}
-                            onExportReplay={canExportReplay ? () => exportReplay() : undefined}
-                            onExportRosterOnly={canExportReplay ? () => exportReplay(true) : undefined}
-                            replayCaptureStatus={replayCaptureStatus}
-                            empiricalBaseShadowCaptureStatus={empiricalBaseShadowCaptureStatus}
-                            runOnlyShadowCaptureStatus={runOnlyShadowCaptureStatus}
-                            replayExportPreflight={replayExportPreflight}
-                            recommendations={recommendations}
-                            playerStatus={playerStatus}
-                            draftPlan={realtimeAdvisor.plan}
-                            realtimeProposals={realtimeAdvisor.proposals}
-                            onAcceptProposal={realtimeAdvisor.acceptProposal}
-                            onRejectProposal={realtimeAdvisor.rejectProposal}
-                            realtimeStatus={realtimeConversation.status}
-                            realtimeMessages={realtimeConversation.messages}
-                            realtimeError={realtimeConversation.error}
-                            realtimeIsResponding={realtimeConversation.isResponding}
-                            realtimeReconnectAttempt={realtimeConversation.reconnectAttempt}
-                            realtimeAutoAdviceEnabled={realtimeConversation.autoAdviceEnabled}
-                            realtimeMode={realtimeConversation.mode}
-                            realtimeMicrophoneEnabled={realtimeConversation.microphoneEnabled}
-                            realtimeIsUserSpeaking={realtimeConversation.isUserSpeaking}
-                            onConnectRealtime={realtimeConversation.connect}
-                            onDisconnectRealtime={realtimeConversation.disconnect}
-                            onCancelRealtimeResponse={realtimeConversation.cancelResponse}
-                            onSetRealtimeAutoAdviceEnabled={realtimeConversation.setAutoAdviceEnabled}
-                            onSetRealtimeMode={realtimeConversation.setMode}
-                            onSetRealtimeMicrophoneEnabled={realtimeConversation.setMicrophoneEnabled}
-                            onSendRealtimeText={realtimeConversation.sendText}
-                          />
                           <AnalysisWorkspace
                             availablePlayers={analysisAvailablePlayers}
                             boardSettings={boardSettings}
@@ -1113,56 +1106,7 @@ const Home: FC = () => {
           )}
           {!analysisOpen && (
             <div className={`w-full px-2 ${draftDeskEnabled ? "xl:hidden" : "md:px-5"}`}>
-              <LiveAdvisorPanel
-                draftStarted={draftStarted}
-                onSelectPlayer={onSelectPlayer}
-                onExportReplay={
-                  canExportReplay ? () => exportReplay() : undefined
-                }
-                onExportRosterOnly={canExportReplay ? () => exportReplay(true) : undefined}
-                replayCaptureStatus={replayCaptureStatus}
-                empiricalBaseShadowCaptureStatus={
-                  empiricalBaseShadowCaptureStatus
-                }
-                runOnlyShadowCaptureStatus={runOnlyShadowCaptureStatus}
-                replayExportPreflight={replayExportPreflight}
-                recommendations={recommendations}
-                playerStatus={playerStatus}
-                draftPlan={realtimeAdvisor.plan}
-                realtimeProposals={realtimeAdvisor.proposals}
-                onAcceptProposal={realtimeAdvisor.acceptProposal}
-                onRejectProposal={realtimeAdvisor.rejectProposal}
-                realtimeStatus={realtimeConversation.status}
-                realtimeMessages={realtimeConversation.messages}
-                realtimeError={realtimeConversation.error}
-                realtimeIsResponding={realtimeConversation.isResponding}
-                realtimeReconnectAttempt={
-                  realtimeConversation.reconnectAttempt
-                }
-                realtimeAutoAdviceEnabled={
-                  realtimeConversation.autoAdviceEnabled
-                }
-                realtimeMode={realtimeConversation.mode}
-                realtimeMicrophoneEnabled={
-                  realtimeConversation.microphoneEnabled
-                }
-                realtimeIsUserSpeaking={
-                  realtimeConversation.isUserSpeaking
-                }
-                onConnectRealtime={realtimeConversation.connect}
-                onDisconnectRealtime={realtimeConversation.disconnect}
-                onCancelRealtimeResponse={
-                  realtimeConversation.cancelResponse
-                }
-                onSetRealtimeAutoAdviceEnabled={
-                  realtimeConversation.setAutoAdviceEnabled
-                }
-                onSetRealtimeMode={realtimeConversation.setMode}
-                onSetRealtimeMicrophoneEnabled={
-                  realtimeConversation.setMicrophoneEnabled
-                }
-                onSendRealtimeText={realtimeConversation.sendText}
-              />
+              <LiveAdvisorPanel {...liveAdvisorPanelProps} />
             </div>
           )}
           {!draftDeskEnabled && analysisOpen && (
