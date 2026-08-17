@@ -411,7 +411,7 @@ const viewCases: Array<{
     id: "cross_position",
     button: "Decision cockpit",
     heading: "Decision cockpit",
-    source: /Compare the best available QB, RB, WR, and TE now/,
+    source: /Compare the shared advisor set in its displayed order/,
     historical: "Historical cross-position drilldown",
   },
   {
@@ -442,10 +442,10 @@ describe("Phase 10F cross-view acceptance gate", () => {
     const comparisonTable = view.getByRole("table", {
       name: "Cross-position decision matrix",
     })
-    expect(within(comparisonTable).getAllByRole("row")).toHaveLength(5)
+    expect(within(comparisonTable).getAllByRole("row")).toHaveLength(4)
     expect(within(comparisonTable).getAllByRole("columnheader")).toHaveLength(5)
-    expect(within(comparisonTable).getAllByRole("rowheader")).toHaveLength(4)
-    expect(within(comparisonTable).getAllByRole("cell")).toHaveLength(16)
+    expect(within(comparisonTable).getAllByRole("rowheader")).toHaveLength(3)
+    expect(within(comparisonTable).getAllByRole("cell")).toHaveLength(12)
     expect(within(comparisonTable).getByRole("rowheader", {
       name: /Alpha Runner/,
     })).toBeTruthy()
@@ -499,7 +499,8 @@ describe("Phase 10F cross-view acceptance gate", () => {
         recommendations={preferredRunner}
       />,
     )
-    await waitFor(() => expect(within(matrix).queryByText("Lean now")).toBeNull())
+    await waitFor(() => expect(within(matrix).queryByText("Bravo Runner"))
+      .toBeNull())
   })
 
   it("opens the historical drawer from the visible Player Lab and restores keyboard focus", async () => {
@@ -915,7 +916,7 @@ describe("Phase 10F cross-view acceptance gate", () => {
       .every(button => button.getAttribute("aria-pressed") === "true"))
       .toBe(true)
     expect(pair.getAllByRole("list", {
-      name: "Deterministic cross-position recommendation candidates",
+      name: "Advisor cross-position comparison candidates",
     })).toHaveLength(2)
   })
 
@@ -934,6 +935,11 @@ describe("Phase 10F cross-view acceptance gate", () => {
       recommendations: recommendations(supplied),
       boardSettings,
       settings,
+      comparisonItems: supplied.map(item => ({
+        player: item.player,
+        reasonCode: "recommended_now",
+        reasonLabel: "Recommended now",
+      })),
     })
     const intra = buildIntraPositionPresentationModel({
       position: FantasyPosition.RUNNING_BACK,
@@ -989,6 +995,11 @@ describe("Phase 10F cross-view acceptance gate", () => {
       recommendations: recommendations([malformedCandidate]),
       boardSettings,
       settings,
+      comparisonItems: [{
+        player: malformedCandidate.player,
+        reasonCode: "recommended_now",
+        reasonLabel: "Recommended now",
+      }],
     })
     expect(malformedCross.candidates[0]).toMatchObject({
       advisorScore: null,
@@ -1017,6 +1028,11 @@ describe("Phase 10F cross-view acceptance gate", () => {
       recommendations: recommendations(),
       boardSettings,
       settings,
+      comparisonItems: recommendationCandidates.slice(0, 3).map(item => ({
+        player: item.player,
+        reasonCode: "recommended_now",
+        reasonLabel: "Recommended now",
+      })),
     })
     const intraModel = buildIntraPositionPresentationModel({
       position: FantasyPosition.RUNNING_BACK,

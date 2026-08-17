@@ -28,7 +28,7 @@ interface CrossPositionLiveSurfaceProps {
 }
 
 const rosterRoleLabel: Record<
-  CrossPositionCandidateModel["candidate"]["evidence"]["rosterRole"],
+  NonNullable<CrossPositionCandidateModel["candidate"]>["evidence"]["rosterRole"],
   string
 > = {
   open_starter: "Open starter",
@@ -79,8 +79,11 @@ const candidateUpdateKey = (
       projection: candidate.projection,
       advisorScore: candidate.advisorScore,
       metricValues: candidate.metricValues,
-      rosterRole: candidate.candidate.evidence.rosterRole,
-      flags: candidate.candidate.evidence.flags,
+      inclusionReasonCode: candidate.inclusionReasonCode,
+      inclusionReasonLabel: candidate.inclusionReasonLabel,
+      recommendationEvidenceAvailable: candidate.recommendationEvidenceAvailable,
+      rosterRole: candidate.candidate?.evidence.rosterRole ?? null,
+      flags: candidate.candidate?.evidence.flags ?? [],
       statusState: candidate.statusState,
       statusEvidence: candidate.statusEvidence.map(event => ({
         id: event.id,
@@ -104,7 +107,7 @@ const candidateUpdateKey = (
       runProbability: row.runProbability,
       runMinimumPicks: row.runMinimumPicks,
       tierCliffProbability: row.tierCliffProbability,
-      preferred: row.position === decision.preferredRow?.position,
+      preferred: row === decision.preferredRow,
     })),
   })
 }
@@ -327,10 +330,10 @@ const CandidateCard: React.FC<{
   const recommendation = candidate.candidate
   const showActiveTier = candidate.customTier === null
     || candidate.activeTier !== candidate.customTier
-  const flags = Array.isArray(recommendation.evidence.flags)
+  const flags = Array.isArray(recommendation?.evidence.flags)
     ? recommendation.evidence.flags.filter(flag => typeof flag === "string")
     : []
-  const benchApplies = recommendation.evidence.rosterRole === "bench"
+  const benchApplies = recommendation?.evidence.rosterRole === "bench"
     || candidate.metricValues.benchUtility !== null
       && candidate.metricValues.benchUtility !== 0
 
@@ -354,6 +357,7 @@ const CandidateCard: React.FC<{
             <p className="text-xs text-slate-500">
               {candidate.player.position}
               {candidate.player.team ? ` · ${candidate.player.team}` : ""}
+              {` · ${candidate.inclusionReasonLabel}`}
             </p>
           </div>
           <button
@@ -365,6 +369,13 @@ const CandidateCard: React.FC<{
             Inspect comparison
           </button>
         </div>
+
+        {!candidate.recommendationEvidenceAvailable && (
+          <p className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
+            Recommendation evidence unavailable for this pinned player. Rank
+            and tier fields use the active board; advisor values remain unavailable.
+          </p>
+        )}
 
         <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <div className="rounded bg-slate-50 p-2">
@@ -439,8 +450,10 @@ const CandidateCard: React.FC<{
             <div className="rounded border border-slate-200 bg-white p-2">
               <dt className="text-slate-600">Roster role · supplied</dt>
               <dd className="mt-1 font-semibold text-slate-950">
-                {rosterRoleLabel[recommendation.evidence.rosterRole]
-                  || "Unavailable"}
+                {recommendation
+                  ? (rosterRoleLabel[recommendation.evidence.rosterRole]
+                    || "Unavailable")
+                  : "Unavailable"}
               </dd>
             </div>
           </dl>
@@ -775,15 +788,18 @@ const costValueLabel = (value: number): string => (
 const cockpitOptions = (
   model: CrossPositionPresentationModel,
   tierModel: TierLandscapePresentationModel | null,
-): CockpitOption[] => (tierModel?.lanes || []).flatMap(lane => {
-  const player = lane.players[0]
-  if (!player) return []
+): CockpitOption[] => model.candidates.flatMap(candidate => {
+  const lane = (tierModel?.lanes || []).find(item => (
+    item.position === candidate.player.position
+  ))
+  const player = lane?.players.find(item => (
+    item.player.id === candidate.player.id
+  ))
+  if (!lane || !player) return []
   return [{
     lane,
     player,
-    suppliedCandidate: model.candidates.find(candidate => (
-      candidate.player.id === player.player.id
-    )) || null,
+    suppliedCandidate: candidate,
   }]
 })
 
@@ -794,11 +810,8 @@ const DecisionCockpit: React.FC<{
 }> = ({model, tierModel, onInspectPlayer}) => {
   const options = cockpitOptions(model, tierModel)
   const preferredCandidate = model.candidates[0] || null
-  // The advisor's preferred position chooses the initial scenario even when
-  // its candidate is not that position's rank-driven board leader. If that
-  // position has no displayed leader, fixed lane order supplies the fallback.
   const defaultOption = options.find(option => (
-    option.lane.position === preferredCandidate?.player.position
+    option.player.player.id === preferredCandidate?.player.id
   )) || options[0]
   const defaultDraftedId = defaultOption?.player.player.id || ""
   const selectionBasis = [
@@ -1133,7 +1146,7 @@ const DecisionScenarioExplorer: React.FC<{
   const options = cockpitOptions(model, tierModel)
   const preferredCandidate = model.candidates[0] || null
   const defaultOption = options.find(option => (
-    option.lane.position === preferredCandidate?.player.position
+    option.player.player.id === preferredCandidate?.player.id
   )) || options[0]
   const defaultDraftedId = defaultOption?.player.player.id || ""
   const selectionBasis = [
@@ -1166,20 +1179,14 @@ const DecisionScenarioExplorer: React.FC<{
   const drafted = options.find(option => (
     option.player.player.id === effectiveDraftedId
   )) || options[0]
-  const projectedNext = options.map(option => {
-    const estimate = expectedNextOption(
-      option.lane,
-      drafted.player.player.id,
-      model.candidates,
-    )
-    return {
-      position: option.lane.position,
-      next: estimate.player,
-      nextMedian: estimate.player?.projection.median ?? null,
-      expectedMedian: estimate.expectedMedian,
-      suppliedPlayerCount: estimate.suppliedPlayerCount,
-    }
-  })
+  const selectedEvidence = options.map(option => ({
+    id: option.player.player.id,
+    position: option.lane.position,
+    player: option.player,
+    survival: option.suppliedCandidate?.metricValues.survivalProbability
+      ?? option.player.survivalProbability
+      ?? null,
+  }))
 
   return (
     <section aria-labelledby="scenario-explorer-title" className={styles.scenarioExplorer}>
@@ -1208,15 +1215,16 @@ const DecisionScenarioExplorer: React.FC<{
         })}
       </div>
       <div aria-live="polite" className={styles.scenarioExplorerResults}>
-        {projectedNext.map(item => (
-          <div key={item.position}>
-            <span>{item.position} at pick {model.nextUserPick ?? "—"}</span>
-            <strong>{item.next?.player.fullName || "Forecast unavailable"}</strong>
-            <small>{item.next
-              ? `${formatProjectionValue(item.nextMedian)} median PPG${item.expectedMedian !== null && item.suppliedPlayerCount > 1
-                ? ` · ${formatProjectionValue(item.expectedMedian)} expected PPG across ${item.suppliedPlayerCount} outcomes`
-                : ""}`
-              : "No rank-ordered availability forecast supplied"}</small>
+        {selectedEvidence.map(item => (
+          <div key={item.id}>
+            <span>{item.position} comparison candidate</span>
+            <strong>{item.player.player.fullName}</strong>
+            <small>
+              {formatProjectionValue(item.player.projection.median)} median PPG
+              {` · survival to pick ${model.nextUserPick ?? "—"}: ${item.survival === null
+                ? "not supplied"
+                : `${(item.survival * 100).toFixed(0)}%`}`}
+            </small>
           </div>
         ))}
       </div>
@@ -1287,7 +1295,7 @@ const DecisionMatrix: React.FC<{
       <div className={styles.decisionTableWrap}>
         <div className={styles.decisionTable} role="table" aria-label="Cross-position decision matrix">
           <div className={styles.decisionHeaderRow} role="row">
-            <span role="columnheader">Position / best</span>
+            <span role="columnheader">Player / position</span>
             <span role="columnheader">
               Value now
               <small>0–{decision.valueScale.hasFiniteValues
@@ -1300,7 +1308,7 @@ const DecisionMatrix: React.FC<{
           </div>
           {decision.rows.map(row => {
             const player = row.player
-            const preferred = row.position === decision.preferredRow?.position
+            const preferred = row === decision.preferredRow
             const runPercent = row.runProbability === null
               ? row.tierCliffProbability === null ? null : row.tierCliffProbability * 100
               : row.runProbability * 100
@@ -1314,7 +1322,8 @@ const DecisionMatrix: React.FC<{
             return (
               <div
                 className={`${styles.decisionRow} ${preferred ? styles.decisionRowPreferred : ""}`}
-                key={row.position}
+                data-player-id={player?.id}
+                key={player?.id || `${row.position}-unavailable`}
                 role="row"
               >
                 <span
@@ -1345,7 +1354,7 @@ const DecisionMatrix: React.FC<{
                   <BoundedBar
                     label={`${row.position} value now, points above replacement`}
                     percent={row.valuePercent}
-                    testId={`cross-position-value-${row.position}`}
+                    testId={`cross-position-value-${player?.id || row.position}`}
                   />
                 </span>
                 <span className={styles.decisionCell} role="cell">
@@ -1359,7 +1368,7 @@ const DecisionMatrix: React.FC<{
                   <BoundedBar
                     label={`${row.position} risk before next pick`}
                     percent={row.riskBeforeNextPick === null ? null : row.riskBeforeNextPick * 100}
-                    testId={`cross-position-risk-${row.position}`}
+                    testId={`cross-position-risk-${player?.id || row.position}`}
                     tone="risk"
                   />
                 </span>
@@ -1454,8 +1463,8 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
           Decision cockpit
         </h2>
         <p className="mt-1 max-w-4xl text-sm text-slate-700">
-          Compare the best available QB, RB, WR, and TE now, then test how each
-          choice changes the board at your next pick.
+          Compare the shared advisor set in its displayed order. Pinned edits
+          update this visualization without substituting other players.
         </p>
       </header>
 
@@ -1518,15 +1527,15 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
           className="mt-3 rounded-lg border border-dashed border-violet-300 bg-white p-5 text-sm text-violet-950"
           role="status"
         >
-          <p className="font-semibold">No legal recommendation candidates remain.</p>
+          <p className="font-semibold">No comparison candidates remain.</p>
           <p className="mt-1">
-            The deterministic advisor supplied no legal player for the current
-            roster. Historical comparison remains available below.
+            The shared advisor set contains no valid available player.
+            Historical comparison remains explicit below.
           </p>
         </div>
       ) : (
         <ol
-          aria-label="Deterministic cross-position recommendation candidates"
+          aria-label="Advisor cross-position comparison candidates"
           className="mt-3 grid min-w-0 gap-3 xl:grid-cols-3"
         >
           {model.candidates.map(candidate => (

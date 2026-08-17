@@ -105,6 +105,36 @@ const players: Player[] = [
   },
 ]
 
+const comparisonController = (
+  selected: Player[],
+  mode: "auto" | "pinned" = "auto",
+  reasonLabel = "Recommended now",
+) => ({
+  mode,
+  items: selected.map(player => ({
+    player,
+    reasonCode: mode === "pinned"
+      ? "manual_pin" as const
+      : "recommended_now" as const,
+    reasonLabel,
+  })),
+  announcement: "",
+  pinCurrent: jest.fn(),
+  restoreAuto: jest.fn(),
+  addPinnedPlayer: jest.fn(),
+  removePinnedPlayer: jest.fn(),
+})
+
+const workspaceProps = {
+  boardSettings: {
+    ranker: ThirdPartyRanker.HARRIS,
+    adpRanker: ThirdPartyADPRanker.ESPN,
+  },
+  players,
+  rankingSummaries: [],
+  settings,
+}
+
 describe("decision analysis workspace navigation", () => {
   beforeEach(() => {
     localStorage.clear()
@@ -280,6 +310,120 @@ describe("decision analysis workspace navigation", () => {
     expect(view.getByLabelText("Selected Player Lab players").textContent)
       .not.toContain(players[2].fullName)
     expect(mockedExecute).not.toHaveBeenCalled()
+  })
+
+  it("invalidates completed Auto and Pinned results without starting a replacement query", async () => {
+    const autoA = comparisonController(players.slice(0, 3))
+    const view = render(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        activePlayer={players[0]}
+        comparisonController={autoA}
+      />,
+    )
+    fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
+    await waitFor(() => expect(view.container.querySelector("svg")).not.toBeNull())
+    expect(mockedExecute).toHaveBeenCalledTimes(1)
+
+    const autoB = comparisonController(players.slice(3, 6))
+    view.rerender(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        activePlayer={players[1]}
+        comparisonController={autoB}
+      />,
+    )
+    await waitFor(() => expect(view.container.querySelector("svg")).toBeNull())
+    expect(mockedExecute).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
+    await waitFor(() => expect(view.container.querySelector("svg")).not.toBeNull())
+    expect(mockedExecute).toHaveBeenCalledTimes(2)
+
+    const pinnedEdit = comparisonController(
+      [players[3], players[4], players[0]],
+      "pinned",
+      "Manual pin",
+    )
+    view.rerender(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        activePlayer={players[1]}
+        comparisonController={pinnedEdit}
+      />,
+    )
+    await waitFor(() => expect(view.container.querySelector("svg")).toBeNull())
+    expect(mockedExecute).toHaveBeenCalledTimes(2)
+  })
+
+  it("suppresses an obsolete in-flight response after the ordered scope changes", async () => {
+    let resolveRequest!: (value: Awaited<ReturnType<
+      typeof executeHistoricalAnalysis
+    >>) => void
+    const pending = new Promise<Awaited<ReturnType<
+      typeof executeHistoricalAnalysis
+    >>>(resolve => {
+      resolveRequest = resolve
+    })
+    const completed = await mockedExecute.getMockImplementation()?.(
+      {} as Parameters<typeof executeHistoricalAnalysis>[0],
+    )
+    mockedExecute.mockReset()
+    mockedExecute.mockReturnValue(pending)
+    const view = render(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        activePlayer={players[0]}
+        comparisonController={comparisonController(players.slice(0, 3))}
+      />,
+    )
+    fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
+    await waitFor(() => expect(mockedExecute).toHaveBeenCalledTimes(1))
+
+    view.rerender(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        activePlayer={players[0]}
+        comparisonController={comparisonController(players.slice(3, 6))}
+      />,
+    )
+    resolveRequest(completed!)
+    await waitFor(() => expect(view.getByRole("button", {
+      name: "Run analysis",
+    }).textContent).toBe("Run analysis"))
+    expect(view.container.querySelector("svg")).toBeNull()
+    expect(mockedExecute).toHaveBeenCalledTimes(1)
+  })
+
+  it("preserves results for equivalent ordered IDs across reason, metadata, and profile-focus changes", async () => {
+    const selected = players.slice(0, 3)
+    const view = render(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        activePlayer={players[0]}
+        comparisonController={comparisonController(selected)}
+      />,
+    )
+    fireEvent.click(view.getByRole("button", {name: "Run analysis"}))
+    await waitFor(() => expect(view.container.querySelector("svg")).not.toBeNull())
+
+    const equivalent = selected.map(player => ({
+      ...player,
+      fullName: `${player.fullName} refreshed`,
+    }))
+    view.rerender(
+      <AnalysisWorkspace
+        {...workspaceProps}
+        activePlayer={players[4]}
+        comparisonController={comparisonController(
+          equivalent,
+          "auto",
+          "Reason copy changed",
+        )}
+      />,
+    )
+    expect(view.container.querySelector("svg")).not.toBeNull()
+    expect(mockedExecute).toHaveBeenCalledTimes(1)
   })
 
   it("exposes the three consolidated workspaces as selectable accessible controls", () => {

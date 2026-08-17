@@ -384,7 +384,8 @@ const Phase14AVisualFixture = () => {
     boardSettings,
     settings,
     playerStatus,
-  }), [fixtureRecommendations])
+    comparisonItems: comparisonController.items,
+  }), [comparisonController.items, fixtureRecommendations])
   const tierLandscapeModel = useMemo(() => buildTierLandscapePresentationModel({
     availablePlayers: available,
     recommendations: fixtureRecommendations,

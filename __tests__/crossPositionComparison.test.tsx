@@ -222,6 +222,11 @@ const buildModel = (
   boardSettings: currentBoardSettings,
   settings,
   playerStatus,
+  comparisonItems: suppliedCandidates.slice(0, 3).map(item => ({
+    player: item.player,
+    reasonCode: "recommended_now",
+    reasonLabel: "Recommended now",
+  })),
 })
 
 const tierPlayer = (
@@ -265,7 +270,7 @@ const tierLane = (
 } as TierLandscapeLaneModel)
 
 describe("cross-position presentation model", () => {
-  it("preserves the supplied four-position candidate order without filling positions", () => {
+  it("preserves controller order and enforces the maximum-three render bound", () => {
     const supplied = [
       candidate(player("alpha", FantasyPosition.QUARTERBACK, 1), 12.345),
       candidate(player("beta", FantasyPosition.RUNNING_BACK, 1), 11),
@@ -275,16 +280,16 @@ describe("cross-position presentation model", () => {
     const model = buildModel(supplied)
 
     expect(model.candidates.map(item => item.player.id)).toEqual([
-      "alpha", "beta", "gamma", "delta",
+      "alpha", "beta", "gamma",
     ])
     expect(model.candidates.map(item => item.preferenceLabel)).toEqual([
-      "Preferred", "Fallback", "Fallback", "Fallback",
+      "Preferred", "Fallback", "Fallback",
     ])
     expect(model.candidates.map(item => item.fallbackNumber)).toEqual([
-      null, 1, 2, 3,
+      null, 1, 2,
     ])
     expect(model.candidates.map(item => item.advisorScore)).toEqual([
-      12.345, 11, 10, 9,
+      12.345, 11, 10,
     ])
   })
 
@@ -547,7 +552,7 @@ describe("live cross-position surface", () => {
     mockedExecute.mockResolvedValue(historicalResponse)
   })
 
-  it("renders four accessible decision rows with honest PAR, risk, tier, and run semantics", () => {
+  it("renders at most three accessible decision rows with honest PAR, risk, tier, and run semantics", () => {
     const supplied = [
       candidate(player("qb", FantasyPosition.QUARTERBACK, 1), 12, {
         pointsAboveReplacement: 2.1, survivalProbability: .18,
@@ -566,7 +571,7 @@ describe("live cross-position surface", () => {
     const tierModel = {
       lanes: supplied.map((item, index) => ({
         position: item.player.position,
-        players: [{player: item.player}],
+        players: [tierPlayer(item.player)],
         currentTopAvailableTier: {
           tier: index === 2 ? 2 : 1,
           availablePlayerCount: index + 1,
@@ -578,10 +583,10 @@ describe("live cross-position surface", () => {
     const presentation = buildCrossPositionDecisionPresentationModel(model, tierModel)
     expect(presentation.rows[0].riskBeforeNextPick).toBeCloseTo(.82)
     expect(presentation.rows.slice(1).map(row => row.riskBeforeNextPick)).toEqual([
-      0, 1, null,
+      0, 1,
     ])
     expect(presentation.rows.map(row => row.tierAvailablePlayerCount)).toEqual([
-      1, 2, 3, 4,
+      1, 1, 1,
     ])
 
     const view = render(
@@ -592,19 +597,19 @@ describe("live cross-position surface", () => {
       />,
     )
     const table = view.getByRole("table", {name: "Cross-position decision matrix"})
-    expect(within(table).getAllByRole("row")).toHaveLength(5)
+    expect(within(table).getAllByRole("row")).toHaveLength(4)
     expect(within(table).getAllByRole("columnheader")).toHaveLength(5)
-    expect(within(table).getAllByRole("rowheader")).toHaveLength(4)
-    expect(within(table).getAllByRole("cell")).toHaveLength(16)
+    expect(within(table).getAllByRole("rowheader")).toHaveLength(3)
+    expect(within(table).getAllByRole("cell")).toHaveLength(12)
     expect(within(table).getByText("+6.4 PAR")).toBeTruthy()
     expect(within(table).getByText("82%")).toBeTruthy()
     expect(within(table).getByText("0%")).toBeTruthy()
     expect(within(table).getByText("100%")).toBeTruthy()
-    expect(within(table).getAllByText(/3\+ picks/)).toHaveLength(4)
-    expect(view.queryByTestId("cross-position-risk-TE")).toBeNull()
-    expect(view.getByTestId("cross-position-value-RB").firstElementChild
+    expect(within(table).getAllByText(/3\+ picks/)).toHaveLength(3)
+    expect(view.queryByTestId("cross-position-risk-te")).toBeNull()
+    expect(view.getByTestId("cross-position-value-rb").firstElementChild
       ?.getAttribute("style")).toContain("width: 100%")
-    expect(view.getByTestId("cross-position-risk-WR").firstElementChild
+    expect(view.getByTestId("cross-position-risk-wr").firstElementChild
       ?.getAttribute("style")).toContain("width: 100%")
   })
 
@@ -651,8 +656,51 @@ describe("live cross-position surface", () => {
         tierModel={tierModel}
       />,
     )
-    expect(unavailable.getByRole("rowheader", {name: /lane-leader Player/}).textContent)
+    expect(unavailable.queryByRole("rowheader", {name: /lane-leader Player/}))
+      .toBeNull()
+  })
+
+  it("keeps a manual comparison player visible with honest unavailable recommendation evidence", () => {
+    const former = candidate(
+      player("former", FantasyPosition.RUNNING_BACK, 1),
+      10,
+    )
+    const manual = player("manual", FantasyPosition.WIDE_RECEIVER, 3)
+    const model = buildCrossPositionPresentationModel({
+      recommendations: recommendations([former]),
+      boardSettings,
+      settings,
+      comparisonItems: [{
+        player: manual,
+        reasonCode: "manual_pin",
+        reasonLabel: "Manual pin",
+      }],
+    })
+    const tierModel = {
+      lanes: [tierLane(
+        FantasyPosition.WIDE_RECEIVER,
+        [tierPlayer(manual)],
+      )],
+    } as TierLandscapePresentationModel
+
+    expect(model.candidates.map(item => item.player.id)).toEqual(["manual"])
+    expect(model.candidates[0]).toMatchObject({
+      candidate: null,
+      recommendationEvidenceAvailable: false,
+      advisorScore: null,
+      metricValues: {pointsAboveReplacement: null},
+    })
+    const view = render(
+      <CrossPositionLiveSurface
+        model={model}
+        onInspectPlayer={jest.fn()}
+        tierModel={tierModel}
+      />,
+    )
+    expect(view.getByRole("rowheader", {name: /manual Player/}).textContent)
       .toContain("Recommendation evidence unavailable")
+    expect(view.getByText(/advisor values remain unavailable/)).toBeTruthy()
+    expect(view.queryByText("former Player")).toBeNull()
   })
 
   it("renders truthful positive, trailing, tied, and unavailable PAR relationships", () => {
@@ -712,7 +760,7 @@ describe("live cross-position surface", () => {
     fireEvent.click(view.getByText("Detailed recommendation evidence"))
     fireEvent.click(view.getByText("Test positional scenarios"))
     const selector = view.getByRole("group", {name: "Draft choice scenario"})
-    expect(within(selector).getAllByRole("button")).toHaveLength(4)
+    expect(within(selector).getAllByRole("button")).toHaveLength(3)
     const qb = within(selector).getByRole("button", {name: /Test QB scenario/})
     expect(qb.tagName).toBe("BUTTON")
     expect(qb.getAttribute("aria-pressed")).toBe("true")
@@ -722,7 +770,7 @@ describe("live cross-position surface", () => {
     expect(document.activeElement).toBe(rb)
     fireEvent.click(rb)
     expect(view.getByRole("heading", {name: "rb-one Player · RB"})).toBeTruthy()
-    expect(view.getByText("rb-two Player")).toBeTruthy()
+    expect(view.queryByText("rb-two Player")).toBeNull()
 
     view.rerender(
       <CrossPositionLiveSurface
@@ -895,10 +943,10 @@ describe("live cross-position surface", () => {
     const renderedTierChange = {
       lanes: [{
         ...tierModel.lanes[0],
-        currentTopAvailableTier: {
-          ...tierModel.lanes[0].currentTopAvailableTier!,
-          availablePlayerCount: 2,
-        },
+        players: [
+          lanePlayer,
+          tierPlayer(player("alpha-peer", FantasyPosition.QUARTERBACK, 2)),
+        ],
       }],
     } as TierLandscapePresentationModel
     view.rerender(
@@ -924,7 +972,7 @@ describe("live cross-position surface", () => {
             ...renderedTierChange.lanes[0].players[0].projection,
             median: 99,
           },
-        }],
+        }, ...renderedTierChange.lanes[0].players.slice(1)],
       }],
     } as TierLandscapePresentationModel
     view.rerender(
@@ -967,9 +1015,9 @@ describe("live cross-position surface", () => {
     const empty = render(
       <CrossPositionLiveSurface model={buildModel([])} onInspectPlayer={jest.fn()} />,
     )
-    expect(empty.getByText("No legal recommendation candidates remain.")).toBeTruthy()
+    expect(empty.getByText("No comparison candidates remain.")).toBeTruthy()
     expect(empty.queryByRole("list", {
-      name: "Deterministic cross-position recommendation candidates",
+      name: "Advisor cross-position comparison candidates",
     })).toBeNull()
   })
 
@@ -996,6 +1044,82 @@ describe("live cross-position surface", () => {
     expect(marker.getAttribute("style")).toContain(
       "transform: translateX(-100%)",
     )
+  })
+
+  it("uses one ordered set for the list, live chart, and historical defaults", () => {
+    const alpha = candidate(player("alpha", FantasyPosition.QUARTERBACK, 1), 5)
+    const beta = candidate(player("beta", FantasyPosition.RUNNING_BACK, 1), 4)
+    const gamma = candidate(player("gamma", FantasyPosition.TIGHT_END, 1), 3)
+    const former = candidate(player("former", FantasyPosition.WIDE_RECEIVER, 1), 2)
+    const manual = player("manual", FantasyPosition.WIDE_RECEIVER, 2)
+    const allPlayers = [
+      alpha.player, beta.player, gamma.player, former.player, manual,
+    ]
+    const recommendationSet = recommendations([alpha, beta, gamma, former])
+    const controller = (items: Array<{
+      player: Player
+      reasonCode: "recommended_now" | "manual_pin"
+      reasonLabel: string
+    }>, mode: "auto" | "pinned") => ({
+      mode,
+      items,
+      announcement: "",
+      pinCurrent: jest.fn(),
+      restoreAuto: jest.fn(),
+      addPinnedPlayer: jest.fn(),
+      removePinnedPlayer: jest.fn(),
+    })
+    const auto = controller([
+      {player: alpha.player, reasonCode: "recommended_now", reasonLabel: "Recommended now"},
+      {player: beta.player, reasonCode: "recommended_now", reasonLabel: "Recommended now"},
+      {player: gamma.player, reasonCode: "recommended_now", reasonLabel: "Recommended now"},
+    ], "auto")
+    const props = {
+      activePlayer: alpha.player,
+      availablePlayers: allPlayers,
+      boardSettings,
+      players: allPlayers,
+      rankingSummaries: [],
+      recommendations: recommendationSet,
+      settings,
+    }
+    const view = render(
+      <AnalysisWorkspace {...props} comparisonController={auto} />,
+    )
+    const listIds = () => Array.from(
+      view.getByRole("region", {name: "Advisor comparison set"})
+        .querySelectorAll("li strong"),
+    ).map(node => node.textContent)
+    const chartIds = () => Array.from(
+      view.getByRole("table", {name: "Cross-position decision matrix"})
+        .querySelectorAll("[role='row'][data-player-id]"),
+    ).map(node => node.getAttribute("data-player-id"))
+
+    expect(listIds()).toEqual([
+      "alpha Player", "beta Player", "gamma Player",
+    ])
+    expect(chartIds()).toEqual(["alpha", "beta", "gamma"])
+    expect(view.getByText("Historical comparison uses the shared advisor set and runs only when requested."))
+      .toBeTruthy()
+    expect(mockedExecute).not.toHaveBeenCalled()
+
+    const pinned = controller([
+      {player: gamma.player, reasonCode: "recommended_now", reasonLabel: "Recommended now"},
+      {player: manual, reasonCode: "manual_pin", reasonLabel: "Manual pin"},
+      {player: alpha.player, reasonCode: "recommended_now", reasonLabel: "Recommended now"},
+    ], "pinned")
+    view.rerender(
+      <AnalysisWorkspace {...props} comparisonController={pinned} />,
+    )
+    expect(listIds()).toEqual([
+      "gamma Player", "manual Player", "alpha Player",
+    ])
+    expect(chartIds()).toEqual(["gamma", "manual", "alpha"])
+    expect(view.queryByText("beta Player", {selector: "button"})).toBeNull()
+    expect(view.queryByText("former Player", {selector: "button"})).toBeNull()
+    expect(view.getAllByText("Recommendation evidence unavailable").length)
+      .toBeGreaterThan(0)
+    expect(mockedExecute).not.toHaveBeenCalled()
   })
 
   it("renders live candidates before a historical request and keeps historical drawer ownership separate", async () => {

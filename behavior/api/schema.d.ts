@@ -664,6 +664,14 @@ export interface components {
         LegacyHistoricalStats: {
             [key: string]: unknown;
         };
+        PlayerOutlook: {
+            text: string;
+            /** @constant */
+            source: "espn";
+            season: number | null;
+            /** Format: date-time */
+            observed_at: string | null;
+        };
         Player: {
             id: string;
             first_name: string;
@@ -679,6 +687,7 @@ export interface components {
             };
             source_presence?: components["schemas"]["PlayerSourcePresence"];
             availability?: components["schemas"]["PlayerAvailability"];
+            outlook?: components["schemas"]["PlayerOutlook"] | null;
         };
         ReplacementLevel: [
             number,

@@ -76,6 +76,30 @@ describe("Phase 14B ESPN player outlook contract", () => {
     })
   })
 
+  it("converts the canonical API RankingsResponse outlook into Player.outlook", () => {
+    const raw = {
+      cached_at: "2026-08-16T12:00:00Z", season: 2026,
+      settings: {}, rankings_summaries: [], all_data_rankers: [], all_third_party_rankers: [],
+      players: [{
+        id: "one", first_name: "One", last_name: "Player", full_name: "One Player",
+        team: "BUF", position: "RB", ranks: {}, historical_stats: {},
+        outlook: {
+          text: "API-published ESPN outlook.",
+          source: "espn",
+          season: 2026,
+          observed_at: "2026-08-16T12:00:00Z",
+        },
+      }],
+    } as unknown as ApiComponents["schemas"]["RankingsResponse"]
+
+    expect(toDomainRankings(raw).players[0].outlook).toEqual({
+      text: "API-published ESPN outlook.",
+      source: "espn",
+      season: 2026,
+      observedAt: "2026-08-16T12:00:00Z",
+    })
+  })
+
   it("renders current, prior-season, and unknown-season provenance honestly", () => {
     const current = profile({...basePlayer, outlook: {
       text: "Current outlook.", source: "espn", season: 2026,

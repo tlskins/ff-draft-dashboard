@@ -106,6 +106,10 @@ interface AnalysisWorkspaceProps {
   onClose?: () => void
 }
 
+export const comparisonQueryScopeSignature = (
+  playerIds: string[],
+): string => JSON.stringify(playerIds)
+
 const POSITIONS: AnalysisPosition[] = ["QB", "RB", "WR", "TE"]
 const VIEW_STATE_STORAGE_KEY = "drafty-analysis-view-state"
 const VISIBLE_ANALYSIS_VIEW_IDS: AnalysisViewState["view"][] = [
@@ -182,6 +186,10 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     () => eligiblePlayers.filter(player => player.position === position),
     [eligiblePlayers, position],
   )
+  const selectedPlayerIds = comparisonController.items.map(item => (
+    item.player.id
+  ))
+  const comparisonQueryScope = comparisonQueryScopeSignature(selectedPlayerIds)
   const [viewState, setViewState] =
     useState<AnalysisViewState>(loadViewState)
   const [seasonWindow, setSeasonWindow] = useState<1 | 3 | 5>(5)
@@ -228,9 +236,16 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
           boardSettings,
           settings,
           playerStatus,
+          comparisonItems: comparisonController.items,
         })
       : null
-  ), [boardSettings, playerStatus, recommendations, settings])
+  ), [
+    boardSettings,
+    comparisonController.items,
+    playerStatus,
+    recommendations,
+    settings,
+  ])
   const tierLandscapeModel = useMemo(() => (
     buildTierLandscapePresentationModel({
       availablePlayers,
@@ -266,6 +281,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     settings,
   ])
   const analysisRequestId = useRef(0)
+  const comparisonQueryScopeRef = useRef(comparisonQueryScope)
+  const activeComparisonQueryScopeRef = useRef(comparisonQueryScope)
+  activeComparisonQueryScopeRef.current = comparisonQueryScope
   const viewStateRef = useRef(viewState)
   viewStateRef.current = viewState
   const clearAnalysisState = useCallback(() => {
@@ -278,6 +296,12 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     setDrawerPlayerOrigin(null)
     setLoading(false)
   }, [])
+
+  useEffect(() => {
+    if (comparisonQueryScopeRef.current === comparisonQueryScope) return
+    comparisonQueryScopeRef.current = comparisonQueryScope
+    clearAnalysisState()
+  }, [clearAnalysisState, comparisonQueryScope])
 
   useEffect(() => {
     if (followActivePlayer && activePlayer) {
@@ -350,9 +374,6 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     onAnalysisViewEventHandled,
   ])
 
-  const selectedPlayerIds = comparisonController.items.map(item => (
-    item.player.id
-  ))
   const activeView = userFacingAnalysisViewDefinition(viewState.view)
   const drawerPlayerIsValid = drawerPlayerOrigin !== "live"
     || (
@@ -495,6 +516,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   const runAnalysis = async () => {
     if (!canRun) return
     const requestId = ++analysisRequestId.current
+    const requestComparisonScope = comparisonQueryScope
     setLoading(true)
     setError(null)
     setPlayerLabError(null)
@@ -519,7 +541,10 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             })
           : Promise.resolve(null),
       ])
-      if (analysisRequestId.current !== requestId) return
+      if (
+        analysisRequestId.current !== requestId
+        || activeComparisonQueryScopeRef.current !== requestComparisonScope
+      ) return
       if (analysisOutcome.status === "fulfilled") {
         setResult(analysisOutcome.value)
       } else {
@@ -541,7 +566,10 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         )
       }
     } finally {
-      if (analysisRequestId.current === requestId) setLoading(false)
+      if (
+        analysisRequestId.current === requestId
+        && activeComparisonQueryScopeRef.current === requestComparisonScope
+      ) setLoading(false)
     }
   }
 
@@ -938,8 +966,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                 Historical cross-position drilldown
               </h2>
               <p className="text-xs text-slate-500">
-                The historical selections are distinct from live advisor
-                candidates and run only when you request the bounded query.
+                Historical defaults use the same ordered advisor set shown
+                live. Changing that set clears obsolete results, but a new
+                bounded query runs only when you request it.
               </p>
             </div>
           )}
