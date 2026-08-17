@@ -1,7 +1,7 @@
 # Phase 14A integrated draft desk candidate
 
-Status: candidate implemented and desktop-hardened; pending visual and human
-acceptance.
+Status: implemented, desktop-hardened, visually accepted, and integrated on
+2026-08-17. Live-extension draft acceptance remains a Phase 14D gate.
 
 ## Scope and ownership
 
