@@ -15,6 +15,7 @@ import DeskSegmentedControl from "../components/draft-desk/DeskSegmentedControl"
 import DraftDeskAdvisorDisclosure from "../components/draft-desk/DraftDeskAdvisorDisclosure"
 import CrossPositionLiveSurface from "../components/analysis/CrossPositionLiveSurface"
 import AdvisorComparisonSurface from "../components/AdvisorComparisonSurface"
+import {advisorComparisonSetSignature} from "../behavior/advisorComparisonSet"
 import {buildCrossPositionPresentationModel} from "../behavior/analysis/crossPosition"
 import {buildTierLandscapePresentationModel} from "../behavior/analysis/tierLandscape"
 import {createDraftRecommendations} from "../behavior/draft-advisor/recommendations"
@@ -543,7 +544,9 @@ const Phase14AVisualFixture = () => {
                     controller={comparisonController}
                   />
                   <CrossPositionLiveSurface
-                    announceUpdates={false}
+                    comparisonIdentityKey={advisorComparisonSetSignature(
+                      comparisonController.items,
+                    )}
                     model={crossPositionModel}
                     onInspectPlayer={selectedPlayer => setFocusedId(selectedPlayer.id)}
                     tierModel={tierLandscapeModel}

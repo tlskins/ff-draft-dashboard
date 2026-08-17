@@ -29,6 +29,7 @@ import type {
 import type {
   AdvisorComparisonController,
 } from "../../behavior/hooks/useAdvisorComparisonController"
+import {advisorComparisonSetSignature} from "../../behavior/advisorComparisonSet"
 import {
   AnalysisPosition,
   buildAnalysisViewQuery,
@@ -189,6 +190,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   const selectedPlayerIds = comparisonController.items.map(item => (
     item.player.id
   ))
+  const comparisonAnnouncementIdentity = advisorComparisonSetSignature(
+    comparisonController.items,
+  )
   const comparisonQueryScope = comparisonQueryScopeSignature(selectedPlayerIds)
   const [viewState, setViewState] =
     useState<AnalysisViewState>(loadViewState)
@@ -932,7 +936,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
           )}
           {viewState.view === "cross_position" && (
             <CrossPositionLiveSurface
-              announceUpdates={false}
+              comparisonIdentityKey={comparisonAnnouncementIdentity}
               model={crossPositionModel}
               onInspectPlayer={inspectLivePlayer}
               tierModel={tierLandscapeModel}

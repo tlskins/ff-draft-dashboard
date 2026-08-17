@@ -1122,6 +1122,118 @@ describe("live cross-position surface", () => {
     expect(mockedExecute).not.toHaveBeenCalled()
   })
 
+  it("assigns integrated shortlist and same-identity evidence announcements to one owner", async () => {
+    const alpha = candidate(player("alpha", FantasyPosition.QUARTERBACK, 1), 5)
+    const beta = candidate(player("beta", FantasyPosition.RUNNING_BACK, 1), 4)
+    const gamma = candidate(player("gamma", FantasyPosition.TIGHT_END, 1), 3)
+    const alphaPeer = player("alpha-peer", FantasyPosition.QUARTERBACK, 2)
+    const controller = (
+      selected: DraftRecommendationCandidate[],
+      announcement = "",
+    ) => ({
+      mode: "auto" as const,
+      items: selected.map(item => ({
+        player: item.player,
+        reasonCode: "recommended_now" as const,
+        reasonLabel: "Recommended now",
+      })),
+      announcement,
+      pinCurrent: jest.fn(),
+      restoreAuto: jest.fn(),
+      addPinnedPlayer: jest.fn(),
+      removePinnedPlayer: jest.fn(),
+    })
+    const baseProps = {
+      activePlayer: alpha.player,
+      availablePlayers: [alpha.player, beta.player, gamma.player],
+      boardSettings,
+      players: [alpha.player, beta.player, gamma.player, alphaPeer],
+      rankingSummaries: [],
+      recommendations: recommendations([alpha, beta]),
+      settings,
+    }
+    const view = render(
+      <AnalysisWorkspace
+        {...baseProps}
+        comparisonController={controller([alpha, beta])}
+      />,
+    )
+    const advisorRegion = () => view.getByTestId(
+      "advisor-comparison-live-region",
+    ).textContent || ""
+    const evidenceRegion = () => view.getByTestId(
+      "cross-position-live-update",
+    ).textContent || ""
+
+    expect(advisorRegion()).toBe("")
+    expect(evidenceRegion()).toBe("")
+
+    const alphaEvidenceChanged = candidate(alpha.player, alpha.score, {
+      projectedMedian: 18,
+      survivalProbability: 0.1,
+      projectionTier: 3,
+    })
+    const changedProps = {
+      ...baseProps,
+      availablePlayers: [
+        alpha.player, alphaPeer, beta.player, gamma.player,
+      ],
+      recommendations: recommendations([alphaEvidenceChanged, beta]),
+      playerStatus: {
+        alpha: {
+          playerId: "alpha",
+          state: "ready" as const,
+          response: {
+            schema_version: 1 as const,
+            player_id: "alpha",
+            last_updated_at: null,
+            events: [statusEvent({player_id: "alpha"})],
+          },
+          loadedAt: 2,
+        },
+      },
+    }
+    view.rerender(
+      <AnalysisWorkspace
+        {...changedProps}
+        comparisonController={controller([alpha, beta])}
+      />,
+    )
+    await waitFor(() => expect(evidenceRegion()).toContain("Update 1."))
+    expect(advisorRegion()).toBe("")
+
+    view.rerender(
+      <AnalysisWorkspace
+        {...changedProps}
+        activePlayer={beta.player}
+        compact
+        comparisonController={controller([alpha, beta])}
+      />,
+    )
+    expect(evidenceRegion()).toContain("Update 1.")
+    expect(evidenceRegion()).not.toContain("Update 2.")
+    expect(advisorRegion()).toBe("")
+
+    view.rerender(
+      <AnalysisWorkspace
+        {...baseProps}
+        activePlayer={gamma.player}
+        comparisonController={controller(
+          [beta, gamma],
+          "Automatic comparison updated after a draft pick: beta Player, gamma Player. Update 1.",
+        )}
+        recommendations={recommendations([beta, gamma])}
+      />,
+    )
+    await waitFor(() => expect(evidenceRegion()).toBe(""))
+    expect([
+      advisorRegion(),
+      evidenceRegion(),
+    ].filter(Boolean)).toEqual([
+      "Automatic comparison updated after a draft pick: beta Player, gamma Player. Update 1.",
+    ])
+  })
+
   it("renders live candidates before a historical request and keeps historical drawer ownership separate", async () => {
     const alpha = candidate(player("alpha", FantasyPosition.QUARTERBACK, 1), 5)
     const beta = candidate(player("beta", FantasyPosition.RUNNING_BACK, 1), 4)

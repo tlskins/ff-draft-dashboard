@@ -23,7 +23,13 @@ interface CrossPositionLiveSurfaceProps {
   model: CrossPositionPresentationModel | null
   tierModel?: TierLandscapePresentationModel | null
   onInspectPlayer: (player: Player) => void
-  /** Shared advisor comparison ownership supplies the single live announcement. */
+  /**
+   * Integrated callers supply the controller-owned identity/reason signature.
+   * Identity changes are announced by the comparison surface; same-identity
+   * displayed-evidence changes remain owned by this surface.
+   */
+  comparisonIdentityKey?: string
+  /** Standalone behavior remains enabled unless a caller explicitly opts out. */
   announceUpdates?: boolean
 }
 
@@ -1398,17 +1404,28 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
   model,
   tierModel = null,
   onInspectPlayer,
+  comparisonIdentityKey,
   announceUpdates = true,
 }) => {
   const previousUpdateKey = useRef<string | null>(null)
+  const previousIdentityKey = useRef<string | null>(null)
   const announcementCount = useRef(0)
   const [announcement, setAnnouncement] = useState("")
   const updateKey = candidateUpdateKey(model, tierModel)
 
   useEffect(() => {
-    if (announceUpdates
-      && previousUpdateKey.current !== null
-      && previousUpdateKey.current !== updateKey) {
+    const hasPreviousUpdate = previousUpdateKey.current !== null
+    const identityChanged = comparisonIdentityKey !== undefined
+      && previousIdentityKey.current !== null
+      && previousIdentityKey.current !== comparisonIdentityKey
+    const evidenceChanged = hasPreviousUpdate
+      && previousUpdateKey.current !== updateKey
+
+    if (identityChanged) {
+      // The controller-owned comparison live region announces this change.
+      // Clear any prior evidence announcement so only that region is non-empty.
+      setAnnouncement("")
+    } else if (announceUpdates && evidenceChanged) {
       announcementCount.current += 1
       if (!model) {
         setAnnouncement(
@@ -1428,7 +1445,8 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
       }
     }
     previousUpdateKey.current = updateKey
-  }, [announceUpdates, model, updateKey])
+    previousIdentityKey.current = comparisonIdentityKey ?? null
+  }, [announceUpdates, comparisonIdentityKey, model, updateKey])
 
   if (!model) {
     return (

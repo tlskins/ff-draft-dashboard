@@ -44,8 +44,12 @@ announce.
 
 - Auto begins with the deterministic set and presents one restrained reason
   cue per player. One changed set is announced once in the comparison surface's
-  polite live region. The embedded legacy cross-position live region is muted
-  so it cannot duplicate that ownership.
+  polite live region. The cross-position surface receives the same stable
+  ID/order/reason signature, remains silent for that identity change, and owns
+  one announcement only when its complete displayed-evidence fingerprint
+  changes under an equivalent identity. Initial and equivalent renders remain
+  silent; a prior evidence message is cleared when comparison ownership takes
+  over. Standalone cross-position surfaces retain their original behavior.
 - Choosing Pinned snapshots the current set. Pick/evidence updates continue to
   update the latest Auto result but cannot replace the pinned snapshot.
   Explicit unpin and one add-player affordance can edit it up to three.
@@ -87,9 +91,10 @@ OpenAPI artifact. The dashboard hardening is the commit containing this
 document, based on Phase 14B candidate `77cee9d`; its exact hash is reported in
 the delivery handoff because a commit cannot contain its own hash.
 
-Both producers and `behavior/playerOutlook.ts` strip markup/control characters,
-collapse whitespace, drop blank or malformed evidence, bound input work to
-20,000 characters, and cap rendered text at 1,000 characters. They never
+Both producers and `behavior/playerOutlook.ts` decode entities before stripping
+script/style blocks, markup, and control characters. They collapse whitespace,
+drop blank or malformed evidence, bound input work to 20,000 characters, and
+cap rendered text at 1,000 characters. They never
 summarize or synthesize text. The API uses the ranking artifact season and the
 same timezone-aware observation timestamp used for `cached_at`. Its OpenAPI
 field follows Python conventions (`observed_at`); generated dashboard types are
@@ -119,9 +124,10 @@ Completed in the isolated worktree on 2026-08-17:
 
 - Dashboard named Phase 10/14 regression tranche: 13 suites and 98 tests, all
   passed.
+- Final announcement hardening tranche: 4 suites and 58 tests, all passed.
 - Dashboard full Jest: 96 suites total; 95 passed and 1 skipped. 634 tests
   total; 632 passed and 2 skipped; 0 failures.
-- Python API focused outlook/model/ranking/OpenAPI tranche: 26 tests passed.
+- Python API focused outlook/model/ranking/OpenAPI tranche: 27 tests passed.
 - Python API full unit suite: 144 tests passed with 0 failures.
 - Generated dashboard API type regeneration and check passed with
   `DRAFTY_OPENAPI_SCHEMA` set to the isolated API worktree's amended

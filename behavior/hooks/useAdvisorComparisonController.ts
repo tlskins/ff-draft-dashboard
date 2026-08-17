@@ -36,6 +36,14 @@ export const useAdvisorComparisonController = ({
     automaticSignature,
     materialEventKey,
   })
+  const announcePinnedUpdate = useCallback((items: AdvisorComparisonItem[]) => {
+    announcementCount.current += 1
+    setAnnouncement(
+      `Pinned comparison updated: ${items.map(item => (
+        item.player.fullName
+      )).join(", ") || "no available players"}. Update ${announcementCount.current}.`,
+    )
+  }, [])
 
   useEffect(() => {
     const selectionChanged = observed.current.automaticSignature
@@ -73,18 +81,22 @@ export const useAdvisorComparisonController = ({
   }, [automaticSet, automaticSignature, pinnedItems])
 
   const addPinnedPlayer = useCallback((player: Player) => {
-    setPinnedItems(current => {
-      if (current.some(item => item.player.id === player.id)) return current
-      return [...current, createManualComparisonItem(player)]
-        .slice(0, MAX_ADVISOR_COMPARISON_PLAYERS)
-    })
-  }, [])
+    if (pinnedItems.some(item => item.player.id === player.id)
+      || pinnedItems.length >= MAX_ADVISOR_COMPARISON_PLAYERS) return
+    const next = [...pinnedItems, createManualComparisonItem(player)]
+      .slice(0, MAX_ADVISOR_COMPARISON_PLAYERS)
+    setPinnedItems(next)
+    announcePinnedUpdate(next)
+  }, [announcePinnedUpdate, pinnedItems])
 
   const removePinnedPlayer = useCallback((playerId: string) => {
-    setPinnedItems(current => current.filter(item => (
+    const next = pinnedItems.filter(item => (
       item.player.id !== playerId
-    )))
-  }, [])
+    ))
+    if (next.length === pinnedItems.length) return
+    setPinnedItems(next)
+    announcePinnedUpdate(next)
+  }, [announcePinnedUpdate, pinnedItems])
 
   const items = useMemo(() => mode === "auto"
     ? automaticSet
