@@ -1,8 +1,9 @@
 # Phase 16 read API and adaptive insight convergence
 
-Status: implementation in progress on `phase/16-read-api-insight-convergence`.
-Realtime GPT/voice and unrelated feature work remain deferred until the exit
-gate below passes.
+Status: integrated and deployed on 2026-08-20. The implementation commit is
+`823cbc4`; Vercel reported the production deployment successful at
+`https://ff-draft-dashboard.vercel.app`. Realtime GPT/voice and unrelated
+feature work remain deferred.
 
 ## Product boundary
 
@@ -96,3 +97,45 @@ smoke separately verifies the deployed application, compiled Cloud Run origin,
 fixture guard, and absence of runtime errors without publishing fixture state.
 Deployment and rollback URLs/revisions must be recorded before the goal is
 marked complete.
+
+## Closeout evidence
+
+- `npm run test:phase16` passed 20 suites and 106 tests. The complete Jest run
+  passed 114 suites and 744 tests, with one suite and two tests intentionally
+  skipped.
+- Generated API types, TypeScript, lint, `git diff --check`, and the production
+  build passed. The clean full release preflight passed at dashboard commit
+  `823cbc4` and API commit `8fb884b`, including extension 0.0.0.8 parity,
+  byte-identical ranking artifacts, 455 players for season 2026, and 118
+  focused release tests.
+- The deterministic browser fixture exercised all ten registered views,
+  queued selection/pinning, Auto restoration, ready/loading/stale/unavailable
+  evidence, on-demand source detail, one live-region owner, and independent
+  scroll-to-end behavior at 1440px and 1280px. Real published player IDs keep
+  historical fixture evidence representative instead of rendering unknown
+  zero-value players.
+- Production browser smoke hydrated current rankings and tiers, rendered the
+  three adaptive slots, loaded a real three-player historical risk comparison,
+  expanded the source diagnostic, retained one deck live region and no page
+  overflow, and reported no runtime console errors. The production-only fixture
+  guard continued to return HTTP 404.
+- Cloud Run returned HTTP 200 for health, rankings, readiness, ranking-source
+  list/detail, player status, historical comparison, and historical query.
+  Draft-session creation, ranking refresh preview, and Realtime client-secret
+  creation continued to fail closed with HTTP 403. The service remained on
+  revision `drafty-read-api-00002-r7r`; Phase 16 changed no API code.
+
+## Release and rollback identities
+
+| Boundary | Accepted identity | Rollback |
+| --- | --- | --- |
+| Dashboard source | `823cbc4` on `origin/main` | Redeploy `bf61256` to restore the accepted Phase 14C integration. |
+| Dashboard production | `https://ff-draft-dashboard.vercel.app` | Use the Vercel deployment for `bf61256`; the API can remain running and unused. |
+| Cloud Run API | `drafty-read-api-00002-r7r` at `https://drafty-read-api-708070733429.us-east1.run.app` | No Phase 16 API deployment occurred; retain the existing revision or follow `docs/cloud-run.md` if a later API revision must be rolled back. |
+| API source | `8fb884b` | No source rollback is required for Phase 16 because its API contracts were consumed without modification. |
+
+The Phase 14C environment rollback remains independently viable:
+`NEXT_PUBLIC_PHASE14C_INSIGHT_DECK_ENABLED=false` restores the prior compact
+Analysis Workspace while the shared ranking loader retains its explicit
+embedded fallback. No backend migration or personal draft-state write is
+involved.

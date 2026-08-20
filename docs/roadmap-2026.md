@@ -790,7 +790,7 @@ documented rollback path.
 
 ### Phase 16: read API and adaptive insight convergence
 
-Status: implementation in progress. See
+Status: integrated and deployed on 2026-08-20. See
 `docs/phase16-read-api-insight-convergence.md`.
 
 Dependency: the deployed Phase 14C deck and Phase 15 stateless read API.
@@ -819,7 +819,9 @@ consumed or explicitly operational-only; every registered compact insight can
 be manually selected and pinned and every Auto-eligible insight can be chosen
 deterministically from ready evidence without leaving the draft desk; all
 automated, replay, visual, live API, production browser, deployment, and
-rollback gates pass while Realtime remains disabled.
+rollback gates pass while Realtime remains disabled. **Passed at dashboard
+implementation commit `823cbc4` with Cloud Run revision
+`drafty-read-api-00002-r7r`.**
 
 ## Deferred product tracks
 
