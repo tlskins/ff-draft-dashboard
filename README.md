@@ -48,6 +48,12 @@ separately after authentication and durable storage exist. `NEXT_PUBLIC_*`
 values are embedded at build time, so changing the API URL or any feature flag
 requires a dashboard rebuild and redeploy.
 
+The tracked `.env.production` records the reviewed Cloud Run origin as
+`DRAFTY_PRODUCTION_API_HOST`; `next.config.js` maps it to
+`NEXT_PUBLIC_API_HOST` during production builds. This keeps an old hosting
+platform variable from silently overriding the release while preserving the
+loopback `.env.local` workflow for development.
+
 After every configured roster slot has been drafted, the live advisor exposes
 **Export replay fixture**. For ESPN, open the completed room's **Board** tab so
 the extension can capture every pick even if the scrolling history omitted
