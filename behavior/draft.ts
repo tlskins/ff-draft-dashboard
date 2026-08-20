@@ -119,9 +119,16 @@ export const getRoundNumForPickNum = (pickNum: number, numTeams: number): number
 export const getPickInRoundForPickNum = (pickNum: number, numTeams: number): number => pickNum % numTeams
 
 export const getRoundAndPickShortText = (pickNum: number, numTeams: number): string => {
-    const roundNum = getRoundNumForPickNum(pickNum, numTeams)
-    const pickInRound = getPickInRoundForPickNum(pickNum, numTeams)
-    return `${roundNum}.${pickInRound.toFixed(0)}`
+    if (!Number.isFinite(pickNum) || !Number.isFinite(numTeams) || numTeams <= 0) {
+        return "—"
+    }
+    // ADP is fractional, but round.pick is a concrete draft-slot label. Map
+    // it to the nearest legal overall pick before deriving the round so the
+    // end of a round is never displayed as pick zero (for example 1.0).
+    const nearestOverallPick = Math.max(1, Math.round(pickNum))
+    const roundNum = getRoundNumForPickNum(nearestOverallPick, numTeams)
+    const pickInRound = ((nearestOverallPick - 1) % numTeams) + 1
+    return `${roundNum}.${pickInRound}`
 }
 
 // ranks

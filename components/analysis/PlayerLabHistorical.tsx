@@ -168,7 +168,7 @@ const PlayerLabHistorical: React.FC<PlayerLabHistoricalProps> = ({
   ))
 
   return (
-    <section className={styles.analysisSurface} aria-labelledby="player-lab-results-title">
+    <section className={`${styles.analysisSurface} ${styles.labSurface}`} aria-labelledby="player-lab-results-title">
       <section className={styles.panel}>
         <div className={styles.panelHeader}>
           <div>

@@ -1041,6 +1041,50 @@
   text-align: center;
 }
 
+.compactLabControls {
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+  border-top: 1px solid #d4dadd;
+  background: #eef0ef;
+}
+
+.compactLabControlsHeader,
+.compactLabControlsStatus,
+.compactLabControlsScope,
+.compactLabControlsSelectors,
+.compactLabControlsAction {
+  min-width: 0;
+}
+
+.compactLabControlsHeader h2 { font-size: 11px; line-height: 1.2; }
+.compactLabControlsHeader p { margin-top: 2px; font-size: 8px; line-height: 1.3; }
+.compactLabControlsStatus > div,
+.compactLabControlsStatus > p { margin: 0; padding: 6px; border-radius: 3px; font-size: 8px; line-height: 1.3; }
+.compactLabControlsScope { padding: 0; }
+.compactLabControlsScope legend { margin-bottom: 3px; font-size: 7px; }
+.compactLabControlsScope label { margin: 0; font-size: 8px; }
+.compactLabControlsScope select { margin-top: 2px; padding: 4px; font-size: 8px; }
+.compactLabControlsScope p { margin: 3px 0 0; padding: 5px; border-radius: 3px; font-size: 7px; line-height: 1.3; }
+.compactLabControlsSelectors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.compactLabControlsSelectors label { font-size: 8px; }
+.compactLabControlsSelectors select { margin-top: 2px; padding: 4px; font-size: 8px; }
+.compactLabControlsAction { min-height: 26px; padding: 4px 7px; border-radius: 3px; font-size: 8px; }
+
+.labSurface .panel {
+  margin-top: 6px;
+  padding: 7px;
+  border-color: #cbd2d4;
+  border-radius: 4px;
+  background: #f4f4f1;
+  box-shadow: none;
+}
+
+.labSurface .panelHeader { gap: 6px; flex-wrap: nowrap; }
+.labSurface .panelTitle { color: #26343a; font-size: 10px; line-height: 1.2; }
+.labSurface .panelCaption { margin-top: 2px; color: #647279; font-size: 8px; line-height: 1.3; }
+.labSurface .neutralPill { min-height: 20px; padding: 2px 5px; border-radius: 3px; font-size: 7px; }
+
 .labGrid {
   width: 100%;
   min-width: 650px;
@@ -1068,7 +1112,7 @@
 .labVarianceValue,
 .labPlotCell {
   min-width: 0;
-  padding: 16px 4px;
+  padding: 8px 4px;
   border-top: 1px solid #e2e8f0;
   vertical-align: middle;
 }
@@ -1083,7 +1127,7 @@
 .labPlayerButton {
   display: block;
   width: 100%;
-  padding: 5px;
+  padding: 3px;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
@@ -1121,7 +1165,7 @@
 
 .boxTrack {
   position: relative;
-  height: 66px;
+  height: 60px;
   background-position-y: 16px;
 }
 
@@ -1172,7 +1216,7 @@
   top: 43px;
   left: var(--value-left, 0%);
   color: #475569;
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   transform: translateX(-50%);
@@ -1193,7 +1237,7 @@
 .seasonChart {
   display: block;
   width: 100%;
-  min-width: 680px;
+  min-width: 560px;
   height: auto;
   margin-top: 8px;
 }
@@ -1237,10 +1281,10 @@
 
 .availabilityGrid {
   width: 100%;
-  min-width: 790px;
+  min-width: 660px;
   margin-top: 10px;
   border-collapse: separate;
-  border-spacing: 3px;
+  border-spacing: 2px;
   table-layout: fixed;
 }
 
@@ -1274,7 +1318,7 @@
 
 .gameRecorded,
 .gameUnknown {
-  height: 27px;
+  height: 21px;
   padding: 2px;
   border-radius: 4px;
   font-size: 10px;

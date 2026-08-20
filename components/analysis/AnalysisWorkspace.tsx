@@ -728,8 +728,10 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                 <span className="ml-2 text-xs font-normal text-slate-500">Open controls</span>
               </summary>
             )}
-            <div className="grid gap-4 border-t border-slate-100 p-4 first:border-t-0 lg:grid-cols-12 lg:items-start">
-          <div className="lg:col-span-12">
+            <div className={compact
+              ? styles.compactLabControls
+              : "grid gap-4 border-t border-slate-100 p-4 first:border-t-0 lg:grid-cols-12 lg:items-start"}>
+          <div className={compact ? styles.compactLabControlsHeader : "lg:col-span-12"}>
             {viewState.view === "intra_position" ? (
               <>
                 <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Player Lab</p>
@@ -744,7 +746,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             )}
           </div>
 
-          <div className="lg:col-span-12" aria-live="polite">
+          <div className={compact ? styles.compactLabControlsStatus : "lg:col-span-12"} aria-live="polite">
             {readiness.loading && (
               <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                 Loading season availability and source freshness…
@@ -798,7 +800,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             )}
           </div>
 
-          <fieldset className="lg:col-span-7">
+          <fieldset className={compact ? styles.compactLabControlsScope : "lg:col-span-7"}>
             <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Scope
             </legend>
@@ -878,7 +880,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             )}
           </fieldset>
 
-          <div className="grid grid-cols-2 gap-2 lg:col-span-3">
+          <div className={compact ? styles.compactLabControlsSelectors : "grid grid-cols-2 gap-2 lg:col-span-3"}>
             <label className="text-sm">
               Seasons
               <select
@@ -916,7 +918,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
             aria-describedby={viewState.view === "intra_position"
               ? "player-lab-selection-guidance"
               : undefined}
-            className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 lg:col-span-2 lg:self-end"
+            className={`${compact ? styles.compactLabControlsAction : "lg:col-span-2 lg:self-end"} w-full cursor-pointer bg-indigo-600 font-semibold text-white transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50`}
             disabled={!canRun || loading}
             onClick={() => void runAnalysis()}
           >

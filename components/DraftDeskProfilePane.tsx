@@ -6,7 +6,7 @@ import type {
   Player,
   RankingSummary,
 } from "../types"
-import {DataRanker} from "../types"
+import {DataRanker, ThirdPartyRanker} from "../types"
 import {getPlayerMetrics, getProjectedTier, getRoundAndPickShortText} from "../behavior/draft"
 import type { PlayerStatusCacheSnapshot } from "../behavior/api/playerStatusCache"
 import {
@@ -109,6 +109,140 @@ const HistoryChart = ({player, settings}: {
   )
 }
 
+const ProfileDraftContext = ({
+  player,
+  players,
+  settings,
+  boardSettings,
+  rankingSummaries,
+  projection,
+}: {
+  player: Player
+  players: Player[]
+  settings: FantasySettings
+  boardSettings: BoardSettings
+  rankingSummaries: RankingSummary[]
+  projection: ReturnType<typeof getProjectedTier>
+}) => {
+  const metrics = getPlayerMetrics(player, settings, boardSettings)
+  const ppgSummary = rankingSummaries.find(summary => (
+    summary.ranker === DataRanker.LAST_SSN_PPG
+    && summary.ppr === settings.ppr
+  ))
+  const replacement = ppgSummary?.replacementLevels[player.position]
+  const projectionValues = projection
+    ? [projection.lowerLimitValue, projection.upperLimitValue].sort((a, b) => a - b)
+    : null
+  const midpoint = projectionValues
+    ? (projectionValues[0] + projectionValues[1]) / 2
+    : null
+  const aboveReplacement = midpoint !== null && replacement
+    ? midpoint - replacement[1]
+    : null
+  const scaleMaximum = Math.max(
+    1,
+    projectionValues?.[1] || 0,
+    replacement?.[1] || 0,
+  ) * 1.12
+  const bandStart = projectionValues ? (projectionValues[0] / scaleMaximum) * 100 : 0
+  const bandWidth = projectionValues
+    ? ((projectionValues[1] - projectionValues[0]) / scaleMaximum) * 100
+    : 0
+  const baseline = replacement ? (replacement[1] / scaleMaximum) * 100 : null
+  const projectionPeers = projection
+    ? players
+      .filter(candidate => candidate.position === player.position)
+      .filter(candidate => getProjectedTier(
+        candidate,
+        boardSettings.ranker,
+        DataRanker.LAST_SSN_PPG,
+        settings,
+        rankingSummaries,
+      )?.tierNumber === projection.tierNumber)
+      .sort((left, right) => (
+        (getPlayerMetrics(left, settings, boardSettings).posRank || 9999)
+        - (getPlayerMetrics(right, settings, boardSettings).posRank || 9999)
+      ))
+      .slice(0, 5)
+    : []
+  const sourceRanks = [ThirdPartyRanker.HARRIS, ThirdPartyRanker.FPROS]
+    .map(ranker => {
+      const rank = player.ranks?.[ranker]
+      return {
+        ranker,
+        positionRank: settings.ppr
+          ? rank?.pprPositionRank
+          : rank?.standardPositionRank,
+      }
+    })
+
+  return (
+    <section aria-label={`${player.fullName} draft context`} className={styles.profileDraftContext}>
+      <header className={styles.profileContextHeader}>
+        <div>
+          <strong>Draft context</strong>
+          <span>{boardSettings.ranker} board · {boardSettings.adpRanker} ADP</span>
+        </div>
+        <span>{metrics.tier ? `Board tier ${metrics.tier.tierNumber}` : "Board tier unavailable"}</span>
+      </header>
+
+      <div className={styles.profileRankSources}>
+        {sourceRanks.map(source => (
+          <div key={source.ranker}>
+            <span>{source.ranker}</span>
+            <strong>{source.positionRank ? `${player.position}${source.positionRank}` : "—"}</strong>
+          </div>
+        ))}
+        <div>
+          <span>{boardSettings.adpRanker} ADP</span>
+          <strong>{metrics.adp && metrics.adp < 999
+            ? `Pick ${metrics.adp.toFixed(1)} · R${getRoundAndPickShortText(metrics.adp, settings.numTeams)}`
+            : "—"}</strong>
+        </div>
+      </div>
+
+      <div className={styles.profilePpgBand}>
+        <div className={styles.profilePpgBandHeader}>
+          <div>
+            <strong>Rank-mapped PPG band</strong>
+            <span>2025 positional production tier · not an individual projection</span>
+          </div>
+          <strong>{projectionValues
+            ? `${projectionValues[0].toFixed(1)}–${projectionValues[1].toFixed(1)} PPG`
+            : "Unavailable"}</strong>
+        </div>
+        {projectionValues && (
+          <div
+            aria-label={`${player.fullName} rank-mapped PPG band from ${projectionValues[0].toFixed(1)} to ${projectionValues[1].toFixed(1)}${replacement ? `; replacement baseline ${replacement[1].toFixed(1)}` : ""}`}
+            className={styles.profilePpgTrack}
+            role="img"
+          >
+            <span className={styles.profilePpgBandRange} style={{left: `${bandStart}%`, width: `${Math.max(1, bandWidth)}%`}} />
+            {baseline !== null && <span className={styles.profilePpgBaseline} style={{left: `${baseline}%`}} />}
+          </div>
+        )}
+        <div className={styles.profilePpgBandFooter}>
+          <span>{projection ? `Projection tier ${projection.tierNumber}` : "Projection tier unavailable"}</span>
+          <span>{aboveReplacement !== null
+            ? `${aboveReplacement >= 0 ? "+" : ""}${aboveReplacement.toFixed(1)} PPG vs replacement`
+            : "Replacement comparison unavailable"}</span>
+        </div>
+      </div>
+
+      {projectionPeers.length > 0 && (
+        <div className={styles.profileTierPeers}>
+          <span>Same mapped band</span>
+          <div>{projectionPeers.map(peer => (
+            <span className={peer.id === player.id ? styles.profileTierPeerActive : ""} key={peer.id}>
+              {peer.fullName}
+            </span>
+          ))}</div>
+        </div>
+      )}
+    </section>
+  )
+}
+
 const DraftDeskProfilePane = ({
   player,
   players,
@@ -170,9 +304,9 @@ const DraftDeskProfilePane = ({
             ariaLabel={`${player.fullName} profile metrics`}
             items={[
               {label: "POS RANK", value: metrics.posRank ? `${player.position} ${metrics.posRank}` : "—"},
-              {label: "PROJ RANGE", value: projectionValues ? `${projectionValues[0].toFixed(1)}–${projectionValues[1].toFixed(1)}` : "—"},
-              {label: "ADP", value: metrics.adp && metrics.adp < 999 ? `${metrics.adp.toFixed(1)} · ${getRoundAndPickShortText(metrics.adp, settings.numTeams)}` : "—"},
-              {label: "TIER / BYE", value: `T${metrics.tier?.tierNumber ?? "—"}${fixtureDetails?.byeWeek ? ` · ${fixtureDetails.byeWeek}` : ""}`},
+              {label: "PPG BAND", value: projectionValues ? `${projectionValues[0].toFixed(1)}–${projectionValues[1].toFixed(1)}` : "—"},
+              {label: "ADP PICK", value: metrics.adp && metrics.adp < 999 ? `${metrics.adp.toFixed(1)} (R${getRoundAndPickShortText(metrics.adp, settings.numTeams)})` : "—"},
+              {label: "BOARD TIER", value: `${metrics.tier ? `T${metrics.tier.tierNumber}` : "—"}${fixtureDetails?.byeWeek ? ` · Bye ${fixtureDetails.byeWeek}` : ""}`},
             ]}
           />
 
@@ -201,7 +335,14 @@ const DraftDeskProfilePane = ({
                 ) : <p>No structured status updates.</p>}
           </aside>
 
-          <HistoryChart player={player} settings={settings} />
+          <ProfileDraftContext
+            boardSettings={boardSettings}
+            player={player}
+            players={players}
+            projection={projection}
+            rankingSummaries={rankingSummaries}
+            settings={settings}
+          />
 
           {statusSummary?.text && (
             <section aria-label="Structured player outlook" className={styles.profileOutlook}>
@@ -270,8 +411,17 @@ const DraftDeskProfilePane = ({
             ))}
           </div>
 
+          {profileHistory(player, settings).length > 0 ? (
+            <details className={styles.profileHistoryDisclosure}>
+              <summary>Historical production · {profileHistory(player, settings).length} season{profileHistory(player, settings).length === 1 ? "" : "s"}</summary>
+              <HistoryChart player={player} settings={settings} />
+            </details>
+          ) : (
+            <p className={styles.profileHistoryEmpty}>Historical production unavailable; draft context remains available for rookies and players without NFL games.</p>
+          )}
+
           <details className={styles.profileDetails} onToggle={event => setDetailsOpen(event.currentTarget.open)}>
-            <summary>Ranking sources and comparison controls</summary>
+            <summary>Advanced rankings and historical comparison</summary>
             {detailsOpen && <>
               <PlayerRankingTable boardSettings={boardSettings} player={player} settings={settings} />
               <RankingSummaryDisplay activePlayer={player} rankingSummaries={rankingSummaries} settings={settings} ranker={boardSettings.ranker} />

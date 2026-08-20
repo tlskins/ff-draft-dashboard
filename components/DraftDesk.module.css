@@ -453,6 +453,40 @@
 .profileEvidenceBody small { color: #6c787f; font-size: 7px; }
 .profileDetails { margin: 8px 10px 12px; border-top: 1px solid #cfd4d6; color: #536068; font-size: 9px; }
 .profileDetails > summary { padding: 7px 0; cursor: pointer; font-weight: 650; }
+.profileDraftContext { border-bottom: 1px solid #cbd2d4; background: #f1f2ef; }
+.profileContextHeader { display: flex; min-height: 34px; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 8px; border-bottom: 1px solid #d4d9da; }
+.profileContextHeader strong,
+.profileContextHeader span { display: block; }
+.profileContextHeader strong { color: #27343a; font-size: 10px; }
+.profileContextHeader div > span { margin-top: 1px; color: #6c797f; font-size: 7px; }
+.profileContextHeader > span { padding: 2px 4px; border-radius: 2px; color: #5f6b71; background: #dce1e1; font-size: 7px; font-weight: 650; white-space: nowrap; }
+.profileRankSources { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid #d4d9da; background: #e7eae9; }
+.profileRankSources > div { min-width: 0; padding: 5px 7px; border-right: 1px solid #d2d7d8; }
+.profileRankSources > div:last-child { border-right: 0; }
+.profileRankSources span,
+.profileRankSources strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profileRankSources span { color: #6d797f; font-size: 7px; letter-spacing: .03em; text-transform: uppercase; }
+.profileRankSources strong { margin-top: 1px; color: #27343a; font-size: 9px; }
+.profilePpgBand { padding: 6px 8px; }
+.profilePpgBandHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.profilePpgBandHeader strong,
+.profilePpgBandHeader span { display: block; }
+.profilePpgBandHeader strong { color: #2b383e; font-size: 9px; }
+.profilePpgBandHeader div > span { margin-top: 1px; color: #718087; font-size: 7px; line-height: 1.2; }
+.profilePpgBandHeader > strong { color: #2b627f; white-space: nowrap; }
+.profilePpgTrack { position: relative; height: 10px; margin-top: 7px; overflow: hidden; border: 1px solid #c8d0d3; background: #dce1e2; }
+.profilePpgBandRange { position: absolute; top: 1px; bottom: 1px; max-width: 100%; background: #3d7897; }
+.profilePpgBaseline { position: absolute; top: -1px; bottom: -1px; width: 2px; background: #a46033; transform: translateX(-1px); }
+.profilePpgBandFooter { display: flex; justify-content: space-between; gap: 6px; margin-top: 3px; color: #68767c; font-size: 7px; }
+.profileTierPeers { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: start; gap: 5px; padding: 5px 8px; border-top: 1px solid #d4d9da; color: #68767c; font-size: 7px; }
+.profileTierPeers > span { letter-spacing: .03em; text-transform: uppercase; }
+.profileTierPeers > div { display: flex; min-width: 0; flex-wrap: wrap; gap: 2px; }
+.profileTierPeers > div > span { padding: 1px 3px; border-left: 2px solid #8a969b; color: #4d5b62; background: #e2e6e5; }
+.profileTierPeers > div > .profileTierPeerActive { border-left-color: var(--desk-selection); color: #244f67; background: #dce8ed; font-weight: 700; }
+.profileHistoryDisclosure { border-bottom: 1px solid #d4d8da; }
+.profileHistoryDisclosure > summary { padding: 6px 9px; color: #4e5d64; background: #e5e8e7; font-size: 8px; font-weight: 650; cursor: pointer; }
+.profileHistoryDisclosure .profileHistory { border-bottom: 0; }
+.profileHistoryEmpty { margin: 0; padding: 7px 9px; border-bottom: 1px solid #d4d8da; color: #6e7a80; background: #e8eae9; font-size: 8px; line-height: 1.3; }
 
 .comparisonSet {
   margin-bottom: 5px;
@@ -519,14 +553,14 @@
 .adpGrid { display: grid; min-height: 0; flex: 1 1 auto; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; }
 .adpColumn { display: flex; min-width: 0; min-height: 0; flex-direction: column; border-left: 1px solid #c9ced0; }
 .adpColumn:first-child { border-left: 0; }
-.adpColumn > header { min-height: 54px; padding: 6px 7px; border-bottom: 1px solid #c9ced0; background: #dde2e3; }
+.adpColumn > header { display: grid; min-height: 58px; flex: 0 0 58px; align-content: center; gap: 2px; padding: 6px 7px; border-bottom: 1px solid #c9ced0; background: #dde2e3; box-sizing: border-box; }
 .adpColumn > header span,
 .adpColumn > header strong,
 .adpColumn > header small { display: block; }
-.adpColumn > header span { color: #637078; font-size: 7px; letter-spacing: .06em; }
-.adpColumn > header strong { margin-top: 1px; font-size: 9px; font-weight: 650; }
-.adpColumn > header small { color: #7b858a; font-size: 7px; }
-.adpCards { min-height: 0; overflow-y: auto; }
+.adpColumn > header span { color: #637078; font-size: 7px; letter-spacing: .06em; line-height: 1.2; }
+.adpColumn > header strong { font-size: 9px; font-weight: 650; line-height: 1.2; }
+.adpColumn > header small { color: #7b858a; font-size: 7px; line-height: 1.2; }
+.adpCards { min-height: 0; flex: 1 1 auto; overflow-y: auto; }
 .adpCards .playerCard { grid-template-columns: 18px minmax(0, 1fr); min-height: 54px; }
 .adpCards .playerCardName { font-size: 8px; }
 .adpCards .playerCardMeta { font-size: 7px; }
