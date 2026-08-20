@@ -1148,7 +1148,8 @@ const DecisionCockpit: React.FC<{
 const DecisionScenarioExplorer: React.FC<{
   model: CrossPositionPresentationModel
   tierModel: TierLandscapePresentationModel | null
-}> = ({model, tierModel}) => {
+  announceUpdates?: boolean
+}> = ({model, tierModel, announceUpdates = true}) => {
   const options = cockpitOptions(model, tierModel)
   const preferredCandidate = model.candidates[0] || null
   const defaultOption = options.find(option => (
@@ -1220,7 +1221,7 @@ const DecisionScenarioExplorer: React.FC<{
           )
         })}
       </div>
-      <div aria-live="polite" className={styles.scenarioExplorerResults}>
+      <div {...(announceUpdates ? {"aria-live": "polite" as const} : {})} className={styles.scenarioExplorerResults}>
         {selectedEvidence.map(item => (
           <div key={item.id}>
             <span>{item.position} comparison candidate</span>
@@ -1461,9 +1462,9 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
           Draft recommendations are not available yet. Historical comparison
           below remains available when you run it manually.
         </p>
-        <div aria-live="polite" className="sr-only" data-testid="cross-position-live-update" role="status">
+        {announceUpdates && <div aria-live="polite" className="sr-only" data-testid="cross-position-live-update" role="status">
           {announcement}
-        </div>
+        </div>}
       </section>
     )
   }
@@ -1494,7 +1495,7 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
 
       <details className={styles.scenarioDisclosure}>
         <summary>Test positional scenarios</summary>
-        <DecisionScenarioExplorer model={model} tierModel={tierModel} />
+        <DecisionScenarioExplorer announceUpdates={announceUpdates} model={model} tierModel={tierModel} />
       </details>
 
       <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 xl:grid-cols-5">
@@ -1536,9 +1537,9 @@ const CrossPositionLiveSurface: React.FC<CrossPositionLiveSurfaceProps> = ({
         bars compare only the displayed candidates within the same metric, and
         exact supplied values remain visible.
       </p>
-      <div aria-live="polite" className="sr-only" data-testid="cross-position-live-update" role="status">
+      {announceUpdates && <div aria-live="polite" className="sr-only" data-testid="cross-position-live-update" role="status">
         {announcement}
-      </div>
+      </div>}
 
       {model.candidates.length === 0 ? (
         <div

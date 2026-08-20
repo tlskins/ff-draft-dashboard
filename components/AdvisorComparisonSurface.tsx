@@ -9,11 +9,14 @@ import styles from "./DraftDesk.module.css"
 interface AdvisorComparisonSurfaceProps {
   controller: AdvisorComparisonController
   availablePlayers: Player[]
+  /** Standalone behavior remains enabled unless a parent owns announcements. */
+  announceUpdates?: boolean
 }
 
 const AdvisorComparisonSurface = ({
   controller,
   availablePlayers,
+  announceUpdates = true,
 }: AdvisorComparisonSurfaceProps) => {
   const addable = useMemo(() => availablePlayers
     .filter(player => player.id?.trim() && player.fullName?.trim())
@@ -97,13 +100,13 @@ const AdvisorComparisonSurface = ({
           >Add</button>
         </div>
       )}
-      <div
+      {announceUpdates && <div
         aria-atomic="true"
         aria-live="polite"
         className="sr-only"
         data-testid="advisor-comparison-live-region"
         role="status"
-      >{controller.announcement}</div>
+      >{controller.announcement}</div>}
     </section>
   )
 }

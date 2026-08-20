@@ -28,14 +28,21 @@ export const useAdvisorComparisonController = ({
   materialEventKey: string
 }): AdvisorComparisonController => {
   const [mode, setMode] = useState<AdvisorComparisonMode>("auto")
+  // Auto is deliberately committed at a material draft boundary rather than
+  // following every ranking/status/evidence rerender.
+  const [committedAutomaticSet, setCommittedAutomaticSet] = useState(
+    () => automaticSet.slice(0, MAX_ADVISOR_COMPARISON_PLAYERS),
+  )
   const [pinnedItems, setPinnedItems] = useState<AdvisorComparisonItem[]>([])
   const [announcement, setAnnouncement] = useState("")
   const announcementCount = useRef(0)
   const automaticSignature = advisorComparisonSetSignature(automaticSet)
-  const observed = useRef({
-    automaticSignature,
-    materialEventKey,
-  })
+  const committedAutomaticSignature = advisorComparisonSetSignature(
+    committedAutomaticSet,
+  )
+  const observedMaterialEventKey = useRef(materialEventKey)
+  const latestAutomaticSet = useRef(automaticSet)
+  latestAutomaticSet.current = automaticSet
   const announcePinnedUpdate = useCallback((items: AdvisorComparisonItem[]) => {
     announcementCount.current += 1
     setAnnouncement(
@@ -46,39 +53,60 @@ export const useAdvisorComparisonController = ({
   }, [])
 
   useEffect(() => {
-    const selectionChanged = observed.current.automaticSignature
-      !== automaticSignature
-    const materialEventChanged = observed.current.materialEventKey
-      !== materialEventKey
-    observed.current = {automaticSignature, materialEventKey}
-    if (!selectionChanged || mode !== "auto") return
+    if (observedMaterialEventKey.current === materialEventKey) return
+    observedMaterialEventKey.current = materialEventKey
+    if (mode !== "auto") return
+    setCommittedAutomaticSet(automaticSet.slice(0, MAX_ADVISOR_COMPARISON_PLAYERS))
+    if (committedAutomaticSignature === automaticSignature) return
     announcementCount.current += 1
     const names = automaticSet.map(item => item.player.fullName).join(", ")
     setAnnouncement(
-      `Automatic comparison updated${materialEventChanged ? " after a draft pick" : " after selection evidence changed"}: `
+      "Automatic comparison updated after a draft pick: "
       + `${names || "no available players"}. Update ${announcementCount.current}.`,
     )
-  }, [automaticSet, automaticSignature, materialEventKey, mode])
+  }, [
+    automaticSet,
+    automaticSignature,
+    committedAutomaticSignature,
+    materialEventKey,
+    mode,
+  ])
+
+  // A first render can legitimately have no available candidates while the
+  // board settles. Allow that empty Auto state one silent bootstrap at the
+  // same material boundary, but never replace a nonempty committed set without
+  // a new material draft event.
+  useEffect(() => {
+    if (
+      mode !== "auto"
+      || committedAutomaticSet.length > 0
+      || automaticSet.length === 0
+    ) return
+    setCommittedAutomaticSet(automaticSet.slice(0, MAX_ADVISOR_COMPARISON_PLAYERS))
+  }, [automaticSet, committedAutomaticSet.length, mode])
 
   const pinCurrent = useCallback(() => {
     if (mode === "pinned") return
-    setPinnedItems(automaticSet.slice(0, MAX_ADVISOR_COMPARISON_PLAYERS))
+    setPinnedItems(committedAutomaticSet.slice(0, MAX_ADVISOR_COMPARISON_PLAYERS))
     setMode("pinned")
-  }, [automaticSet, mode])
+  }, [committedAutomaticSet, mode])
 
   const restoreAuto = useCallback(() => {
+    const latest = latestAutomaticSet.current.slice(0, MAX_ADVISOR_COMPARISON_PLAYERS)
+    const latestSignature = advisorComparisonSetSignature(latest)
     const reconciles = advisorComparisonSetSignature(pinnedItems)
-      !== automaticSignature
+      !== latestSignature
     setMode("auto")
+    setCommittedAutomaticSet(latest)
     if (reconciles) {
       announcementCount.current += 1
       setAnnouncement(
-        `Automatic comparison restored: ${automaticSet.map(item => (
+        `Automatic comparison restored: ${latest.map(item => (
           item.player.fullName
         )).join(", ") || "no available players"}. Update ${announcementCount.current}.`,
       )
     }
-  }, [automaticSet, automaticSignature, pinnedItems])
+  }, [pinnedItems])
 
   const addPinnedPlayer = useCallback((player: Player) => {
     if (pinnedItems.some(item => item.player.id === player.id)
@@ -99,8 +127,8 @@ export const useAdvisorComparisonController = ({
   }, [announcePinnedUpdate, pinnedItems])
 
   const items = useMemo(() => mode === "auto"
-    ? automaticSet
-    : pinnedItems, [automaticSet, mode, pinnedItems])
+    ? committedAutomaticSet
+    : pinnedItems, [committedAutomaticSet, mode, pinnedItems])
 
   return {
     mode,

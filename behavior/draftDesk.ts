@@ -184,3 +184,37 @@ export const buildDraftDeskLeagueNeeds = (
 export const isDraftDeskEnabled = (
   enabled = process.env.NEXT_PUBLIC_DRAFT_DESK_ENABLED,
 ): boolean => enabled === "true"
+
+/**
+ * Phase 14C is opt-out during rollout: only an explicit false restores the
+ * accepted Phase 13/14A compact analysis workspace in the draft desk.
+ */
+export const isPhase14CInsightDeckEnabled = (
+  enabled = process.env.NEXT_PUBLIC_PHASE14C_INSIGHT_DECK_ENABLED,
+): boolean => enabled !== "false"
+
+export type DraftDeskInsightPaneMode = "deck" | "workspace"
+
+/**
+ * The desktop desk has one insight-pane mount. Player Lab deliberately
+ * replaces the deck in that mount instead of opening a parallel workspace.
+ */
+export const resolveDraftDeskInsightPaneMode = (
+  insightDeckEnabled: boolean,
+  playerLabOpen: boolean,
+): DraftDeskInsightPaneMode => (
+  insightDeckEnabled && !playerLabOpen ? "deck" : "workspace"
+)
+
+export interface DraftDeskInsightMaterialEvent {
+  streamId: string
+  draftKey: string
+}
+
+export const createDraftDeskInsightMaterialEvent = (
+  activeDraftSessionId: string | null | undefined,
+  materialDraftEventKey: string,
+): DraftDeskInsightMaterialEvent => ({
+  streamId: activeDraftSessionId || "unscoped-draft",
+  draftKey: materialDraftEventKey,
+})

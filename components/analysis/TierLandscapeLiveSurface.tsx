@@ -18,6 +18,8 @@ interface TierLandscapeLiveSurfaceProps {
   model: TierLandscapePresentationModel | null
   onInspectPlayer: (player: Player) => void
   runwayForecast?: TierRunwayForecast
+  /** Standalone behavior remains enabled unless a parent owns announcements. */
+  announceUpdates?: boolean
 }
 
 export interface TierRunwayHorizon {
@@ -529,6 +531,7 @@ const TierLandscapeLiveSurface: React.FC<TierLandscapeLiveSurfaceProps> = ({
   model,
   onInspectPlayer,
   runwayForecast = {},
+  announceUpdates = true,
 }) => {
   const previousUpdateKey = useRef<string | null>(null)
   const announcementCount = useRef(0)
@@ -566,7 +569,7 @@ const TierLandscapeLiveSurface: React.FC<TierLandscapeLiveSurfaceProps> = ({
   }, [model])
 
   useEffect(() => {
-    if (previousUpdateKey.current !== null && previousUpdateKey.current !== updateKey) {
+    if (announceUpdates && previousUpdateKey.current !== null && previousUpdateKey.current !== updateKey) {
       announcementCount.current += 1
       if (!model) {
         setAnnouncement(
@@ -584,7 +587,7 @@ const TierLandscapeLiveSurface: React.FC<TierLandscapeLiveSurfaceProps> = ({
       }
     }
     previousUpdateKey.current = updateKey
-  }, [model, updateKey])
+  }, [announceUpdates, model, updateKey])
 
   if (!model) {
     return (
@@ -599,9 +602,9 @@ const TierLandscapeLiveSurface: React.FC<TierLandscapeLiveSurfaceProps> = ({
           Explicit available-player data is not available yet. Historical
           drilldown below remains available when you run it manually.
         </p>
-        <div aria-live="polite" className="sr-only" role="status">
+        {announceUpdates && <div aria-live="polite" className="sr-only" role="status">
           {announcement}
-        </div>
+        </div>}
       </section>
     )
   }
@@ -791,9 +794,9 @@ const TierLandscapeLiveSurface: React.FC<TierLandscapeLiveSurfaceProps> = ({
           </section>
         </>
       )}
-      <div aria-live="polite" className="sr-only" role="status">
+      {announceUpdates && <div aria-live="polite" className="sr-only" role="status">
         {announcement}
-      </div>
+      </div>}
 
       <details className="mt-4 rounded-xl border-2 border-slate-300 bg-white">
         <summary className="cursor-pointer rounded-xl p-3 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">Detailed tier and forecast evidence</summary>

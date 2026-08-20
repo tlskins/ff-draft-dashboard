@@ -31,6 +31,7 @@ import DraftDock from "../components/DraftDock"
 import DeskPaneHeader from "../components/draft-desk/DeskPaneHeader"
 import DeskSegmentedControl from "../components/draft-desk/DeskSegmentedControl"
 import DraftDeskAdvisorDisclosure from "../components/draft-desk/DraftDeskAdvisorDisclosure"
+import DraftDeskInsightDeck from "../components/insight/DraftDeskInsightDeck"
 import draftDeskStyles from "../components/DraftDesk.module.css"
 
 import { useRanks } from '../behavior/hooks/useRanks'
@@ -103,7 +104,10 @@ import {
   DRAFT_DESK_PANE_STORAGE_KEY,
   DraftDeskPaneId,
   DraftDeskPanePlacement,
+  createDraftDeskInsightMaterialEvent,
   isDraftDeskEnabled,
+  isPhase14CInsightDeckEnabled,
+  resolveDraftDeskInsightPaneMode,
   restoreDraftDeskPanePlacement,
   swapDraftDeskPanePlacement,
 } from "@/behavior/draftDesk"
@@ -319,6 +323,12 @@ const Home: FC = () => {
     automaticSet: automaticComparisonSet,
     materialEventKey: materialDraftEventKey,
   })
+  const draftDeskInsightMaterialEvent = useMemo(() => (
+    createDraftDeskInsightMaterialEvent(
+      activeDraftSessionId,
+      materialDraftEventKey,
+    )
+  ), [activeDraftSessionId, materialDraftEventKey])
 
   const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
   const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
@@ -327,6 +337,12 @@ const Home: FC = () => {
   const [mobileView, setMobileView] = useState<MobileView>(MobileView.OVERVIEW)
   const [analysisOpen, setAnalysisOpen] = useState(false)
   const draftDeskEnabled = isDraftDeskEnabled()
+  const phase14CInsightDeckEnabled = isPhase14CInsightDeckEnabled()
+  const [draftDeskPlayerLabOpen, setDraftDeskPlayerLabOpen] = useState(false)
+  const draftDeskInsightPaneMode = resolveDraftDeskInsightPaneMode(
+    phase14CInsightDeckEnabled,
+    draftDeskPlayerLabOpen,
+  )
   const [draftDeskDockHeight, setDraftDeskDockHeight] = useState(0)
   const onDraftDeskDockHeightChange = useCallback((height: number) => {
     setDraftDeskDockHeight(current => Math.abs(current - height) < 0.5
@@ -1114,28 +1130,95 @@ const Home: FC = () => {
                     )}
                     {pane === "insight" && (
                       <section aria-label="Deterministic insight pane" className={`${draftDeskStyles.pane} flex h-full min-h-0 flex-col`}>
-                        <DeskPaneHeader
-                          actions={<DraftDeskAdvisorDisclosure {...liveAdvisorPanelProps} />}
-                          kicker="Decision view · auto"
-                          title="Cross-position value"
-                        />
-                        <div className="min-h-0 flex-1 overflow-y-auto p-2 text-left">
-                          <AnalysisWorkspace
-                            availablePlayers={analysisAvailablePlayers}
-                            boardSettings={boardSettings}
-                            compact
-                            comparisonController={comparisonController}
-                            followActivePlayer={false}
-                            players={Object.values(playerLib)}
-                            rankingSummaries={rankingSummaries}
-                            recommendations={recommendations}
-                            opponentForecast={opponentForecast}
-                            settings={settings}
-                            playerStatus={playerStatus}
-                            analysisViewEvent={analysisViewEvents.desktop}
-                            onAnalysisViewEventHandled={acknowledgeAnalysisViewNavigation}
+                        {phase14CInsightDeckEnabled ? (
+                          <DeskPaneHeader
+                            actions={(
+                              <div className="flex items-center gap-1">
+                                <button
+                                  className={`${draftDeskStyles.focusRing} min-h-6 rounded border border-slate-400 bg-white px-2 py-1 text-[9px] font-semibold text-slate-700 hover:bg-slate-100`}
+                                  onClick={() => setDraftDeskPlayerLabOpen(
+                                    draftDeskInsightPaneMode === "deck",
+                                  )}
+                                  type="button"
+                                >
+                                  {draftDeskInsightPaneMode === "deck"
+                                    ? "Open analysis workspace"
+                                    : "Back to insight deck"}
+                                </button>
+                                <DraftDeskAdvisorDisclosure {...liveAdvisorPanelProps} />
+                              </div>
+                            )}
+                            kicker={draftDeskInsightPaneMode === "deck"
+                              ? "Decision view · auto"
+                              : "Historical and manual analysis"}
+                            title={draftDeskInsightPaneMode === "deck"
+                              ? "Insight deck"
+                              : "Analysis workspace"}
                           />
-                        </div>
+                        ) : (
+                          <DeskPaneHeader
+                            actions={<DraftDeskAdvisorDisclosure {...liveAdvisorPanelProps} />}
+                            kicker="Decision view · auto"
+                            title="Cross-position value"
+                          />
+                        )}
+                        {draftDeskInsightPaneMode === "deck" ? (
+                          <div className="min-h-0 flex-1 overflow-hidden p-2 text-left">
+                            <DraftDeskInsightDeck
+                              advisorContext={advisorContext}
+                              availablePlayers={analysisAvailablePlayers}
+                              boardSettings={boardSettings}
+                              comparisonController={comparisonController}
+                              draftPlan={realtimeAdvisor.plan}
+                              materialEvent={draftDeskInsightMaterialEvent}
+                              myRosterIndex={myPickNum - 1}
+                              onInspectPlayer={player => setViewPlayerId(player.id)}
+                              opponentForecast={opponentForecast}
+                              playerStatus={playerStatus}
+                              rankingSummaries={rankingSummaries}
+                              recommendations={recommendations}
+                              rosters={rosters}
+                              settings={settings}
+                            />
+                          </div>
+                        ) : phase14CInsightDeckEnabled ? (
+                          <div className="min-h-0 flex-1 overflow-y-auto p-2 text-left">
+                            <AnalysisWorkspace
+                              availablePlayers={analysisAvailablePlayers}
+                              boardSettings={boardSettings}
+                              compact
+                              comparisonController={comparisonController}
+                              followActivePlayer={false}
+                              players={Object.values(playerLib)}
+                              rankingSummaries={rankingSummaries}
+                              recommendations={recommendations}
+                              opponentForecast={opponentForecast}
+                              settings={settings}
+                              playerStatus={playerStatus}
+                              analysisViewEvent={analysisViewEvents.desktop}
+                              onAnalysisViewEventHandled={acknowledgeAnalysisViewNavigation}
+                              onClose={() => setDraftDeskPlayerLabOpen(false)}
+                            />
+                          </div>
+                        ) : (
+                          <div className="min-h-0 flex-1 overflow-y-auto p-2 text-left">
+                            <AnalysisWorkspace
+                              availablePlayers={analysisAvailablePlayers}
+                              boardSettings={boardSettings}
+                              compact
+                              comparisonController={comparisonController}
+                              followActivePlayer={false}
+                              players={Object.values(playerLib)}
+                              rankingSummaries={rankingSummaries}
+                              recommendations={recommendations}
+                              opponentForecast={opponentForecast}
+                              settings={settings}
+                              playerStatus={playerStatus}
+                              analysisViewEvent={analysisViewEvents.desktop}
+                              onAnalysisViewEventHandled={acknowledgeAnalysisViewNavigation}
+                            />
+                          </div>
+                        )}
                       </section>
                     )}
                   </React.Fragment>

@@ -2,7 +2,10 @@ import {
   DEFAULT_DRAFT_DESK_PANE_PLACEMENT,
   buildDraftDeskLeagueNeeds,
   buildDraftDeskRosterSlots,
+  createDraftDeskInsightMaterialEvent,
   isDraftDeskEnabled,
+  isPhase14CInsightDeckEnabled,
+  resolveDraftDeskInsightPaneMode,
   restoreDraftDeskPanePlacement,
   swapDraftDeskPanePlacement,
 } from "../behavior/draftDesk"
@@ -76,5 +79,22 @@ describe("Phase 14A draft desk presentation state", () => {
     expect(isDraftDeskEnabled()).toBe(false)
     expect(isDraftDeskEnabled("false")).toBe(false)
     expect(isDraftDeskEnabled("true")).toBe(true)
+  })
+
+  it("enables the Phase 14C deck unless it is explicitly rolled back", () => {
+    expect(isPhase14CInsightDeckEnabled()).toBe(true)
+    expect(isPhase14CInsightDeckEnabled("false")).toBe(false)
+    expect(isPhase14CInsightDeckEnabled("true")).toBe(true)
+  })
+
+  it("keeps one desktop insight pane and scopes its material identity to the draft", () => {
+    expect(resolveDraftDeskInsightPaneMode(true, false)).toBe("deck")
+    expect(resolveDraftDeskInsightPaneMode(true, true)).toBe("workspace")
+    expect(resolveDraftDeskInsightPaneMode(false, false)).toBe("workspace")
+
+    expect(createDraftDeskInsightMaterialEvent("draft-42", "pick:18"))
+      .toEqual({streamId: "draft-42", draftKey: "pick:18"})
+    expect(createDraftDeskInsightMaterialEvent(null, "pick:18"))
+      .toEqual({streamId: "unscoped-draft", draftKey: "pick:18"})
   })
 })

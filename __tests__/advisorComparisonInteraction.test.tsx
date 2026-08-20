@@ -60,6 +60,73 @@ describe("Phase 14B Auto and Pinned interaction", () => {
       .toContain("Update 1")
   })
 
+  it("holds the committed Auto set through non-material evidence churn", async () => {
+    const view = render(<Harness automaticSet={set("alpha", "bravo", "charlie")} materialEventKey="draft:empty" />)
+
+    view.rerender(<Harness automaticSet={set("bravo", "charlie", "delta")} materialEventKey="draft:empty" />)
+    let list = view.getByRole("list")
+    expect(within(list).getByText("alpha Player")).toBeTruthy()
+    expect(within(list).queryByText("delta Player")).toBeNull()
+    expect(view.getByTestId("advisor-comparison-live-region").textContent).toBe("")
+
+    view.rerender(<Harness automaticSet={set("bravo", "charlie", "delta")} materialEventKey="draft:1:alpha" />)
+    await waitFor(() => expect(view.getByTestId("advisor-comparison-live-region").textContent)
+      .toContain("after a draft pick"))
+    list = view.getByRole("list")
+    expect(within(list).queryByText("alpha Player")).toBeNull()
+    expect(within(list).getByText("delta Player")).toBeTruthy()
+  })
+
+  it("silently bootstraps an empty Auto set once at the same material boundary", async () => {
+    const view = render(<Harness automaticSet={[]} materialEventKey="draft:empty" />)
+    expect(view.getByText("No valid available comparison players.")).toBeTruthy()
+
+    view.rerender(<Harness
+      automaticSet={set("alpha", "bravo", "charlie")}
+      materialEventKey="draft:empty"
+    />)
+    await waitFor(() => expect(view.getByText("alpha Player")).toBeTruthy())
+    expect(view.getByTestId("advisor-comparison-live-region").textContent).toBe("")
+
+    view.rerender(<Harness
+      automaticSet={set("bravo", "charlie", "delta")}
+      materialEventKey="draft:empty"
+    />)
+    const list = view.getByRole("list")
+    expect(within(list).getByText("alpha Player")).toBeTruthy()
+    expect(within(list).queryByText("delta Player")).toBeNull()
+    expect(view.getByTestId("advisor-comparison-live-region").textContent).toBe("")
+  })
+
+  it("reconciles same-identity Auto evidence at a material boundary without announcing it", async () => {
+    const view = render(<Harness automaticSet={set("alpha", "bravo", "charlie")} materialEventKey="draft:empty" />)
+    const refreshed = set("alpha", "bravo", "charlie").map((item, index) => (
+      index === 0 ? {...item, reasonLabel: "Updated material rationale"} : item
+    ))
+
+    view.rerender(<Harness automaticSet={refreshed} materialEventKey="draft:1:alpha" />)
+    await waitFor(() => expect(view.getByText("Updated material rationale")).toBeTruthy())
+    expect(view.getByTestId("advisor-comparison-live-region").textContent).toBe("")
+  })
+
+  it("keeps pins through material events and restores the latest committed Auto set once", async () => {
+    const view = render(<Harness automaticSet={set("alpha", "bravo", "charlie")} materialEventKey="draft:empty" />)
+    fireEvent.click(view.getByRole("button", {name: "Pinned"}))
+
+    view.rerender(<Harness automaticSet={set("bravo", "charlie", "delta")} materialEventKey="draft:1:alpha" />)
+    let list = view.getByRole("list")
+    expect(within(list).getByText("alpha Player")).toBeTruthy()
+    expect(within(list).queryByText("delta Player")).toBeNull()
+    expect(view.getByTestId("advisor-comparison-live-region").textContent).toBe("")
+
+    fireEvent.click(view.getByRole("button", {name: "Auto"}))
+    await waitFor(() => expect(view.getByText("delta Player")).toBeTruthy())
+    list = view.getByRole("list")
+    expect(within(list).queryByText("alpha Player")).toBeNull()
+    expect(view.getByTestId("advisor-comparison-live-region").textContent)
+      .toContain("Automatic comparison restored")
+  })
+
   it("freezes Pinned, preserves manual edits and profile focus isolation, then reconciles to Auto", async () => {
     const view = render(<Harness automaticSet={set("alpha", "bravo", "charlie")} materialEventKey="draft:empty" />)
     fireEvent.click(view.getByRole("button", {name: "Pinned"}))

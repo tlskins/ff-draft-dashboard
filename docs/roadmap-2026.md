@@ -606,7 +606,9 @@ models. Realtime GPT/voice remains deferred and is not required for this work.
 Status: Phase 14A implemented, visually accepted, and integrated on 2026-08-17.
 Phase 14B was independently reviewed, hardened, and integrated with its API
 producer on 2026-08-17. Live-extension draft acceptance remains assigned to
-Phase 14D; Phase 14C and Phase 14D have not begun.
+Phase 14D. Phase 14C implementation is in acceptance, not complete; its
+browser, visual, and human mock-draft gates remain Phase 14D boundaries.
+Realtime GPT/voice remains deferred.
 
 Replace the current mutually exclusive standard-layout versus analysis-page
 interaction with one responsive draft desk. The rankings board, live draft
@@ -700,23 +702,41 @@ Status: independently reviewed, hardened, and integrated on 2026-08-17. See
 
 #### Phase 14C: round-aware run market and deterministic insight controller
 
+Status: implementation and development-fixture acceptance are complete and
+ready for integration. Live-extension and human acceptance remain Phase 14D.
+See
+`docs/phase14c-insight-deck.md` for the registered-view, authority, rollback,
+and verification record.
+
 - Extend the opponent forecast presentation/model boundary from only the next
-  user-pick window to bounded upcoming-round buckets. For each relevant
-  position/tier and round, expose expected positional picks, probability of at
-  least the configured run threshold, expected tier depletion, and probability
-  of tier exhaustion without double-counting players.
+  user-pick window to exactly two bounded buckets: frozen-v1 positional
+  evidence before the next user turn, then a clearly provisional static-board
+  estimate before the following turn. Tier simulation uses the static board,
+  full bounded available pool, and at most two tiers per lane without
+  double-counting players.
 - Build the cross-position market from four positional lanes that combine tier
   depth, survival, round-aware run evidence, and observed other-roster starter
-  needs while clearly labeling observed versus modeled evidence.
+  needs while clearly labeling observed versus modeled evidence. FLEX remains
+  unallocated rather than inferred as RB/WR demand.
 - Score candidate-comparison and cross-position/run insights deterministically.
-  Switch only on material draft events, require a significance margin and
-  hysteresis, use a stable tie-break, announce one explanation, and respect a
-  user-pinned view until Auto is restored.
+  Switch only on material draft events, require a significance margin, dwell,
+  and deduplication, use a stable tie-break, announce through one deck owner,
+  and respect session-local per-slot pins until Auto is restored.
 - Keep a compact three-player comparison available in the insight pane,
   including rank/tier authority, role, projection range, survival/run evidence,
-  and one-line inclusion rationale.
+  and one-line inclusion rationale. Use the committed Phase 14B comparison set;
+  frozen v1, recommendations, and presentation estimates remain non-authority
+  for promotion or model replacement.
+- The desktop deck is rollback-gated by
+  `NEXT_PUBLIC_PHASE14C_INSIGHT_DECK_ENABLED=false`, which restores the accepted
+  Phase 13/14A inline analysis workspace without a backend migration. Player
+  Lab remains a manually selected workspace view, not a directly opened route.
 
 #### Phase 14D: responsive acceptance and migration
+
+Status: not begun. It owns the remaining browser/visual/human acceptance for
+the Phase 14C implementation and does not treat synthetic replay or focused
+tests as live-extension acceptance. Realtime GPT/voice remains deferred.
 
 - Validate no-navigation drafting, automatic comparison churn, pin/unpin,
   keyboard flow, screen-reader table structure, and live announcements during
@@ -725,7 +745,8 @@ Status: independently reviewed, hardened, and integrated on 2026-08-17. See
   shortlist in a bottom sheet; do not shrink the full desktop terminal onto a
   phone.
 - Remove superseded layout controls only after parity is demonstrated. Keep a
-  feature-flagged rollback to the accepted Phase 13 layout through closeout.
+  feature-flagged rollback to the accepted Phase 13 layout through closeout;
+  preserve the Phase 14C deck rollback until this acceptance is complete.
 
 Exit gate: a user can monitor the board, understand the current recommendation,
 compare the players genuinely in play, inspect tier/run context, and open a
