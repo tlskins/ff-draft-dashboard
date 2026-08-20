@@ -22,6 +22,7 @@ const rankingProfileControls = () => ({
   isSaving: false,
   error: null,
   apiConfigured: false,
+  serverPersistenceEnabled: true,
   refresh: jest.fn(),
   save: jest.fn(),
   select: jest.fn(),

@@ -69,6 +69,7 @@ import {
   rankingsAgeInDays,
   rankingsAreStale,
 } from "@/behavior/playerData"
+import { getDashboardApiFeatures } from "@/behavior/api/featureConfig"
 import { shouldIgnoreGlobalDraftShortcut } from "@/behavior/accessibility"
 import {
   applyRankingProfileV2Snapshot,
@@ -126,6 +127,7 @@ export enum SortOption {
 
 
 const Home: FC = () => {
+  const apiFeatures = getDashboardApiFeatures()
   const {
     // state
     settings, setNumTeams, setIsPpr, replaceSettings,
@@ -210,6 +212,7 @@ const Home: FC = () => {
     onSetRanker,
     localProfile: startupProfile,
     onLocalProfileCommitted: setStartupProfile,
+    serverPersistenceEnabled: apiFeatures.rankingProfilePersistenceEnabled,
   })
 
   const {
@@ -240,6 +243,7 @@ const Home: FC = () => {
         setMyPickNum(snapshot.targetRosterIndex + 1)
       }
     },
+    apiPersistenceEnabled: apiFeatures.draftSessionPersistenceEnabled,
   })
   const sourceObservedThroughOverallPick = useMemo(() =>
     getSnapshotObservedThroughOverallPick(activeDraftSnapshot, settings.numTeams),
@@ -464,6 +468,7 @@ const Home: FC = () => {
     draftSessionId: activeDraftSessionId,
     toolContext: realtimeToolContext,
     onProposal: realtimeAdvisor.enqueueProposal,
+    enabled: apiFeatures.realtimeAdvisorEnabled,
   })
   const canExportReplay = Boolean(
     activeDraftSessionId && dashboardDraftComplete,
@@ -550,6 +555,7 @@ const Home: FC = () => {
   }, [activeDraftSessionId, buildReplayFixture])
 
   useEffect(() => {
+    if (!apiFeatures.advisorSnapshotPersistenceEnabled) return
     if (!activeDraftSessionId || !draftStarted) return
     const inputFingerprint = createAdvisorInputFingerprint({
       sourceEventCount,
@@ -571,6 +577,7 @@ const Home: FC = () => {
     })
   }, [
     activeDraftSessionId,
+    apiFeatures.advisorSnapshotPersistenceEnabled,
     boardSettings,
     currPick,
     draftHistory,
@@ -897,22 +904,24 @@ const Home: FC = () => {
     realtimeProposals: realtimeAdvisor.proposals,
     onAcceptProposal: realtimeAdvisor.acceptProposal,
     onRejectProposal: realtimeAdvisor.rejectProposal,
-    realtimeStatus: realtimeConversation.status,
-    realtimeMessages: realtimeConversation.messages,
-    realtimeError: realtimeConversation.error,
-    realtimeIsResponding: realtimeConversation.isResponding,
-    realtimeReconnectAttempt: realtimeConversation.reconnectAttempt,
-    realtimeAutoAdviceEnabled: realtimeConversation.autoAdviceEnabled,
-    realtimeMode: realtimeConversation.mode,
-    realtimeMicrophoneEnabled: realtimeConversation.microphoneEnabled,
-    realtimeIsUserSpeaking: realtimeConversation.isUserSpeaking,
-    onConnectRealtime: realtimeConversation.connect,
-    onDisconnectRealtime: realtimeConversation.disconnect,
-    onCancelRealtimeResponse: realtimeConversation.cancelResponse,
-    onSetRealtimeAutoAdviceEnabled: realtimeConversation.setAutoAdviceEnabled,
-    onSetRealtimeMode: realtimeConversation.setMode,
-    onSetRealtimeMicrophoneEnabled: realtimeConversation.setMicrophoneEnabled,
-    onSendRealtimeText: realtimeConversation.sendText,
+    ...(apiFeatures.realtimeAdvisorEnabled ? {
+      realtimeStatus: realtimeConversation.status,
+      realtimeMessages: realtimeConversation.messages,
+      realtimeError: realtimeConversation.error,
+      realtimeIsResponding: realtimeConversation.isResponding,
+      realtimeReconnectAttempt: realtimeConversation.reconnectAttempt,
+      realtimeAutoAdviceEnabled: realtimeConversation.autoAdviceEnabled,
+      realtimeMode: realtimeConversation.mode,
+      realtimeMicrophoneEnabled: realtimeConversation.microphoneEnabled,
+      realtimeIsUserSpeaking: realtimeConversation.isUserSpeaking,
+      onConnectRealtime: realtimeConversation.connect,
+      onDisconnectRealtime: realtimeConversation.disconnect,
+      onCancelRealtimeResponse: realtimeConversation.cancelResponse,
+      onSetRealtimeAutoAdviceEnabled: realtimeConversation.setAutoAdviceEnabled,
+      onSetRealtimeMode: realtimeConversation.setMode,
+      onSetRealtimeMicrophoneEnabled: realtimeConversation.setMicrophoneEnabled,
+      onSendRealtimeText: realtimeConversation.sendText,
+    } : {}),
   }
 
   return (

@@ -503,7 +503,10 @@ const EditRankingsView = ({
                       setProfileName("My Rankings")
                     }
                   }}
-                  disabled={rankingProfileControls.isLoading}
+                  disabled={
+                    rankingProfileControls.isLoading
+                    || !rankingProfileControls.serverPersistenceEnabled
+                  }
                 >
                   <option value="">New profile</option>
                   {rankingProfileControls.profiles.map(profile => (
@@ -550,9 +553,11 @@ const EditRankingsView = ({
                 }}
               >
                 {rankingProfileControls.isSaving ? "Saving…" : (
-                  rankingProfileControls.activeProfile
-                    ? "Save revision"
-                    : "Create profile"
+                  !rankingProfileControls.serverPersistenceEnabled
+                    ? "Save to browser"
+                    : rankingProfileControls.activeProfile
+                      ? "Save revision"
+                      : "Create profile"
                 )}
               </button>
               <button
@@ -560,6 +565,7 @@ const EditRankingsView = ({
                 className="rounded border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40"
                 disabled={
                   rankingProfileControls.isSaving ||
+                  !rankingProfileControls.serverPersistenceEnabled ||
                   !rankingProfileControls.activeProfile?.can_undo
                 }
                 onClick={async () => {
@@ -578,6 +584,7 @@ const EditRankingsView = ({
                 className="rounded border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40"
                 disabled={
                   rankingProfileControls.isSaving ||
+                  !rankingProfileControls.serverPersistenceEnabled ||
                   !rankingProfileControls.activeProfile?.can_redo
                 }
                 onClick={async () => {
@@ -596,6 +603,9 @@ const EditRankingsView = ({
               <span>
                 <strong>User tiers</strong> are your editable draft groups.
               </span>
+              {!rankingProfileControls.serverPersistenceEnabled && (
+                <span>Rankings save in this browser only.</span>
+              )}
               <span>
                 <strong>Projection range</strong> uses standard_deviation_v1
                 against historical PPG.

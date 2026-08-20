@@ -11,6 +11,7 @@ import {
   redoRankingProfileV2,
   undoRankingProfileV2,
 } from "../api/rankingProfiles"
+import { getDashboardApiFeatures } from "../api/featureConfig"
 import type { RankingProfile as LegacyRankingProfile } from "../api/rankingProfiles"
 import {
   applyRankingProfileV2Snapshot,
@@ -49,6 +50,11 @@ interface UseRankingProfilesOptions {
   onSetRanker: (ranker: ThirdPartyRanker) => void
   localProfile?: RankingProfileV2 | null
   onLocalProfileCommitted?: (profile: RankingProfileV2 | null) => void
+  /**
+   * Server revision history is optional. Published API reads do not imply
+   * permission to persist a browser user's custom rankings remotely.
+   */
+  serverPersistenceEnabled?: boolean
 }
 
 export type RankingProfile = RankingProfileV2Record
@@ -251,6 +257,8 @@ export const useRankingProfiles = ({
   onSetRanker,
   localProfile = null,
   onLocalProfileCommitted,
+  serverPersistenceEnabled = getDashboardApiFeatures()
+    .rankingProfilePersistenceEnabled,
 }: UseRankingProfilesOptions) => {
   const [profiles, setProfiles] = useState<RankingProfile[]>([])
   const [activeProfile, setActiveProfile] =
@@ -258,7 +266,9 @@ export const useRankingProfiles = ({
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const apiConfigured = Boolean(process.env.NEXT_PUBLIC_API_HOST)
+  // Kept as a compatibility field for existing consumers. It now describes
+  // the profile-write boundary, not whether read-only API data is available.
+  const apiConfigured = serverPersistenceEnabled
 
   const persistLocalProfile = useCallback((snapshotValue: RankingProfileV2) => {
     if (typeof localStorage === "undefined") throw new Error("Browser storage is unavailable")
@@ -325,7 +335,7 @@ export const useRankingProfiles = ({
         setError(message)
         throw caught
       }
-      const message = "Saved in this browser; the local API is unavailable"
+      const message = "Saved in this browser; server profile sync is disabled"
       setError(message)
       throw new Error(message)
     }
@@ -373,7 +383,7 @@ export const useRankingProfiles = ({
           setError(localMessage)
           throw localError
         }
-        const localMessage = "Saved in this browser; the local API is unavailable"
+        const localMessage = "Saved in this browser; server profile sync is unavailable"
         setError(localMessage)
         throw new Error(localMessage)
       }
@@ -430,6 +440,11 @@ export const useRankingProfiles = ({
   }, [onLocalProfileCommitted])
 
   const move = useCallback(async (direction: "undo" | "redo") => {
+    if (!serverPersistenceEnabled) {
+      throw new Error(
+        "Revision history is unavailable because server profile sync is disabled",
+      )
+    }
     if (!activeProfile) return
     setIsSaving(true)
     try {
@@ -451,7 +466,12 @@ export const useRankingProfiles = ({
     } finally {
       setIsSaving(false)
     }
-  }, [activeProfile, persistLocalProfile, updateProfileState])
+  }, [
+    activeProfile,
+    persistLocalProfile,
+    serverPersistenceEnabled,
+    updateProfileState,
+  ])
 
   return useMemo(() => ({
     profiles,
@@ -460,6 +480,7 @@ export const useRankingProfiles = ({
     isSaving,
     error,
     apiConfigured,
+    serverPersistenceEnabled,
     refresh,
     save,
     select,
@@ -480,6 +501,7 @@ export const useRankingProfiles = ({
     select,
     startNew,
     clearLocal,
+    serverPersistenceEnabled,
   ])
 }
 

@@ -732,6 +732,39 @@ compare the players genuinely in play, inspect tier/run context, and open a
 historical deep dive without leaving the primary draft workspace or manually
 assembling an initial comparison set.
 
+### Phase 15: stateless production release boundary
+
+Priority: active production track, selected on 2026-08-20 ahead of Phase 14C.
+This phase does not replace or complete the remaining Phase 14 product work.
+
+Deploy the static dashboard at its existing Vercel origin and serve published
+rankings, status evidence, readiness metadata, and bounded historical queries
+from a public Google Cloud Run service. The first production API is explicitly
+read-only, scales to zero, has no persistent disk or OpenAI credential, and
+ships only a generated runtime bundle. Browser storage remains authoritative
+for draft sessions, plans, advisor state, and custom ranking profiles.
+
+- Separate API reads from every persistence capability in the dashboard.
+  A public API host must never implicitly enable draft-session, advisor,
+  ranking-profile, or Realtime writes.
+- Generate a disposable runtime bundle from trusted local artifacts. Remove
+  and vacuum user draft/profile rows, retain only the published data required
+  by allowed read routes, and prove the bundle remains valid after relocation.
+- Run the API in a production-enforced read-only mode with an explicit route
+  allowlist, immutable SQLite access, origin-scoped CORS, and fail-closed
+  configuration checks.
+- Deploy Cloud Run in `us-east1` with zero minimum and one maximum instance,
+  then compile its HTTPS URL and disabled mutation flags into the Vercel build.
+- Gate release with the complete dashboard/API regressions, Phase 13 release
+  preflight, production API smoke checks, and public dashboard availability.
+  A later live ESPN extension acceptance can also satisfy Phase 14D's deployed
+  live-path requirement; VoiceOver remains separately deferred.
+
+Exit gate: the public dashboard reads current 2026 rankings/status/history
+from a healthy scale-to-zero API while all personal draft/profile state remains
+local, blocked mutation routes fail closed, and both deployments have a
+documented rollback path.
+
 ## Deferred product tracks
 
 ### Prediction-v2 promotion decision

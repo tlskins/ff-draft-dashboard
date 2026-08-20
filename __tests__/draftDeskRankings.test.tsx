@@ -29,7 +29,8 @@ const props = (setDraftView = jest.fn()): any => ({
   addPlayerTarget: jest.fn(), removePlayerTarget: jest.fn(),
   rankingProfileControls: {
     profiles: [], activeProfile: null, isLoading: false, isSaving: false,
-    error: null, apiConfigured: false, refresh: jest.fn(), save: jest.fn(),
+    error: null, apiConfigured: false, serverPersistenceEnabled: true,
+    refresh: jest.fn(), save: jest.fn(),
     select: jest.fn(), startNew: jest.fn(), clearLocal: jest.fn(), undo: jest.fn(), redo: jest.fn(),
   },
 })

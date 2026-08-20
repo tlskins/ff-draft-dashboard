@@ -25,6 +25,29 @@ To use the API rankings, copy `.env.example` to `.env.local` and run the API on
 port 5000. If the API is unavailable, the dashboard automatically falls back
 to `behavior/playerData.json`.
 
+## Stateless production API
+
+The dashboard treats `NEXT_PUBLIC_API_HOST` as a **read-only** data boundary:
+rankings, data readiness, historical comparison/query, and player-status
+requests can use the API without enabling any browser-state writes. For the
+Cloud Run production build, set:
+
+```bash
+NEXT_PUBLIC_API_HOST=https://<your-cloud-run-service>.run.app
+NEXT_PUBLIC_HISTORICAL_COMPARISON_ENABLED=true
+NEXT_PUBLIC_DRAFT_SESSION_PERSISTENCE_ENABLED=false
+NEXT_PUBLIC_ADVISOR_SNAPSHOT_PERSISTENCE_ENABLED=false
+NEXT_PUBLIC_RANKING_PROFILE_PERSISTENCE_ENABLED=false
+NEXT_PUBLIC_REALTIME_ADVISOR_ENABLED=false
+```
+
+Draft events, advisor calculations, draft plans, and custom rankings remain in
+the browser. A loopback API retains the legacy local-development defaults for
+the three persistence flags; public deployments must opt into each write path
+separately after authentication and durable storage exist. `NEXT_PUBLIC_*`
+values are embedded at build time, so changing the API URL or any feature flag
+requires a dashboard rebuild and redeploy.
+
 After every configured roster slot has been drafted, the live advisor exposes
 **Export replay fixture**. For ESPN, open the completed room's **Board** tab so
 the extension can capture every pick even if the scrolling history omitted

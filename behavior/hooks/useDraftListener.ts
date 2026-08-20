@@ -18,6 +18,7 @@ import {
 } from "../draft"
 import { Player } from "../../types"
 import { persistDraftEvents } from "../api/draftSessions"
+import { getDashboardApiFeatures } from "../api/featureConfig"
 import type {
   DraftCaptureConnectionState,
   DraftPersistenceBoundary,
@@ -61,7 +62,8 @@ export const useDraftListener = ({
   setDraftStarted,
   onDraftMetadata,
   persistEvents = persistDraftEvents,
-  apiPersistenceEnabled = Boolean(process.env.NEXT_PUBLIC_API_HOST),
+  apiPersistenceEnabled = getDashboardApiFeatures()
+    .draftSessionPersistenceEnabled,
 }: UseDraftListenerProps) => {
   const decisions = useRef<Record<string, DraftDecision>>({})
   const pendingSnapshots = useRef<Record<string, DraftSnapshot>>({})

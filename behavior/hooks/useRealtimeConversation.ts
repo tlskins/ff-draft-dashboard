@@ -42,6 +42,8 @@ interface UseRealtimeConversationProps {
   draftSessionId: string | null
   toolContext: RealtimeToolContext | null
   onProposal: (proposal: AdvisorProposal) => void
+  /** The production surface supplies an explicit public feature opt-in. */
+  enabled?: boolean
   transportFactory?: (
     draftSessionId: string,
     mode: RealtimeMode,
@@ -72,6 +74,7 @@ export const useRealtimeConversation = ({
   draftSessionId,
   toolContext,
   onProposal,
+  enabled = true,
   transportFactory = defaultTransportFactory,
   reconnectDelaysMs = DEFAULT_RECONNECT_DELAYS_MS,
 }: UseRealtimeConversationProps) => {
@@ -429,6 +432,10 @@ export const useRealtimeConversation = ({
   ])
 
   const connect = useCallback(async () => {
+    if (!enabled) {
+      setError("Realtime advisor is disabled for this deployment")
+      return
+    }
     if (!draftSessionIdRef.current) {
       setError("Start or connect a draft before using Realtime")
       return
@@ -440,7 +447,7 @@ export const useRealtimeConversation = ({
     setReconnectAttempt(0)
     setError(null)
     await startConnection(false)
-  }, [clearReconnectTimer, startConnection])
+  }, [clearReconnectTimer, enabled, startConnection])
 
   const cancelResponse = useCallback(() => {
     const transport = transportRef.current

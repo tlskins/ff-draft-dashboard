@@ -83,16 +83,25 @@ const canonicalBytes = () => ({
 
 describe("useRankingProfiles canonical browser commits", () => {
   const originalApiHost = process.env.NEXT_PUBLIC_API_HOST
+  const originalProfilePersistence =
+    process.env.NEXT_PUBLIC_RANKING_PROFILE_PERSISTENCE_ENABLED
 
   beforeEach(() => {
     localStorage.clear()
     jest.clearAllMocks()
     process.env.NEXT_PUBLIC_API_HOST = "http://127.0.0.1:5000"
+    delete process.env.NEXT_PUBLIC_RANKING_PROFILE_PERSISTENCE_ENABLED
     apiList.mockResolvedValue({profiles: [profile(1)]})
   })
 
   afterAll(() => {
     process.env.NEXT_PUBLIC_API_HOST = originalApiHost
+    if (originalProfilePersistence === undefined) {
+      delete process.env.NEXT_PUBLIC_RANKING_PROFILE_PERSISTENCE_ENABLED
+    } else {
+      process.env.NEXT_PUBLIC_RANKING_PROFILE_PERSISTENCE_ENABLED =
+        originalProfilePersistence
+    }
   })
 
   it("commits selection, undo, and redo responses before applying them", async () => {
@@ -175,6 +184,23 @@ describe("useRankingProfiles canonical browser commits", () => {
     await expect(act(async () => { await result.current.save("Local") })).rejects.toThrow("Saved in this browser")
     expect(localStorage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBe(legacy)
     expect(runRankingProfileStartupMigration(localStorage, [], "ppr").status).toBe("already_current")
+  })
+
+  it("keeps an API-hosted board local when profile persistence is disabled", async () => {
+    process.env.NEXT_PUBLIC_API_HOST = "https://drafty-api.example.com"
+    process.env.NEXT_PUBLIC_RANKING_PROFILE_PERSISTENCE_ENABLED = "false"
+    const callbacks = options() as any
+    const {result} = renderHook(() => useRankingProfiles(callbacks))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.serverPersistenceEnabled).toBe(false)
+    expect(apiList).not.toHaveBeenCalled()
+
+    await expect(act(async () => {
+      await result.current.save("Local only")
+    })).rejects.toThrow("Saved in this browser; server profile sync is disabled")
+    expect(runRankingProfileStartupMigration(localStorage, [], "ppr"))
+      .toMatchObject({status: "already_current"})
   })
 
   it("clears to canonical-empty across restart while retaining migration evidence", () => {

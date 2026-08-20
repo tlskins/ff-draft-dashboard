@@ -486,7 +486,8 @@ const Phase14AVisualFixture = () => {
                     predictedPicks={{achane: 2, taylor: 0, brown: 1, london: 5, mcbride: 7}}
                     rankingProfileControls={{
                       profiles: [], activeProfile: null, isLoading: false, isSaving: false,
-                      error: null, apiConfigured: false, refresh: async () => undefined,
+                      error: null, apiConfigured: false, serverPersistenceEnabled: false,
+                      refresh: async () => undefined,
                       save: async () => { throw new Error("Fixture profile save is disabled") },
                       select: () => undefined, startNew: () => undefined,
                       clearLocal: () => undefined, undo: async () => undefined, redo: async () => undefined,

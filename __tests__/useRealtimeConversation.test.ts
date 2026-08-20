@@ -51,6 +51,27 @@ const toolContext = {
 } satisfies RealtimeToolContext
 
 describe("useRealtimeConversation", () => {
+  it("does not create a transport when the deployment disables Realtime", async () => {
+    const transportFactory = jest.fn(() => new InMemoryRealtimeTransport())
+    const { result } = renderHook(() => useRealtimeConversation({
+      draftSessionId: "espn-session",
+      toolContext,
+      onProposal: jest.fn(),
+      enabled: false,
+      transportFactory,
+    }))
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    expect(transportFactory).not.toHaveBeenCalled()
+    expect(result.current.status).toBe("disconnected")
+    expect(result.current.error).toBe(
+      "Realtime advisor is disabled for this deployment",
+    )
+  })
+
   it("streams text and dispatches model tool calls through the app", async () => {
     const transport = new InMemoryRealtimeTransport()
     const onProposal = jest.fn()
