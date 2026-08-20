@@ -2,6 +2,7 @@ import React from "react"
 
 import type {AdvisorComparisonController} from "../behavior/hooks/useAdvisorComparisonController"
 import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
+import {ReadApiProvider} from "../behavior/api/readApiContext"
 
 type AnalysisWorkspaceProps = React.ComponentProps<typeof AnalysisWorkspace>
 type TestAnalysisWorkspaceProps = Omit<
@@ -43,10 +44,12 @@ const TestAnalysisWorkspace = ({
     removePinnedPlayer: () => undefined,
   }
   return (
-    <AnalysisWorkspace
-      {...props}
-      comparisonController={comparisonController || fallback}
-    />
+    <ReadApiProvider>
+      <AnalysisWorkspace
+        {...props}
+        comparisonController={comparisonController || fallback}
+      />
+    </ReadApiProvider>
   )
 }
 

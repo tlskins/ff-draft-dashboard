@@ -606,8 +606,8 @@ models. Realtime GPT/voice remains deferred and is not required for this work.
 Status: Phase 14A implemented, visually accepted, and integrated on 2026-08-17.
 Phase 14B was independently reviewed, hardened, and integrated with its API
 producer on 2026-08-17. Live-extension draft acceptance remains assigned to
-Phase 14D. Phase 14C implementation is in acceptance, not complete; its
-browser, visual, and human mock-draft gates remain Phase 14D boundaries.
+Phase 14D. Phase 14C was integrated and deployed on 2026-08-20; its remaining
+browser and migration acceptance is folded into the broader Phase 16 closeout.
 Realtime GPT/voice remains deferred.
 
 Replace the current mutually exclusive standard-layout versus analysis-page
@@ -787,6 +787,39 @@ Exit gate: the public dashboard reads current 2026 rankings/status/history
 from a healthy scale-to-zero API while all personal draft/profile state remains
 local, blocked mutation routes fail closed, and both deployments have a
 documented rollback path.
+
+### Phase 16: read API and adaptive insight convergence
+
+Status: implementation in progress. See
+`docs/phase16-read-api-insight-convergence.md`.
+
+Dependency: the deployed Phase 14C deck and Phase 15 stateless read API.
+Realtime GPT/voice and unrelated feature work remain deferred until this phase
+passes its exit gate.
+
+- Centralize published rankings, readiness, ranking-source metadata/details,
+  player status, historical comparison, and validated historical queries in a
+  typed, bounded application read cache with deduplication, TTLs, cancellation,
+  race protection, and explicit provenance states.
+- Expand the closed three-slot registry to cover live cross-position and
+  intra-position decisions, current and two-turn markets, historical risk and
+  production, rank/tier disagreement, actionable status, plan/roster
+  constraints, and manual source diagnostics.
+- Turn queued alternatives into manual controls while preserving session pins,
+  deterministic Auto scoring, view deduplication, one announcement owner, and
+  the Phase 14C rollback.
+- Keep custom ranks/tiers, deterministic recommendations, frozen forecasts,
+  and roster logic authoritative. API evidence remains explanatory and cannot
+  silently promote, tune, reorder, or rescore those decisions.
+- Consolidate remaining Phase 14D browser/migration acceptance into the Phase
+  16 production closeout, including all registered views and live read states.
+
+Exit gate: every user-facing production read contract is either visibly
+consumed or explicitly operational-only; every registered compact insight can
+be manually selected and pinned and every Auto-eligible insight can be chosen
+deterministically from ready evidence without leaving the draft desk; all
+automated, replay, visual, live API, production browser, deployment, and
+rollback gates pass while Realtime remains disabled.
 
 ## Deferred product tracks
 

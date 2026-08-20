@@ -141,15 +141,38 @@ describe("InsightDeck", () => {
       {...selection("current_tier_market"), evidence: {state: "ready", fingerprint: "dwell"}, blockedBy: "dwell"},
       {...selection("current_tier_market"), evidence: {state: "ready", fingerprint: "duplicate"}, blockedBy: "duplicate"},
       {...selection("current_tier_market"), evidence: {state: "loading", fingerprint: "evidence"}, blockedBy: "evidence"},
+      {...selection("data_source_status"), slot: "plan_constraints", evidence: {state: "ready", fingerprint: "manual"}, blockedBy: "manual_only"},
     ]
     render(<InsightDeck controller={controller(current)} renderView={renderer} />)
 
-    fireEvent.click(screen.getByText("Alternatives (5)"))
+    fireEvent.click(screen.getByText("Alternatives (6)"))
     expect(screen.getByText("Pinned view preserved")).toBeTruthy()
     expect(screen.getByText("Below significance margin")).toBeTruthy()
     expect(screen.getByText("Waiting for material-event dwell")).toBeTruthy()
     expect(screen.getByText("Already shown in another slot")).toBeTruthy()
     expect(screen.getByText("Evidence is not ready for Auto")).toBeTruthy()
+    expect(screen.getByText("Manual selection only")).toBeTruthy()
+  })
+
+  it("lets a user select and pin a queued registered alternative", () => {
+    const current = state()
+    current.slots.market_watch.queuedAlternatives = [{
+      ...selection("two_round_run_matrix"),
+      slot: "market_watch",
+      evidence: {state: "ready", fingerprint: "round-ready"},
+      blockedBy: "margin",
+    }]
+    const deck = controller(current)
+    render(<InsightDeck controller={deck} renderView={renderer} />)
+
+    fireEvent.click(screen.getByText("Alternatives (1)"))
+    fireEvent.click(screen.getByRole("button", {
+      name: "Show and pin Two-round run matrix in Market watch",
+    }))
+    expect(deck.selectView).toHaveBeenCalledWith(
+      "market_watch",
+      "two_round_run_matrix",
+    )
   })
 
   it("fails closed when a registered renderer is missing", () => {

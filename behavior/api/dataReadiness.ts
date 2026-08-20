@@ -1,6 +1,9 @@
-import {useEffect, useState} from "react"
-
 import type {components as ApiComponents} from "./schema"
+import {useReadApiResource} from "./readApiContext"
+import type {
+  ReadApiLoader,
+  ReadApiResourceState,
+} from "./readApiCache"
 
 
 export type DataReadinessResponse =
@@ -16,7 +19,11 @@ export interface CompletedSeasonWindow {
 interface LoadDataReadinessOptions {
   apiHost?: string
   fetcher?: typeof fetch
+  signal?: AbortSignal
 }
+
+export const DATA_READINESS_RESOURCE_KEY = "read-api:data-readiness:v1"
+export const DATA_READINESS_TTL_MS = 15 * 60 * 1000
 
 export const formatSeasonList = (seasons: number[]): string => {
   if (seasons.length === 0) return "No completed seasons"
@@ -49,13 +56,16 @@ export const buildCompletedSeasonWindows = (
 export const loadDataReadiness = async ({
   apiHost = process.env.NEXT_PUBLIC_API_HOST,
   fetcher,
+  signal,
 }: LoadDataReadinessOptions = {}): Promise<DataReadinessResponse> => {
   if (!apiHost) {
     throw new Error("Data-readiness API is not configured")
   }
-  const response = await (fetcher || fetch)(
-    `${apiHost.replace(/\/$/, "")}/v1/data-readiness`,
-  )
+  const request = fetcher || fetch
+  const url = `${apiHost.replace(/\/$/, "")}/v1/data-readiness`
+  const response = signal
+    ? await request(url, {signal})
+    : await request(url)
   if (!response.ok) {
     throw new Error(`Data-readiness API returned ${response.status}`)
   }
@@ -66,30 +76,32 @@ export interface DataReadinessState {
   data: DataReadinessResponse | null
   error: string | null
   loading: boolean
+  resourceState?: ReadApiResourceState
+  staleReason?: string
+  unavailableReason?: string
+  updatedAt?: number | null
 }
 
+const readinessLoader: ReadApiLoader<DataReadinessResponse> = ({signal}) => (
+  loadDataReadiness({signal})
+)
+
 export const useDataReadiness = (): DataReadinessState => {
-  const [state, setState] = useState<DataReadinessState>({
-    data: null,
-    error: null,
-    loading: true,
+  const configured = Boolean(process.env.NEXT_PUBLIC_API_HOST)
+  const resource = useReadApiResource({
+    enabled: configured,
+    key: DATA_READINESS_RESOURCE_KEY,
+    loader: readinessLoader,
+    ttlMs: DATA_READINESS_TTL_MS,
   })
-
-  useEffect(() => {
-    let cancelled = false
-    loadDataReadiness()
-      .then(data => {
-        if (!cancelled) setState({data, error: null, loading: false})
-      })
-      .catch((error: Error) => {
-        if (!cancelled) {
-          setState({data: null, error: error.message, loading: false})
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  return state
+  return {
+    data: resource.data,
+    error: configured ? resource.error : "Data-readiness API is not configured",
+    loading: configured
+      && (resource.state === "idle" || resource.state === "loading"),
+    resourceState: configured ? resource.state : "unavailable",
+    staleReason: resource.staleReason,
+    unavailableReason: resource.unavailableReason,
+    updatedAt: resource.updatedAt,
+  }
 }

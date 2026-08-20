@@ -26,6 +26,7 @@ const blockedLabel = (blockedBy: string): string => ({
   dwell: "Waiting for material-event dwell",
   duplicate: "Already shown in another slot",
   evidence: "Evidence is not ready for Auto",
+  manual_only: "Manual selection only",
 }[blockedBy] || "Not selected")
 
 const registrationLabel = (viewId: InsightViewId): string => (
@@ -145,7 +146,14 @@ const InsightDeck: React.FC<InsightDeckProps> = ({controller, renderView}) => (
                   <ul>
                     {slotState.queuedAlternatives.map(alternative => (
                       <li key={`${alternative.viewId}:${alternative.evidence.fingerprint}`}>
-                        <strong>{registrationLabel(alternative.viewId)}</strong>
+                        <button
+                          aria-label={`Show and pin ${registrationLabel(alternative.viewId)} in ${SLOT_LABELS[slot]}`}
+                          className={styles.alternativeButton}
+                          onClick={() => controller.selectView(slot, alternative.viewId)}
+                          type="button"
+                        >
+                          {registrationLabel(alternative.viewId)}
+                        </button>
                         <span>{blockedLabel(alternative.blockedBy)}</span>
                         <small>{alternative.explanation}</small>
                       </li>

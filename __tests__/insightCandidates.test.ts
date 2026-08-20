@@ -5,6 +5,7 @@ import {
   buildInsightCandidates,
   InsightCandidateInputs,
 } from "../behavior/insights/insightCandidates"
+import {INSIGHT_VIEW_IDS} from "../behavior/insights/insightDeck"
 
 const cross = (overrides: Record<string, unknown> = {}): CrossPositionPresentationModel => ({
   explanation: "Supplied comparison.",
@@ -76,6 +77,19 @@ const baseInputs = (): InsightCandidateInputs => ({
 })
 
 describe("insight candidate scoring", () => {
+  it("produces a candidate contract for every registered Phase 16 view", () => {
+    const candidates = buildInsightCandidates({
+      ...baseInputs(),
+      intraPosition: null,
+      historical: null,
+      playerStatus: null,
+      rankTierDisagreement: null,
+      sourceReadiness: null,
+    })
+    expect(Array.from(new Set(candidates.map(item => item.viewId))).sort())
+      .toEqual([...INSIGHT_VIEW_IDS].sort())
+  })
+
   it("emits every registered view with finite bounded presentation scores for null inputs", () => {
     const result = buildInsightCandidates({
       crossPosition: null,

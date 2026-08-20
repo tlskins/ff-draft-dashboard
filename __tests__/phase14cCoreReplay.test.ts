@@ -153,7 +153,7 @@ interface ReplayTrace {
   selectedViews: Array<Array<string | null>>
   materialEventCounts: number[]
   announcementIds: Array<string | null>
-  sameEventWasNoop: boolean
+  sameEventQueueRefreshed: boolean
   pinnedWasRetained: boolean
   forecastAfterReplay: OpponentForecast
 }
@@ -215,10 +215,13 @@ const runSyntheticCoreReplay = (): ReplayTrace => {
       : item),
     {significanceMargin: 2, minimumMaterialEventDwell: 2},
   )
-  const sameEventWasNoop = evidenceOnly.state === state
-    && !evidenceOnly.changed
+  const sameEventQueueRefreshed = evidenceOnly.state !== state
+    && evidenceOnly.changed
     && !evidenceOnly.selectionChanged
     && evidenceOnly.announcement === undefined
+    && evidenceOnly.state.slots.primary_decision.queuedAlternatives.some(item => (
+      item.evidence.fingerprint === "same-event-only"
+    ))
 
   // Same overall pick correction, then a position replacement, are distinct
   // material boundaries even though the synthetic market remains display-only.
@@ -233,7 +236,7 @@ const runSyntheticCoreReplay = (): ReplayTrace => {
     selectedViews,
     materialEventCounts,
     announcementIds,
-    sameEventWasNoop,
+    sameEventQueueRefreshed,
     pinnedWasRetained: state.slots.primary_decision.selection?.pinned === true
       && state.slots.primary_decision.selection.viewId === "current_tier_market",
     forecastAfterReplay: forecast,
@@ -251,18 +254,18 @@ describe("Phase 14C pure synthetic core replay", () => {
     expect(second.materialEventCounts).toEqual(first.materialEventCounts)
     expect(second.announcementIds).toEqual(first.announcementIds)
     expect(first.forecastAfterReplay).toEqual(before)
-    expect(first.sameEventWasNoop).toBe(true)
+    expect(first.sameEventQueueRefreshed).toBe(true)
     expect(first.materialEventCounts).toEqual([1, 2, 3, 4, 5])
 
     // Initial fill is silent. Each later material boundary owns at most one
     // deck announcement: evidence refresh, view switch, or explicit pin.
     expect(first.announcementIds).toEqual([
       null,
-      expect.stringMatching(/:primary_decision:evidence_updated:candidate_comparison$/),
-      expect.stringMatching(/:primary_decision:auto_selected:current_tier_market$/),
-      expect.stringMatching(/:primary_decision:evidence_updated:current_tier_market$/),
-      expect.stringMatching(/:primary_decision:pinned:current_tier_market$/),
-      expect.stringMatching(/:primary_decision:evidence_updated:current_tier_market$/),
+      expect.stringMatching(/:primary_decision:evidence_updated:candidate_comparison:/),
+      expect.stringMatching(/:primary_decision:auto_selected:current_tier_market:/),
+      expect.stringMatching(/:primary_decision:evidence_updated:current_tier_market:/),
+      expect.stringMatching(/:primary_decision:pinned:current_tier_market:/),
+      expect.stringMatching(/:primary_decision:evidence_updated:current_tier_market:/),
     ])
     expect(first.pinnedWasRetained).toBe(true)
     expect(first.announcementIds.filter(Boolean)).toHaveLength(5)

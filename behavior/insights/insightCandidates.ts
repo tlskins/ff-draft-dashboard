@@ -1,6 +1,13 @@
 import type {CrossPositionPresentationModel} from "../analysis/crossPosition"
 import type {RoundMarketPresentationModel} from "../analysis/roundMarket"
 import type {TierLandscapePresentationModel} from "../analysis/tierLandscape"
+import type {IntraPositionPresentationModel} from "../analysis/intraPosition"
+import type {
+  HistoricalInsightModel,
+  PlayerStatusInsightModel,
+  RankTierDisagreementModel,
+  SourceReadinessInsightModel,
+} from "./apiInsightModels"
 import type {
   InsightCandidate,
   InsightEvidence,
@@ -22,6 +29,11 @@ export interface InsightCandidateInputs {
   tierLandscape: TierLandscapePresentationModel | null
   roundMarket: RoundMarketPresentationModel | null
   planConstraints: PlanConstraintsEvidenceSummary | null
+  intraPosition?: IntraPositionPresentationModel | null
+  historical?: HistoricalInsightModel | null
+  playerStatus?: PlayerStatusInsightModel | null
+  rankTierDisagreement?: RankTierDisagreementModel | null
+  sourceReadiness?: SourceReadinessInsightModel | null
 }
 
 const POSITION_ORDER = ["QB", "RB", "WR", "TE"] as const
@@ -453,6 +465,163 @@ const planCandidate = (
   )
 }
 
+const mappedEvidenceState = (
+  state: HistoricalInsightModel["state"] | SourceReadinessInsightModel["state"],
+): InsightEvidenceState => (
+  state === "idle" ? "loading" : state === "error" ? "unavailable" : state
+)
+
+const intraPositionCandidate = (
+  model: IntraPositionPresentationModel | null | undefined,
+): InsightCandidate => {
+  const usable = Boolean(model && model.players.length >= 2)
+  const projectionSpreads = model?.players.map(player => player.projectionSpread)
+    .filter((value): value is number => finite(value)) || []
+  const maximumSpread = projectionSpreads.length > 0
+    ? Math.max(...projectionSpreads)
+    : 0
+  const evidence = usable ? {
+    state: "ready" as const,
+    fingerprint: fingerprint("intra_position_comparison", {
+      position: model!.position,
+      total: model!.totalAvailablePlayerCount,
+      players: model!.players.map(player => ({
+        id: player.player.id,
+        rank: player.positionRank,
+        customRank: player.customPositionRank,
+        activeTier: player.activeTier,
+        customTier: player.customTier,
+        projectionTier: player.projectionTier,
+        projection: player.projection,
+        status: player.statusEvidence.map(event => event.id),
+      })),
+    }),
+  } : unavailable(
+    "intra_position_comparison",
+    "At least two current players at one position are required for an intra-position comparison.",
+  )
+  return candidate(
+    "intra_position_comparison",
+    "primary_decision",
+    usable ? 20 + Math.min(25, maximumSpread * 3) : 0,
+    usable ? "intra_position_options" : "intra_position_unavailable",
+    usable
+      ? `${model!.position} has ${model!.visiblePlayerCount} current options; compare rank, tier, and projection spread.`
+      : "Intra-position comparison is unavailable because the current board lacks two eligible options.",
+    evidence,
+  )
+}
+
+const historicalCandidates = (
+  model: HistoricalInsightModel | null | undefined,
+): InsightCandidate[] => {
+  const state = model ? mappedEvidenceState(model.state) : "unavailable"
+  const usable = Boolean(model && model.players.length > 0)
+  const evidenceFor = (viewId: "historical_risk_reward" | "historical_production"):
+  InsightEvidence => model ? {
+      state,
+      fingerprint: `${viewId}:${model.fingerprint}`,
+      ...(model.staleReason ? {staleReason: model.staleReason} : {}),
+      ...(state === "unavailable" ? {
+        unavailableReason: model.unavailableReason || model.error
+          || "Historical evidence is unavailable.",
+      } : {}),
+    } : unavailable(
+      viewId,
+      "Historical evidence has not loaded for the current comparison set.",
+    )
+  return [
+    candidate(
+      "historical_risk_reward",
+      "primary_decision",
+      usable ? 12 + Math.min(33, model!.riskScore * 3) : 0,
+      usable ? "historical_weekly_variance" : "historical_risk_unavailable",
+      usable
+        ? `Weekly scoring variance reaches ${model!.riskScore.toFixed(1)} points across the current comparison set.`
+        : "Historical risk and reward is unavailable for the current comparison set.",
+      evidenceFor("historical_risk_reward"),
+    ),
+    candidate(
+      "historical_production",
+      "primary_decision",
+      usable ? 10 + Math.min(30, model!.trendScore * 4) : 0,
+      usable ? "historical_season_trend" : "historical_production_unavailable",
+      usable
+        ? `Season scoring movement spans as much as ${model!.trendScore.toFixed(1)} points per game.`
+        : "Historical production is unavailable for the current comparison set.",
+      evidenceFor("historical_production"),
+    ),
+  ]
+}
+
+const playerStatusCandidate = (
+  model: PlayerStatusInsightModel | null | undefined,
+): InsightCandidate => {
+  const evidence: InsightEvidence = model ? {
+    state: model.state,
+    fingerprint: `player_status:${model.fingerprint}`,
+    ...(model.staleReason ? {staleReason: model.staleReason} : {}),
+    ...(model.unavailableReason ? {unavailableReason: model.unavailableReason} : {}),
+  } : unavailable("player_status", "Player status evidence has not loaded.")
+  const score = model?.maximumImpact === "material"
+    ? 95
+    : model?.maximumImpact === "review" ? 65 : 0
+  return candidate(
+    "player_status",
+    "plan_constraints",
+    score,
+    score > 0 ? `player_status_${model!.maximumImpact}` : "player_status_unavailable",
+    score > 0
+      ? `${model!.maximumImpact === "material" ? "Material" : "Review"} status evidence affects a player currently in play.`
+      : "No fresh actionable status evidence is published for the current comparison set.",
+    evidence,
+  )
+}
+
+const rankTierDisagreementCandidate = (
+  model: RankTierDisagreementModel | null | undefined,
+): InsightCandidate => {
+  const ready = model?.state === "ready" && model.players.length > 0
+  const evidence = ready ? {
+    state: "ready" as const,
+    fingerprint: model!.fingerprint,
+  } : unavailable(
+    "rank_tier_disagreement",
+    model?.unavailableReason || "Ranking-source disagreement is unavailable.",
+  )
+  return candidate(
+    "rank_tier_disagreement",
+    "market_watch",
+    ready ? 10 + Math.min(30, model!.maximumSpread / 2) : 0,
+    ready ? "positional_rank_disagreement" : "rank_disagreement_unavailable",
+    ready
+      ? `The largest positional-rank disagreement among players in play is ${model!.maximumSpread} spots.`
+      : "Rank and tier disagreement is unavailable for the current comparison set.",
+    evidence,
+  )
+}
+
+const sourceReadinessCandidate = (
+  model: SourceReadinessInsightModel | null | undefined,
+): InsightCandidate => {
+  const evidence: InsightEvidence = model ? {
+    state: mappedEvidenceState(model.state),
+    fingerprint: model.fingerprint,
+    ...(model.staleReason ? {staleReason: model.staleReason} : {}),
+    ...((model.unavailableReason || model.error) ? {
+      unavailableReason: model.unavailableReason || model.error || undefined,
+    } : {}),
+  } : unavailable("data_source_status", "Published source readiness has not loaded.")
+  return candidate(
+    "data_source_status",
+    "plan_constraints",
+    0,
+    "manual_source_context",
+    "Inspect published ranking, status, and historical source readiness. This context never changes draft recommendations.",
+    evidence,
+  )
+}
+
 /**
  * Returns only registered presentation candidates. Scores express which view
  * deserves scarce deck space; they never reorder or re-score draft players.
@@ -461,7 +630,17 @@ export const buildInsightCandidates = (
   inputs: InsightCandidateInputs,
 ): InsightCandidate[] => [
   crossPositionCandidate(inputs.crossPosition),
+  ...(inputs.intraPosition === undefined
+    ? [] : [intraPositionCandidate(inputs.intraPosition)]),
+  ...(inputs.historical === undefined
+    ? [] : historicalCandidates(inputs.historical)),
   ...tierMarketCandidates(inputs.tierLandscape),
   roundMarketCandidate(inputs.roundMarket),
+  ...(inputs.rankTierDisagreement === undefined
+    ? [] : [rankTierDisagreementCandidate(inputs.rankTierDisagreement)]),
   planCandidate(inputs.planConstraints),
+  ...(inputs.playerStatus === undefined
+    ? [] : [playerStatusCandidate(inputs.playerStatus)]),
+  ...(inputs.sourceReadiness === undefined
+    ? [] : [sourceReadinessCandidate(inputs.sourceReadiness)]),
 ]

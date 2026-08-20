@@ -1,4 +1,11 @@
 import type {components as ApiComponents} from "./schema"
+import {useCallback} from "react"
+import {useReadApiResource} from "./readApiContext"
+import {
+  readApiOutcome,
+  type ReadApiLoader,
+  type ReadApiResourceSnapshot,
+} from "./readApiCache"
 
 
 export type RankingSourceStatus =
@@ -10,9 +17,13 @@ export type RankingSourceRefreshPreviewRequest =
 export type RankingSourceRefreshPreviewResponse =
   ApiComponents["schemas"]["RankingSourceRefreshPreviewResponse"]
 
+export const RANKING_SOURCES_RESOURCE_KEY = "read-api:ranking-sources:v1"
+export const RANKING_SOURCES_TTL_MS = 30 * 60 * 1000
+
 interface RankingSourceApiOptions {
   apiHost?: string
   fetcher?: typeof fetch
+  signal?: AbortSignal
 }
 
 export class RankingSourceApiError extends Error {
@@ -24,7 +35,7 @@ export class RankingSourceApiError extends Error {
 
 const request = async <ResponseBody>(
   path: string,
-  {apiHost = process.env.NEXT_PUBLIC_API_HOST, fetcher}: RankingSourceApiOptions,
+  {apiHost = process.env.NEXT_PUBLIC_API_HOST, fetcher, signal}: RankingSourceApiOptions,
   init?: RequestInit,
 ): Promise<ResponseBody> => {
   if (!apiHost) {
@@ -32,7 +43,7 @@ const request = async <ResponseBody>(
   }
   const response = await (fetcher || fetch)(
     `${apiHost.replace(/\/$/, "")}${path}`,
-    init,
+    signal ? {...init, signal} : init,
   )
   if (!response.ok) {
     const error = await response.json().catch(() => null) as {
@@ -71,3 +82,104 @@ export const previewRankingSourceRefresh = (
     body: JSON.stringify(body),
   },
 )
+
+const rankingSourcesLoader: ReadApiLoader<RankingSourceListResponse> = async (
+  {signal},
+) => {
+  const response = await listRankingSources({signal})
+  const sourceFingerprint = response.sources.map(source => [
+    source.id,
+    source.availability,
+    source.is_stale,
+    source.fingerprint,
+    source.retrieved_at,
+    source.record_count,
+    source.failure_reason,
+  ])
+  if (
+    response.sources.length === 0
+    || response.sources.every(source => source.availability === "unavailable")
+  ) {
+    return readApiOutcome({
+      data: response,
+      state: "unavailable",
+      fingerprint: `ranking-sources:${JSON.stringify(sourceFingerprint)}`,
+      unavailableReason: response.sources.length === 0
+        ? "No ranking sources are configured in the published API."
+        : "No configured ranking source currently has published source metadata.",
+    })
+  }
+  const staleSources = response.sources.filter(source => (
+    source.availability === "stale" || source.is_stale
+  ))
+  return readApiOutcome({
+    data: response,
+    state: staleSources.length > 0 ? "stale" : "ready",
+    fingerprint: `ranking-sources:${JSON.stringify(sourceFingerprint)}`,
+    ...(staleSources.length > 0 ? {
+      staleReason: `${staleSources.map(source => source.provider_name).join(", ")} source metadata is stale.`,
+    } : {}),
+  })
+}
+
+export const useRankingSources = (): ReadApiResourceSnapshot<RankingSourceListResponse> => {
+  const configured = Boolean(process.env.NEXT_PUBLIC_API_HOST)
+  const resource = useReadApiResource({
+    enabled: configured,
+    key: RANKING_SOURCES_RESOURCE_KEY,
+    loader: rankingSourcesLoader,
+    ttlMs: RANKING_SOURCES_TTL_MS,
+  })
+  return configured ? resource : {
+    ...resource,
+    state: "unavailable",
+    fingerprint: `${RANKING_SOURCES_RESOURCE_KEY}:unavailable:not-configured`,
+    unavailableReason: "Ranking source API is not configured.",
+  }
+}
+
+export const useRankingSourceDetail = (
+  sourceId: string,
+  enabled: boolean,
+): ReadApiResourceSnapshot<RankingSourceStatus> => {
+  const configured = Boolean(process.env.NEXT_PUBLIC_API_HOST)
+  const key = `read-api:ranking-source:${sourceId || "unselected"}`
+  const loader = useCallback<ReadApiLoader<RankingSourceStatus>>(async ({signal}) => {
+    const source = await getRankingSource(sourceId, {signal})
+    return readApiOutcome({
+      data: source,
+      state: source.availability === "available"
+        ? "ready"
+        : source.availability === "stale" || source.is_stale
+          ? "stale"
+          : "unavailable",
+      fingerprint: `ranking-source:${JSON.stringify([
+        source.id,
+        source.availability,
+        source.fingerprint,
+        source.retrieved_at,
+        source.record_count,
+        source.failure_reason,
+      ])}`,
+      ...(source.availability === "stale" || source.is_stale ? {
+        staleReason: `${source.provider_name} source metadata is stale.`,
+      } : {}),
+      ...(source.availability === "unavailable" ? {
+        unavailableReason: source.failure_reason
+          || `${source.provider_name} source metadata is unavailable.`,
+      } : {}),
+    })
+  }, [sourceId])
+  const resource = useReadApiResource({
+    enabled: configured && enabled && Boolean(sourceId),
+    key,
+    loader,
+    ttlMs: RANKING_SOURCES_TTL_MS,
+  })
+  return configured ? resource : {
+    ...resource,
+    state: "unavailable",
+    fingerprint: `${key}:unavailable:not-configured`,
+    unavailableReason: "Ranking source API is not configured.",
+  }
+}

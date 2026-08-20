@@ -33,9 +33,10 @@ export const getEmbeddedPlayerData = (): Rankings => {
   return toDomainRankings(ranks as unknown as RankingsApiResponse)
 }
 
-interface LoadPlayerDataOptions {
+export interface LoadPlayerDataOptions {
   apiHost?: string
   fetcher?: typeof fetch
+  signal?: AbortSignal
 }
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1_000
@@ -64,15 +65,15 @@ export const rankingsAreStale = (
 export const loadPlayerData = async ({
   apiHost = process.env.NEXT_PUBLIC_API_HOST,
   fetcher = fetch,
+  signal,
 }: LoadPlayerDataOptions = {}): Promise<Rankings> => {
   if (!apiHost) {
     return getEmbeddedPlayerData()
   }
 
   try {
-    const response = await fetcher(
-      `${apiHost.replace(/\/$/, "")}/players/latest`,
-    )
+    const url = `${apiHost.replace(/\/$/, "")}/players/latest`
+    const response = signal ? await fetcher(url, {signal}) : await fetcher(url)
     if (!response.ok) {
       throw new Error(`Rankings API returned ${response.status}`)
     }
@@ -83,4 +84,17 @@ export const loadPlayerData = async ({
     console.warn("Using embedded rankings because the API is unavailable", error)
     return getEmbeddedPlayerData()
   }
+}
+
+/** Strict producer used by the shared read cache; fallback policy stays above it. */
+export const loadPublishedPlayerData = async ({
+  apiHost = process.env.NEXT_PUBLIC_API_HOST,
+  fetcher = fetch,
+  signal,
+}: LoadPlayerDataOptions = {}): Promise<Rankings> => {
+  if (!apiHost) throw new Error("Rankings API is not configured")
+  const url = `${apiHost.replace(/\/$/, "")}/players/latest`
+  const response = signal ? await fetcher(url, {signal}) : await fetcher(url)
+  if (!response.ok) throw new Error(`Rankings API returned ${response.status}`)
+  return toDomainRankings(await response.json() as RankingsApiResponse)
 }

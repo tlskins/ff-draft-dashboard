@@ -13,9 +13,15 @@ export type InsightDeckSlotId = typeof INSIGHT_DECK_SLOTS[number]
 
 export const INSIGHT_VIEW_IDS = [
   "candidate_comparison",
+  "intra_position_comparison",
+  "historical_risk_reward",
+  "historical_production",
   "current_tier_market",
   "plan_constraints",
   "two_round_run_matrix",
+  "player_status",
+  "rank_tier_disagreement",
+  "data_source_status",
 ] as const
 
 export type InsightViewId = typeof INSIGHT_VIEW_IDS[number]
@@ -40,6 +46,8 @@ export interface InsightViewRegistration {
   permittedSlots: readonly InsightDeckSlotId[]
   /** Final deterministic tie-break after the supplied score. */
   priority: number
+  /** Manual-only context views remain selectable but cannot displace Auto. */
+  autoEligible: boolean
 }
 
 /**
@@ -52,25 +60,70 @@ export const INSIGHT_VIEW_REGISTRY: readonly InsightViewRegistration[] = [
     label: "Candidate comparison",
     permittedSlots: ["primary_decision"],
     priority: 10,
+    autoEligible: true,
+  },
+  {
+    id: "intra_position_comparison",
+    label: "Intra-position comparison",
+    permittedSlots: ["primary_decision"],
+    priority: 20,
+    autoEligible: true,
+  },
+  {
+    id: "historical_risk_reward",
+    label: "Historical risk & reward",
+    permittedSlots: ["primary_decision"],
+    priority: 30,
+    autoEligible: true,
+  },
+  {
+    id: "historical_production",
+    label: "Historical production",
+    permittedSlots: ["primary_decision"],
+    priority: 40,
+    autoEligible: true,
   },
   {
     id: "current_tier_market",
     label: "Current tier market",
     permittedSlots: ["primary_decision", "market_watch"],
-    priority: 20,
+    priority: 50,
+    autoEligible: true,
   },
   {
     id: "plan_constraints",
     label: "Plan constraints",
     permittedSlots: ["plan_constraints"],
-    priority: 30,
+    priority: 80,
+    autoEligible: true,
   },
-  // Reserved for Phase 14C2. It has no producer in C1.
   {
     id: "two_round_run_matrix",
     label: "Two-round run matrix",
     permittedSlots: ["market_watch"],
-    priority: 40,
+    priority: 60,
+    autoEligible: true,
+  },
+  {
+    id: "player_status",
+    label: "Player status alerts",
+    permittedSlots: ["plan_constraints"],
+    priority: 70,
+    autoEligible: true,
+  },
+  {
+    id: "rank_tier_disagreement",
+    label: "Rank & tier disagreement",
+    permittedSlots: ["market_watch"],
+    priority: 70,
+    autoEligible: true,
+  },
+  {
+    id: "data_source_status",
+    label: "Published data sources",
+    permittedSlots: ["plan_constraints"],
+    priority: 90,
+    autoEligible: false,
   },
 ]
 
@@ -110,7 +163,7 @@ export interface InsightDeckSelection extends InsightCandidate {
 }
 
 export interface QueuedInsightAlternative extends InsightCandidate {
-  blockedBy: "pinned" | "margin" | "dwell" | "duplicate" | "evidence"
+  blockedBy: "pinned" | "margin" | "dwell" | "duplicate" | "evidence" | "manual_only"
 }
 
 export interface InsightDeckSlotState {
@@ -174,8 +227,15 @@ const validEvidence = (evidence: InsightEvidence): boolean => (
 
 /** Only ready evidence may drive an automatic displacement decision. */
 export const isInsightAutoEvidenceEligible = (
-  candidate: Pick<InsightCandidate, "evidence">,
-): boolean => candidate.evidence.state === "ready"
+  candidate: Pick<InsightCandidate, "viewId" | "evidence">,
+): boolean => Boolean(
+  registrationFor(candidate.viewId)?.autoEligible
+  && candidate.evidence.state === "ready",
+)
+
+const isInsightViewAutoEligible = (
+  candidate: Pick<InsightCandidate, "viewId">,
+): boolean => Boolean(registrationFor(candidate.viewId)?.autoEligible)
 
 const validCandidate = (candidate: InsightCandidate): boolean => {
   const registration = registrationFor(candidate.viewId)
@@ -267,7 +327,7 @@ const announcementFor = (
   kind: InsightDeckAnnouncement["kind"],
   selection: InsightDeckSelection,
 ): InsightDeckAnnouncement => ({
-  id: `${state.streamId}:${state.materialEventCount}:${slot}:${kind}:${selection.viewId}`,
+  id: `${state.streamId}:${state.materialEventCount}:${slot}:${kind}:${selection.viewId}:${selection.evidence.fingerprint}`,
   slot,
   kind,
   text: kind === "evidence_updated"
@@ -318,6 +378,8 @@ const queued = (
       ? "pinned"
       : usedViewIds.has(candidate.viewId)
         ? "duplicate"
+        : !registrationFor(candidate.viewId)?.autoEligible
+          ? "manual_only"
         : !isInsightAutoEvidenceEligible(candidate)
           ? "evidence"
         : selection && candidate.score < (
@@ -335,8 +397,80 @@ const queued = (
   .slice(0, policy.maxQueuedAlternatives)
 
 /**
- * Reconcile only at a material draft boundary. Identical event identities are
- * intentionally a no-op even when callers provide changed evidence.
+ * API reads may settle between draft picks. Refresh the evidence and manual
+ * queue immediately, but never let same-event I/O churn change Auto identity.
+ */
+const refreshSameMaterialEvent = (
+  current: InsightDeckState,
+  suppliedCandidates: InsightCandidate[],
+  policy: InsightDeckPolicy,
+): InsightDeckTransitionResult => {
+  const candidates = normalizeInsightCandidates(suppliedCandidates)
+  const usedViewIds = new Set<InsightViewId>(INSIGHT_DECK_SLOTS.flatMap(slot => {
+    const selection = current.slots[slot].selection
+    return selection ? [selection.viewId] : []
+  }))
+  const slots = emptySlots()
+  let evidenceAnnouncement: InsightDeckAnnouncement | null = null
+
+  INSIGHT_DECK_SLOTS.forEach(slot => {
+    const previous = current.slots[slot]
+    const slotCandidates = candidatesForSlot(candidates, slot)
+    const refreshedCandidate = previous.selection
+      ? slotCandidates.find(candidate => candidate.viewId === previous.selection!.viewId)
+      : null
+    const selection = previous.selection
+      ? refreshedCandidate
+        ? selectionFrom(
+            refreshedCandidate,
+            previous.selection.source,
+            previous.selection.pinned,
+            previous.selection.selectedAtMaterialEvent,
+          )
+        : unavailableSelection(previous.selection)
+      : null
+    slots[slot] = {
+      selection,
+      queuedAlternatives: queued(
+        slotCandidates,
+        selection,
+        usedViewIds,
+        current,
+        policy,
+      ),
+    }
+    if (
+      !evidenceAnnouncement
+      && previous.selection
+      && selection
+      && previous.selection.viewId === selection.viewId
+      && (
+        previous.selection.evidence.fingerprint !== selection.evidence.fingerprint
+        || previous.selection.evidence.state !== selection.evidence.state
+        || previous.selection.explanation !== selection.explanation
+      )
+    ) {
+      evidenceAnnouncement = announcementFor(
+        current,
+        slot,
+        "evidence_updated",
+        selection,
+      )
+    }
+  })
+
+  const next = {...current, slots, announcement: evidenceAnnouncement}
+  if (JSON.stringify({slots: current.slots, announcement: current.announcement})
+    === JSON.stringify({slots, announcement: evidenceAnnouncement})) {
+    return unchanged(current)
+  }
+  return result(current, next, false)
+}
+
+/**
+ * Auto selection reconciles only at a material draft boundary. Identical event
+ * identities may refresh displayed API evidence and manual alternatives, but
+ * cannot replace the selected view.
  */
 export const reconcileInsightDeck = (
   current: InsightDeckState,
@@ -345,10 +479,10 @@ export const reconcileInsightDeck = (
   suppliedPolicy?: Partial<InsightDeckPolicy>,
 ): InsightDeckTransitionResult => {
   const eventId = materialInsightEventId(event)
-  if (current.streamId === event.streamId && current.lastMaterialEventId === eventId) {
-    return unchanged(current)
-  }
   const policy = policyFor(suppliedPolicy)
+  if (current.streamId === event.streamId && current.lastMaterialEventId === eventId) {
+    return refreshSameMaterialEvent(current, suppliedCandidates, policy)
+  }
   const initial = current.streamId === event.streamId
     ? current
     : createInsightDeckState(event.streamId)
@@ -403,7 +537,10 @@ export const reconcileInsightDeck = (
     )) || null
     // An empty slot may show a non-ready registered fallback, but only when no
     // ready view exists. That preserves explicit loading/stale/unavailable UI.
-    const bestFallback = slotCandidates.find(candidate => !usedViewIds.has(candidate.viewId))
+    const bestFallback = slotCandidates.find(candidate => (
+      isInsightViewAutoEligible(candidate)
+      && !usedViewIds.has(candidate.viewId)
+    ))
       || null
     const readyChallenger = bestReady?.viewId === refreshed?.viewId
       ? null
@@ -531,7 +668,13 @@ export const restoreInsightDeckSlotAuto = (
   const selected = current.slots[slot].selection
   if (!selected) return unchanged(current, "No registered view is selected for this slot")
   const used = usedOutsideSlot(current, slot)
-  const nextCandidate = candidates.find(candidate => !used.has(candidate.viewId))
+  const nextCandidate = candidates.find(candidate => (
+    isInsightAutoEvidenceEligible(candidate)
+    && !used.has(candidate.viewId)
+  )) || candidates.find(candidate => (
+    isInsightViewAutoEligible(candidate)
+    && !used.has(candidate.viewId)
+  ))
   if (!nextCandidate) return unchanged(current, "No distinct automatic view is available")
   const nextSelection = selectionFrom(
     nextCandidate,

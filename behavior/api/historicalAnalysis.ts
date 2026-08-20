@@ -10,9 +10,10 @@ export type AnalysisVisualization =
 export type ScoringProfileId =
   ApiComponents["schemas"]["ScoringProfileId"]
 
-interface ExecuteHistoricalAnalysisOptions {
+export interface ExecuteHistoricalAnalysisOptions {
   apiHost?: string
   fetcher?: typeof fetch
+  signal?: AbortSignal
 }
 
 export const executeHistoricalAnalysis = async (
@@ -20,6 +21,7 @@ export const executeHistoricalAnalysis = async (
   {
     apiHost = process.env.NEXT_PUBLIC_API_HOST,
     fetcher,
+    signal,
   }: ExecuteHistoricalAnalysisOptions = {},
 ): Promise<AnalysisQueryResponse> => {
   if (!apiHost) {
@@ -31,6 +33,7 @@ export const executeHistoricalAnalysis = async (
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(query),
+      signal,
     },
   )
   if (!response.ok) {

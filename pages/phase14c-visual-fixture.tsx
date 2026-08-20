@@ -3,6 +3,7 @@ import type {GetStaticProps, GetStaticPropsResult} from "next"
 
 import type {AdvisorComparisonItem} from "../behavior/advisorComparisonSet"
 import type {Roster} from "../behavior/draft"
+import type {PlayerStatusCacheSnapshot} from "../behavior/api/playerStatusCache"
 import type {DraftRecommendationSet} from "../behavior/draft-advisor/recommendations"
 import type {DraftAdvisorContext, OpponentForecast} from "../behavior/draft-advisor/types"
 import {useAdvisorComparisonController} from "../behavior/hooks/useAdvisorComparisonController"
@@ -91,25 +92,54 @@ const player = (
 })
 
 const availablePlayers: Player[] = [
-  player("qb-one", "Jayden Daniels", FantasyPosition.QUARTERBACK, 2, 1),
-  player("qb-two", "Brock Purdy", FantasyPosition.QUARTERBACK, 8, 2),
-  player("qb-three", "Caleb Williams", FantasyPosition.QUARTERBACK, 11, 3),
-  player("rb-one", "De'Von Achane", FantasyPosition.RUNNING_BACK, 4, 1),
-  player("rb-two", "Jonathan Taylor", FantasyPosition.RUNNING_BACK, 6, 1),
-  player("rb-three", "Bucky Irving", FantasyPosition.RUNNING_BACK, 14, 2),
-  player("wr-one", "Amon-Ra St. Brown", FantasyPosition.WIDE_RECEIVER, 3, 1),
-  player("wr-two", "Nico Collins", FantasyPosition.WIDE_RECEIVER, 9, 1),
-  player("wr-three", "Ladd McConkey", FantasyPosition.WIDE_RECEIVER, 16, 2),
-  player("te-one", "Trey McBride", FantasyPosition.TIGHT_END, 1, 1),
-  player("te-two", "Sam LaPorta", FantasyPosition.TIGHT_END, 5, 1),
-  player("te-three", "Harold Fannin Junior the Third", FantasyPosition.TIGHT_END, 12, 2),
+  player("4426348", "Jayden Daniels", FantasyPosition.QUARTERBACK, 2, 1),
+  player("4361741", "Brock Purdy", FantasyPosition.QUARTERBACK, 8, 2),
+  player("4431611", "Caleb Williams", FantasyPosition.QUARTERBACK, 11, 3),
+  player("4429160", "De'Von Achane", FantasyPosition.RUNNING_BACK, 4, 1),
+  player("4242335", "Jonathan Taylor", FantasyPosition.RUNNING_BACK, 6, 1),
+  player("4596448", "Bucky Irving", FantasyPosition.RUNNING_BACK, 14, 2),
+  player("4374302", "Amon-Ra St. Brown", FantasyPosition.WIDE_RECEIVER, 3, 1),
+  player("4258173", "Nico Collins", FantasyPosition.WIDE_RECEIVER, 9, 1),
+  player("4612826", "Ladd McConkey", FantasyPosition.WIDE_RECEIVER, 16, 2),
+  player("4361307", "Trey McBride", FantasyPosition.TIGHT_END, 1, 1),
+  player("4430027", "Sam LaPorta", FantasyPosition.TIGHT_END, 5, 1),
+  player("5083076", "Harold Fannin Junior the Third", FantasyPosition.TIGHT_END, 12, 2),
 ]
+
+const fixturePlayerStatus = (includeMaterialEvent: boolean): PlayerStatusCacheSnapshot => Object.fromEntries(
+  availablePlayers.slice(3, 6).map((item, index) => [item.id, {
+    playerId: item.id,
+    state: "ready" as const,
+    resourceState: "ready" as const,
+    loadedAt: 1,
+    response: {
+      schema_version: 1 as const,
+      player_id: item.id,
+      last_updated_at: "2026-08-20T12:00:00Z",
+      events: includeMaterialEvent && index === 0 ? [{
+        schema_version: 1 as const,
+        id: "fixture-achane-injury",
+        player_id: item.id,
+        type: "injury" as const,
+        status: "questionable",
+        short_summary: "Limited hamstring practice is material to the current comparison.",
+        source: "nflverse_injuries",
+        source_url: null,
+        source_published_at: "2026-08-20T10:00:00Z",
+        fetched_at: "2026-08-20T12:00:00Z",
+        confidence: .94,
+        recommendation_impact: "material" as const,
+        stale: false,
+      }] : [],
+    },
+  }]),
+)
 
 const emptyRoster = (): Roster => ({picks: [], QB: [], RB: [], WR: [], TE: []})
 
 const rosters = (): Roster[] => Array.from({length: 12}, (_, rosterIndex) => (
   rosterIndex === 5
-    ? {picks: ["qb-one", "wr-one"], QB: ["qb-one"], RB: [], WR: ["wr-one"], TE: []}
+    ? {picks: ["4426348", "4374302"], QB: ["4426348"], RB: [], WR: ["4374302"], TE: []}
     : emptyRoster()
 ))
 
@@ -178,7 +208,7 @@ const context = (): DraftAdvisorContext => ({
   ],
   teams: Array.from({length: 12}, (_, rosterIndex) => ({
     rosterIndex,
-    draftedPlayerIds: rosterIndex === 5 ? ["qb-one", "wr-one"] : [],
+    draftedPlayerIds: rosterIndex === 5 ? ["4426348", "4374302"] : [],
     draftedPositionCounts: positions.map(position => ({
       position,
       count: rosterIndex === 5 && (position === FantasyPosition.QUARTERBACK || position === FantasyPosition.WIDE_RECEIVER) ? 1 : 0,
@@ -387,6 +417,7 @@ const Phase14CVisualFixture = () => {
               myRosterIndex={5}
               onInspectPlayer={() => setPlayerLabOpen(true)}
               opponentForecast={scenario === "matrix" ? forecast() : null}
+              playerStatus={fixturePlayerStatus(scenario === "long")}
               rankingSummaries={rankingSummaries}
               recommendations={unavailable ? null : recommendations()}
               rosters={fixtureRosters}

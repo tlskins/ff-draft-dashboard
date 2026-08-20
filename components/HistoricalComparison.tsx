@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react"
 import {
   HistoricalComparisonResponse,
-  loadHistoricalComparison,
   ScoringProfileId,
 } from "../behavior/api/historical"
+import {loadHistoricalComparisonResource} from "../behavior/api/historicalResources"
+import {useReadApiCache} from "../behavior/api/readApiContext"
 import {
   buildCompletedSeasonWindows,
   formatSeasonList,
@@ -44,6 +45,7 @@ const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
   players,
   settings,
 }) => {
+  const readApiCache = useReadApiCache()
   const enabled =
     process.env.NEXT_PUBLIC_HISTORICAL_COMPARISON_ENABLED === "true"
   const eligiblePlayers = useMemo(
@@ -122,14 +124,23 @@ const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
     let cancelled = false
     setLoading(true)
     setError(null)
-    loadHistoricalComparison({
+    loadHistoricalComparisonResource(readApiCache, {
       playerIds: [primaryPlayer.id, comparisonId],
       seasons: selectedWindow.seasons,
       scoringProfile: profile,
     })
-      .then((result) => {
+      .then((resource) => {
         if (!cancelled) {
-          setComparison(result)
+          if (resource.data && ["ready", "stale"].includes(resource.state)) {
+            setComparison(resource.data)
+          } else {
+            setComparison(null)
+            setError(
+              resource.unavailableReason
+              || resource.error
+              || "Historical comparison is unavailable",
+            )
+          }
         }
       })
       .catch((requestError: Error) => {
@@ -151,6 +162,7 @@ const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
     enabled,
     primaryPlayer,
     profile,
+    readApiCache,
     readiness.error,
     readiness.loading,
     selectedWindow,

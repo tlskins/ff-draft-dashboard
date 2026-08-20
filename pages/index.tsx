@@ -66,10 +66,11 @@ import {
   getAdvisorRosterCapacity,
 } from "@/behavior/draft-advisor/recommendations"
 import {
-  loadPlayerData,
   rankingsAgeInDays,
   rankingsAreStale,
 } from "@/behavior/playerData"
+import {loadPlayerRankingsResource} from "@/behavior/api/playerRankingsResource"
+import {useReadApiCache} from "@/behavior/api/readApiContext"
 import { getDashboardApiFeatures } from "@/behavior/api/featureConfig"
 import { shouldIgnoreGlobalDraftShortcut } from "@/behavior/accessibility"
 import {
@@ -131,6 +132,7 @@ export enum SortOption {
 
 
 const Home: FC = () => {
+  const readApiCache = useReadApiCache()
   const apiFeatures = getDashboardApiFeatures()
   const {
     // state
@@ -374,8 +376,9 @@ const Home: FC = () => {
   }, [draftDeskEnabled, draftDeskPanePlacement])
   const statusPlayerIds = useMemo(() => [
     ...recommendations.candidates.map(candidate => candidate.player.id),
+    ...comparisonController.items.map(item => item.player.id),
     ...(viewPlayerId ? [viewPlayerId] : []),
-  ], [recommendations.candidates, viewPlayerId])
+  ], [comparisonController.items, recommendations.candidates, viewPlayerId])
   const playerStatus = usePlayerStatusCache(statusPlayerIds)
   const advisorPersistenceCoordinator = useRef<ReturnType<
     typeof createAdvisorSnapshotPersistenceCoordinator
@@ -716,8 +719,16 @@ const Home: FC = () => {
   ])
 
   const loadCurrentRankings = useCallback(async () => {
-    const currentRankings = await loadPlayerData()
+    const rankingsResource = await loadPlayerRankingsResource(readApiCache)
+    const currentRankings = rankingsResource.data
     if (!currentRankings) return
+    if (rankingsResource.state === "unavailable") {
+      toast.warn(
+        rankingsResource.unavailableReason
+          || "Published rankings are unavailable; using the embedded snapshot.",
+        {autoClose: 10_000, position: "top-right"},
+      )
+    }
     if (rankingsAreStale(currentRankings)) {
       const ageInDays = rankingsAgeInDays(currentRankings)
       toast.warn(
@@ -802,7 +813,7 @@ const Home: FC = () => {
       onLoadPlayers(currentRankings)
       resetBoardSettings()
     }
-  }, [onLoadPlayers, onSetRanker, resetBoardSettings, browserLoaded, loadCustomRankingsData, setLatestRankings, calculateRankingDiffs, settings, boardSettings, setCustomAndLatestRankingsDiffs])
+  }, [onLoadPlayers, onSetRanker, readApiCache, resetBoardSettings, browserLoaded, loadCustomRankingsData, setLatestRankings, calculateRankingDiffs, settings, boardSettings, setCustomAndLatestRankingsDiffs])
 
   useEffect(() => {
     void loadCurrentRankings()

@@ -56,7 +56,7 @@ describe("DraftDeskInsightDeck", () => {
     expect(screen.getByRole("region", {name: "Draft insight deck"})).toBeTruthy()
     expect(screen.getByRole("region", {name: "Advisor comparison set"})).toBeTruthy()
     expect(screen.getByText("Decision cockpit")).toBeTruthy()
-    expect(screen.getByText("Where will each tier run out?")).toBeTruthy()
+    expect(screen.getByRole("region", {name: "Rank and tier disagreement"})).toBeTruthy()
     expect(screen.getAllByText("Plan & constraints").length).toBeGreaterThan(1)
     const comparisonMode = screen.getByRole("group", {name: "Comparison set mode"})
     fireEvent.click(within(comparisonMode).getByRole("button", {name: "Pinned"}))

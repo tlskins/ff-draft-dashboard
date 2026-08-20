@@ -10,6 +10,11 @@ insight pane. It does not alter recommendation ranking, opponent-model
 training or promotion, ranking/tier authority, draft-plan persistence, or
 Realtime GPT/voice behavior. Realtime GPT and voice remain deferred.
 
+The registered-view catalog below records the accepted Phase 14C baseline.
+Phase 16 expands that same deck without changing its authority or rollback
+boundary; use `docs/phase16-read-api-insight-convergence.md` for the current
+read-API and ten-view catalog after Phase 16 integration.
+
 ## Registered views and authority
 
 The deck has exactly three independently selectable slots. A view may appear in

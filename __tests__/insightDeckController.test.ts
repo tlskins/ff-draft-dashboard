@@ -78,7 +78,7 @@ describe("Phase 14C1 InsightDeck controller", () => {
       .toBe("candidate_comparison")
   })
 
-  it("does not switch or announce when non-material evidence changes", () => {
+  it("refreshes and announces same-event API evidence without switching views", () => {
     const first = reconcileInsightDeck(
       createInsightDeckState("draft-one"), event("draft:empty"), baseCandidates(),
     ).state
@@ -88,12 +88,18 @@ describe("Phase 14C1 InsightDeck controller", () => {
         : item
     ))
 
-    const unchanged = reconcileInsightDeck(first, event("draft:empty"), evidenceOnly)
+    const refreshed = reconcileInsightDeck(first, event("draft:empty"), evidenceOnly)
 
-    expect(unchanged.changed).toBe(false)
-    expect(unchanged.selectionChanged).toBe(false)
-    expect(unchanged.announcement).toBeUndefined()
-    expect(unchanged.state).toBe(first)
+    expect(refreshed.changed).toBe(true)
+    expect(refreshed.selectionChanged).toBe(false)
+    expect(refreshed.state.slots.primary_decision.selection?.viewId)
+      .toBe("candidate_comparison")
+    expect(refreshed.state.slots.primary_decision.selection?.evidence)
+      .toEqual({state: "stale", fingerprint: "new"})
+    expect(refreshed.announcement).toMatchObject({
+      kind: "evidence_updated",
+      slot: "primary_decision",
+    })
   })
 
   it("announces one selected evidence refresh on a new material event without moving views", () => {
@@ -208,7 +214,9 @@ describe("Phase 14C1 InsightDeck controller", () => {
       {viewId: "current_tier_market", blockedBy: "evidence"},
     ])
     expect(later.announcement).toBeUndefined()
-    expect(repeated.changed).toBe(false)
+    expect(repeated.changed).toBe(true)
+    expect(repeated.state.slots.primary_decision.queuedAlternatives[0].evidence.fingerprint)
+      .toBe(`market-${evidenceState}-changed`)
     expect(repeated.announcement).toBeUndefined()
     },
   )
@@ -427,6 +435,32 @@ describe("Phase 14C1 InsightDeck controller", () => {
     expect(auto.state.slots.primary_decision.selection?.pinned).toBe(false)
   })
 
+  it("keeps source diagnostics manual-only while allowing an explicit pin", () => {
+    const source = candidate(
+      "data_source_status",
+      "plan_constraints",
+      100,
+    )
+    const reconciled = reconcileInsightDeck(
+      createInsightDeckState("draft-one"),
+      event("pick:1"),
+      [source],
+    ).state
+    expect(reconciled.slots.plan_constraints.selection).toBeNull()
+
+    const selected = selectInsightDeckView(
+      reconciled,
+      "plan_constraints",
+      "data_source_status",
+      [source],
+    )
+    expect(selected.state.slots.plan_constraints.selection).toMatchObject({
+      viewId: "data_source_status",
+      pinned: true,
+      source: "manual",
+    })
+  })
+
   it("exposes the same material boundary through the hook", async () => {
     const {result, rerender} = renderHook((props: {
       materialEvent: ReturnType<typeof event>
@@ -448,7 +482,10 @@ describe("Phase 14C1 InsightDeck controller", () => {
     })
     await waitFor(() => expect(result.current.state.slots.primary_decision.selection?.viewId)
       .toBe("candidate_comparison"))
-    expect(result.current.state.announcement?.id).toBe(firstAnnouncement)
+    expect(result.current.state.announcement?.id).not.toBe(firstAnnouncement)
+    expect(result.current.state.announcement?.kind).toBe("evidence_updated")
+    expect(result.current.state.slots.primary_decision.selection?.evidence.state)
+      .toBe("unavailable")
 
     act(() => result.current.pinSlot("primary_decision"))
     expect(result.current.state.slots.primary_decision.selection?.pinned).toBe(true)

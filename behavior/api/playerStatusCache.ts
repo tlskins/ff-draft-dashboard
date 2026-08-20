@@ -17,6 +17,11 @@ export interface PlayerStatusCacheEntry {
   state: PlayerStatusCacheState
   response: PlayerStatusResponse | null
   loadedAt: number | null
+  /** Full shared-resource provenance retained alongside the legacy state. */
+  resourceState?: "idle" | "loading" | "ready" | "stale" | "unavailable" | "error"
+  error?: string | null
+  staleReason?: string
+  unavailableReason?: string
 }
 
 export type PlayerStatusCacheSnapshot = Record<

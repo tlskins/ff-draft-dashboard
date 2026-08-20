@@ -29,7 +29,7 @@ describe("Phase 14C visual acceptance fixture", () => {
     expect(document.querySelectorAll("[aria-live]")).toHaveLength(1)
     expect(selectedSlotTitles()).toEqual([
       "Candidate comparison",
-      "Current tier market",
+      "Rank & tier disagreement",
       "Plan constraints",
     ])
     expect(new Set(selectedSlotTitles()).size).toBe(selectedSlotTitles().length)

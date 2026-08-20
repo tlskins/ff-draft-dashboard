@@ -14,6 +14,7 @@ interface LoadPlayerStatusOptions {
   limit?: number
   apiHost?: string
   fetcher?: typeof fetch
+  signal?: AbortSignal
 }
 
 export type PlayerStatusLoader = (
@@ -36,6 +37,7 @@ export const loadPlayerStatus = async (
     limit = 20,
     apiHost = process.env.NEXT_PUBLIC_API_HOST,
     fetcher,
+    signal,
   }: LoadPlayerStatusOptions = {},
 ): Promise<PlayerStatusResponse> => {
   const resolvedPlayerId = playerId.trim()
@@ -49,11 +51,13 @@ export const loadPlayerStatus = async (
     throw new Error("Player status API is not configured")
   }
   const params = new URLSearchParams({ limit: String(limit) })
-  const response = await (fetcher || fetch)(
-    `${apiHost.replace(/\/$/, "")}/v1/players/${
-      encodeURIComponent(resolvedPlayerId)
-    }/status?${params}`,
-  )
+  const request = fetcher || fetch
+  const url = `${apiHost.replace(/\/$/, "")}/v1/players/${
+    encodeURIComponent(resolvedPlayerId)
+  }/status?${params}`
+  const response = signal
+    ? await request(url, {signal})
+    : await request(url)
   if (!response.ok) {
     throw new Error(`Player status API returned ${response.status}`)
   }

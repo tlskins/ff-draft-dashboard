@@ -8,13 +8,16 @@ import React, {
 
 import {
   AnalysisQueryResponse,
-  executeHistoricalAnalysis,
   ScoringProfileId,
 } from "../../behavior/api/historicalAnalysis"
 import {
   HistoricalComparisonResponse,
-  loadHistoricalComparison,
 } from "../../behavior/api/historical"
+import {
+  loadHistoricalComparisonResource,
+  loadHistoricalQueryResource,
+} from "../../behavior/api/historicalResources"
+import {useReadApiCache} from "../../behavior/api/readApiContext"
 import {
   buildCompletedSeasonWindows,
   formatSeasonList,
@@ -168,6 +171,7 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   comparisonController,
   onClose,
 }) => {
+  const readApiCache = useReadApiCache()
   const readiness = useDataReadiness()
   const completedSeasonWindows = useMemo(
     () => readiness.data
@@ -536,9 +540,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
       setDrawerPlayerId(null)
       setDrawerPlayerOrigin(null)
       const [analysisOutcome, labOutcome] = await Promise.allSettled([
-        executeHistoricalAnalysis(query),
+        loadHistoricalQueryResource(readApiCache, query),
         viewState.view === "intra_position"
-          ? loadHistoricalComparison({
+          ? loadHistoricalComparisonResource(readApiCache, {
               playerIds: selectedPlayerIds,
               seasons: selectedSeasons,
               scoringProfile,
@@ -550,7 +554,12 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         || activeComparisonQueryScopeRef.current !== requestComparisonScope
       ) return
       if (analysisOutcome.status === "fulfilled") {
-        setResult(analysisOutcome.value)
+        const resource = analysisOutcome.value
+        setResult(resource.data)
+        setError(resource.state === "ready" || resource.state === "stale"
+          ? null
+          : resource.unavailableReason || resource.error
+            || "Historical analysis failed")
       } else {
         setResult(null)
         setError(
@@ -560,7 +569,12 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         )
       }
       if (labOutcome.status === "fulfilled") {
-        setPlayerLabResult(labOutcome.value)
+        const resource = labOutcome.value
+        setPlayerLabResult(resource?.data || null)
+        setPlayerLabError(!resource || resource.state === "ready" || resource.state === "stale"
+          ? null
+          : resource.unavailableReason || resource.error
+            || "Player Lab history failed")
       } else {
         setPlayerLabResult(null)
         setPlayerLabError(

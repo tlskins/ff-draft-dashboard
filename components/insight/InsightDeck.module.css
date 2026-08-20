@@ -133,7 +133,22 @@
 .queued summary { cursor: pointer; color: #365f78; font-weight: 700; }
 .queued ul { display: grid; gap: 3px; margin: 4px 0 0; padding: 0; list-style: none; }
 .queued li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 5px; padding: 3px; border: 1px solid #d9ddde; background: #edf0ef; }
-.queued strong { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.alternativeButton {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  color: #285f82;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.alternativeButton:hover { color: #173f59; }
+.alternativeButton:focus-visible { outline: 2px solid #2e668e; outline-offset: 1px; }
 .queued span { color: #7b5d27; font-size: 8px; text-align: right; }
 .queued small { grid-column: 1 / -1; color: #68757c; font-size: 8px; line-height: 1.25; }
 
