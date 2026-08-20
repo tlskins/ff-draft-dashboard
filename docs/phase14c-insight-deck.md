@@ -1,8 +1,9 @@
 # Phase 14C deterministic insight deck
 
-Status: implementation and development-fixture acceptance are complete and
-ready for integration. This does not close Phase 14D's live-extension and
-human acceptance boundary.
+Status: integrated and deployed on 2026-08-20. The implementation commit is
+`06b5b7c`; Vercel reported the production deployment successful at
+`https://ff-draft-dashboard.vercel.app`. This does not close Phase 14D's
+live-extension and human acceptance boundary.
 
 Phase 14C composes prepared, read-only live inputs into one bounded desktop
 insight pane. It does not alter recommendation ranking, opponent-model
@@ -111,6 +112,16 @@ ownership, committed Phase 14B comparison behavior, round-market provenance/
 unavailability, static-board tier limits, starter-versus-FLEX semantics, plan
 read-only behavior, visual-fixture states, and desktop flag/rollback behavior.
 TypeScript, lint, the production build, and `git diff --check` also pass.
+
+The clean-commit full release preflight also passed at `06b5b7c`: repository
+metadata, extension package parity, byte-identical dashboard/API rankings,
+118 focused release tests, generated API types, TypeScript, lint, and the
+production build. Post-deploy smoke verified the public dashboard (HTTP 200),
+the development-fixture guard (HTTP 404), Cloud Run health (HTTP 200), and the
+2026 rankings payload (455 players). A production browser check found the
+three-slot deck, its single owned live region, no page-level horizontal
+overflow, and no runtime console errors. Phase 14C changed no API code, so the
+existing read-only Cloud Run revision was not redeployed.
 
 Recorded ESPN fixtures do not yet contain the new two-turn envelope. The
 deterministic two-turn replay coverage is therefore synthetic; it validates the

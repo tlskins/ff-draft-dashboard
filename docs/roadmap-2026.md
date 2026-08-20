@@ -702,9 +702,9 @@ Status: independently reviewed, hardened, and integrated on 2026-08-17. See
 
 #### Phase 14C: round-aware run market and deterministic insight controller
 
-Status: implementation and development-fixture acceptance are complete and
-ready for integration. Live-extension and human acceptance remain Phase 14D.
-See
+Status: integrated and deployed on 2026-08-20 at implementation commit
+`06b5b7c`. Development-fixture acceptance and automated production smoke
+passed; live-extension and human acceptance remain Phase 14D. See
 `docs/phase14c-insight-deck.md` for the registered-view, authority, rollback,
 and verification record.
 
