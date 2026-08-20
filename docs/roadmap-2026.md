@@ -734,8 +734,10 @@ assembling an initial comparison set.
 
 ### Phase 15: stateless production release boundary
 
-Priority: active production track, selected on 2026-08-20 ahead of Phase 14C.
-This phase does not replace or complete the remaining Phase 14 product work.
+Status: completed and deployed on 2026-08-20 ahead of Phase 14C. This phase
+does not replace or complete the remaining Phase 14 product work. See
+`docs/phase15-stateless-production-release.md` for release evidence and the
+rollback boundary.
 
 Deploy the static dashboard at its existing Vercel origin and serve published
 rankings, status evidence, readiness metadata, and bounded historical queries
