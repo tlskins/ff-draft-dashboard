@@ -8,7 +8,7 @@
     "ESPN",
     "FantasyPros"
   ],
-  "cached_at": "2026-08-20T19:31:42.356377Z",
+  "cached_at": "2026-08-20T23:44:19.004956Z",
   "players": [
     {
       "availability": {
@@ -73743,5 +73743,23 @@
     "num_starting_wrs": 2,
     "num_teams": 12,
     "ppr": true
+  },
+  "ranking_sources": {
+    "schema_version": 1,
+    "sources": [
+      {
+        "id": "harris",
+        "provider_id": "harris-football",
+        "provider_name": "Harris Football",
+        "ranker": "Harris",
+        "season": 2026,
+        "retrieved_at": "2026-08-20T23:44:19.004956Z",
+        "source_updated_at": "2026-08-20T02:30:00Z",
+        "fingerprint": "1cea13e83ca0560641777af42cf8231ce21e6afa8b3839a5f7de36fea1142661",
+        "raw_source_fingerprint": "d6e0db6bd996e219057a28701086e91d88c8805e8f03549fe80a8ecfcb0597c3",
+        "record_count": 246,
+        "tier_method": "last_season_ppg_rank_band_v1"
+      }
+    ]
   }
 }

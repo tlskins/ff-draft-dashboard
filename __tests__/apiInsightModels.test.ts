@@ -173,6 +173,6 @@ describe("API-backed insight presentation models", () => {
     })
     expect(model.state).toBe("unavailable")
     expect(model.unavailableReason).toBe("No ranking metadata.")
+    expect(model.rankingsCachedAt).toBeNull()
   })
 })
-

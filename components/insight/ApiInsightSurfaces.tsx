@@ -18,6 +18,18 @@ const percent = (value: number, minimum: number, maximum: number): number => (
   Math.max(0, Math.min(100, ((value - minimum) / Math.max(.1, maximum - minimum)) * 100))
 )
 
+const artifactDateLabel = (value: string | null): string => {
+  if (!value) return "date unavailable"
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  })
+}
+
 const StateMessage: React.FC<{
   state: string
   reason?: string | null
@@ -43,12 +55,20 @@ const RankingSourceDetail: React.FC<{sourceId: string; label: string}> = ({
       {resource.state === "idle" || resource.state === "loading" ? (
         <span>Loading source details…</span>
       ) : resource.data ? (
+        <>
+          {resource.data.metadata_status === "not_recorded" && (
+            <p>Freshness metadata not recorded. Rankings may still be loaded from the published artifact.</p>
+          )}
         <dl>
+          <div><dt>Provenance</dt><dd>{resource.data.storage_transport}</dd></div>
           <div><dt>Last success</dt><dd>{resource.data.last_success_at || "—"}</dd></div>
           <div><dt>Retrieved</dt><dd>{resource.data.retrieved_at || "—"}</dd></div>
+          <div><dt>Source update</dt><dd>{resource.data.source_updated_at || "—"}</dd></div>
           <div><dt>Season</dt><dd>{resource.data.season || "—"}</dd></div>
+          <div><dt>Tier method</dt><dd>{resource.data.tier_method || "—"}</dd></div>
           <div><dt>Failure</dt><dd>{resource.data.failure_reason || "None reported"}</dd></div>
         </dl>
+        </>
       ) : <span>{resource.unavailableReason || resource.error || "Source details unavailable."}</span>}
     </details>
   )
@@ -223,6 +243,7 @@ export const SourceReadinessSurface: React.FC<{
     {model.error && <StateMessage state="error" reason={model.error} />}
     {model.unavailableReason && <p className={styles.sourceWarning}>{model.unavailableReason}</p>}
     <p className={styles.caption}>
+      Rankings loaded from {artifactDateLabel(model.rankingsCachedAt)} artifact · {" "}
       Historical seasons: {model.historicalSeasons.length > 0
         ? model.historicalSeasons.join(", ") : "unavailable"}
     </p>
@@ -231,7 +252,9 @@ export const SourceReadinessSurface: React.FC<{
       <tbody>{model.rankingSources.map(source => (
         <tr key={source.id}>
           <th scope="row">{source.provider_name}</th>
-          <td>{source.availability}</td>
+          <td>{source.metadata_status === "not_recorded"
+            ? "Freshness not recorded"
+            : source.availability}</td>
           <td>{source.record_count ?? "—"}</td>
         </tr>
       ))}</tbody>

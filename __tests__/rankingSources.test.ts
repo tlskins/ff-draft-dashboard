@@ -12,6 +12,7 @@ const unavailableSource = {
   provider_id: "espn",
   provider_name: "ESPN",
   storage_transport: "sqlite" as const,
+  metadata_status: "not_recorded" as const,
   availability: "unavailable" as const,
   is_stale: false,
   last_attempt_at: null,
@@ -19,10 +20,13 @@ const unavailableSource = {
   last_success_provider_id: null,
   failure_reason: null,
   retrieved_at: null,
+  source_updated_at: null,
   season: null,
   scoring_type: null,
   fingerprint: null,
+  raw_source_fingerprint: null,
   record_count: null,
+  tier_method: null,
 }
 
 describe("ranking source contract adapter", () => {

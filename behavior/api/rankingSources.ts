@@ -90,11 +90,15 @@ const rankingSourcesLoader: ReadApiLoader<RankingSourceListResponse> = async (
   const sourceFingerprint = response.sources.map(source => [
     source.id,
     source.availability,
+    source.metadata_status,
+    source.storage_transport,
     source.is_stale,
     source.fingerprint,
     source.retrieved_at,
     source.record_count,
     source.failure_reason,
+    source.source_updated_at,
+    source.tier_method,
   ])
   if (
     response.sources.length === 0
@@ -106,7 +110,7 @@ const rankingSourcesLoader: ReadApiLoader<RankingSourceListResponse> = async (
       fingerprint: `ranking-sources:${JSON.stringify(sourceFingerprint)}`,
       unavailableReason: response.sources.length === 0
         ? "No ranking sources are configured in the published API."
-        : "No configured ranking source currently has published source metadata.",
+        : "Ranking source freshness metadata has not been recorded yet.",
     })
   }
   const staleSources = response.sources.filter(source => (
@@ -156,17 +160,21 @@ export const useRankingSourceDetail = (
       fingerprint: `ranking-source:${JSON.stringify([
         source.id,
         source.availability,
+        source.metadata_status,
+        source.storage_transport,
         source.fingerprint,
         source.retrieved_at,
         source.record_count,
         source.failure_reason,
+        source.source_updated_at,
+        source.tier_method,
       ])}`,
       ...(source.availability === "stale" || source.is_stale ? {
         staleReason: `${source.provider_name} source metadata is stale.`,
       } : {}),
       ...(source.availability === "unavailable" ? {
         unavailableReason: source.failure_reason
-          || `${source.provider_name} source metadata is unavailable.`,
+          || `${source.provider_name} freshness metadata has not been recorded.`,
       } : {}),
     })
   }, [sourceId])

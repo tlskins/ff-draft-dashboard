@@ -68,6 +68,7 @@ export interface SourceReadinessInsightModel {
   rankingSources: RankingSourceListResponse["sources"]
   statusSources: NonNullable<DataReadinessState["data"]>["status_sources"]
   historicalSeasons: number[]
+  rankingsCachedAt: string | null
   error: string | null
   staleReason?: string
   unavailableReason?: string
@@ -227,6 +228,7 @@ export const buildSourceReadinessInsightModel = (
     fingerprint: `source-readiness:${JSON.stringify({
       ranking: rankingSources.fingerprint,
       readinessGeneratedAt: readiness.data?.generated_at,
+      rankingsCachedAt: readiness.data?.rankings.cached_at,
       status: readiness.data?.status_sources.map(source => [
         source.provider,
         source.dataset,
@@ -238,6 +240,7 @@ export const buildSourceReadinessInsightModel = (
     rankingSources: rankingSources.data?.sources || [],
     statusSources: readiness.data?.status_sources || [],
     historicalSeasons: readiness.data?.completed_seasons || [],
+    rankingsCachedAt: readiness.data?.rankings.cached_at || null,
     error: readiness.error || rankingSources.error,
     staleReason: rankingSources.staleReason,
     unavailableReason: rankingSources.unavailableReason,

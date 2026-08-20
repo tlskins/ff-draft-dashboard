@@ -715,6 +715,26 @@ export interface components {
             all_data_rankers: string[];
             all_third_party_rankers: string[];
             season: number;
+            ranking_sources: components["schemas"]["RankingArtifactSources"];
+        };
+        RankingArtifactSource: {
+            id: string;
+            provider_id: string;
+            provider_name: string;
+            ranker: string;
+            season: number;
+            /** Format: date-time */
+            retrieved_at: string;
+            source_updated_at: string | null;
+            fingerprint: string;
+            raw_source_fingerprint: string;
+            record_count: number;
+            tier_method: string;
+        };
+        RankingArtifactSources: {
+            /** @constant */
+            schema_version: 1;
+            sources: components["schemas"]["RankingArtifactSource"][];
         };
         AnalysisSeasonRange: {
             start: number;
@@ -1064,7 +1084,9 @@ export interface components {
             provider_id: string;
             provider_name: string;
             /** @enum {string} */
-            storage_transport: "sqlite";
+            storage_transport: "sqlite" | "artifact";
+            /** @enum {string} */
+            metadata_status: "recorded" | "not_recorded";
             availability: components["schemas"]["RankingSourceAvailability"];
             is_stale: boolean;
             /** Format: date-time */
@@ -1075,10 +1097,13 @@ export interface components {
             failure_reason: string | null;
             /** Format: date-time */
             retrieved_at: string | null;
+            source_updated_at: string | null;
             season: number | null;
             scoring_type: components["schemas"]["ScoringProfileId"] | null;
             fingerprint: string | null;
+            raw_source_fingerprint: string | null;
             record_count: number | null;
+            tier_method: string | null;
         };
         RankingSourceListResponse: {
             sources: components["schemas"]["RankingSourceStatus"][];

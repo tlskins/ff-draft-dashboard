@@ -4,7 +4,12 @@ import {render, screen} from "@testing-library/react"
 import {
   HistoricalRiskRewardSurface,
   RankTierDisagreementSurface,
+  SourceReadinessSurface,
 } from "../components/insight/ApiInsightSurfaces"
+
+jest.mock("../behavior/api/rankingSources", () => ({
+  useRankingSourceDetail: () => ({state: "idle", data: null}),
+}))
 
 
 const distribution = {
@@ -75,5 +80,41 @@ describe("compact API insight surfaces", () => {
     const region = screen.getByRole("region", {name: "Rank and tier disagreement"})
     expect(region).toBeTruthy()
     expect(region.textContent).toContain("8-spot spread")
+  })
+
+  it("distinguishes loaded rankings from unrecorded provider freshness", () => {
+    render(<SourceReadinessSurface model={{
+      state: "ready",
+      fingerprint: "sources",
+      rankingSources: [{
+        schema_version: 1,
+        id: "espn",
+        provider_id: "espn",
+        provider_name: "ESPN",
+        storage_transport: "sqlite",
+        metadata_status: "not_recorded",
+        availability: "unavailable",
+        is_stale: false,
+        last_attempt_at: null,
+        last_success_at: null,
+        last_success_provider_id: null,
+        failure_reason: null,
+        retrieved_at: null,
+        source_updated_at: null,
+        season: null,
+        scoring_type: null,
+        fingerprint: null,
+        raw_source_fingerprint: null,
+        record_count: null,
+        tier_method: null,
+      }],
+      statusSources: [],
+      historicalSeasons: [2023, 2024, 2025],
+      rankingsCachedAt: "2026-08-20T23:44:19Z",
+      error: null,
+    }} />)
+
+    expect(screen.getByText(/Rankings loaded from Aug 20, 2026 artifact/)).toBeTruthy()
+    expect(screen.getByText("Freshness not recorded")).toBeTruthy()
   })
 })
