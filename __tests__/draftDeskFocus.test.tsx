@@ -103,6 +103,31 @@ describe("Phase 14A profile focus boundary", () => {
       .getByText("Runner Three")).toBeTruthy()
   })
 
+  it("allows the adaptive profile module to be pinned and returned to Auto", () => {
+    render(
+      <DraftDeskProfilePane
+        boardSettings={{ranker: ThirdPartyRanker.HARRIS, adpRanker: ThirdPartyADPRanker.ESPN}}
+        player={players[0]}
+        players={players}
+        playerStatus={{}}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+
+    expect(screen.getByRole("button", {name: "Auto"}).getAttribute("aria-pressed"))
+      .toBe("true")
+    expect(screen.getByRole("region", {name: "Draft value profile module"}))
+      .toBeTruthy()
+    fireEvent.click(screen.getByRole("button", {name: "Outlook"}))
+    expect(screen.getByRole("region", {name: "Outlook profile module"}))
+      .toBeTruthy()
+    expect(screen.getByText(/remains pinned while player focus changes/i)).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", {name: "Auto"}))
+    expect(screen.getByRole("region", {name: "Draft value profile module"}))
+      .toBeTruthy()
+  })
+
   it("presents populated profile evidence and preserves unavailable status", () => {
     const detailedPlayer: Player = {
       ...players[0],
@@ -179,8 +204,8 @@ describe("Phase 14A profile focus boundary", () => {
     expect(screen.getByText("+8.6 PPG vs replacement")).toBeTruthy()
     expect(screen.getByText("Active with no current designation.")).toBeTruthy()
     expect(screen.queryByText(/none impact/i)).toBeNull()
-    expect(screen.getByText("Historical production · 1 season").closest("details")
-      ?.hasAttribute("open")).toBe(false)
+    fireEvent.click(screen.getByRole("button", {name: "Production"}))
+    expect(screen.getByRole("region", {name: "Production profile module"})).toBeTruthy()
     expect(screen.getByText("Seasonal fantasy output")).toBeTruthy()
     expect(screen.getByLabelText("2025: 19.4 PPG")).toBeTruthy()
     const historyTable = screen.getByRole("table", {name: `${detailedPlayer.fullName} seasonal performance`})

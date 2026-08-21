@@ -26,6 +26,12 @@ import {
   playerOutlookFreshness,
   playerOutlookSourceLabel,
 } from "../behavior/playerOutlook"
+import {
+  PROFILE_MODULE_IDS,
+  PROFILE_MODULE_LABELS,
+  ProfileModuleId,
+  selectProfileModule,
+} from "../behavior/profile/profileModuleController"
 
 export interface DraftDeskFixtureProfileDetails {
   byeWeek?: number
@@ -254,6 +260,7 @@ const DraftDeskProfilePane = ({
   rankingsSeason,
 }: DraftDeskProfilePaneProps) => {
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [pinnedModule, setPinnedModule] = useState<ProfileModuleId | null>(null)
   return <section aria-label="Player profile and history" className={`${styles.pane} h-full overflow-y-auto text-left`}>
     <DeskPaneHeader
       actions={player ? <span className={styles.profileWatch}>Focused from board</span> : undefined}
@@ -297,6 +304,29 @@ const DraftDeskProfilePane = ({
       const outlookFreshness = artifactOutlook
         ? playerOutlookFreshness(artifactOutlook, rankingsSeason)
         : null
+      const historySeasonCount = profileHistory(player, settings).length
+      const statusImpact = recommendationEvidence.some(
+        event => event.recommendation_impact === "material",
+      )
+        ? "material"
+        : recommendationEvidence.some(
+          event => event.recommendation_impact === "review",
+        )
+          ? "review"
+          : "none"
+      const automaticModule = selectProfileModule({
+        hasDraftContext: Boolean(
+          (metrics.posRank && metrics.posRank < 9999)
+          || metrics.tier
+          || projection
+          || (metrics.adp && metrics.adp < 999),
+        ),
+        historySeasonCount,
+        hasOutlook: Boolean(statusSummary?.text || artifactOutlook),
+        hasPlayerNotes: Boolean(player.pros || player.cons),
+        statusImpact,
+      })
+      const activeModule = pinnedModule || automaticModule.id
 
       return (
         <div className={styles.profileBody}>
@@ -335,90 +365,133 @@ const DraftDeskProfilePane = ({
                 ) : <p>No structured status updates.</p>}
           </aside>
 
-          <ProfileDraftContext
-            boardSettings={boardSettings}
-            player={player}
-            players={players}
-            projection={projection}
-            rankingSummaries={rankingSummaries}
-            settings={settings}
-          />
-
-          {statusSummary?.text && (
-            <section aria-label="Structured player outlook" className={styles.profileOutlook}>
-              <header><span>Structured player outlook</span></header>
-              <p>{statusSummary.text}</p>
-              <footer aria-label="Structured summary provenance">
-                {structuredSummaryProvenance(statusSummary.method)}
-                {statusSummary.model ? ` · ${statusSummary.model}` : ""}
-                {statusSummary.generated_at && (
-                  <>
-                    {" · "}
-                    <time dateTime={statusSummary.generated_at}>
-                      generated {statusTimestampLabel(statusSummary.generated_at)}
-                    </time>
-                  </>
-                )}
-              </footer>
-            </section>
-          )}
-
-          <section aria-label="ESPN player outlook" className={styles.profileOutlook}>
-            <header><span>{artifactOutlook?.source === "fixture"
-              ? "Illustrative fixture outlook"
-              : "ESPN player outlook"}</span></header>
-            {artifactOutlook ? (
-              <>
-                <p>{artifactOutlook.text}</p>
-                <footer aria-label="Player outlook provenance">
-                  {playerOutlookSourceLabel(artifactOutlook.source)}
-                  {artifactOutlook.season
-                    ? ` · ${artifactOutlook.season} season`
-                    : " · season unknown; not labeled current"}
-                  {outlookFreshness === "prior" && " · stale prior-season evidence"}
-                  {outlookFreshness === "mismatched" && " · season does not match active rankings"}
-                  {artifactOutlook.observedAt ? (
-                    <>
-                      {" · "}
-                      <time dateTime={artifactOutlook.observedAt}>
-                        observed {statusTimestampLabel(artifactOutlook.observedAt)}
-                      </time>
-                    </>
-                  ) : " · observation time unavailable"}
-                </footer>
-              </>
-            ) : (
-              <p className={styles.profileOutlookUnavailable}>
-                ESPN player outlook unavailable for this player.
-              </p>
-            )}
+          <section aria-label="Player profile module controller" className={styles.profileModuleController}>
+            <header>
+              <div>
+                <strong>{pinnedModule ? "Pinned profile module" : "Auto profile module"}</strong>
+                <span aria-live="polite">
+                  {pinnedModule
+                    ? `${PROFILE_MODULE_LABELS[pinnedModule]} remains pinned while player focus changes.`
+                    : automaticModule.explanation}
+                </span>
+              </div>
+              <div aria-label="Profile module selection" className={styles.profileModuleButtons} role="group">
+                <button
+                  aria-pressed={pinnedModule === null}
+                  onClick={() => setPinnedModule(null)}
+                  type="button"
+                >Auto</button>
+                {PROFILE_MODULE_IDS.map(moduleId => (
+                  <button
+                    aria-pressed={activeModule === moduleId}
+                    key={moduleId}
+                    onClick={() => setPinnedModule(moduleId)}
+                    type="button"
+                  >{PROFILE_MODULE_LABELS[moduleId]}</button>
+                ))}
+              </div>
+            </header>
           </section>
 
-          <div className={styles.profileNotes}>
-            {player.pros && <p><span>+</span><strong>Upside</strong> {player.pros}</p>}
-            {player.cons && <p><span>!</span><strong>Risk</strong> {player.cons}</p>}
-            {recommendationEvidence.slice(1, 2).map(event => (
-              <p key={event.id}>
-                <span>↗</span><strong>{event.type.replace(/_/g, " ")}</strong>
-                <span className={styles.profileEvidenceBody}>
-                  <span>{event.short_summary}</span>
-                  <small>
-                    {event.source_url ? <a href={event.source_url} rel="noreferrer" target="_blank">{playerStatusSourceLabel(event.source)}</a> : playerStatusSourceLabel(event.source)}
-                    {` · ${event.recommendation_impact} impact${event.stale ? " · stale" : ""} · ${(event.confidence * 100).toFixed(0)}% confidence`}
-                  </small>
-                </span>
-              </p>
-            ))}
+          <div
+            aria-label={`${PROFILE_MODULE_LABELS.draft_context} profile module`}
+            hidden={activeModule !== "draft_context"}
+            role="region"
+          >
+            <ProfileDraftContext
+              boardSettings={boardSettings}
+              player={player}
+              players={players}
+              projection={projection}
+              rankingSummaries={rankingSummaries}
+              settings={settings}
+            />
           </div>
 
-          {profileHistory(player, settings).length > 0 ? (
-            <details className={styles.profileHistoryDisclosure}>
-              <summary>Historical production · {profileHistory(player, settings).length} season{profileHistory(player, settings).length === 1 ? "" : "s"}</summary>
+          <div
+            aria-label={`${PROFILE_MODULE_LABELS.outlook} profile module`}
+            hidden={activeModule !== "outlook"}
+            role="region"
+          >
+            {statusSummary?.text && (
+              <section aria-label="Structured player outlook" className={styles.profileOutlook}>
+                <header><span>Structured player outlook</span></header>
+                <p>{statusSummary.text}</p>
+                <footer aria-label="Structured summary provenance">
+                  {structuredSummaryProvenance(statusSummary.method)}
+                  {statusSummary.model ? ` · ${statusSummary.model}` : ""}
+                  {statusSummary.generated_at && (
+                    <>
+                      {" · "}
+                      <time dateTime={statusSummary.generated_at}>
+                        generated {statusTimestampLabel(statusSummary.generated_at)}
+                      </time>
+                    </>
+                  )}
+                </footer>
+              </section>
+            )}
+
+            <section aria-label="ESPN player outlook" className={styles.profileOutlook}>
+              <header><span>{artifactOutlook?.source === "fixture"
+                ? "Illustrative fixture outlook"
+                : "ESPN player outlook"}</span></header>
+              {artifactOutlook ? (
+                <>
+                  <p>{artifactOutlook.text}</p>
+                  <footer aria-label="Player outlook provenance">
+                    {playerOutlookSourceLabel(artifactOutlook.source)}
+                    {artifactOutlook.season
+                      ? ` · ${artifactOutlook.season} season`
+                      : " · season unknown; not labeled current"}
+                    {outlookFreshness === "prior" && " · stale prior-season evidence"}
+                    {outlookFreshness === "mismatched" && " · season does not match active rankings"}
+                    {artifactOutlook.observedAt ? (
+                      <>
+                        {" · "}
+                        <time dateTime={artifactOutlook.observedAt}>
+                          observed {statusTimestampLabel(artifactOutlook.observedAt)}
+                        </time>
+                      </>
+                    ) : " · observation time unavailable"}
+                  </footer>
+                </>
+              ) : (
+                <p className={styles.profileOutlookUnavailable}>
+                  ESPN player outlook unavailable for this player.
+                </p>
+              )}
+            </section>
+
+            <div className={styles.profileNotes}>
+              {player.pros && <p><span>+</span><strong>Upside</strong> {player.pros}</p>}
+              {player.cons && <p><span>!</span><strong>Risk</strong> {player.cons}</p>}
+              {recommendationEvidence.slice(1, 2).map(event => (
+                <p key={event.id}>
+                  <span>↗</span><strong>{event.type.replace(/_/g, " ")}</strong>
+                  <span className={styles.profileEvidenceBody}>
+                    <span>{event.short_summary}</span>
+                    <small>
+                      {event.source_url ? <a href={event.source_url} rel="noreferrer" target="_blank">{playerStatusSourceLabel(event.source)}</a> : playerStatusSourceLabel(event.source)}
+                      {` · ${event.recommendation_impact} impact${event.stale ? " · stale" : ""} · ${(event.confidence * 100).toFixed(0)}% confidence`}
+                    </small>
+                  </span>
+                </p>
+              ))}
+            </div>
+          </div>
+
+          <div
+            aria-label={`${PROFILE_MODULE_LABELS.production} profile module`}
+            hidden={activeModule !== "production"}
+            role="region"
+          >
+            {historySeasonCount > 0 ? (
               <HistoryChart player={player} settings={settings} />
-            </details>
-          ) : (
-            <p className={styles.profileHistoryEmpty}>Historical production unavailable; draft context remains available for rookies and players without NFL games.</p>
-          )}
+            ) : (
+              <p className={styles.profileHistoryEmpty}>Historical production unavailable; draft context remains available for rookies and players without NFL games.</p>
+            )}
+          </div>
 
           <details className={styles.profileDetails} onToggle={event => setDetailsOpen(event.currentTarget.open)}>
             <summary>Advanced rankings and historical comparison</summary>

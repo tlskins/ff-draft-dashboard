@@ -5,6 +5,7 @@ import {
   AnalysisQueryResponse,
 } from "../behavior/api/historicalAnalysis"
 import {
+  densitySamples,
   prepareAnalysisChart,
 } from "../behavior/analysis/chartModel"
 import {
@@ -133,7 +134,7 @@ describe("declarative analysis chart", () => {
   it("fails closed for chart types not implemented by the renderer", () => {
     const prepared = prepareAnalysisChart(response({
       visualization: {
-        type: "heatmap",
+        type: "box",
         x: "season",
         y: "fantasy_points_mean",
       },
@@ -141,8 +142,77 @@ describe("declarative analysis chart", () => {
 
     expect(prepared).toEqual({
       ok: false,
-      error: "heatmap charts are not supported by this renderer yet",
+      error: "box charts are not supported by this renderer yet",
     })
+  })
+
+  it("prepares and renders bounded density series", () => {
+    const densityResponse = response({
+      visualization: {
+        type: "density",
+        x: "season",
+        y: "fantasy_points_mean",
+        color: "player_name",
+      },
+    })
+    const prepared = prepareAnalysisChart(densityResponse)
+    expect(prepared.ok).toBe(true)
+    const samples = densitySamples([15, 17, 18, 19], 14, 20)
+    expect(samples).toHaveLength(32)
+    expect(samples.every(sample => Number.isFinite(sample.density))).toBe(true)
+
+    const {container} = render(<DeclarativeChart response={densityResponse} />)
+    expect(container.querySelector('[data-chart-type="density"]')).not.toBeNull()
+    expect(container.querySelectorAll("[data-density-series]")).toHaveLength(2)
+  })
+
+  it("renders a heatmap cell for every validated row", () => {
+    const heatmapResponse = response({
+      visualization: {
+        type: "heatmap",
+        x: "season",
+        y: "fantasy_points_mean",
+        color: "player_name",
+      },
+    })
+    const {container} = render(<DeclarativeChart response={heatmapResponse} />)
+    expect(container.querySelector('[data-chart-type="heatmap"]')).not.toBeNull()
+    expect(container.querySelectorAll('[data-chart-cell="true"]')).toHaveLength(4)
+  })
+
+  it("partitions declared facets without changing the shared dataset", () => {
+    const faceted = response({
+      visualization: {
+        type: "line",
+        x: "season",
+        y: "fantasy_points_mean",
+        facet: "player_name",
+      },
+    })
+    const prepared = prepareAnalysisChart(faceted)
+    expect(prepared.ok).toBe(true)
+    if (!prepared.ok) return
+    expect(prepared.model.facets.map(facet => facet.label)).toEqual([
+      "Player One",
+      "Player Two",
+    ])
+    expect(prepared.model.facets.map(facet => facet.points.length)).toEqual([2, 2])
+
+    const view = render(<DeclarativeChart response={faceted} />)
+    expect(view.getByRole("region", {name: "Player One facet"})).toBeTruthy()
+    expect(view.getByRole("region", {name: "Player Two facet"})).toBeTruthy()
+    expect(view.container.querySelectorAll("svg")).toHaveLength(2)
+  })
+
+  it("rejects undeclared facet dimensions", () => {
+    expect(prepareAnalysisChart(response({
+      visualization: {
+        type: "line",
+        x: "season",
+        y: "fantasy_points_mean",
+        facet: "team",
+      },
+    }))).toEqual({ok: false, error: "Unknown facet dimension: team"})
   })
 })
 
