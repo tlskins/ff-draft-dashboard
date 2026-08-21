@@ -15,6 +15,8 @@ interface UseADPViewProps {
   replacePlayerTargets: (targets: PlayerTarget[]) => void
   removePlayerTargets: (playerIds: string[]) => void
   positionFilter: PositionFilter
+  currentPage?: number
+  onCurrentPageChange?: (page: number) => void
 }
 
 export const useADPView = ({
@@ -27,8 +29,15 @@ export const useADPView = ({
   replacePlayerTargets,
   removePlayerTargets,
   positionFilter,
+  currentPage: controlledCurrentPage,
+  onCurrentPageChange,
 }: UseADPViewProps) => {
-  const [currentPage, setCurrentPage] = useState(0) // 0-based page index
+  const [uncontrolledCurrentPage, setUncontrolledCurrentPage] = useState(0)
+  const currentPage = controlledCurrentPage ?? uncontrolledCurrentPage
+  const setCurrentPage = useCallback((page: number) => {
+    if (controlledCurrentPage === undefined) setUncontrolledCurrentPage(page)
+    onCurrentPageChange?.(page)
+  }, [controlledCurrentPage, onCurrentPageChange])
   const [isMobile, setIsMobile] = useState(false)
   const [hasAttemptedAutoLoad, setHasAttemptedAutoLoad] = useState(false)
   
@@ -161,13 +170,13 @@ export const useADPView = ({
     return rounds
   }, [playerRanks.availPlayersByAdp, fantasySettings, boardSettings, positionFilter, myPicks])
 
-  const handlePrevPage = () => {
+  const handlePrevPage = useCallback(() => {
     setCurrentPage(Math.max(0, currentPage - 1))
-  }
+  }, [currentPage, setCurrentPage])
   
-  const handleNextPage = () => {
+  const handleNextPage = useCallback(() => {
     setCurrentPage(Math.min(totalPages - 1, currentPage + 1))
-  }
+  }, [currentPage, setCurrentPage, totalPages])
 
   // Keyboard navigation
   useEffect(() => {
@@ -186,7 +195,7 @@ export const useADPView = ({
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [currentPage, totalPages])
+  }, [currentPage, handleNextPage, handlePrevPage, totalPages])
 
   // Favorites management functions
   const handleSaveFavorites = () => {
@@ -278,4 +287,4 @@ export const useADPView = ({
     handleLoadFavorites,
     handleClearFavorites,
   }
-} 
+}

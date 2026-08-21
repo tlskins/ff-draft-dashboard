@@ -49,7 +49,14 @@ const historicalResponse = (
   query: AnalysisQuery,
   player: Player,
 ): AnalysisQueryResponse => {
-  const rows = [2024, 2025].flatMap(season => Array.from(
+  const seasonRange = query.seasons
+  const querySeasons = Array.isArray(seasonRange)
+    ? seasonRange
+    : Array.from(
+      {length: seasonRange.end - seasonRange.start + 1},
+      (_, index) => seasonRange.start + index,
+    )
+  const rows = querySeasons.flatMap(season => Array.from(
     {length: 17},
     (_, index) => ({
       dimensions: {
@@ -97,6 +104,14 @@ const profile = (player: Player, cache = new ReadApiCache()) => render(
   </ReadApiProvider>,
 )
 
+const profileHistoryQueries = (): AnalysisQuery[] => jest.mocked(global.fetch).mock.calls
+  .flatMap(call => call[1]?.body
+    ? [JSON.parse(String(call[1].body)) as AnalysisQuery]
+    : [])
+  .filter(query => query.group_by === "week"
+    && query.player_ids.length === 1
+    && query.visualization.type === "heatmap")
+
 describe("adaptive profile historical API hookup", () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_API_HOST = "https://drafty-api.example.test"
@@ -120,30 +135,31 @@ describe("adaptive profile historical API hookup", () => {
 
   it("loads one weekly query, selects density, and switches views without refetching", async () => {
     const view = profile(players[0])
+    fireEvent.click(screen.getByRole("button", {name: "Production"}))
     await waitFor(() => expect(
-      screen.getByRole("region", {name: "Production profile module"}),
-    ).toBeTruthy())
-    expect(view.container.querySelector('[data-chart-type="density"]')).not.toBeNull()
+      view.container.querySelector('[data-chart-type="density"]'),
+    ).not.toBeNull())
     expect(screen.getByText(/enough recorded weeks are available/i)).toBeTruthy()
-    expect(global.fetch).toHaveBeenCalledTimes(1)
-    const request = jest.mocked(global.fetch).mock.calls[0]
-    const query = JSON.parse(String(request[1]?.body)) as AnalysisQuery
+    expect(profileHistoryQueries()).toHaveLength(1)
+    const query = profileHistoryQueries()[0]
     expect(query).toMatchObject({
       player_ids: [players[0].id],
-      seasons: [2023, 2024, 2025],
+      seasons: [2025],
       group_by: "week",
     })
 
     fireEvent.click(screen.getByRole("button", {name: "Weekly heatmap"}))
     expect(view.container.querySelector('[data-chart-type="heatmap"]')).not.toBeNull()
-    expect(view.container.querySelectorAll('[data-chart-cell="true"]')).toHaveLength(34)
-    expect(screen.getByText(/remains pinned while player focus changes/i)).toBeTruthy()
-    expect(global.fetch).toHaveBeenCalledTimes(1)
+    expect(view.container.querySelectorAll('[data-chart-cell="true"]')).toHaveLength(17)
+    expect(screen.getAllByText(/remains pinned while player focus changes/i).length)
+      .toBeGreaterThan(0)
+    expect(profileHistoryQueries()).toHaveLength(1)
   })
 
   it("preserves a manual chart pin when player focus changes", async () => {
     const cache = new ReadApiCache()
     const view = profile(players[0], cache)
+    fireEvent.click(screen.getByRole("button", {name: "Production"}))
     await waitFor(() => expect(
       view.container.querySelector('[data-chart-type="density"]'),
     ).not.toBeNull())
@@ -166,13 +182,15 @@ describe("adaptive profile historical API hookup", () => {
     ).not.toBeNull())
     expect(screen.getByRole("button", {name: "Weekly trend"}).getAttribute("aria-pressed"))
       .toBe("true")
-    expect(screen.getByText(/remains pinned while player focus changes/i)).toBeTruthy()
-    expect(global.fetch).toHaveBeenCalledTimes(2)
+    expect(screen.getAllByText(/remains pinned while player focus changes/i).length)
+      .toBeGreaterThan(0)
+    expect(profileHistoryQueries()).toHaveLength(2)
   })
 
   it("coalesces rapid hover focus before loading weekly history", async () => {
     const cache = new ReadApiCache()
     const view = profile(players[0], cache)
+    fireEvent.click(screen.getByRole("button", {name: "Production"}))
     view.rerender(
       <ReadApiProvider cache={cache}>
         <DraftDeskProfilePane
@@ -186,9 +204,8 @@ describe("adaptive profile historical API hookup", () => {
       </ReadApiProvider>,
     )
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1))
-    const request = jest.mocked(global.fetch).mock.calls[0]
-    const query = JSON.parse(String(request[1]?.body)) as AnalysisQuery
+    await waitFor(() => expect(profileHistoryQueries()).toHaveLength(1))
+    const query = profileHistoryQueries()[0]
     expect(query.player_ids).toEqual([players[1].id])
   })
 
@@ -199,10 +216,12 @@ describe("adaptive profile historical API hookup", () => {
       json: async () => ({error: "Published weekly history unavailable"}),
     } as Response))
     profile(players[0])
+    fireEvent.click(screen.getByRole("button", {name: "Production"}))
     await waitFor(() => expect(
       screen.getByText("Published weekly history unavailable"),
     ).toBeTruthy())
     expect(screen.getByText(/Historical production unavailable/)).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", {name: "Draft value"}))
     expect(screen.getByRole("region", {name: "Draft value profile module"})).toBeTruthy()
   })
 })

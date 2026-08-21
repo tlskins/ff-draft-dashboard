@@ -31,6 +31,10 @@ interface ADPViewProps {
   rankingSummaries: any[]
   myPickNum: number
   compact?: boolean
+  adpRoundPage?: number
+  onAdpRoundPageChange?: (page: number) => void
+  pinnedPlayerId?: string | null
+  onPinPlayer?: (playerId: string) => void
 }
 
 const ADPView: React.FC<ADPViewProps> = ({
@@ -50,6 +54,10 @@ const ADPView: React.FC<ADPViewProps> = ({
   rankingSummaries,
   myPickNum,
   compact = false,
+  adpRoundPage,
+  onAdpRoundPageChange,
+  pinnedPlayerId,
+  onPinPlayer,
 }) => {
   const [currentView, setCurrentView] = useState<ViewType>('playersByADPRound')
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
@@ -207,9 +215,13 @@ const ADPView: React.FC<ADPViewProps> = ({
           <DraftDeskAdpRoundView
             addPlayerTarget={addPlayerTarget}
             boardSettings={boardSettings}
+            currPick={currPick}
+            currentPage={adpRoundPage}
             fantasySettings={fantasySettings}
             myPicks={myPicks}
             onSwitchToTargetsView={handleSwitchToTargetsView}
+            onCurrentPageChange={onAdpRoundPageChange}
+            onPinPlayer={onPinPlayer}
             playerLib={playerLib}
             playerRanks={playerRanks}
             playerTargets={playerTargets}
@@ -218,6 +230,7 @@ const ADPView: React.FC<ADPViewProps> = ({
             replacePlayerTargets={replacePlayerTargets}
             setViewPlayerId={setViewPlayerId}
             viewPlayerId={viewPlayerId}
+            pinnedPlayerId={pinnedPlayerId}
           />
         ) : currentView === 'playersByADPRound' ? (
           <PlayersByADPRoundView

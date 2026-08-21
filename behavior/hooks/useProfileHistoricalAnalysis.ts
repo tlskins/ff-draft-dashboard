@@ -57,7 +57,7 @@ export const useProfileHistoricalAnalysis = ({
     readiness.data ? buildCompletedSeasonWindows(readiness.data) : []
   ), [readiness.data])
   const seasons = (
-    completedWindows.find(window => window.size === 3)
+    completedWindows.find(window => window.size === 1)
     || completedWindows[completedWindows.length - 1]
   )?.seasons || []
   const seasonSignature = seasons.join(",")

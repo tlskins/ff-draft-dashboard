@@ -382,6 +382,30 @@
 .playerCard:focus-within .playerCardActions { display: flex; }
 .playerCardActions button,
 .playerCardActions select { min-height: 18px; padding: 1px 3px; border: 1px solid #b8c1c5; border-radius: 2px; color: #36556a; background: #f4f3ef; font-size: 7px; line-height: 1; }
+.playerCardPin {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  display: none;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border: 1px solid #9dabb1;
+  border-radius: 2px;
+  color: #315e75;
+  background: #f4f3ef;
+  font-size: 10px;
+  line-height: 1;
+}
+.playerCard:hover .playerCardPin,
+.playerCard:focus-within .playerCardPin,
+.playerCardPin[aria-pressed="true"] { display: grid; place-items: center; }
+.playerCard:hover .tierFlag,
+.playerCard:focus-within .tierFlag { margin-right: 18px; }
+.adpTimingCue { flex: 0 0 auto; padding: 1px 3px; border-radius: 2px; font-size: 6px; font-weight: 750; letter-spacing: .02em; }
+.adpTimingEarly { color: #71541d; background: #eee0bd; }
+.adpTimingRange { color: #315e75; background: #d6e5eb; }
+.adpTimingValue { color: #285d45; background: #d3e6db; }
 .targetFlag,
 .tierFlag { flex: 0 0 auto; padding: 1px 3px; border-radius: 2px; color: #47535a; background: #d0d7da; font-size: 7px; font-weight: 650; line-height: 1.2; }
 .targetFlag { color: #2e668e; background: #d6e2e8; }
@@ -500,6 +524,15 @@
 .profileOutlook p { margin: 3px 0 0; color: #3f4a51; font-size: 9px; line-height: 1.35; }
 .profileOutlook footer { margin-top: 4px; color: #69767d; font-size: 7px; line-height: 1.3; }
 .profileOutlook .profileOutlookUnavailable { color: #69767d; font-style: italic; }
+.profileInjuryBanner { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 6px 9px; border-bottom: 1px solid #cbd2d4; background: #eee6d8; }
+.profileInjuryMark { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; color: #fff; background: #a66a31; font-size: 10px; font-weight: 800; }
+.profileInjuryBanner strong { display: block; color: #5e452f; font-size: 8px; letter-spacing: .04em; text-transform: uppercase; }
+.profileInjuryBanner p { margin: 1px 0 0; color: #5e554d; font-size: 8px; line-height: 1.25; }
+.profileInjuryBanner small { color: #786a5e; font-size: 7px; white-space: nowrap; }
+.profileInjuryMaterial { background: #efdddd; }
+.profileInjuryMaterial .profileInjuryMark { background: var(--desk-danger); }
+.profileInjuryMaterial strong { color: #783f3f; }
+.profileInjuryReview { background: #eee6d8; }
 .profileNotes p { display: grid; grid-template-columns: 18px auto 1fr; gap: 5px; align-items: start; margin: 0; padding: 6px 10px; border-bottom: 1px solid #dfe2e2; color: #68737a; font-size: 9px; line-height: 1.3; }
 .profileNotes p > span { display: grid; width: 16px; height: 16px; place-items: center; border-radius: 3px; color: var(--desk-selection); background: #dde8ef; }
 .profileNotes p > strong { color: #263038; font-weight: 650; text-transform: capitalize; }
@@ -776,7 +809,7 @@
 .dockLayout {
   display: grid;
   min-height: 106px;
-  grid-template-columns: 140px minmax(500px, 1.25fr) minmax(420px, 1.35fr) 135px;
+  grid-template-columns: 140px minmax(460px, 1.2fr) minmax(390px, 1.25fr) 210px;
 }
 
 .dockPickStack,
@@ -881,9 +914,19 @@
 }
 .dockConnection strong { font-size: 9px; font-weight: 650; }
 .dockConnection small { grid-column: 2; color: #94a2aa; font-size: 8px; }
+.dockConnectionPrompt { align-content: start; padding-top: 6px; background: #25352f; }
+.dockConnectionPrompt > small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dockConnectionActions { grid-column: 2; display: flex; gap: 3px; margin-top: 3px; }
+.dockConnectionActions button { padding: 2px 5px; border: 1px solid #65777f; border-radius: 2px; color: #eef2f2; background: #34454d; font-size: 7px; font-weight: 650; }
+.dockConnectionActions button:first-child { border-color: #5a9878; background: #32664e; }
+.dockTicker { grid-column: 1 / -1; display: grid; gap: 1px; margin: 5px 0 0; padding: 4px 0 0; overflow: hidden; border-top: 1px solid #39464f; list-style: none; }
+.dockTicker li { display: flex; min-width: 0; gap: 4px; color: #9eabb1; font-size: 7px; line-height: 1.2; }
+.dockTicker li strong { flex: 0 0 auto; color: #d9e0e2; font-size: 7px; }
+.dockTicker li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dockTicker .dockTickerWarning strong { color: #e0b56e; }
 
 @media (max-width: 1439px) {
-  .dockLayout { grid-template-columns: 130px minmax(430px, 1.2fr) minmax(390px, 1.25fr) 125px; }
+  .dockLayout { grid-template-columns: 130px minmax(400px, 1.15fr) minmax(350px, 1.2fr) 190px; }
 }
 
 @media (max-width: 1279px) {

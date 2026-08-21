@@ -56,6 +56,8 @@ const RankingView = ({
   removePlayerTarget,
   onEditRankings,
   compact = false,
+  pinnedPlayerId,
+  onPinPlayer,
 }: RankingViewProps) => {
   const [pair, setPair] = useState<PositionPair>("RB_WR")
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
@@ -110,7 +112,10 @@ const RankingView = ({
         key={`${player.id}-${index}`}
         boardSettings={boardSettings}
         onFocusPlayer={id => !animating && setViewPlayerId(id)}
+        onPinPlayer={onPinPlayer}
+        pinned={pinnedPlayerId === player.id}
         player={player}
+        currentPick={currPick}
         leadingRank={metrics.posRank || index + 1}
         rankContext={ranking}
         target={favorite(player.id)}

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { toast } from "react-toastify"
 import {
   DraftSourceHealth,
   DraftSnapshot,
@@ -24,6 +23,7 @@ import type {
   DraftPersistenceBoundary,
   DraftSourceHealthFreshness,
 } from "../boundaryState"
+import {appendDraftActivity, DraftActivityItem} from "../draftActivity"
 
 interface UseDraftListenerProps {
   playerLib: PlayerLibrary
@@ -45,8 +45,6 @@ interface UseDraftListenerProps {
 
 interface DraftDecision {
   listening: boolean | null
-  acceptToastId: string | number
-  rejectToastId: string | number
 }
 
 const LISTENER_STALE_AFTER_MS = 7_000
@@ -76,6 +74,7 @@ export const useDraftListener = ({
   const lastListenerAck = useRef<number | null>(null)
   const lastSourceHealthAck = useRef<number | null>(null)
   const settingsRef = useRef(settings)
+  const pendingDraftRef = useRef<DraftSnapshot | null>(null)
   settingsRef.current = settings
 
   const [activeDraftListenerTitle, setActiveDraftListenerTitle] =
@@ -98,6 +97,8 @@ export const useDraftListener = ({
       error: null,
       canRetry: false,
     })
+  const [pendingDraft, setPendingDraft] = useState<DraftSnapshot | null>(null)
+  const [draftActivity, setDraftActivity] = useState<DraftActivityItem[]>([])
 
   const updatePersistence = useCallback((
     state: DraftPersistenceBoundary["state"],
@@ -210,14 +211,13 @@ export const useDraftListener = ({
           undefined,
           event.pick.rosterIndex,
         )
-        toast(
-          `Pick #${overallPick}: ${player.fullName} - ${player.position} - ${player.team}`,
-          {
-            type: "success",
-            theme: "colored",
-            position: "top-right",
-          },
-        )
+        setDraftActivity(current => appendDraftActivity(current, [{
+          id: event.eventId,
+          label: `Pick #${overallPick} · ${player.fullName}`,
+          detail: `${player.position} · ${player.team}`,
+          tone: "positive",
+          occurredAt: Date.now(),
+        }]))
         return
       }
 
@@ -228,14 +228,13 @@ export const useDraftListener = ({
         fallbackPlayer,
         event.pick.rosterIndex,
       )
-      toast(
-        `Pick #${overallPick}: ${fallbackPlayer.fullName} was added from the live draft but is missing ranking data`,
-        {
-          type: "warning",
-          theme: "colored",
-          position: "top-right",
-        },
-      )
+      setDraftActivity(current => appendDraftActivity(current, [{
+        id: event.eventId,
+        label: `Pick #${overallPick} · ${fallbackPlayer.fullName}`,
+        detail: "Live pick is missing ranking data",
+        tone: "warning",
+        occurredAt: Date.now(),
+      }]))
     })
 
     if (reduction.lastProcessedPick !== null) {
@@ -259,59 +258,43 @@ export const useDraftListener = ({
   }, [])
 
   const promptForDraft = useCallback((snapshot: DraftSnapshot) => {
-    const acceptToastId = toast(`Listen to draft: ${snapshot.title}`, {
-      autoClose: false,
-      hideProgressBar: true,
-      type: "success",
-      theme: "colored",
-      position: "top-right",
-      containerId: "AcceptListenDraft",
-      onClick: () => {
-        const decision = decisions.current[snapshot.id]
-        if (!decision) {
-          return
-        }
+    decisions.current[snapshot.id] = {listening: null}
+    pendingDraftRef.current = snapshot
+    setPendingDraft(snapshot)
+  }, [])
 
-        decision.listening = true
-        setActiveDraftListenerTitle(snapshot.title)
-        setActiveDraftSessionId(snapshot.id)
-        toast.dismiss(decision.rejectToastId)
-
-        const pendingSnapshot = pendingSnapshots.current[snapshot.id]
-        const acceptedSnapshot = pendingSnapshot || snapshot
-        onDraftMetadata?.(acceptedSnapshot)
-        if (pendingSnapshot) {
-          applySnapshot(acceptedSnapshot)
-          delete pendingSnapshots.current[snapshot.id]
-        }
-      },
-    })
-
-    const rejectToastId = toast(`Ignore draft: ${snapshot.title}`, {
-      autoClose: false,
-      hideProgressBar: true,
-      type: "error",
-      theme: "colored",
-      position: "top-right",
-      containerId: "RejectListenDraft",
-      onClick: () => {
-        const decision = decisions.current[snapshot.id]
-        if (!decision) {
-          return
-        }
-
-        decision.listening = false
-        delete pendingSnapshots.current[snapshot.id]
-        toast.dismiss(decision.acceptToastId)
-      },
-    })
-
-    decisions.current[snapshot.id] = {
-      listening: null,
-      acceptToastId,
-      rejectToastId,
-    }
+  const acceptPendingDraft = useCallback(() => {
+    const snapshot = pendingDraftRef.current
+    if (!snapshot) return
+    const decision = decisions.current[snapshot.id]
+    if (!decision) return
+    decision.listening = true
+    setActiveDraftListenerTitle(snapshot.title)
+    setActiveDraftSessionId(snapshot.id)
+    pendingDraftRef.current = null
+    setPendingDraft(null)
+    const acceptedSnapshot = pendingSnapshots.current[snapshot.id] || snapshot
+    onDraftMetadata?.(acceptedSnapshot)
+    applySnapshot(acceptedSnapshot)
+    delete pendingSnapshots.current[snapshot.id]
+    setDraftActivity(current => appendDraftActivity(current, [{
+      id: `connected:${snapshot.id}`,
+      label: `Connected · ${snapshot.title}`,
+      detail: "Live draft feed accepted",
+      tone: "positive",
+      occurredAt: Date.now(),
+    }]))
   }, [applySnapshot, onDraftMetadata])
+
+  const ignorePendingDraft = useCallback(() => {
+    const snapshot = pendingDraftRef.current
+    if (!snapshot) return
+    const decision = decisions.current[snapshot.id]
+    if (decision) decision.listening = false
+    delete pendingSnapshots.current[snapshot.id]
+    pendingDraftRef.current = null
+    setPendingDraft(null)
+  }, [])
 
   const processExtensionMessage = useCallback((event: MessageEvent) => {
     if (event.source !== window) {
@@ -406,5 +389,9 @@ export const useDraftListener = ({
     draftSourceHealth,
     draftPersistence,
     retryDraftPersistence,
+    pendingDraft,
+    acceptPendingDraft,
+    ignorePendingDraft,
+    draftActivity,
   }
 }

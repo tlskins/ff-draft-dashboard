@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { toast } from 'react-toastify';
 import {
   FantasyPosition,
   FantasySettings,
@@ -59,10 +58,12 @@ import {
   createBoundedResidualRunShadowForecast,
 } from "../draft-advisor/boundedResidualRunShadow";
 import { deriveRunOnlyShadowCaptureStatus } from "../draft-advisor/runOnlyShadowCaptureStatus";
+import {appendDraftActivity, DraftActivityItem} from "../draftActivity";
 
 export enum HighlightOption {
   PREDICTED_TAKEN = "Highlight Next Taken",
   PREDICTED_TAKEN_NEXT_TURN = "Highlight Next-Next Taken",
+  PREDICTED_TAKEN_BOTH = "Highlight Next + Next-Next",
 }
 
 type PredictedPicks = { [playerId: string]: number };
@@ -116,17 +117,6 @@ const detectTierRuns = (
     });
 
     return { tierRunAlerts, nextRunTiers, runDetected };
-};
-
-const showTierRunAlerts = (alerts: string[]) => {
-    alerts.forEach(alert => {
-        toast(alert, {
-            type: 'warning',
-            position: 'top-right',
-            theme: 'colored',
-            autoClose: 10000,
-        });
-    });
 };
 
 interface UsePredictionsProps {
@@ -186,7 +176,8 @@ export const usePredictions = ({
     [FantasyPosition.TIGHT_END]: 0,
   });
   const [numPostPredicts, setNumPostPredicts] = useState(0);
-  const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN);
+  const [highlightOption, setHighlightOption] = useState<HighlightOption>(HighlightOption.PREDICTED_TAKEN_BOTH);
+  const [predictionActivity, setPredictionActivity] = useState<DraftActivityItem[]>([])
 
   const maxCurrPick = useRef(0);
   const forecastEvidenceRecorder = useRef(new ReplayForecastEvidenceRecorder());
@@ -363,7 +354,7 @@ export const usePredictions = ({
     maxCurrPick.current = currPick;
     // Determine how far to predict based on highlight option
     let predictUpToPick: number;
-    if (highlightOption === HighlightOption.PREDICTED_TAKEN_NEXT_TURN) {
+    if (highlightOption !== HighlightOption.PREDICTED_TAKEN) {
       // Predict up to my next next turn - find my next 2 picks
       const nextPick = getMyNextPick(currPick, myPickNum, settings.numTeams);
       const nextNextPick = getMyNextPick(nextPick, myPickNum, settings.numTeams);
@@ -391,7 +382,16 @@ export const usePredictions = ({
         predRunTiers
     );
 
-    showTierRunAlerts(tierRunAlerts);
+    if (tierRunAlerts.length > 0) {
+      setPredictionActivity(current => appendDraftActivity(current,
+        tierRunAlerts.map(alert => ({
+          id: `tier-run:${alert}`,
+          label: "Tier pressure",
+          detail: alert,
+          tone: "warning" as const,
+          occurredAt: Date.now(),
+        }))))
+    }
 
     if (runDetected) {
       setPredRunTiers(nextRunTiers);
@@ -611,5 +611,6 @@ export const usePredictions = ({
     runOnlyShadowCaptureStatus,
     replayCaptureStatus,
     empiricalBaseShadowCaptureStatus,
+    predictionActivity,
   };
 };

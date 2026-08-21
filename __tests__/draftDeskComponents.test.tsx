@@ -113,6 +113,10 @@ describe("Phase 14A desk components", () => {
     }
     render(
       <DraftDock
+        activity={[{
+          id: "alert-1", label: "Tier pressure", detail: "Three RBs may go before your pick",
+          tone: "warning", occurredAt: 1,
+        }]}
         currPick={4}
         currRound={["qb-mine", null, null]}
         currRoundPick={1}
@@ -121,6 +125,8 @@ describe("Phase 14A desk components", () => {
         isEvenRound={false}
         myPickNum={2}
         myPicks={[2, 5, 8]}
+        onAcceptDraft={jest.fn()}
+        onIgnoreDraft={jest.fn()}
         onRemovePick={jest.fn()}
         playerLib={playerLib}
         rosters={[
@@ -132,6 +138,7 @@ describe("Phase 14A desk components", () => {
           roster({}),
         ]}
         roundIdx={1}
+        pendingDraftTitle="ESPN Mock 123"
         setCurrPick={jest.fn()}
         setViewPlayerId={jest.fn()}
         settings={settings}
@@ -142,6 +149,10 @@ describe("Phase 14A desk components", () => {
     expect(tape.textContent).toContain("#4")
     expect(tape.textContent).toContain("#5 · 1 away")
     expect(screen.getByTestId("draft-dock-roster")).toBeTruthy()
+    expect(screen.getByRole("list", {name: "Draft activity ticker"}).textContent)
+      .toContain("Three RBs may go before your pick")
+    expect(screen.getByRole("button", {name: "Connect"})).toBeTruthy()
+    expect(screen.getByText("ESPN Mock 123")).toBeTruthy()
 
     fireEvent.click(screen.getByRole("button", {name: "Your roster"}))
     expect(screen.getByTestId("draft-dock-roster").textContent).toContain("Observed roster slots")

@@ -10,6 +10,7 @@ import DraftDeskPlayerCard from "./shared/DraftDeskPlayerCard"
 import DeskSegmentedControl from "./draft-desk/DeskSegmentedControl"
 import styles from "./DraftDesk.module.css"
 import {playerShortName} from "../behavior/presenters"
+import type {DraftActivityItem} from "../behavior/draftActivity"
 
 type DraftDockMode = "round" | "roster" | "needs"
 
@@ -33,6 +34,10 @@ interface DraftDockProps {
   connected?: boolean
   connectionLabel?: string
   connectionDetail?: string
+  activity?: DraftActivityItem[]
+  pendingDraftTitle?: string | null
+  onAcceptDraft?: () => void
+  onIgnoreDraft?: () => void
 }
 
 const modeLabels: Array<{id: DraftDockMode, label: string}> = [
@@ -61,6 +66,10 @@ const DraftDock = ({
   connected = false,
   connectionLabel = "Draft feed ready",
   connectionDetail = "Local board current",
+  activity = [],
+  pendingDraftTitle,
+  onAcceptDraft,
+  onIgnoreDraft,
 }: DraftDockProps) => {
   const [mode, setMode] = useState<DraftDockMode>("roster")
   const dockRef = useRef<HTMLElement>(null)
@@ -158,10 +167,29 @@ const DraftDock = ({
               )}
             </div>
           </section>
-          <section className={styles.dockConnection} aria-label="Draft connection status">
-            <span className={connected ? styles.liveDot : styles.idleDot} aria-hidden="true" />
-            <strong>{connectionLabel}</strong>
-            <small>{connectionDetail}</small>
+          <section className={`${styles.dockConnection} ${pendingDraftTitle ? styles.dockConnectionPrompt : ""}`} aria-label="Draft connection status">
+            {pendingDraftTitle ? <>
+              <span className={styles.liveDot} aria-hidden="true" />
+              <strong>Draft found</strong>
+              <small title={pendingDraftTitle}>{pendingDraftTitle}</small>
+              <div className={styles.dockConnectionActions}>
+                <button onClick={onAcceptDraft} type="button">Connect</button>
+                <button onClick={onIgnoreDraft} type="button">Ignore</button>
+              </div>
+            </> : <>
+              <span className={connected ? styles.liveDot : styles.idleDot} aria-hidden="true" />
+              <strong>{connectionLabel}</strong>
+              <small>{connectionDetail}</small>
+            </>}
+            {activity.length > 0 && (
+              <ol aria-label="Draft activity ticker" className={styles.dockTicker}>
+                {activity.slice(-3).reverse().map(item => (
+                  <li className={item.tone === "warning" ? styles.dockTickerWarning : ""} key={item.id}>
+                    <strong>{item.label}</strong>{item.detail && <span>{item.detail}</span>}
+                  </li>
+                ))}
+              </ol>
+            )}
           </section>
         </div>
     </aside>

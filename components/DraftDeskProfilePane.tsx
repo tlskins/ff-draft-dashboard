@@ -75,7 +75,7 @@ const profileHistory = (player: Player, settings: FantasySettings) =>
           : stats.recTgt,
     }))
     .sort((left, right) => Number(left.season) - Number(right.season))
-    .slice(-3)
+    .slice(-1)
 
 const statusTimestampLabel = (value: string): string =>
   value.replace("T", " ").replace(":00Z", " UTC")
@@ -357,8 +357,8 @@ const DraftDeskProfilePane = ({
   fixtureDetails,
   rankingsSeason,
 }: DraftDeskProfilePaneProps) => {
-  const [detailsOpen, setDetailsOpen] = useState(false)
-  const [pinnedModule, setPinnedModule] = useState<ProfileModuleId | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(true)
+  const [pinnedModule, setPinnedModule] = useState<ProfileModuleId | null>("draft_context")
   const profileHistorical = useProfileHistoricalAnalysis({
     playerId: player?.id || "",
     scoringProfile: settings.ppr ? "ppr" : "standard",
@@ -530,6 +530,28 @@ const DraftDeskProfilePane = ({
             hidden={activeModule !== "outlook"}
             role="region"
           >
+            {activeModule === "outlook" && (primaryStatusEvent || artifactInjuryStatus) && (
+              <aside
+                aria-label={`${player.fullName} outlook injury designation`}
+                className={`${styles.profileInjuryBanner} ${(
+                  primaryStatusEvent?.recommendation_impact === "material"
+                  || (artifactInjuryStatus && injuryStatusImpact(artifactInjuryStatus.status) === "material")
+                ) ? styles.profileInjuryMaterial : styles.profileInjuryReview}`}
+              >
+                <span aria-hidden="true" className={styles.profileInjuryMark}>!</span>
+                <div>
+                  <strong>{primaryStatusEvent
+                    ? primaryStatusEvent.status.replaceAll("_", " ")
+                    : injuryStatusLabel(artifactInjuryStatus!.status)}</strong>
+                  <p>{primaryStatusEvent
+                    ? "Current designation may affect draft availability."
+                    : "Current ESPN fantasy injury designation."}</p>
+                </div>
+                <small>{primaryStatusEvent
+                  ? playerStatusSourceLabel(primaryStatusEvent.source)
+                  : "ESPN fantasy status"}</small>
+              </aside>
+            )}
             {statusSummary?.text && (
               <section aria-label="Structured player outlook" className={styles.profileOutlook}>
                 <header><span>Structured player outlook</span></header>
@@ -611,7 +633,7 @@ const DraftDeskProfilePane = ({
             />
           </div>
 
-          <details className={styles.profileDetails} onToggle={event => setDetailsOpen(event.currentTarget.open)}>
+          <details className={styles.profileDetails} onToggle={event => setDetailsOpen(event.currentTarget.open)} open={detailsOpen}>
             <summary>Advanced rankings and historical comparison</summary>
             {detailsOpen && <>
               <PlayerRankingTable boardSettings={boardSettings} player={player} settings={settings} />

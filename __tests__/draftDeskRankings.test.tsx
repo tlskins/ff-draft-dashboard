@@ -66,6 +66,18 @@ describe("Phase 14A unified rankings pane", () => {
     expect(setDraftView).toHaveBeenCalledWith("Best By ADP Round")
   })
 
+  it("retains the ADP round page while the user visits position rankings", () => {
+    const base = props()
+    const view = render(<RankingsBoard {...base} compact draftView="Best By ADP Round" />)
+    expect(screen.getByText("ADP rounds 1–3")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", {name: "Next ADP rounds"}))
+    expect(screen.getByText("ADP rounds 2–4")).toBeTruthy()
+
+    view.rerender(<RankingsBoard {...base} compact draftView="Rankings By Position" />)
+    view.rerender(<RankingsBoard {...base} compact draftView="Best By ADP Round" />)
+    expect(screen.getByText("ADP rounds 2–4")).toBeTruthy()
+  })
+
   it("shows two positional lanes and switches between the approved pairs", () => {
     render(<RankingsBoard {...props()} compact />)
 

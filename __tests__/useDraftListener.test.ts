@@ -1,12 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react"
-import { toast } from "react-toastify"
 import { useDraftListener } from "../behavior/hooks/useDraftListener"
 import { FantasyPosition, NFLTeam } from "../types"
-
-jest.mock("react-toastify", () => {
-  const mockedToast = Object.assign(jest.fn(), { dismiss: jest.fn() })
-  return { toast: mockedToast }
-})
 
 describe("useDraftListener", () => {
   beforeEach(() => {
@@ -163,8 +157,7 @@ describe("useDraftListener", () => {
           },
         },
       }))
-      const toastMock = toast as unknown as jest.Mock
-      toastMock.mock.calls[0][1].onClick()
+      result.current.acceptPendingDraft()
     })
 
     await waitFor(() => expect(result.current.draftPersistence).toMatchObject({
@@ -223,8 +216,7 @@ describe("useDraftListener", () => {
 
     act(() => {
       send([firstPick])
-      const toastMock = toast as unknown as jest.Mock
-      toastMock.mock.calls[0][1].onClick()
+      result.current.acceptPendingDraft()
     })
     await waitFor(() => expect(persistEvents).toHaveBeenCalledTimes(1))
     act(() => send([firstPick, secondPick]))
@@ -245,7 +237,7 @@ describe("useDraftListener", () => {
     const setCurrPick = jest.fn()
     const setDraftStarted = jest.fn()
 
-    renderHook(() =>
+    const {result} = renderHook(() =>
       useDraftListener({
         playerLib: {
           "4362628": {
@@ -289,9 +281,8 @@ describe("useDraftListener", () => {
 
     expect(onDraftPlayer).not.toHaveBeenCalled()
 
-    const toastMock = toast as unknown as jest.Mock
-    const acceptOptions = toastMock.mock.calls[0][1]
-    act(() => acceptOptions.onClick())
+    expect(result.current.pendingDraft?.title).toBe("Regression Mock")
+    act(() => result.current.acceptPendingDraft())
 
     expect(onDraftPlayer).toHaveBeenCalledWith(
       "4362628",
@@ -308,7 +299,7 @@ describe("useDraftListener", () => {
     const setCurrPick = jest.fn()
     const setDraftStarted = jest.fn()
 
-    renderHook(() =>
+    const {result} = renderHook(() =>
       useDraftListener({
         playerLib: {
           "4362628": {
@@ -370,9 +361,7 @@ describe("useDraftListener", () => {
       dispatchSnapshot("4430807", "Bijan Robinson", "ATL", "RB", "R1, P3")
     })
 
-    const toastMock = toast as unknown as jest.Mock
-    const acceptOptions = toastMock.mock.calls[0][1]
-    act(() => acceptOptions.onClick())
+    act(() => result.current.acceptPendingDraft())
 
     expect(onDraftPlayer).toHaveBeenNthCalledWith(
       1,
@@ -396,7 +385,7 @@ describe("useDraftListener", () => {
     const setCurrPick = jest.fn()
     const setDraftStarted = jest.fn()
 
-    renderHook(() =>
+    const {result} = renderHook(() =>
       useDraftListener({
         playerLib: {
           "4362628": {
@@ -438,9 +427,7 @@ describe("useDraftListener", () => {
       }))
     })
 
-    const toastMock = toast as unknown as jest.Mock
-    const acceptOptions = toastMock.mock.calls[0][1]
-    act(() => acceptOptions.onClick())
+    act(() => result.current.acceptPendingDraft())
 
     expect(onDraftPlayer).toHaveBeenCalledWith(
       "4870808",
@@ -455,10 +442,13 @@ describe("useDraftListener", () => {
     )
     expect(setCurrPick).toHaveBeenCalledWith(13)
     expect(setDraftStarted).toHaveBeenCalledWith(true)
-    expect(toastMock).toHaveBeenCalledWith(
-      expect.stringContaining("missing ranking data"),
-      expect.objectContaining({ type: "warning" }),
-    )
+    expect(result.current.draftActivity).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: "Pick #12 · Jeremiyah Love",
+        detail: "Live pick is missing ranking data",
+        tone: "warning",
+      }),
+    ]))
   })
 
   it("uses ESPN league metadata instead of stale dashboard settings", () => {
@@ -467,7 +457,7 @@ describe("useDraftListener", () => {
     const setCurrPick = jest.fn()
     const setDraftStarted = jest.fn()
 
-    renderHook(() =>
+    const {result} = renderHook(() =>
       useDraftListener({
         playerLib: {
           "4429795": {
@@ -520,9 +510,7 @@ describe("useDraftListener", () => {
       }))
     })
 
-    const toastMock = toast as unknown as jest.Mock
-    const acceptOptions = toastMock.mock.calls[0][1]
-    act(() => acceptOptions.onClick())
+    act(() => result.current.acceptPendingDraft())
 
     expect(onDraftMetadata).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -591,7 +579,7 @@ describe("useDraftListener", () => {
       },
     }
 
-    const { rerender } = renderHook(
+    const { result, rerender } = renderHook(
       ({ numTeams }) => useDraftListener({
         playerLib,
         playersByPosByTeam: {},
@@ -626,9 +614,7 @@ describe("useDraftListener", () => {
 
     rerender({ numTeams: 10 })
 
-    const toastMock = toast as unknown as jest.Mock
-    const acceptOptions = toastMock.mock.calls[0][1]
-    act(() => acceptOptions.onClick())
+    act(() => result.current.acceptPendingDraft())
 
     expect(onDraftPlayer).toHaveBeenCalledWith(
       "4429795",

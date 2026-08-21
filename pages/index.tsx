@@ -229,6 +229,10 @@ const Home: FC = () => {
     draftSourceHealthFreshness,
     draftPersistence,
     retryDraftPersistence,
+    pendingDraft,
+    acceptPendingDraft,
+    ignorePendingDraft,
+    draftActivity,
   } = useDraftListener({
     playerLib,
     playersByPosByTeam,
@@ -275,6 +279,7 @@ const Home: FC = () => {
     runOnlyShadowCaptureStatus,
     replayCaptureStatus,
     empiricalBaseShadowCaptureStatus,
+    predictionActivity,
   } = usePredictions({
     rosters,
     playerRanks,
@@ -303,6 +308,11 @@ const Home: FC = () => {
     return Array.from(availableById.values())
       .sort((left, right) => left.id.localeCompare(right.id))
   }, [playerRanks])
+  const draftTickerActivity = useMemo(() => (
+    [...draftActivity, ...predictionActivity]
+      .sort((left, right) => left.occurredAt - right.occurredAt)
+      .slice(-8)
+  ), [draftActivity, predictionActivity])
   const automaticComparisonSet = useMemo(() => buildAdvisorComparisonSet({
     recommendations,
     availablePlayers: analysisAvailablePlayers,
@@ -334,6 +344,14 @@ const Home: FC = () => {
   const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
   const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
+  const [pinnedProfilePlayerId, setPinnedProfilePlayerId] = useState<string | null>(null)
+  const focusBoardPlayer = useCallback((playerId: string | null) => {
+    if (!pinnedProfilePlayerId) setViewPlayerId(playerId)
+  }, [pinnedProfilePlayerId])
+  const togglePinnedProfilePlayer = useCallback((playerId: string) => {
+    setPinnedProfilePlayerId(current => current === playerId ? null : playerId)
+    setViewPlayerId(playerId)
+  }, [])
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
   const [mobileView, setMobileView] = useState<MobileView>(MobileView.OVERVIEW)
   const [analysisOpen, setAnalysisOpen] = useState(false)
@@ -1094,7 +1112,9 @@ const Home: FC = () => {
                             rankingSummaries={rankingSummaries}
                             onSelectPlayer={onSelectPlayer}
                             onPurgePlayer={onPurgeAvailPlayer}
-                            setViewPlayerId={setViewPlayerId}
+                            setViewPlayerId={focusBoardPlayer}
+                            pinnedPlayerId={pinnedProfilePlayerId}
+                            onPinPlayer={togglePinnedProfilePlayer}
                             isEditingCustomRanking={isEditingCustomRanking}
                             hasCustomRanking={usingCustomRanking}
                             canEditCustomRankings={canEditCustomRankings()}
@@ -1494,11 +1514,15 @@ const Home: FC = () => {
           settings={settings}
           boardSettings={boardSettings}
           connected={draftCaptureState === "live"}
+          activity={draftTickerActivity}
           connectionDetail={draftCaptureState === "live" ? "Pick feed current" : "Local board current"}
           connectionLabel={draftCaptureState === "live" ? "ESPN connected" : "Draft feed ready"}
           draftHistory={draftHistory}
           myPickNum={myPickNum}
           myPicks={myPicks}
+          pendingDraftTitle={pendingDraft?.title || null}
+          onAcceptDraft={acceptPendingDraft}
+          onIgnoreDraft={ignorePendingDraft}
           onRemovePick={onRemovePick}
           onHeightChange={onDraftDeskDockHeightChange}
           setCurrPick={setCurrPick}

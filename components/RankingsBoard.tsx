@@ -86,6 +86,8 @@ interface RankingsBoardProps {
   rankingProfileControls: RankingProfileControls
   compact?: boolean
   hideCompactModeControl?: boolean
+  pinnedPlayerId?: string | null
+  onPinPlayer?: (playerId: string) => void
 }
 
 const RankingsBoard = ({
@@ -143,10 +145,13 @@ const RankingsBoard = ({
   rankingProfileControls,
   compact = false,
   hideCompactModeControl = false,
+  pinnedPlayerId,
+  onPinPlayer,
 }: RankingsBoardProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [adpRoundPage, setAdpRoundPage] = useState(0)
 
   // Mobile state for EditRankingsView
   const [selectedPosition, setSelectedPosition] = useState<keyof PlayerRanks>(FantasyPosition.QUARTERBACK)
@@ -204,6 +209,8 @@ const RankingsBoard = ({
     addPlayerTarget,
     removePlayerTarget,
     compact,
+    pinnedPlayerId,
+    onPinPlayer,
   }
 
   const renderCurrentView = () => {
@@ -241,10 +248,13 @@ const RankingsBoard = ({
           boardSettings={boardSettings}
           compact={compact}
           currPick={currPick}
+          adpRoundPage={adpRoundPage}
           fantasySettings={fantasySettings}
           myPickNum={myPickNum}
           myPicks={myPicks}
           onSelectPlayer={onSelectPlayer}
+          onAdpRoundPageChange={setAdpRoundPage}
+          onPinPlayer={onPinPlayer}
           playerLib={playerLib}
           playerRanks={playerRanks}
           playerTargets={playerTargets}
@@ -254,6 +264,7 @@ const RankingsBoard = ({
           replacePlayerTargets={replacePlayerTargets}
           setViewPlayerId={setViewPlayerId}
           viewPlayerId={viewPlayerId}
+          pinnedPlayerId={pinnedPlayerId}
         />
       )
     }

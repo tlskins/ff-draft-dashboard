@@ -27,6 +27,11 @@ interface DraftDeskAdpRoundViewProps {
   removePlayerTarget: (playerId: string) => void
   removePlayerTargets: (playerIds: string[]) => void
   onSwitchToTargetsView: () => void
+  currentPage?: number
+  onCurrentPageChange?: (page: number) => void
+  currPick?: number
+  pinnedPlayerId?: string | null
+  onPinPlayer?: (playerId: string) => void
 }
 
 const AdpRankValueCue = ({
@@ -82,6 +87,11 @@ const DraftDeskAdpRoundView = ({
   removePlayerTarget,
   removePlayerTargets,
   onSwitchToTargetsView,
+  currentPage: controlledCurrentPage,
+  onCurrentPageChange,
+  currPick = 1,
+  pinnedPlayerId,
+  onPinPlayer,
 }: DraftDeskAdpRoundViewProps) => {
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("All")
   const {
@@ -105,6 +115,8 @@ const DraftDeskAdpRoundView = ({
     replacePlayerTargets,
     removePlayerTargets,
     positionFilter,
+    currentPage: controlledCurrentPage,
+    onCurrentPageChange,
   })
   const visibleRounds = roundsToShow.slice(0, 3)
   const {playersByADPRound, getRoundCount} = useADPRoundView({
@@ -175,7 +187,10 @@ const DraftDeskAdpRoundView = ({
                 key={player.id}
                 leadingRank={index + 1}
                 onFocusPlayer={setViewPlayerId}
+                onPinPlayer={onPinPlayer}
+                pinned={pinnedPlayerId === player.id}
                 player={player}
+                currentPick={currPick}
                 rankContext={`Target round ${target.targetAsEarlyAsRound}`}
                 target={target}
               />
@@ -209,7 +224,10 @@ const DraftDeskAdpRoundView = ({
                     key={player.id}
                     leadingRank={metrics.overallRank || "—"}
                     onFocusPlayer={setViewPlayerId}
+                    onPinPlayer={onPinPlayer}
+                    pinned={pinnedPlayerId === player.id}
                     player={player}
+                    currentPick={currPick}
                     rankContext={`Rank ${metrics.overallRank || "—"} · ADP ${metrics.adp ? getRoundAndPickShortText(metrics.adp, fantasySettings.numTeams) : "—"}`}
                     target={target}
                   />

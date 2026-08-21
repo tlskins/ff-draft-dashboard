@@ -11,6 +11,8 @@ interface DraftDeskPlayerCardProps {
   boardSettings: BoardSettings
   focused?: boolean
   onFocusPlayer?: (playerId: string) => void
+  onPinPlayer?: (playerId: string) => void
+  pinned?: boolean
   target?: PlayerTarget
   rankContext?: string
   urgency?: string
@@ -21,6 +23,7 @@ interface DraftDeskPlayerCardProps {
   compact?: boolean
   dock?: boolean
   className?: string
+  currentPick?: number
   rootProps?: Omit<React.HTMLAttributes<HTMLDivElement>, "aria-label" | "className" | "role">
 }
 
@@ -48,6 +51,8 @@ const DraftDeskPlayerCard = ({
   boardSettings,
   focused = false,
   onFocusPlayer,
+  onPinPlayer,
+  pinned = false,
   target,
   rankContext,
   urgency,
@@ -58,6 +63,7 @@ const DraftDeskPlayerCard = ({
   compact = false,
   dock = false,
   className = "",
+  currentPick,
   rootProps,
 }: DraftDeskPlayerCardProps) => {
   const { tier, adp, overallRank, posRank } = getPlayerMetrics(
@@ -72,6 +78,23 @@ const DraftDeskPlayerCard = ({
   const adpText = adp && adp < 999
     ? `ADP ${getRoundAndPickShortText(adp, fantasySettings.numTeams)}`
     : "ADP —"
+  const adpRoundDelta = currentPick && adp && adp < 999
+    ? (adp - currentPick) / fantasySettings.numTeams
+    : null
+  const adpTimingLabel = adpRoundDelta === null
+    ? null
+    : adpRoundDelta > 0.5
+      ? `${adpRoundDelta.toFixed(1)} RD EARLY`
+      : adpRoundDelta < -0.5
+        ? `${Math.abs(adpRoundDelta).toFixed(1)} RD VALUE`
+        : "ADP RANGE"
+  const adpTimingAccessible = adpRoundDelta === null
+    ? null
+    : adpRoundDelta > 0.5
+      ? `${adpRoundDelta.toFixed(1)} rounds before ${boardSettings.adpRanker} ADP`
+      : adpRoundDelta < -0.5
+        ? `${Math.abs(adpRoundDelta).toFixed(1)} rounds past ${boardSettings.adpRanker} ADP`
+        : `Within half a round of ${boardSettings.adpRanker} ADP`
 
   return (
     <div
@@ -108,16 +131,34 @@ const DraftDeskPlayerCard = ({
               <span className="sr-only">{player.position} </span>{player.team} · {rankContext || defaultRankContext}
             </p>
             <div className={styles.playerCardEvidence}>
-              {evidence || <>
-                <span>{adpText}</span>
+              {evidence || <span>{adpText}</span>}
+              {adpTimingLabel && <span
+                aria-label={adpTimingAccessible || undefined}
+                className={`${styles.adpTimingCue} ${adpRoundDelta! > 0.5
+                  ? styles.adpTimingEarly
+                  : adpRoundDelta! < -0.5 ? styles.adpTimingValue : styles.adpTimingRange}`}
+                title={`Current pick ${currentPick} · ${boardSettings.adpRanker} ADP ${adp!.toFixed(1)}`}
+              >{adpTimingLabel}</span>}
+              <>
                 {target && <span className={styles.targetFlag}>Target R{target.targetAsEarlyAsRound}</span>}
                 {urgency && urgencyCue && <span aria-hidden="true" className={styles.playerCardUrgency} title={urgency}>{urgencyCue}</span>}
-              </>}
+              </>
             </div>
           </div>
         )}
         {dock && <p className={styles.playerCardMeta}>{player.team}</p>}
         {actions && <div className={styles.playerCardActions}>{actions}</div>}
+        {onPinPlayer && !dock && <button
+          aria-label={`${pinned ? "Unlock" : "Lock"} ${player.fullName} in player profile`}
+          aria-pressed={pinned}
+          className={styles.playerCardPin}
+          onClick={event => {
+            event.stopPropagation()
+            onPinPlayer(player.id)
+          }}
+          title={pinned ? "Unlock player profile" : "Lock player profile"}
+          type="button"
+        >{pinned ? "●" : "○"}</button>}
       </div>
     </div>
   )

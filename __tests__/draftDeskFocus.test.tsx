@@ -115,8 +115,10 @@ describe("Phase 14A profile focus boundary", () => {
       />,
     )
 
-    expect(screen.getByRole("button", {name: "Auto"}).getAttribute("aria-pressed"))
+    expect(screen.getByRole("button", {name: "Draft value"}).getAttribute("aria-pressed"))
       .toBe("true")
+    expect(screen.getByText("Advanced rankings and historical comparison").parentElement?.hasAttribute("open"))
+      .toBe(true)
     expect(screen.getByRole("region", {name: "Draft value profile module"}))
       .toBeTruthy()
     fireEvent.click(screen.getByRole("button", {name: "Outlook"}))
@@ -420,6 +422,8 @@ describe("Phase 14A profile focus boundary", () => {
         settings={settings}
       />,
     )
+
+    fireEvent.click(screen.getByRole("button", {name: "Outlook"}))
 
     expect(screen.getByText("Hamstring limitation materially affects availability.")).toBeTruthy()
     expect(screen.getByText("One-game suspension appeal remains unresolved.")).toBeTruthy()
