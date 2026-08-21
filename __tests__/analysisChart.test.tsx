@@ -150,7 +150,7 @@ describe("declarative analysis chart", () => {
     const densityResponse = response({
       visualization: {
         type: "density",
-        x: "season",
+        x: "fantasy_points_mean",
         y: "fantasy_points_mean",
         color: "player_name",
       },
@@ -213,6 +213,29 @@ describe("declarative analysis chart", () => {
         facet: "team",
       },
     }))).toEqual({ok: false, error: "Unknown facet dimension: team"})
+  })
+
+  it("rejects ambiguous density and heatmap specifications", () => {
+    expect(prepareAnalysisChart(response({
+      visualization: {
+        type: "density",
+        x: "season",
+        y: "fantasy_points_mean",
+      },
+    }))).toEqual({
+      ok: false,
+      error: "Density charts require the same numeric metric for x and y",
+    })
+    expect(prepareAnalysisChart(response({
+      visualization: {
+        type: "heatmap",
+        x: "season",
+        y: "fantasy_points_mean",
+      },
+    }))).toEqual({
+      ok: false,
+      error: "Heatmaps require a categorical x dimension and color row dimension",
+    })
   })
 })
 

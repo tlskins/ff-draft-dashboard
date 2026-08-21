@@ -153,6 +153,24 @@ export const prepareAnalysisChart = (
   if (!metrics.has(spec.y)) {
     return {ok: false, error: `Unknown y metric: ${spec.y}`}
   }
+  if (
+    spec.type === "density"
+    && (spec.x !== spec.y || !metrics.has(spec.x))
+  ) {
+    return {
+      ok: false,
+      error: "Density charts require the same numeric metric for x and y",
+    }
+  }
+  if (
+    spec.type === "heatmap"
+    && (!dimensions.has(spec.x) || !spec.color)
+  ) {
+    return {
+      ok: false,
+      error: "Heatmaps require a categorical x dimension and color row dimension",
+    }
+  }
   if (spec.color && !dimensions.has(spec.color)) {
     return {ok: false, error: `Unknown color dimension: ${spec.color}`}
   }

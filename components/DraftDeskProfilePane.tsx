@@ -32,6 +32,17 @@ import {
   ProfileModuleId,
   selectProfileModule,
 } from "../behavior/profile/profileModuleController"
+import {
+  PROFILE_HISTORICAL_VIEW_IDS,
+  PROFILE_HISTORICAL_VIEWS,
+  ProfileHistoricalViewId,
+  historicalSeasonCount,
+  presentProfileHistoricalView,
+  selectProfileHistoricalView,
+} from "../behavior/profile/profileHistoricalViews"
+import {useProfileHistoricalAnalysis} from "../behavior/hooks/useProfileHistoricalAnalysis"
+import {formatSeasonList} from "../behavior/api/dataReadiness"
+import DeclarativeChart from "./analysis/DeclarativeChart"
 
 export interface DraftDeskFixtureProfileDetails {
   byeWeek?: number
@@ -111,6 +122,82 @@ const HistoryChart = ({player, settings}: {
           </tr>
         ))}</tbody>
       </table>
+    </section>
+  )
+}
+
+const ProfileHistoricalAnalysis = ({
+  player,
+  resource,
+  seasons,
+  settings,
+}: {
+  player: Player
+  resource: ReturnType<typeof useProfileHistoricalAnalysis>["resource"]
+  seasons: number[]
+  settings: FantasySettings
+}) => {
+  const [pinnedView, setPinnedView] = useState<ProfileHistoricalViewId | null>(null)
+  const readyResponse = resource.data && ["ready", "stale"].includes(resource.state)
+    ? resource.data
+    : null
+  const automaticView = readyResponse
+    ? selectProfileHistoricalView(readyResponse)
+    : null
+  const activeView = pinnedView || automaticView?.id || "weekly_trend"
+  const presentedResponse = readyResponse
+    ? presentProfileHistoricalView(readyResponse, activeView)
+    : null
+  const localHistoryAvailable = profileHistory(player, settings).length > 0
+  const unavailableReason = resource.error
+    || resource.unavailableReason
+    || "Historical analysis is unavailable."
+
+  return (
+    <section aria-label={`${player.fullName} API historical analysis`} className={styles.profileHistoricalAnalysis}>
+      <header className={styles.profileHistoricalController}>
+        <div>
+          <strong>{pinnedView ? "Pinned historical view" : "Auto historical view"}</strong>
+          <span aria-live="polite">{pinnedView
+            ? `${PROFILE_HISTORICAL_VIEWS[pinnedView].label} remains pinned while player focus changes.`
+            : automaticView?.explanation || "Waiting for validated weekly history."}</span>
+        </div>
+        <div aria-label="Historical profile view selection" className={styles.profileHistoricalButtons} role="group">
+          <button aria-pressed={pinnedView === null} onClick={() => setPinnedView(null)} type="button">Auto</button>
+          {PROFILE_HISTORICAL_VIEW_IDS.map(viewId => (
+            <button
+              aria-pressed={activeView === viewId}
+              disabled={!readyResponse}
+              key={viewId}
+              onClick={() => setPinnedView(viewId)}
+              type="button"
+            >{PROFILE_HISTORICAL_VIEWS[viewId].label}</button>
+          ))}
+        </div>
+      </header>
+
+      {presentedResponse ? (
+        <>
+          <DeclarativeChart compact response={presentedResponse} />
+          <footer className={styles.profileHistoricalProvenance}>
+            nflverse weekly stats · {formatSeasonList(seasons)} · {presentedResponse.row_count} recorded weeks
+            {resource.state === "stale" && ` · ${resource.staleReason || "refresh pending"}`}
+          </footer>
+        </>
+      ) : (
+        <>
+          <p className={styles.profileHistoricalState} role={resource.state === "loading" ? "status" : undefined}>
+            {resource.state === "loading"
+              ? "Loading validated weekly history…"
+              : `${unavailableReason}${localHistoryAvailable ? " Showing embedded seasonal history instead." : ""}`}
+          </p>
+          {localHistoryAvailable ? (
+            <HistoryChart player={player} settings={settings} />
+          ) : (
+            <p className={styles.profileHistoryEmpty}>Historical production unavailable; draft context remains available for rookies and players without NFL games.</p>
+          )}
+        </>
+      )}
     </section>
   )
 }
@@ -261,6 +348,10 @@ const DraftDeskProfilePane = ({
 }: DraftDeskProfilePaneProps) => {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [pinnedModule, setPinnedModule] = useState<ProfileModuleId | null>(null)
+  const profileHistorical = useProfileHistoricalAnalysis({
+    playerId: player?.id || "",
+    scoringProfile: settings.ppr ? "ppr" : "standard",
+  })
   return <section aria-label="Player profile and history" className={`${styles.pane} h-full overflow-y-auto text-left`}>
     <DeskPaneHeader
       actions={player ? <span className={styles.profileWatch}>Focused from board</span> : undefined}
@@ -304,7 +395,10 @@ const DraftDeskProfilePane = ({
       const outlookFreshness = artifactOutlook
         ? playerOutlookFreshness(artifactOutlook, rankingsSeason)
         : null
-      const historySeasonCount = profileHistory(player, settings).length
+      const historySeasonCount = Math.max(
+        profileHistory(player, settings).length,
+        historicalSeasonCount(profileHistorical.resource.data),
+      )
       const statusImpact = recommendationEvidence.some(
         event => event.recommendation_impact === "material",
       )
@@ -486,11 +580,12 @@ const DraftDeskProfilePane = ({
             hidden={activeModule !== "production"}
             role="region"
           >
-            {historySeasonCount > 0 ? (
-              <HistoryChart player={player} settings={settings} />
-            ) : (
-              <p className={styles.profileHistoryEmpty}>Historical production unavailable; draft context remains available for rookies and players without NFL games.</p>
-            )}
+            <ProfileHistoricalAnalysis
+              player={player}
+              resource={profileHistorical.resource}
+              seasons={profileHistorical.seasons}
+              settings={settings}
+            />
           </div>
 
           <details className={styles.profileDetails} onToggle={event => setDetailsOpen(event.currentTarget.open)}>

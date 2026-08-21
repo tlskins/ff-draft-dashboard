@@ -823,6 +823,13 @@ rollback gates pass while Realtime remains disabled. **Passed at dashboard
 implementation commit `823cbc4` with Cloud Run revision
 `drafty-read-api-00002-r7r`.**
 
+Post-closeout amendment: the focused-player profile now consumes one bounded,
+cached weekly historical query and deterministically presents a scoring
+density, season-faceted weekly heatmap, or weekly trend with manual pins and
+honest local fallbacks. The generic renderer now enforces type-specific
+density and heatmap semantics. See
+`docs/phase16-profile-history-hookup.md`.
+
 ## Deferred product tracks
 
 ### Prediction-v2 promotion decision

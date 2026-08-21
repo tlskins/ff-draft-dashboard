@@ -60,7 +60,7 @@ const explanation = (
     return "Current outlook evidence is the strongest available player context."
   }
   if (id === "production") {
-    return `${evidence.historySeasonCount} seasons make the production trend the strongest evidence.`
+    return `${evidence.historySeasonCount} seasons make historical production the strongest available evidence.`
   }
   if (evidence.historySeasonCount === 0) {
     return "Draft context leads because no NFL production history is available."

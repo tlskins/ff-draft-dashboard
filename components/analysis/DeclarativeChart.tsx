@@ -10,6 +10,7 @@ import {
 
 
 interface DeclarativeChartProps {
+  compact?: boolean
   response: AnalysisQueryResponse
   onSelectPlayer?: (playerId: string) => void
 }
@@ -175,7 +176,7 @@ const HeatmapPanel = ({model, points, facetLabel, onSelectPlayer}: ChartPanelPro
   const plotTop = MARGIN.top
   const plotBottom = HEIGHT - MARGIN.bottom
   const xValues = Array.from(new Set(
-    [...points].sort((left, right) => left.x - right.x).map(point => point.xLabel),
+    [...model.points].sort((left, right) => left.x - right.x).map(point => point.xLabel),
   ))
   const rowValues = Array.from(new Set(points.map(point => point.series)))
   const cellWidth = (plotRight - plotLeft) / Math.max(1, xValues.length)
@@ -359,6 +360,7 @@ const ChartPanel = (props: ChartPanelProps) => {
 }
 
 const DeclarativeChart: React.FC<DeclarativeChartProps> = ({
+  compact = false,
   response,
   onSelectPlayer,
 }) => {
@@ -373,8 +375,12 @@ const DeclarativeChart: React.FC<DeclarativeChartProps> = ({
 
   const {model} = prepared
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
-      <div className={model.facets.length > 1 ? "grid gap-3 md:grid-cols-2" : "grid gap-3"}>
+    <div className={compact
+      ? "border-y border-slate-200 bg-white p-1"
+      : "rounded-lg border border-slate-200 bg-white p-3"}>
+      <div className={model.facets.length > 1
+        ? compact ? "grid gap-1" : "grid gap-3 md:grid-cols-2"
+        : compact ? "grid gap-1" : "grid gap-3"}>
         {model.facets.map(facet => (
           <section
             aria-label={model.facetField ? `${facet.label} facet` : undefined}
