@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useId, useMemo, useState } from "react"
 import {
   HistoricalComparisonResponse,
   ScoringProfileId,
@@ -39,6 +39,68 @@ const pointsForPlayer = (
 }).join(" ")
 
 const format = (value: number): string => value.toFixed(1)
+
+const playerSearchLabel = (player: Player): string => (
+  `${player.fullName} (${player.position} · ${player.team})`
+)
+
+const SearchablePlayerInput = ({
+  ariaLabel,
+  label,
+  players,
+  selectedId,
+  onSelect,
+}: {
+  ariaLabel: string
+  label: string
+  players: Player[]
+  selectedId: string
+  onSelect: (playerId: string) => void
+}) => {
+  const listId = useId()
+  const selected = players.find(candidate => candidate.id === selectedId)
+  const selectedLabel = selected ? playerSearchLabel(selected) : ""
+  const [query, setQuery] = useState(selectedLabel)
+
+  useEffect(() => {
+    setQuery(selectedLabel)
+  }, [selectedLabel])
+
+  const acceptExactMatch = (value: string) => {
+    const normalized = value.trim().toLocaleLowerCase()
+    const match = players.find(candidate => (
+      playerSearchLabel(candidate).toLocaleLowerCase() === normalized
+      || candidate.fullName.toLocaleLowerCase() === normalized
+    ))
+    if (match) onSelect(match.id)
+  }
+
+  return <label className="mb-2 block">
+    {label}
+    <input
+      aria-label={ariaLabel}
+      autoComplete="off"
+      className="mt-1 w-full rounded border border-slate-400 p-1"
+      list={listId}
+      onBlur={() => setQuery(selectedLabel)}
+      onChange={event => {
+        setQuery(event.target.value)
+        acceptExactMatch(event.target.value)
+      }}
+      onKeyDown={event => {
+        if (event.key === "Enter") acceptExactMatch(event.currentTarget.value)
+      }}
+      placeholder="Search player name"
+      type="search"
+      value={query}
+    />
+    <datalist id={listId}>
+      {players.map(candidate => (
+        <option key={candidate.id} value={playerSearchLabel(candidate)} />
+      ))}
+    </datalist>
+  </label>
+}
 
 const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
   player,
@@ -220,36 +282,20 @@ const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
           </select>
         </div>
       </div>
-      <label className="mb-2 block">
-        Player A
-        <select
-          aria-label="Primary comparison player"
-          className="mt-1 w-full rounded border border-slate-400 p-1"
-          value={primaryId}
-          onChange={(event) => setPrimaryId(event.target.value)}
-        >
-          {eligiblePlayers.map((candidate) => (
-            <option key={candidate.id} value={candidate.id}>
-              {candidate.fullName} ({candidate.position})
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="mb-2 block">
-        Player B
-        <select
-          aria-label="Comparison player"
-          className="mt-1 w-full rounded border border-slate-400 p-1"
-          value={comparisonId}
-          onChange={(event) => setComparisonId(event.target.value)}
-        >
-          {candidates.map((candidate) => (
-            <option key={candidate.id} value={candidate.id}>
-              {candidate.fullName}
-            </option>
-          ))}
-        </select>
-      </label>
+      <SearchablePlayerInput
+        ariaLabel="Primary comparison player"
+        label="Player A"
+        onSelect={setPrimaryId}
+        players={eligiblePlayers}
+        selectedId={primaryId}
+      />
+      <SearchablePlayerInput
+        ariaLabel="Comparison player"
+        label="Player B"
+        onSelect={setComparisonId}
+        players={candidates}
+        selectedId={comparisonId}
+      />
 
       {readiness.loading && <p>Loading season availability…</p>}
       {readiness.error && (

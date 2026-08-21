@@ -1,6 +1,7 @@
 import React, {useState} from "react"
 
 import type {IntraPositionPresentationModel} from "../../behavior/analysis/intraPosition"
+import type {DraftRecommendationSet} from "../../behavior/draft-advisor/recommendations"
 import {playerStatusSourceLabel} from "../../behavior/api/playerStatus"
 import {useRankingSourceDetail} from "../../behavior/api/rankingSources"
 import type {
@@ -106,6 +107,67 @@ export const CompactIntraPositionSurface: React.FC<{
           ))}
         </tbody>
       </table>
+    </section>
+  )
+}
+
+export const CurrentBoardProjectionSurface: React.FC<{
+  recommendations: DraftRecommendationSet | null
+  onInspectPlayer: (player: Player) => void
+}> = ({recommendations, onInspectPlayer}) => {
+  const players = (recommendations?.positionCandidates
+    || recommendations?.candidates
+    || []).slice(0, 4)
+  if (players.length < 2) return (
+    <StateMessage state="unavailable" reason="Two current players with projection ranges are required." />
+  )
+  const minimum = Math.min(...players.map(item => item.evidence.projectedFloor))
+  const maximum = Math.max(...players.map(item => item.evidence.projectedCeiling))
+  return (
+    <section aria-label="Current-board projection context">
+      <p className={styles.caption}>
+        Top positional options · shared projected weekly-points scale
+      </p>
+      <ul className={styles.rangeList}>
+        {players.map(item => {
+          const floor = percent(item.evidence.projectedFloor, minimum, maximum)
+          const ceiling = percent(item.evidence.projectedCeiling, minimum, maximum)
+          const median = percent(item.evidence.projectedMedian, minimum, maximum)
+          const width = Math.min(100, Math.max(1, ceiling - floor))
+          const left = Math.min(floor, 100 - width)
+          return (
+            <li key={item.player.id}>
+              <div className={styles.projectionHeading}>
+                <button onClick={() => onInspectPlayer(item.player)} type="button">
+                  {item.player.fullName}
+                </button>
+                <span>
+                  {item.player.position}{item.positionRank}
+                  {item.evidence.userTier === null ? "" : ` · T${item.evidence.userTier}`}
+                </span>
+              </div>
+              <div
+                aria-label={`${item.player.fullName}: floor ${number(item.evidence.projectedFloor)}, median ${number(item.evidence.projectedMedian)}, ceiling ${number(item.evidence.projectedCeiling)} points`}
+                className={styles.projectionTrack}
+                role="img"
+              >
+                <span className={styles.projectionBand} style={{left: `${left}%`, width: `${width}%`}} />
+                <span className={styles.projectionMedian} style={{
+                  left: `${median}%`,
+                  transform: median >= 100
+                    ? "translateX(-100%)"
+                    : median <= 0 ? "none" : "translateX(-50%)",
+                }} />
+              </div>
+              <div className={styles.projectionLabels}>
+                <span>{number(item.evidence.projectedFloor)} floor</span>
+                <strong>{number(item.evidence.projectedMedian)} median</strong>
+                <span>{number(item.evidence.projectedCeiling)} ceiling</span>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
     </section>
   )
 }

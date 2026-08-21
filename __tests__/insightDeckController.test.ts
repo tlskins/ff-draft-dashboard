@@ -435,6 +435,30 @@ describe("Phase 14C1 InsightDeck controller", () => {
     expect(auto.state.slots.primary_decision.selection?.pinned).toBe(false)
   })
 
+  it("lets a visible pane take a view retained only in the legacy hidden slot", () => {
+    const initial = reconcileInsightDeck(
+      createInsightDeckState("draft-one"), event("draft:empty"), [
+        candidate("candidate_comparison", "primary_decision", 10),
+        candidate("current_tier_market", "market_watch", 8),
+        candidate("plan_constraints", "plan_constraints", 4),
+      ],
+    ).state
+
+    const selected = selectInsightDeckView(
+      initial,
+      "primary_decision",
+      "plan_constraints",
+      [candidate("plan_constraints", "plan_constraints", 4)],
+    )
+
+    expect(selected.state.slots.primary_decision.selection).toMatchObject({
+      viewId: "plan_constraints",
+      pinned: true,
+      source: "manual",
+    })
+    expect(selected.state.slots.plan_constraints.selection).toBeNull()
+  })
+
   it("keeps source diagnostics manual-only while allowing an explicit pin", () => {
     const source = candidate(
       "data_source_status",

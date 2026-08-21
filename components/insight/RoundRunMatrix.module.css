@@ -31,7 +31,7 @@
 }
 
 .scroll {
-  margin-top: 6px;
+  margin-top: 5px;
   max-width: 100%;
   overflow-x: auto;
 }
@@ -39,7 +39,7 @@
 .table {
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 480px;
+  min-width: 440px;
   table-layout: fixed;
   width: 100%;
 }
@@ -67,13 +67,10 @@
   color: #4b5a62;
   font-size: 8px;
   line-height: 1.25;
-  min-width: 218px;
-  padding: 4px;
+  padding: 4px 5px;
 }
 
-.table thead th:first-child {
-  min-width: 44px;
-}
+.table thead th:first-child { width: 39px; }
 
 .table th:first-child,
 .table td:first-child {
@@ -86,20 +83,25 @@
 
 .position {
   background: #e8ebea;
-  font-size: 10px;
-  padding: 6px 4px;
+  width: 39px;
+  font-size: 9px;
+  padding: 5px 4px;
 }
 
 .cell {
   background: #f8f8f5;
-  min-width: 218px;
-  padding: 4px;
+  padding: 5px;
 }
+
+.runMetric { display: flex; align-items: baseline; justify-content: space-between; gap: 5px; }
+.runMetric strong { color: #285f82; font-size: 14px; line-height: 1; }
+.runMetric span { color: #42535c; font-size: 8px; font-weight: 700; }
 
 .cellTopline {
   display: grid;
   gap: 2px;
-  font-size: 9px;
+  margin-top: 2px;
+  font-size: 8px;
   line-height: 1.3;
 }
 
@@ -113,14 +115,17 @@
 
 .needEvidence {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   grid-template-columns: 1fr 1fr;
-  margin: 8px 0;
+  margin: 4px 0;
 }
 
 .needEvidence div {
   background: #edf0ef;
-  padding: 3px;
+  display: flex;
+  justify-content: space-between;
+  gap: 3px;
+  padding: 2px 3px;
 }
 
 .needEvidence dt {
@@ -131,12 +136,13 @@
 .needEvidence dd {
   color: #37464e;
   font-size: 8px;
-  margin: 1px 0 0;
+  margin: 0;
+  text-align: right;
 }
 
 .tierList {
   display: grid;
-  gap: 5px;
+  gap: 2px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -147,7 +153,7 @@
   border-left: 2px solid #2e668e;
   display: grid;
   font-size: 8px;
-  gap: 1px;
+  gap: 0;
   line-height: 1.28;
   padding-left: 4px;
 }
@@ -159,12 +165,5 @@
 
 .tierEvidence small {
   color: #68757c;
-  font-size: 7px;
-}
-
-.scrollCue {
-  margin: 4px 0 0;
-  color: #68757c;
-  font-size: 8px;
-  line-height: 1.25;
+  font-size: 6px;
 }

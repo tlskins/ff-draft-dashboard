@@ -162,6 +162,33 @@
   background: transparent;
 }
 
+.settingsBackdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: rgb(7 12 16 / 68%);
+}
+
+.settingsDrawer {
+  color: #f4f6f7;
+  background: #1c252c !important;
+  box-shadow: -12px 0 32px rgb(7 12 16 / 36%);
+}
+
+.settingsDrawer select {
+  border-color: #65737c !important;
+  color: #f4f6f7 !important;
+  background: #2b373f !important;
+}
+
+.settingsDrawer select:disabled {
+  color: #c5cdd1 !important;
+  background: #263139 !important;
+  opacity: .78;
+}
+
 .centerPanes {
   display: grid;
   min-height: 0;
@@ -187,6 +214,17 @@
 
 .pane table {
   color: var(--desk-text);
+}
+
+.profilePane {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .rankingsBoardCompact {
@@ -347,6 +385,15 @@
 .targetFlag,
 .tierFlag { flex: 0 0 auto; padding: 1px 3px; border-radius: 2px; color: #47535a; background: #d0d7da; font-size: 7px; font-weight: 650; line-height: 1.2; }
 .targetFlag { color: #2e668e; background: #d6e2e8; }
+.tierFlag1 { color: #fff; background: #264f68; }
+.tierFlag2 { color: #fff; background: #426d83; }
+.tierFlag3 { color: #172c36; background: #6f91a1; }
+.tierFlag4 { color: #26383e; background: #94a9ae; }
+.tierFlag5 { color: #33413f; background: #b2beb9; }
+.tierFlag6 { color: #4b4636; background: #c9c5ad; }
+.tierFlag7 { color: #554a38; background: #d8cbb2; }
+.tierFlag8Plus { color: #5d5040; background: #e6d9c7; }
+.tierFlagUnranked { color: #47535a; background: #d0d7da; }
 
 .modeToggle {
   display: inline-flex;
@@ -459,8 +506,18 @@
 .profileNotes a { color: var(--desk-selection); }
 .profileEvidenceBody { display: grid; gap: 1px; min-width: 0; color: #3f4a51; }
 .profileEvidenceBody small { color: #6c787f; font-size: 7px; }
-.profileDetails { margin: 8px 10px 12px; border-top: 1px solid #cfd4d6; color: #536068; font-size: 9px; }
-.profileDetails > summary { padding: 7px 0; cursor: pointer; font-weight: 650; }
+.profileDetails { margin: 0; border-bottom: 1px solid #cfd4d6; color: #536068; background: #edf0ef; font-size: 8px; }
+.profileDetails > summary { padding: 7px 9px; border-top: 1px solid #cfd4d6; cursor: pointer; color: #34434b; background: #e2e6e5; font-size: 8px; font-weight: 700; letter-spacing: .02em; }
+.profileDetails > div,
+.profileDetails > section { margin: 0 !important; padding: 6px 8px !important; border: 0 !important; border-top: 1px solid #d4d9da !important; border-radius: 0 !important; background: #f4f3ef !important; box-shadow: none !important; }
+.profileDetails p { margin: 0; padding: 3px 0 !important; color: #536068; font-size: 8px; line-height: 1.25; text-decoration: none !important; }
+.profileDetails table { width: 100%; min-width: 0 !important; margin: 3px 0 6px !important; border: 1px solid #c7ced0 !important; border-collapse: collapse !important; border-spacing: 0 !important; color: #2c3940; background: #f4f3ef; font-size: 7px !important; box-shadow: none !important; }
+.profileDetails thead { background: #dfe4e4; }
+.profileDetails th,
+.profileDetails td { padding: 3px 4px !important; border: 1px solid #d0d6d7 !important; background: transparent !important; font-size: 7px !important; line-height: 1.2; }
+.profileDetails th { color: #5f6d74; font-weight: 700; }
+.profileDetails select { min-height: 23px; padding: 2px 4px !important; border: 1px solid #b8c2c6; border-radius: 2px; color: #34434b; background: #f4f3ef; font-size: 8px; }
+.profileDetails svg { max-height: 150px; border: 1px solid #d0d6d7; border-radius: 0 !important; background: #eef0ef !important; }
 .profileDraftContext { border-bottom: 1px solid #cbd2d4; background: #f1f2ef; }
 .profileContextHeader { display: flex; min-height: 34px; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 8px; border-bottom: 1px solid #d4d9da; }
 .profileContextHeader strong,
@@ -584,6 +641,23 @@
 .adpCards .playerCardName { font-size: 8px; }
 .adpCards .playerCardMeta { font-size: 7px; }
 .adpCards .playerCardEvidence { display: none; }
+.adpCards .adpRoundPlayerCard .playerCardEvidence { display: flex; margin-left: auto; overflow: visible; }
+.adpValueCue {
+  display: inline-grid;
+  min-width: 28px;
+  grid-template-columns: auto;
+  place-items: center;
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.adpValueCue strong { font-size: 9px; line-height: 1; }
+.adpValueCue small { margin-top: 1px; font-size: 5px; font-weight: 700; letter-spacing: .04em; line-height: 1; }
+.adpValuePositive { border-color: #8fb6a2; color: #285c43; background: #dce9e1; }
+.adpValueNegative { border-color: #d1ad82; color: #7a5125; background: #eee0ce; }
+.adpValueNeutral { border-color: #b9c2c5; color: #59666c; background: #e1e5e5; }
 .targetActions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; padding: 3px; border-bottom: 1px solid #d4d8da; }
 .targetActions button { min-height: 20px; padding: 2px; border: 1px solid #bcc4c8; color: #47545c; background: #f3f3f0; font-size: 7px; }
 .targetChart { display: flex; min-height: 0; height: 100%; flex-direction: column; overflow: hidden; color: var(--desk-text); background: var(--desk-surface); }

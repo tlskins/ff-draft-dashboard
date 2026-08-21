@@ -251,6 +251,13 @@ export interface PlayerOutlook {
     observedAt: string | null;
 }
 
+export interface PlayerInjuryStatus {
+    status: string;
+    injured: boolean;
+    source: "espn";
+    observedAt: string;
+}
+
 export interface Player {
     id: string;
     firstName: string;
@@ -270,6 +277,7 @@ export interface Player {
     sourcePresence?: { espn: EspnSourcePresence }
     availability?: PlayerAvailability
     outlook?: PlayerOutlook | null
+    injuryStatus?: PlayerInjuryStatus | null
 
     // TODO - need to handle "target"
 }

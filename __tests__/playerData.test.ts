@@ -90,6 +90,12 @@ describe("rankings freshness", () => {
             reason: "nflverse_status_active",
             source_status: "ACT",
           },
+          injury_status: {
+            status: "QUESTIONABLE",
+            injured: false,
+            source: "espn",
+            observed_at: "2026-08-20T20:00:00Z",
+          },
         }],
       }),
     }) as unknown as typeof fetch
@@ -105,6 +111,12 @@ describe("rankings freshness", () => {
         state: "active_unranked",
         automaticRecommendationEligible: false,
         sourceStatus: "ACT",
+      },
+      injuryStatus: {
+        status: "QUESTIONABLE",
+        injured: false,
+        source: "espn",
+        observedAt: "2026-08-20T20:00:00Z",
       },
     })
   })

@@ -296,6 +296,38 @@ describe("Phase 14A profile focus boundary", () => {
       .toContain("OpenAI summary from structured events only · gpt-5.4-nano · generated 2026-08-16 12:30 UTC")
   })
 
+  it("uses the refreshed ESPN injury designation when structured status is unavailable", () => {
+    const injuredPlayer: Player = {
+      ...players[0],
+      injuryStatus: {
+        status: "QUESTIONABLE",
+        injured: false,
+        source: "espn",
+        observedAt: "2026-08-20T20:00:00Z",
+      },
+    }
+    render(
+      <DraftDeskProfilePane
+        boardSettings={{ranker: ThirdPartyRanker.HARRIS, adpRanker: ThirdPartyADPRanker.ESPN}}
+        player={injuredPlayer}
+        players={[injuredPlayer]}
+        playerStatus={{[injuredPlayer.id]: {
+          playerId: injuredPlayer.id,
+          state: "unavailable",
+          loadedAt: 1,
+          response: null,
+        }}}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+
+    expect(screen.getByText("Questionable")).toBeTruthy()
+    expect(screen.getByText("ESPN fantasy status")).toBeTruthy()
+    expect(screen.queryByText("Status provider unavailable. Rankings and drafting are unaffected."))
+      .toBeNull()
+  })
+
   it("labels stale material evidence when no current actionable evidence exists", () => {
     render(
       <DraftDeskProfilePane

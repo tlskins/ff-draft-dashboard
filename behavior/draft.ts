@@ -116,6 +116,30 @@ export const getRoundIdxForPickNum = (pickNum: number, numTeams: number): number
 
 export const getRoundNumForPickNum = (pickNum: number, numTeams: number): number => getRoundIdxForPickNum(pickNum, numTeams) + 1
 
+/**
+ * Positive values mean the configured ranking source values the player that
+ * many rounds earlier than the active ADP source. Both rounds use the same
+ * boundaries as the ADP-round board columns.
+ */
+export const getRankRoundsAheadOfAdp = (
+    overallRank: number | null | undefined,
+    adp: number | null | undefined,
+    numTeams: number,
+): number | null => {
+    if (
+        !Number.isFinite(overallRank)
+        || !Number.isFinite(adp)
+        || !Number.isFinite(numTeams)
+        || (overallRank as number) <= 0
+        || (adp as number) <= 0
+        || numTeams <= 0
+    ) {
+        return null
+    }
+    return getRoundNumForPickNum(adp as number, numTeams)
+        - getRoundNumForPickNum(overallRank as number, numTeams)
+}
+
 export const getPickInRoundForPickNum = (pickNum: number, numTeams: number): number => pickNum % numTeams
 
 export const getRoundAndPickShortText = (pickNum: number, numTeams: number): string => {

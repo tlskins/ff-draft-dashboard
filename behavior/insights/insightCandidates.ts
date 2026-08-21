@@ -2,6 +2,7 @@ import type {CrossPositionPresentationModel} from "../analysis/crossPosition"
 import type {RoundMarketPresentationModel} from "../analysis/roundMarket"
 import type {TierLandscapePresentationModel} from "../analysis/tierLandscape"
 import type {IntraPositionPresentationModel} from "../analysis/intraPosition"
+import type {DraftRecommendationSet} from "../draft-advisor/recommendations"
 import type {
   HistoricalInsightModel,
   PlayerStatusInsightModel,
@@ -34,6 +35,9 @@ export interface InsightCandidateInputs {
   playerStatus?: PlayerStatusInsightModel | null
   rankTierDisagreement?: RankTierDisagreementModel | null
   sourceReadiness?: SourceReadinessInsightModel | null
+  /** Ordered, advisor-owned identities currently in play. */
+  comparisonPlayerIds?: string[]
+  currentBoardRecommendations?: DraftRecommendationSet | null
 }
 
 const POSITION_ORDER = ["QB", "RB", "WR", "TE"] as const
@@ -554,6 +558,81 @@ const historicalCandidates = (
   ]
 }
 
+const playerLabCandidate = (
+  playerIds: string[] | undefined,
+  model: HistoricalInsightModel | null | undefined,
+): InsightCandidate => {
+  const stableIds = Array.from(new Set(playerIds || [])).filter(Boolean).slice(0, 3)
+  const usable = stableIds.length >= 2
+  const state = usable
+    ? model ? mappedEvidenceState(model.state) : "loading"
+    : "unavailable"
+  const evidence: InsightEvidence = {
+    state,
+    fingerprint: fingerprint("player_lab", {
+      playerIds: stableIds,
+      history: model?.fingerprint || "not-loaded",
+    }),
+    ...(state === "unavailable" ? {
+      unavailableReason: usable
+        ? model?.unavailableReason || model?.error || "Player Lab history is unavailable."
+        : "At least two Players in play are required.",
+    } : {}),
+    ...(model?.staleReason ? {staleReason: model.staleReason} : {}),
+  }
+  return candidate(
+    "player_lab",
+    "primary_decision",
+    0,
+    usable ? "manual_player_lab_ready" : "manual_player_lab_selection_required",
+    usable
+      ? "Compare the advisor-owned Players in play across the latest completed seasons."
+      : "Player Lab requires at least two Players in play.",
+    evidence,
+  )
+}
+
+const currentBoardProjectionCandidate = (
+  recommendations: DraftRecommendationSet | null | undefined,
+): InsightCandidate => {
+  const players = (recommendations?.positionCandidates
+    || recommendations?.candidates
+    || []).filter(item => (
+    finite(item.evidence?.projectedFloor)
+    && finite(item.evidence?.projectedMedian)
+    && finite(item.evidence?.projectedCeiling)
+  )) || []
+  const usable = players.length >= 2
+  const evidence = usable ? {
+    state: "ready" as const,
+    fingerprint: fingerprint("current_board_projection", {
+      players: players.map(player => ({
+        id: player.player.id,
+        projection: {
+          floor: player.evidence.projectedFloor,
+          median: player.evidence.projectedMedian,
+          ceiling: player.evidence.projectedCeiling,
+        },
+        activeTier: player.evidence.userTier,
+        positionRank: player.positionRank,
+      })),
+    }),
+  } : unavailable(
+    "current_board_projection",
+    "At least two eligible current-board players are required.",
+  )
+  return candidate(
+    "current_board_projection",
+    "primary_decision",
+    usable ? 18 : 0,
+    usable ? "current_board_projection_ready" : "current_board_projection_unavailable",
+    usable
+      ? "Compare the top positional options on one current-board projection scale."
+      : "Current-board projection context requires at least two eligible players.",
+    evidence,
+  )
+}
+
 const playerStatusCandidate = (
   model: PlayerStatusInsightModel | null | undefined,
 ): InsightCandidate => {
@@ -630,6 +709,8 @@ export const buildInsightCandidates = (
   inputs: InsightCandidateInputs,
 ): InsightCandidate[] => [
   crossPositionCandidate(inputs.crossPosition),
+  playerLabCandidate(inputs.comparisonPlayerIds, inputs.historical),
+  currentBoardProjectionCandidate(inputs.currentBoardRecommendations),
   ...(inputs.intraPosition === undefined
     ? [] : [intraPositionCandidate(inputs.intraPosition)]),
   ...(inputs.historical === undefined

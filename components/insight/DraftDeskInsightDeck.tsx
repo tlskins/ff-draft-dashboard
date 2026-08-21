@@ -42,15 +42,16 @@ import type {
   Player,
   RankingSummary,
 } from "../../types"
-import AdvisorComparisonSurface from "../AdvisorComparisonSurface"
-import CrossPositionLiveSurface from "../analysis/CrossPositionLiveSurface"
 import TierLandscapeLiveSurface from "../analysis/TierLandscapeLiveSurface"
 import type {DraftPlanDocument} from "../../behavior/realtime/contracts"
 import InsightDeck from "./InsightDeck"
 import PlanConstraintsSurface from "./PlanConstraintsSurface"
 import RoundRunMatrix from "./RoundRunMatrix"
+import PlayerLabInsightSurface from "./PlayerLabInsightSurface"
+import PositionDecisionTable from "./PositionDecisionTable"
 import {
   CompactIntraPositionSurface,
+  CurrentBoardProjectionSurface,
   HistoricalProductionSurface,
   HistoricalRiskRewardSurface,
   PlayerStatusInsightSurface,
@@ -222,16 +223,18 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
     [readEvidence.rankingSources, readEvidence.readiness],
   )
   const candidates = useMemo(() => buildInsightCandidates({
-    crossPosition,
-    intraPosition: intraPositionModel,
-    historical,
-    tierLandscape,
-    roundMarket,
-    rankTierDisagreement,
-    planConstraints: planEvidence,
-    playerStatus: statusInsight,
-    sourceReadiness,
-  }), [
+      crossPosition,
+      intraPosition: intraPositionModel,
+      historical,
+      tierLandscape,
+      roundMarket,
+      rankTierDisagreement,
+      planConstraints: planEvidence,
+      playerStatus: statusInsight,
+      sourceReadiness,
+      comparisonPlayerIds,
+      currentBoardRecommendations: recommendations,
+    }), [
     crossPosition,
     historical,
     intraPositionModel,
@@ -241,6 +244,8 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
     sourceReadiness,
     statusInsight,
     tierLandscape,
+    comparisonPlayerIds,
+    recommendations,
   ])
   const controller = useInsightDeckController({materialEvent, candidates})
 
@@ -250,22 +255,22 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
       renderView={viewId => {
         switch (viewId) {
           case "candidate_comparison":
-            return <>
-              <AdvisorComparisonSurface
-                announceUpdates={false}
-                availablePlayers={availablePlayers}
-                controller={comparisonController}
-              />
-              <CrossPositionLiveSurface
-                announceUpdates={false}
-                comparisonIdentityKey={comparisonController.items.map(item => (
-                  `${item.player.id}:${item.reasonCode}`
-                )).join("|")}
-                model={crossPosition}
-                onInspectPlayer={onInspectPlayer}
-                tierModel={tierLandscape}
-              />
-            </>
+            return <PositionDecisionTable
+              onInspectPlayer={onInspectPlayer}
+              recommendations={recommendations}
+            />
+          case "player_lab":
+            return <PlayerLabInsightSurface
+              availablePlayers={availablePlayers}
+              comparisonController={comparisonController}
+              onInspectPlayer={onInspectPlayer}
+              settings={settings}
+            />
+          case "current_board_projection":
+            return <CurrentBoardProjectionSurface
+              onInspectPlayer={onInspectPlayer}
+              recommendations={recommendations}
+            />
           case "intra_position_comparison":
             return <CompactIntraPositionSurface
               model={intraPositionModel}

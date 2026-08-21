@@ -57,15 +57,15 @@ const renderer = (viewId: InsightViewId) => (
 )
 
 describe("InsightDeck", () => {
-  it("renders all three named slots with native per-slot controls and session-local copy", () => {
+  it("renders two named slots with a closed view catalog and native per-slot controls", () => {
     const deck = controller()
     render(<InsightDeck controller={deck} renderView={renderer} />)
 
-    expect(screen.getByText("Primary decision")).toBeTruthy()
-    expect(screen.getByText("Market watch")).toBeTruthy()
-    expect(screen.getByText("Plan & constraints")).toBeTruthy()
-    expect(screen.getByText("Pins stay in this draft session only.")).toBeTruthy()
-    const primaryMode = screen.getByRole("group", {name: "Primary decision mode"})
+    expect(screen.getByRole("region", {name: "Decision view"})).toBeTruthy()
+    expect(screen.getByRole("region", {name: "Supporting view"})).toBeTruthy()
+    expect(screen.getAllByRole("combobox")).toHaveLength(2)
+    expect(screen.getAllByRole("option", {name: "Player Lab"})).toHaveLength(2)
+    const primaryMode = screen.getByRole("group", {name: "Decision view mode"})
     const auto = within(primaryMode).getByRole("button", {name: "Auto"})
     const pin = within(primaryMode).getByRole("button", {name: "Pin"})
     expect(auto.tagName).toBe("BUTTON")
@@ -74,6 +74,7 @@ describe("InsightDeck", () => {
     expect(document.activeElement).toBe(auto)
     expect(auto.getAttribute("aria-pressed")).toBe("true")
     expect(pin.getAttribute("aria-pressed")).toBe("false")
+    expect(screen.queryByRole("heading", {name: "Insight deck"})).toBeNull()
   })
 
   it("keeps pin and Auto controls independent for each slot", () => {
@@ -81,10 +82,10 @@ describe("InsightDeck", () => {
     render(<InsightDeck controller={deck} renderView={renderer} />)
 
     fireEvent.click(within(screen.getByRole("group", {
-      name: "Market watch mode",
+      name: "Supporting view mode",
     })).getByRole("button", {name: "Pin"}))
     fireEvent.click(within(screen.getByRole("group", {
-      name: "Primary decision mode",
+      name: "Decision view mode",
     })).getByRole("button", {name: "Auto"}))
 
     expect(deck.pinSlot).toHaveBeenCalledWith("market_watch")
@@ -133,52 +134,70 @@ describe("InsightDeck", () => {
     },
   )
 
-  it("discloses queued alternatives and their blocked reasons", () => {
-    const current = state()
-    current.slots.primary_decision.queuedAlternatives = [
-      {...selection("current_tier_market"), evidence: {state: "ready", fingerprint: "pinned"}, blockedBy: "pinned"},
-      {...selection("current_tier_market"), evidence: {state: "ready", fingerprint: "margin"}, blockedBy: "margin"},
-      {...selection("current_tier_market"), evidence: {state: "ready", fingerprint: "dwell"}, blockedBy: "dwell"},
-      {...selection("current_tier_market"), evidence: {state: "ready", fingerprint: "duplicate"}, blockedBy: "duplicate"},
-      {...selection("current_tier_market"), evidence: {state: "loading", fingerprint: "evidence"}, blockedBy: "evidence"},
-      {...selection("data_source_status"), slot: "plan_constraints", evidence: {state: "ready", fingerprint: "manual"}, blockedBy: "manual_only"},
-    ]
-    render(<InsightDeck controller={controller(current)} renderView={renderer} />)
-
-    fireEvent.click(screen.getByText("Alternatives (6)"))
-    expect(screen.getByText("Pinned view preserved")).toBeTruthy()
-    expect(screen.getByText("Below significance margin")).toBeTruthy()
-    expect(screen.getByText("Waiting for material-event dwell")).toBeTruthy()
-    expect(screen.getByText("Already shown in another slot")).toBeTruthy()
-    expect(screen.getByText("Evidence is not ready for Auto")).toBeTruthy()
-    expect(screen.getByText("Manual selection only")).toBeTruthy()
-  })
-
-  it("lets a user select and pin a queued registered alternative", () => {
-    const current = state()
-    current.slots.market_watch.queuedAlternatives = [{
-      ...selection("two_round_run_matrix"),
-      slot: "market_watch",
-      evidence: {state: "ready", fingerprint: "round-ready"},
-      blockedBy: "margin",
-    }]
-    const deck = controller(current)
+  it("lets a user select any registered view from either visible slot", () => {
+    const deck = controller()
     render(<InsightDeck controller={deck} renderView={renderer} />)
 
-    fireEvent.click(screen.getByText("Alternatives (1)"))
-    fireEvent.click(screen.getByRole("button", {
-      name: "Show and pin Two-round run matrix in Market watch",
-    }))
+    fireEvent.change(screen.getByRole("combobox", {name: "Supporting view view"}), {
+      target: {value: "two_round_run_matrix"},
+    })
     expect(deck.selectView).toHaveBeenCalledWith(
       "market_watch",
       "two_round_run_matrix",
     )
   })
 
+  it("reveals a manually selected compact view when the other pane was expanded", () => {
+    const deckState = state({
+      slots: {
+        ...state().slots,
+        market_watch: {
+          selection: {...selection("two_round_run_matrix"), slot: "market_watch"},
+          queuedAlternatives: [],
+        },
+      },
+    })
+    const deck = controller(deckState)
+    render(<InsightDeck controller={deck} renderView={renderer} />)
+
+    expect(screen.queryByTestId("rendered-candidate_comparison")).toBeNull()
+    fireEvent.change(screen.getByRole("combobox", {name: "Decision view view"}), {
+      target: {value: "current_board_projection"},
+    })
+
+    expect(deck.selectView).toHaveBeenCalledWith(
+      "primary_decision",
+      "current_board_projection",
+    )
+    expect(screen.getByTestId("rendered-candidate_comparison")).toBeTruthy()
+    expect(screen.getByTestId("rendered-two_round_run_matrix")).toBeTruthy()
+  })
+
+  it("expands one view to both rows and restores the split layout", () => {
+    render(<InsightDeck controller={controller()} renderView={renderer} />)
+
+    fireEvent.click(screen.getByRole("button", {name: "Expand Position decision table"}))
+    expect(screen.queryByTestId("rendered-current_tier_market")).toBeNull()
+    fireEvent.click(screen.getByRole("button", {
+      name: "Restore two insight views from Position decision table",
+    }))
+    expect(screen.getByTestId("rendered-current_tier_market")).toBeTruthy()
+  })
+
+  it("restores a collapsed view when its visible slot is clicked", () => {
+    render(<InsightDeck controller={controller()} renderView={renderer} />)
+
+    fireEvent.click(screen.getByRole("button", {name: "Expand Position decision table"}))
+    expect(screen.queryByTestId("rendered-current_tier_market")).toBeNull()
+
+    fireEvent.click(screen.getByRole("region", {name: "Supporting view"}))
+    expect(screen.getByTestId("rendered-current_tier_market")).toBeTruthy()
+  })
+
   it("fails closed when a registered renderer is missing", () => {
     render(<InsightDeck controller={controller()} renderView={() => null} />)
     expect(screen.getAllByText("Registered view renderer is unavailable for this slot."))
-      .toHaveLength(3)
+      .toHaveLength(2)
   })
 
   it("suppresses duplicate registered view rendering in malformed input", () => {

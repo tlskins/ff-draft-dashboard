@@ -1,6 +1,12 @@
 import React, {useCallback, useState} from "react"
 
-import {getPlayerMetrics, getRoundAndPickShortText, PlayerRanks} from "../../behavior/draft"
+import {
+  getPlayerMetrics,
+  getRankRoundsAheadOfAdp,
+  getRoundAndPickShortText,
+  getRoundNumForPickNum,
+  PlayerRanks,
+} from "../../behavior/draft"
 import {PositionFilter, useADPView} from "../../behavior/hooks/useADPView"
 import {useADPRoundView} from "../../behavior/hooks/useADPRoundView"
 import type {BoardSettings, FantasySettings, Player, PlayerTarget} from "../../types"
@@ -21,6 +27,45 @@ interface DraftDeskAdpRoundViewProps {
   removePlayerTarget: (playerId: string) => void
   removePlayerTargets: (playerIds: string[]) => void
   onSwitchToTargetsView: () => void
+}
+
+const AdpRankValueCue = ({
+  adp,
+  adpSource,
+  numTeams,
+  overallRank,
+}: {
+  adp: number | undefined
+  adpSource: string
+  numTeams: number
+  overallRank: number | undefined
+}) => {
+  const roundsAhead = getRankRoundsAheadOfAdp(overallRank, adp, numTeams)
+  if (roundsAhead === null) return (
+    <span aria-label="Rank versus ADP unavailable" className={`${styles.adpValueCue} ${styles.adpValueNeutral}`}>
+      <strong>—</strong><small>VS ADP</small>
+    </span>
+  )
+  const magnitude = Math.abs(roundsAhead)
+  const accessibleLabel = roundsAhead > 0
+    ? `Ranked ${magnitude} round${magnitude === 1 ? "" : "s"} earlier than ${adpSource} ADP`
+    : roundsAhead < 0
+      ? `Ranked ${magnitude} round${magnitude === 1 ? "" : "s"} later than ${adpSource} ADP`
+      : `Ranked in the same round as ${adpSource} ADP`
+  const rankRound = getRoundNumForPickNum(overallRank!, numTeams)
+  const adpRound = getRoundNumForPickNum(adp!, numTeams)
+  return (
+    <span
+      aria-label={accessibleLabel}
+      className={`${styles.adpValueCue} ${roundsAhead > 0
+        ? styles.adpValuePositive
+        : roundsAhead < 0 ? styles.adpValueNegative : styles.adpValueNeutral}`}
+      title={`Configured rank R${rankRound} · ${adpSource} ADP R${adpRound}`}
+    >
+      <strong>{roundsAhead > 0 ? `+${roundsAhead}` : roundsAhead}</strong>
+      <small>VS ADP</small>
+    </span>
+  )
 }
 
 const DraftDeskAdpRoundView = ({
@@ -151,7 +196,14 @@ const DraftDeskAdpRoundView = ({
                       ? <button onClick={() => removePlayerTarget(player.id)} type="button">Remove</button>
                       : <button onClick={() => addPlayerTarget(player, round)} type="button">Target</button>}
                     boardSettings={boardSettings}
+                    className={styles.adpRoundPlayerCard}
                     compact
+                    evidence={<AdpRankValueCue
+                      adp={metrics.adp}
+                      adpSource={boardSettings.adpRanker}
+                      numTeams={fantasySettings.numTeams}
+                      overallRank={metrics.overallRank}
+                    />}
                     fantasySettings={fantasySettings}
                     focused={viewPlayerId === player.id}
                     key={player.id}

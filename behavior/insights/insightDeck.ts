@@ -11,8 +11,18 @@ export const INSIGHT_DECK_SLOTS = [
 
 export type InsightDeckSlotId = typeof INSIGHT_DECK_SLOTS[number]
 
+/** The desk mounts two visible panes; the third slot remains a legacy controller input. */
+export const VISIBLE_INSIGHT_DECK_SLOTS = [
+  "primary_decision",
+  "market_watch",
+] as const satisfies readonly InsightDeckSlotId[]
+
+export type VisibleInsightDeckSlotId = typeof VISIBLE_INSIGHT_DECK_SLOTS[number]
+
 export const INSIGHT_VIEW_IDS = [
   "candidate_comparison",
+  "player_lab",
+  "current_board_projection",
   "intra_position_comparison",
   "historical_risk_reward",
   "historical_production",
@@ -48,6 +58,8 @@ export interface InsightViewRegistration {
   priority: number
   /** Manual-only context views remain selectable but cannot displace Auto. */
   autoEligible: boolean
+  /** Views that need both visible blocks open full-height by default. */
+  defaultSpan: 1 | 2
 }
 
 /**
@@ -57,31 +69,51 @@ export interface InsightViewRegistration {
 export const INSIGHT_VIEW_REGISTRY: readonly InsightViewRegistration[] = [
   {
     id: "candidate_comparison",
-    label: "Candidate comparison",
-    permittedSlots: ["primary_decision"],
+    label: "Position decision table",
+    permittedSlots: ["primary_decision", "market_watch"],
     priority: 10,
     autoEligible: true,
+    defaultSpan: 1,
+  },
+  {
+    id: "player_lab",
+    label: "Player Lab",
+    permittedSlots: ["primary_decision", "market_watch"],
+    priority: 15,
+    autoEligible: false,
+    defaultSpan: 2,
+  },
+  {
+    id: "current_board_projection",
+    label: "Current-board projections",
+    permittedSlots: ["primary_decision", "market_watch"],
+    priority: 18,
+    autoEligible: true,
+    defaultSpan: 1,
   },
   {
     id: "intra_position_comparison",
     label: "Intra-position comparison",
-    permittedSlots: ["primary_decision"],
+    permittedSlots: ["primary_decision", "market_watch"],
     priority: 20,
     autoEligible: true,
+    defaultSpan: 1,
   },
   {
     id: "historical_risk_reward",
     label: "Historical risk & reward",
-    permittedSlots: ["primary_decision"],
+    permittedSlots: ["primary_decision", "market_watch"],
     priority: 30,
     autoEligible: true,
+    defaultSpan: 1,
   },
   {
     id: "historical_production",
     label: "Historical production",
-    permittedSlots: ["primary_decision"],
+    permittedSlots: ["primary_decision", "market_watch"],
     priority: 40,
     autoEligible: true,
+    defaultSpan: 1,
   },
   {
     id: "current_tier_market",
@@ -89,41 +121,47 @@ export const INSIGHT_VIEW_REGISTRY: readonly InsightViewRegistration[] = [
     permittedSlots: ["primary_decision", "market_watch"],
     priority: 50,
     autoEligible: true,
+    defaultSpan: 1,
   },
   {
     id: "plan_constraints",
     label: "Plan constraints",
-    permittedSlots: ["plan_constraints"],
+    permittedSlots: ["primary_decision", "market_watch", "plan_constraints"],
     priority: 80,
     autoEligible: true,
+    defaultSpan: 1,
   },
   {
     id: "two_round_run_matrix",
     label: "Two-round run matrix",
-    permittedSlots: ["market_watch"],
+    permittedSlots: ["primary_decision", "market_watch"],
     priority: 60,
     autoEligible: true,
+    defaultSpan: 2,
   },
   {
     id: "player_status",
     label: "Player status alerts",
-    permittedSlots: ["plan_constraints"],
+    permittedSlots: ["primary_decision", "market_watch", "plan_constraints"],
     priority: 70,
     autoEligible: true,
+    defaultSpan: 1,
   },
   {
     id: "rank_tier_disagreement",
     label: "Rank & tier disagreement",
-    permittedSlots: ["market_watch"],
+    permittedSlots: ["primary_decision", "market_watch"],
     priority: 70,
     autoEligible: true,
+    defaultSpan: 1,
   },
   {
     id: "data_source_status",
     label: "Published data sources",
-    permittedSlots: ["plan_constraints"],
+    permittedSlots: ["primary_decision", "market_watch", "plan_constraints"],
     priority: 90,
     autoEligible: false,
+    defaultSpan: 1,
   },
 ]
 
@@ -628,18 +666,50 @@ const candidateForExplicitSelection = (
   candidates: InsightCandidate[],
   slot: InsightDeckSlotId,
   viewId: InsightViewId,
-): InsightCandidate | null => normalizeInsightCandidates(candidates).find(candidate => (
-  candidate.slot === slot && candidate.viewId === viewId
-)) || null
+): InsightCandidate | null => {
+  const normalized = normalizeInsightCandidates(candidates)
+  const exact = normalized.find(candidate => (
+    candidate.slot === slot && candidate.viewId === viewId
+  ))
+  if (exact) return exact
+  const registration = registrationFor(viewId)
+  const source = normalized.find(candidate => candidate.viewId === viewId)
+  return registration?.permittedSlots.includes(slot) && source
+    ? {...source, slot}
+    : null
+}
 
 const usedOutsideSlot = (
   state: InsightDeckState,
   slot: InsightDeckSlotId,
-): Set<InsightViewId> => new Set(INSIGHT_DECK_SLOTS.flatMap(otherSlot => (
+  slots: readonly InsightDeckSlotId[] = INSIGHT_DECK_SLOTS,
+): Set<InsightViewId> => new Set(slots.flatMap(otherSlot => (
   otherSlot === slot || !state.slots[otherSlot].selection
     ? []
     : [state.slots[otherSlot].selection!.viewId]
 )))
+
+const visibleUsedOutsideSlot = (
+  state: InsightDeckState,
+  slot: InsightDeckSlotId,
+): Set<InsightViewId> => usedOutsideSlot(
+  state,
+  slot,
+  VISIBLE_INSIGHT_DECK_SLOTS,
+)
+
+const slotsWithVisibleSelection = (
+  current: InsightDeckState,
+  slot: InsightDeckSlotId,
+  selection: InsightDeckSelection,
+): InsightDeckState["slots"] => ({
+  ...current.slots,
+  [slot]: {selection, queuedAlternatives: []},
+  ...(VISIBLE_INSIGHT_DECK_SLOTS.includes(slot as VisibleInsightDeckSlotId)
+    && current.slots.plan_constraints.selection?.viewId === selection.viewId
+    ? {plan_constraints: {selection: null, queuedAlternatives: []}}
+    : {}),
+})
 
 export const setInsightDeckSlotPinned = (
   current: InsightDeckState,
@@ -667,7 +737,9 @@ export const restoreInsightDeckSlotAuto = (
   const candidates = candidatesForSlot(normalizeInsightCandidates(suppliedCandidates), slot)
   const selected = current.slots[slot].selection
   if (!selected) return unchanged(current, "No registered view is selected for this slot")
-  const used = usedOutsideSlot(current, slot)
+  const used = VISIBLE_INSIGHT_DECK_SLOTS.includes(slot as VisibleInsightDeckSlotId)
+    ? visibleUsedOutsideSlot(current, slot)
+    : usedOutsideSlot(current, slot)
   const nextCandidate = candidates.find(candidate => (
     isInsightAutoEvidenceEligible(candidate)
     && !used.has(candidate.viewId)
@@ -687,13 +759,7 @@ export const restoreInsightDeckSlotAuto = (
   const announcement = announcementFor(current, slot, "auto_restored", nextSelection)
   return result(current, {
     ...current,
-    slots: {
-      ...current.slots,
-      [slot]: {
-        selection: nextSelection,
-        queuedAlternatives: [],
-      },
-    },
+    slots: slotsWithVisibleSelection(current, slot, nextSelection),
     announcement,
   }, selected.viewId !== nextSelection.viewId)
 }
@@ -707,7 +773,10 @@ export const selectInsightDeckView = (
 ): InsightDeckTransitionResult => {
   const candidate = candidateForExplicitSelection(suppliedCandidates, slot, viewId)
   if (!candidate) return unchanged(current, "That view is not registered for this slot")
-  if (usedOutsideSlot(current, slot).has(viewId)) {
+  const used = VISIBLE_INSIGHT_DECK_SLOTS.includes(slot as VisibleInsightDeckSlotId)
+    ? visibleUsedOutsideSlot(current, slot)
+    : usedOutsideSlot(current, slot)
+  if (used.has(viewId)) {
     return unchanged(current, "That registered view is already shown in another slot")
   }
   const previous = current.slots[slot].selection
@@ -723,10 +792,7 @@ export const selectInsightDeckView = (
   const announcement = announcementFor(current, slot, "manual_selected", nextSelection)
   return result(current, {
     ...current,
-    slots: {
-      ...current.slots,
-      [slot]: {selection: nextSelection, queuedAlternatives: []},
-    },
+    slots: slotsWithVisibleSelection(current, slot, nextSelection),
     announcement,
   }, previous?.viewId !== nextSelection.viewId)
 }

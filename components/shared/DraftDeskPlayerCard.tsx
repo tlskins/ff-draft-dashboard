@@ -31,6 +31,12 @@ const positionClass = (position: string): string => (
         : styles.positionTE
 )
 
+const tierFlagClass = (tierNumber: number | undefined): string => {
+  if (!tierNumber || tierNumber < 1) return styles.tierFlagUnranked
+  if (tierNumber >= 8) return styles.tierFlag8Plus
+  return styles[`tierFlag${tierNumber}`]
+}
+
 /**
  * The desk's single player identity treatment. Position stays available to
  * assistive technology while the visual position signal is a narrow edge,
@@ -72,6 +78,10 @@ const DraftDeskPlayerCard = ({
       {...rootProps}
       aria-label={`${player.fullName}, ${player.position}, ${player.team}. ${rankContext || defaultRankContext}. ${adpText}${tierNumber ? `. Tier ${tierNumber}` : ""}${target ? `. Target round ${target.targetAsEarlyAsRound}` : ""}${urgency ? `. ${urgency}` : ""}`}
       className={`${styles.playerCard} ${positionClass(player.position)} ${focused ? styles.playerCardFocused : ""} ${compact ? styles.playerCardCompact : ""} ${dock ? styles.playerCardDock : ""} ${className}`}
+      onClick={event => {
+        rootProps?.onClick?.(event)
+        onFocusPlayer?.(player.id)
+      }}
       onFocus={event => {
         rootProps?.onFocus?.(event)
         onFocusPlayer?.(player.id)
@@ -88,7 +98,9 @@ const DraftDeskPlayerCard = ({
         {dock && <span className={styles.playerCardDockPick}>{rankContext || defaultRankContext}</span>}
         <div className={styles.playerCardHeader}>
           <span className={styles.playerCardName}>{dock ? playerShortName(player.fullName) : player.fullName}</span>
-          {!dock && tierNumber && <span className={styles.tierFlag}>T{tierNumber}</span>}
+          {!dock && tierNumber && (
+            <span className={`${styles.tierFlag} ${tierFlagClass(tierNumber)}`}>T{tierNumber}</span>
+          )}
         </div>
         {!dock && (
           <div className={styles.playerCardDetails}>

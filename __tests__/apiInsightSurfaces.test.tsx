@@ -2,6 +2,7 @@ import React from "react"
 import {render, screen} from "@testing-library/react"
 
 import {
+  CurrentBoardProjectionSurface,
   HistoricalRiskRewardSurface,
   RankTierDisagreementSurface,
   SourceReadinessSurface,
@@ -27,6 +28,28 @@ const distribution = {
 }
 
 describe("compact API insight surfaces", () => {
+  it("renders bounded current-board floor, median, and ceiling ranges", () => {
+    render(<CurrentBoardProjectionSurface
+      recommendations={{positionCandidates: [{
+          player: {id: "one", fullName: "Player One", team: "BUF", position: "RB"},
+          positionRank: 1,
+          evidence: {projectedFloor: 10, projectedMedian: 15, projectedCeiling: 20, userTier: 1},
+        }, {
+          player: {id: "two", fullName: "Player Two", team: "MIA", position: "RB"},
+          positionRank: 2,
+          evidence: {projectedFloor: 8, projectedMedian: 12, projectedCeiling: 16, userTier: 2},
+        }]} as never}
+      onInspectPlayer={jest.fn()}
+    />)
+
+    expect(screen.getByRole("region", {name: "Current-board projection context"}))
+      .toBeTruthy()
+    const maximum = screen.getByRole("img", {name: /Player One: floor 10.0/})
+    const median = maximum.querySelectorAll("span")[1] as HTMLElement
+    expect(median.style.left).toBe("58.333333333333336%")
+    expect(screen.getByText("RB1 · T1")).toBeTruthy()
+  })
+
   it("bounds an equal historical range at the shared maximum", () => {
     render(<HistoricalRiskRewardSurface model={{
       state: "ready",

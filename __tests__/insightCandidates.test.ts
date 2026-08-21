@@ -100,6 +100,8 @@ describe("insight candidate scoring", () => {
 
     expect(result.map(item => `${item.slot}:${item.viewId}`)).toEqual([
       "primary_decision:candidate_comparison",
+      "primary_decision:player_lab",
+      "primary_decision:current_board_projection",
       "primary_decision:current_tier_market",
       "market_watch:current_tier_market",
       "market_watch:two_round_run_matrix",

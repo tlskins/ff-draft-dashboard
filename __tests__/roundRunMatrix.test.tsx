@@ -75,27 +75,26 @@ describe("RoundRunMatrix", () => {
     expect(view.getByRole("table")).toBeTruthy()
     expect(view.getAllByRole("columnheader")).toHaveLength(3)
     expect(view.getAllByRole("rowheader")).toHaveLength(4)
-    expect(view.getAllByText(/61% chance of 3\+ RB picks/)).toHaveLength(2)
+    expect(view.getAllByLabelText(/61% chance of 3\+ RB picks/)).toHaveLength(2)
     expect(view.getByText(/frozen positional evidence/i)).toBeTruthy()
     expect(view.getByText(/provisional static-board estimate/i)).toBeTruthy()
     expect(view.queryByRole("status")).toBeNull()
     expect(view.container.querySelector("[aria-live]")).toBeNull()
-    expect(view.getByText(/Scroll horizontally to compare both turns/i)).toBeTruthy()
   })
 
   it("keeps tier-local depletion and cumulative exhaustion copy distinct", () => {
     const view = render(<RoundRunMatrix model={model()} />)
 
-    expect(view.getAllByText(/0.7 unique players expected gone this turn/)).toHaveLength(2)
-    expect(view.getAllByText(/33% exhausted by end of/)).toHaveLength(2)
-    expect(view.getAllByText(/Static-board-derived tier estimate · Static-board full-pool estimate/)).toHaveLength(4)
-    expect(view.getAllByText("Tier 2 · 1 available")).toHaveLength(2)
+    expect(view.getAllByText(/0.7 expected gone/)).toHaveLength(2)
+    expect(view.getAllByText(/33% exhausted/)).toHaveLength(2)
+    expect(view.getAllByText(/Static-board estimate/)).toHaveLength(4)
+    expect(view.getAllByText("Tier 2")).toHaveLength(2)
   })
 
   it("retains observed starter need when FLEX evidence is unavailable", () => {
     const view = render(<RoundRunMatrix model={model()} />)
 
-    expect(view.getAllByText("2 slots across 2 teams")).toHaveLength(2)
+    expect(view.getAllByText("2 teams · 2 slots")).toHaveLength(2)
     expect(view.getAllByText("Unavailable")).toHaveLength(4)
     expect(view.getAllByText(/Tier pool incomplete/).length).toBeGreaterThan(0)
   })
@@ -140,7 +139,7 @@ describe("RoundRunMatrix", () => {
       .probabilityAtLeastThreshold = null
     const view = render(<RoundRunMatrix model={unavailableProbability} />)
 
-    expect(view.getByText("Run probability unavailable for 3+ RB picks")).toBeTruthy()
+    expect(view.getByLabelText("Run probability unavailable for 3+ RB picks")).toBeTruthy()
     expect(view.queryByText(/Unavailable chance of 3\+ RB picks/)).toBeNull()
   })
 })

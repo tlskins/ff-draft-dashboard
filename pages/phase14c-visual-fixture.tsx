@@ -143,13 +143,13 @@ const rosters = (): Roster[] => Array.from({length: 12}, (_, rosterIndex) => (
     : emptyRoster()
 ))
 
-const recommendations = (): DraftRecommendationSet => ({
-  schemaVersion: 1,
-  currentPick: 43,
-  nextUserPick: 54,
-  preferredView: "cross_position",
-  viewExplanation: "Deterministic fixture evidence: compare current starter value against the tier cliff before pick 54.",
-  candidates: [availablePlayers[3], availablePlayers[6], availablePlayers[9]].map((item, index) => ({
+const recommendations = (): DraftRecommendationSet => {
+  const positionCandidates: DraftRecommendationSet["candidates"] = [
+    availablePlayers[0],
+    availablePlayers[3],
+    availablePlayers[6],
+    availablePlayers[9],
+  ].map((item, index) => ({
     player: item,
     positionRank: item.ranks[ThirdPartyRanker.HARRIS]?.pprPositionRank || index + 1,
     score: 100 - index,
@@ -170,8 +170,17 @@ const recommendations = (): DraftRecommendationSet => ({
       rosterRole: "open_starter",
       flags: ["fixture"],
     },
-  })),
-})
+  }))
+  return {
+    schemaVersion: 1,
+    currentPick: 43,
+    nextUserPick: 54,
+    preferredView: "cross_position",
+    viewExplanation: "Deterministic fixture evidence: compare current starter value against the tier cliff before pick 54.",
+    positionCandidates,
+    candidates: positionCandidates.slice(1),
+  }
+}
 
 const context = (): DraftAdvisorContext => ({
   schemaVersion: 1,
@@ -346,7 +355,6 @@ const FixtureEvidenceStateDeck: React.FC<{
 const Phase14CVisualFixture = () => {
   const [scenario, setScenario] = useState<Scenario>("initial")
   const [preview, setPreview] = useState<EvidencePreview>("ready")
-  const [playerLabOpen, setPlayerLabOpen] = useState(false)
   const materialKey = `fixture:${scenario}`
   const unavailable = scenario === "unavailable"
   const comparisonController = useAdvisorComparisonController({
@@ -386,16 +394,10 @@ const Phase14CVisualFixture = () => {
             Preview {item}
           </button>
         ))}
-        <button data-testid="phase14c-player-lab-toggle" onClick={() => setPlayerLabOpen(open => !open)} type="button">
-          {playerLabOpen ? "Close Player Lab" : "Open Player Lab"}
-        </button>
       </section>
       <p data-testid="phase14c-evidence-preview">
         Fixture evidence state: {preview}. Non-ready states use a fixture-only controller seam and do not mutate draft inputs.
       </p>
-      {playerLabOpen && <aside aria-label="Player Lab fixture placeholder" data-testid="phase14c-player-lab-placeholder">
-        Player Lab fixture placeholder — live page interaction is covered separately.
-      </aside>}
       <section data-testid="phase14c-viewport-1440" style={{display: "grid", gridTemplateColumns: "minmax(0, 1fr) 500px", gap: 24, minHeight: 720}}>
         <section aria-label="Draft board fixture" style={{background: "#f4f6f8", padding: 20}}>
           <h2>Draft board context</h2>
@@ -415,7 +417,7 @@ const Phase14CVisualFixture = () => {
               draftPlan={longPlan}
               materialEvent={{streamId: "phase14c-visual-fixture", draftKey: materialKey}}
               myRosterIndex={5}
-              onInspectPlayer={() => setPlayerLabOpen(true)}
+              onInspectPlayer={() => undefined}
               opponentForecast={scenario === "matrix" ? forecast() : null}
               playerStatus={fixturePlayerStatus(scenario === "long")}
               rankingSummaries={rankingSummaries}

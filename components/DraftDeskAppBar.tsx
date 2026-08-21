@@ -104,7 +104,7 @@ const DraftDeskAppBar = ({
 
       {drawerOpen && (
         <div
-          className="fixed inset-0 z-50 flex justify-end bg-slate-950/60"
+          className={styles.settingsBackdrop}
           onMouseDown={event => {
             if (event.target === event.currentTarget) setDrawerOpen(false)
           }}
@@ -112,7 +112,7 @@ const DraftDeskAppBar = ({
           <div
             aria-label="Draft setup"
             aria-modal="true"
-            className={`${styles.desk} flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-slate-600 bg-slate-900 p-5 shadow-2xl`}
+            className={`${styles.desk} ${styles.settingsDrawer} flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-slate-600 bg-slate-900 p-5 shadow-2xl`}
             onKeyDown={onDrawerKeyDown}
             ref={drawerRef}
             role="dialog"

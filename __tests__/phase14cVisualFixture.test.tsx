@@ -6,8 +6,8 @@ import Phase14CVisualFixture, {
 } from "../pages/phase14c-visual-fixture"
 
 const selectedSlotTitles = (): string[] => Array.from(
-  document.querySelectorAll<HTMLElement>("[id^='insight-deck-'][id$='-title']"),
-).map(element => element.textContent || "")
+  document.querySelectorAll<HTMLSelectElement>("select[id^='insight-deck-'][id$='-view']"),
+).map(element => element.selectedOptions[0]?.textContent || "")
 
 describe("Phase 14C visual acceptance fixture", () => {
   it("is development-only", () => {
@@ -17,7 +17,7 @@ describe("Phase 14C visual acceptance fixture", () => {
       .toEqual({props: {}})
   })
 
-  it("renders the real three-slot deck at the deterministic desktop pane width", async () => {
+  it("renders the real two-view deck at the deterministic desktop pane width", async () => {
     render(<Phase14CVisualFixture />)
 
     await waitFor(() => expect(screen.getByRole("region", {name: "Draft insight deck"})).toBeTruthy())
@@ -28,9 +28,8 @@ describe("Phase 14C visual acceptance fixture", () => {
     expect(paneStyle).toContain("overflow: hidden")
     expect(document.querySelectorAll("[aria-live]")).toHaveLength(1)
     expect(selectedSlotTitles()).toEqual([
-      "Candidate comparison",
+      "Position decision table",
       "Rank & tier disagreement",
-      "Plan constraints",
     ])
     expect(new Set(selectedSlotTitles()).size).toBe(selectedSlotTitles().length)
   })
@@ -41,13 +40,12 @@ describe("Phase 14C visual acceptance fixture", () => {
 
     fireEvent.click(within(controls).getByTestId("phase14c-scenario-matrix"))
     await waitFor(() => expect(selectedSlotTitles()).toEqual([
-      "Candidate comparison",
+      "Position decision table",
       "Two-round run matrix",
-      "Plan constraints",
     ]))
     expect(screen.getByText("What can run before the next two turns?")).toBeTruthy()
 
-    ;(["Primary decision", "Market watch", "Plan & constraints"] as const).forEach(label => {
+    ;(["Decision view", "Supporting view"] as const).forEach(label => {
       const mode = screen.getByRole("group", {name: `${label} mode`})
       fireEvent.click(within(mode).getByRole("button", {name: "Pin"}))
       expect(within(mode).getByRole("button", {name: "Pin"}).getAttribute("aria-pressed"))
@@ -57,6 +55,12 @@ describe("Phase 14C visual acceptance fixture", () => {
         .toBe("true")
     })
 
+    fireEvent.change(screen.getByRole("combobox", {name: "Decision view view"}), {
+      target: {value: "player_lab"},
+    })
+    await waitFor(() => expect(selectedSlotTitles()[0]).toBe("Player Lab"))
+    expect(screen.getByRole("region", {name: "Automatic Player Lab"})).toBeTruthy()
+
     for (const state of ["loading", "stale", "unavailable"] as const) {
       fireEvent.click(within(controls).getByTestId(`phase14c-preview-${state}`))
       await waitFor(() => expect(screen.getByText(`Evidence: ${state.charAt(0).toUpperCase()}${state.slice(1)}`)).toBeTruthy())
@@ -64,10 +68,6 @@ describe("Phase 14C visual acceptance fixture", () => {
       expect(document.querySelectorAll("[aria-live]")).toHaveLength(1)
       expect(new Set(selectedSlotTitles()).size).toBe(selectedSlotTitles().length)
     }
-    fireEvent.click(within(controls).getByTestId("phase14c-player-lab-toggle"))
-    expect(screen.getByTestId("phase14c-player-lab-placeholder")).toBeTruthy()
-    fireEvent.click(within(controls).getByTestId("phase14c-player-lab-toggle"))
-    expect(screen.queryByTestId("phase14c-player-lab-placeholder")).toBeNull()
   })
 
   it("makes fail-closed evidence visibly unavailable without registering duplicate views", async () => {

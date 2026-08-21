@@ -80,6 +80,17 @@ const profileHistory = (player: Player, settings: FantasySettings) =>
 const statusTimestampLabel = (value: string): string =>
   value.replace("T", " ").replace(":00Z", " UTC")
 
+const injuryStatusLabel = (value: string): string => value
+  .toLocaleLowerCase()
+  .replaceAll("_", " ")
+  .replace(/\b\w/g, character => character.toLocaleUpperCase())
+
+const injuryStatusImpact = (value: string): "material" | "review" => (
+  ["OUT", "INJURY_RESERVE", "SUSPENSION"].includes(value.toUpperCase())
+    ? "material"
+    : "review"
+)
+
 const structuredSummaryProvenance = (
   method: "none" | "deterministic" | "openai",
 ): string => method === "openai"
@@ -352,7 +363,7 @@ const DraftDeskProfilePane = ({
     playerId: player?.id || "",
     scoringProfile: settings.ppr ? "ppr" : "standard",
   })
-  return <section aria-label="Player profile and history" className={`${styles.pane} h-full overflow-y-auto text-left`}>
+  return <section aria-label="Player profile and history" className={`${styles.pane} ${styles.profilePane} h-full text-left`}>
     <DeskPaneHeader
       actions={player ? <span className={styles.profileWatch}>Focused from board</span> : undefined}
       className="sticky top-0 z-10"
@@ -386,6 +397,7 @@ const DraftDeskProfilePane = ({
         || events.find(event => event.recommendation_impact !== "none")
         || events[0]
       const statusSummary = status?.response?.summary
+      const artifactInjuryStatus = player.injuryStatus
       const artifactOutlook = player.outlook || (fixtureDetails?.outlook
         ? normalizePlayerOutlook(fixtureDetails.outlook, {
             source: "fixture",
@@ -434,13 +446,9 @@ const DraftDeskProfilePane = ({
             ]}
           />
 
-          <aside aria-label="Player status summary" className={`${styles.profileStatus} ${status?.state === "unavailable" ? styles.profileStatusUnavailable : ""}`}>
+          <aside aria-label="Player status summary" className={`${styles.profileStatus} ${status?.state === "unavailable" && !artifactInjuryStatus ? styles.profileStatusUnavailable : ""}`}>
             <span>STATUS</span>
-            {!status || status.state === "loading"
-              ? <p role="status">Loading structured status…</p>
-              : status.state === "unavailable"
-                ? <p>Status provider unavailable. Rankings and drafting are unaffected.</p>
-                : primaryStatusEvent ? (
+            {primaryStatusEvent ? (
                   <div>
                     <p>{primaryStatusEvent.short_summary}</p>
                     {primaryStatusEvent.recommendation_impact !== "none" && (
@@ -456,7 +464,22 @@ const DraftDeskProfilePane = ({
                       </p>
                     )}
                   </div>
-                ) : <p>No structured status updates.</p>}
+                ) : artifactInjuryStatus ? (
+                  <div>
+                    <p>{injuryStatusLabel(artifactInjuryStatus.status)}</p>
+                    <p className={styles.profileStatusMeta}>
+                      <strong>{injuryStatusImpact(artifactInjuryStatus.status)} impact</strong>
+                      <span>ESPN fantasy status</span>
+                      <time dateTime={artifactInjuryStatus.observedAt}>
+                        observed {statusTimestampLabel(artifactInjuryStatus.observedAt)}
+                      </time>
+                    </p>
+                  </div>
+                ) : !status || status.state === "loading"
+                  ? <p role="status">Loading structured status…</p>
+                  : status.state === "unavailable"
+                    ? <p>Status provider unavailable. Rankings and drafting are unaffected.</p>
+                    : <p>No current injury, suspension, or transaction flags.</p>}
           </aside>
 
           <section aria-label="Player profile module controller" className={styles.profileModuleController}>

@@ -1,5 +1,5 @@
 import React from "react"
-import {render, screen} from "@testing-library/react"
+import {fireEvent, render, screen} from "@testing-library/react"
 
 import DraftDeskPlayerCard from "../components/shared/DraftDeskPlayerCard"
 import {
@@ -36,12 +36,14 @@ const player: Player = {
 
 describe("Draft Desk shared player card", () => {
   it("keeps position identity, rank, tier, ADP, target, and urgency in one dense row", () => {
+    const onFocusPlayer = jest.fn()
     render(
       <DraftDeskPlayerCard
         boardSettings={{ranker: ThirdPartyRanker.HARRIS, adpRanker: ThirdPartyADPRanker.ESPN}}
         compact
         fantasySettings={settings}
         leadingRank={5}
+        onFocusPlayer={onFocusPlayer}
         player={player}
         rankContext="RB5 · #12"
         target={{playerId: "runner", targetAsEarlyAsRound: 3}}
@@ -52,7 +54,7 @@ describe("Draft Desk shared player card", () => {
 
     expect(screen.getByRole("group").getAttribute("aria-label")).toContain("Tier 2")
     expect(screen.getByText("Alpha Runner")).toBeTruthy()
-    expect(screen.getByText("T2")).toBeTruthy()
+    expect(screen.getByText("T2").className).toContain("tierFlag2")
     expect(screen.getByText("ADP 2.5")).toBeTruthy()
     expect(screen.getByText("Target R3")).toBeTruthy()
     expect(screen.getByText("RISK NEXT+1").getAttribute("title"))
@@ -60,5 +62,7 @@ describe("Draft Desk shared player card", () => {
     expect(screen.getByRole("group").getAttribute("aria-label"))
       .toContain("At risk before your following pick")
     expect(screen.queryByText("At risk before your following pick")).toBeNull()
+    fireEvent.click(screen.getByRole("group"))
+    expect(onFocusPlayer).toHaveBeenCalledWith("runner")
   })
 })

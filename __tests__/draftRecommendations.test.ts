@@ -1,7 +1,8 @@
 import {
   createDraftRecommendations,
 } from "../behavior/draft-advisor/recommendations"
-import { createRosters, PlayerRanks } from "../behavior/draft"
+import { createPlayerRanks, createRosters, PlayerRanks } from "../behavior/draft"
+import {getEmbeddedPlayerData} from "../behavior/playerData"
 import {
   BoardSettings,
   DataRanker,
@@ -143,6 +144,47 @@ const ranksFor = (players: Player[]): PlayerRanks => ({
 })
 
 describe("deterministic draft recommendations", () => {
+  it("uses the visible configured positional leader for each current-board option", () => {
+    const embedded = getEmbeddedPlayerData()
+    const liveSettings: FantasySettings = {
+      ppr: false,
+      numTeams: 12,
+      numStartingQbs: 1,
+      numStartingRbs: 2,
+      numStartingWrs: 2,
+      numStartingTes: 1,
+      numFlex: 1,
+      numBenchPlayers: 5,
+    }
+    const liveBoardSettings: BoardSettings = {
+      ranker: ThirdPartyRanker.HARRIS,
+      adpRanker: ThirdPartyADPRanker.ESPN,
+    }
+    const liveRanks = createPlayerRanks(
+      embedded.players,
+      liveSettings,
+      liveBoardSettings,
+    )
+    const result = createDraftRecommendations({
+      settings: liveSettings,
+      boardSettings: liveBoardSettings,
+      rankingSummaries: embedded.rankingsSummaries,
+      playerRanks: liveRanks,
+      playerLib: Object.fromEntries(embedded.players.map(candidate => (
+        [candidate.id, candidate]
+      ))),
+      roster: createRosters(liveSettings.numTeams)[0],
+      currentPick: 1,
+      myPickNum: 6,
+    })
+
+    for (const position of ["QB", "RB", "WR", "TE"] as const) {
+      expect(result.positionCandidates?.find(candidate => (
+        candidate.player.position === position
+      ))?.player.id).toBe(liveRanks[position][0].id)
+    }
+  })
+
   it("suppresses stale ESPN lineage from automatic recommendations", () => {
     const stale = player("rb-stale", FantasyPosition.RUNNING_BACK, 1, 1)
     stale.ranks = {}

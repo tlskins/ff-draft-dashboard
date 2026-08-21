@@ -22,7 +22,7 @@ const expected = (value: number | null, suffix: string): string => (
 
 const needLabel = (slots: number | null, teams: number | null): string => {
   if (slots === null || teams === null) return "Unavailable"
-  return `${slots} slot${slots === 1 ? "" : "s"} across ${teams} team${teams === 1 ? "" : "s"}`
+  return `${teams} team${teams === 1 ? "" : "s"} · ${slots} slot${slots === 1 ? "" : "s"}`
 }
 
 const bucketHeading = (bucket: RoundMarketBucket): string => {
@@ -72,10 +72,9 @@ const TierEvidence: React.FC<{tier: RoundMarketTier; turn: string}> = ({tier, tu
   }
   return (
     <li className={styles.tierEvidence}>
-      <strong>{heading} · {tier.availablePlayerCount} available</strong>
-      <span>{expected(tier.expectedUniquePlayersTakenInBucket, "unique players expected gone this turn")}</span>
-      <span>{percent(tier.exhaustionProbabilityByEndOfBucket)} exhausted by end of {turn}</span>
-      <small>Static-board-derived tier estimate · {tier.assumption}</small>
+      <span><strong>{heading}</strong> · {tier.availablePlayerCount} avail</span>
+      <span>{percent(tier.exhaustionProbabilityByEndOfBucket)} exhausted · {expected(tier.expectedUniquePlayersTakenInBucket, "expected gone")}</span>
+      <small>Static-board estimate · {turn}</small>
     </li>
   )
 }
@@ -87,23 +86,30 @@ const MatrixCell: React.FC<{bucket: RoundMarketBucket; lane: RoundMarketPosition
     ? "Run threshold unavailable"
     : lane.probabilityAtLeastThreshold === null
       ? `Run probability unavailable for ${lane.runThreshold}+ ${lane.position} picks`
-    : `${percent(lane.probabilityAtLeastThreshold)} chance of ${lane.runThreshold}+ ${lane.position} picks`
+      : `${percent(lane.probabilityAtLeastThreshold)} chance of ${lane.runThreshold}+ ${lane.position} picks`
   return (
     <td className={styles.cell}>
+      <div aria-label={unavailable ? "Market unavailable" : runLabel} className={styles.runMetric}>
+        <strong>{unavailable ? "—" : percent(lane.probabilityAtLeastThreshold)}</strong>
+        <span>{unavailable
+          ? "Market unavailable"
+          : lane.runThreshold === null
+            ? "Run threshold unavailable"
+            : `${lane.runThreshold}+ ${lane.position} picks`}</span>
+      </div>
       <div className={styles.cellTopline}>
-        <strong>{unavailable ? "Market unavailable" : runLabel}</strong>
         <span>{unavailable ? bucket.unavailableReason || "No usable market evidence." : expected(lane.expectedPositionalPicks, "expected positional picks")}</span>
       </div>
       <dl className={styles.needEvidence}>
         <div>
-          <dt>Observed starter need</dt>
+          <dt>Starter</dt>
           <dd>{needLabel(
             lane.observedNeed.otherTeamsOpenStarterSlots,
             lane.observedNeed.otherTeamsWithOpenStarter,
           )}</dd>
         </div>
         <div>
-          <dt>Unallocated FLEX need</dt>
+          <dt>FLEX</dt>
           <dd>{needLabel(
             lane.observedNeed.otherTeamsOpenFlexSlots,
             lane.observedNeed.otherTeamsWithOpenFlex,
@@ -137,9 +143,8 @@ const RoundRunMatrix: React.FC<RoundRunMatrixProps> = ({model}) => {
       <header className={styles.header}>
         <p className={styles.kicker}>Position market</p>
         <h2 id="round-run-matrix-title">What can run before the next two turns?</h2>
-        <p>Run chance leads each cell. Starter demand is observed; FLEX remains unallocated. Tier depletion is a separate static-board estimate.</p>
+        <p>At-least-N run chance, roster demand, and tier exhaustion for each upcoming turn.</p>
       </header>
-      <p className={styles.scrollCue}>Scroll horizontally to compare both turns in a narrow pane.</p>
       <div className={styles.scroll}>
         <table className={styles.table}>
           <caption>Two-turn position run market. Each cell shows the chance of at least the stated number of positional picks, expected positional picks, observed other-roster needs, and tier depletion.</caption>

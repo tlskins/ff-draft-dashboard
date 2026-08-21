@@ -50,17 +50,17 @@ const Harness: React.FC<{forecastEnabled?: boolean; materialKey?: string}> = ({f
 }
 
 describe("DraftDeskInsightDeck", () => {
-  it("owns the only live region, keeps comparison controls usable, and reaches the default renderers", () => {
+  it("owns the only live region, exposes two closed view selectors, and renders the position table", () => {
     render(<Harness />)
     expect(document.querySelectorAll("[aria-live]")).toHaveLength(1)
     expect(screen.getByRole("region", {name: "Draft insight deck"})).toBeTruthy()
-    expect(screen.getByRole("region", {name: "Advisor comparison set"})).toBeTruthy()
-    expect(screen.getByText("Decision cockpit")).toBeTruthy()
+    expect(screen.getByRole("region", {name: "Top option at each position"})).toBeTruthy()
+    expect(screen.getByRole("columnheader", {name: "Best projected next target"})).toBeTruthy()
     expect(screen.getByRole("region", {name: "Rank and tier disagreement"})).toBeTruthy()
-    expect(screen.getAllByText("Plan & constraints").length).toBeGreaterThan(1)
-    const comparisonMode = screen.getByRole("group", {name: "Comparison set mode"})
-    fireEvent.click(within(comparisonMode).getByRole("button", {name: "Pinned"}))
-    expect(within(comparisonMode).getByRole("button", {name: "Auto"}).getAttribute("aria-pressed")).toBe("false")
+    expect(screen.getAllByRole("combobox")).toHaveLength(2)
+    expect(screen.getAllByRole("option", {name: "Player Lab"})).toHaveLength(2)
+    const decisionMode = screen.getByRole("group", {name: "Decision view mode"})
+    expect(within(decisionMode).getByRole("button", {name: "Auto"}).getAttribute("aria-pressed")).toBe("true")
   })
 
   it("uses a material boundary to select the two-round market without nested announcers", async () => {

@@ -381,9 +381,18 @@ export const createDraftRecommendations = ({
         player,
         boardSettings,
       ))
-      .sort((left, right) =>
-        getPlayerMetrics(left, settings, boardSettings).posRank
-        - getPlayerMetrics(right, settings, boardSettings).posRank)
+      .sort((left, right) => {
+        const leftRank = getPlayerMetrics(left, settings, boardSettings).posRank
+        const rightRank = getPlayerMetrics(right, settings, boardSettings).posRank
+        const normalizedLeft = Number.isFinite(leftRank) && leftRank > 0
+          ? leftRank
+          : Number.MAX_SAFE_INTEGER
+        const normalizedRight = Number.isFinite(rightRank) && rightRank > 0
+          ? rightRank
+          : Number.MAX_SAFE_INTEGER
+        return normalizedLeft - normalizedRight
+          || left.id.localeCompare(right.id)
+      })
     const player = availableAtPosition[0]
     if (!player) return []
 

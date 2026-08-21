@@ -672,6 +672,14 @@ export interface components {
             /** Format: date-time */
             observed_at: string | null;
         };
+        PlayerInjuryStatus: {
+            status: string;
+            injured: boolean;
+            /** @constant */
+            source: "espn";
+            /** Format: date-time */
+            observed_at: string;
+        };
         Player: {
             id: string;
             first_name: string;
@@ -688,6 +696,7 @@ export interface components {
             source_presence?: components["schemas"]["PlayerSourcePresence"];
             availability?: components["schemas"]["PlayerAvailability"];
             outlook?: components["schemas"]["PlayerOutlook"] | null;
+            injury_status?: components["schemas"]["PlayerInjuryStatus"] | null;
         };
         ReplacementLevel: [
             number,
