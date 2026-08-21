@@ -1,6 +1,6 @@
 # Phase 16 profile history hookup
 
-Status: implementation complete; production release pending.
+Status: deployed to production on 2026-08-20.
 
 This post-closeout Phase 16 slice connects the focused-player profile to the
 existing stateless historical read API. It changes no ranking, tier, draft,
@@ -50,5 +50,9 @@ continues to own its specialized, exact distribution box presentation.
 - Desktop production-export browser check against the local read API: one
   historical query, automatic density, manual three-season heatmap, shared
   week positions, bounded pane scrolling, and no runtime error overlay.
+- Production smoke at `https://ff-draft-dashboard.vercel.app`: the live Cloud
+  Run API returned 49 recorded weeks for Jahmyr Gibbs across 2023–2025; Auto
+  selected PPG distribution and the pinned weekly heatmap rendered all three
+  season facets without an error overlay.
 - Full test, build, release-preflight, deployment, and production-smoke
   evidence are recorded in the release commit and deployment history.
