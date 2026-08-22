@@ -48,5 +48,5 @@ export const fallbackExpertRanker = (
 ): FantasyRanker => (
   selectableExpertRankers(rankings, settings).find(
     ranker => ranker !== ThirdPartyRanker.CUSTOM,
-  ) || ThirdPartyRanker.HARRIS
+  ) || ThirdPartyRanker.CUSTOM
 )

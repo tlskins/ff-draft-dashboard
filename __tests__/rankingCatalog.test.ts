@@ -62,5 +62,9 @@ describe("ranking catalog authority", () => {
       players: [player],
       allThirdPartyRankers: ["Matt Harmon", "Harris"],
     }, {ppr: true})).toBe("Matt Harmon")
+    expect(fallbackExpertRanker({
+      players: [player],
+      allThirdPartyRankers: ["Harris"],
+    }, {ppr: true, scoringFormat: "half_ppr"})).toBe(ThirdPartyRanker.CUSTOM)
   })
 })
