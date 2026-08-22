@@ -62,6 +62,38 @@ describe("Phase 14A desk components", () => {
     expect(screen.getByText("3 team · PPR · 2QB")).toBeTruthy()
   })
 
+  it("renders and selects API-published expert boards without enum changes", () => {
+    const onSetRanker = jest.fn()
+    render(
+      <DraftDeskAppBar
+        activeDraftListenerTitle={null}
+        boardSettings={{ranker: ThirdPartyRanker.HARRIS, adpRanker: ThirdPartyADPRanker.ESPN}}
+        draftCaptureState="disconnected"
+        draftPersistence={{state: "local", pendingEventCount: 0, error: null, canRetry: false}}
+        draftSourceHealth={null}
+        draftSourceHealthFreshness="unknown"
+        draftStarted={false}
+        myPickNum={2}
+        onRetryDraftPersistence={jest.fn()}
+        onSetAdpRanker={jest.fn()}
+        onSetRanker={onSetRanker}
+        rankingSources={["Harris", "Matt Harmon", "Custom"]}
+        setIsPpr={jest.fn()}
+        setMyPickNum={jest.fn()}
+        setNumTeams={jest.fn()}
+        settings={settings}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", {name: "Settings"}))
+    const selector = screen.getByLabelText("Ranking source")
+
+    expect(Array.from((selector as HTMLSelectElement).options).map(
+      option => option.value,
+    )).toEqual(["Harris", "Matt Harmon", "Custom"])
+    fireEvent.change(selector, {target: {value: "Matt Harmon"}})
+    expect(onSetRanker).toHaveBeenCalledWith("Matt Harmon")
+  })
+
   it("uses an accessible settings drawer and retains draft locks", async () => {
     const view = render(
       <DraftDeskAppBar

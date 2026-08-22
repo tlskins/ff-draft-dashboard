@@ -57,7 +57,7 @@ export interface PortableRankingEntry {
 }
 
 export interface PortableRankingSnapshot {
-  source_ranker: ThirdPartyRanker
+  source_ranker: FantasyRanker
   scoring: PortableScoring
   positions: Record<PortablePosition, PortableRankingEntry[]>
 }
@@ -103,6 +103,8 @@ export type PortableDataPackage = PortableDataPackageV1 | PortableDataPackageV2
 export interface PortableDataValidationContext {
   /** The current downloaded/embedded player library is the identity authority. */
   playersById: ReadonlyMap<string, Player>
+  /** API-published expert names are authority for portable board references. */
+  rankers?: ReadonlySet<string>
 }
 
 export class PortableDataValidationError extends Error {
@@ -165,12 +167,12 @@ const integer = (
 
 const isPlayerId = (value: string) => /^[A-Za-z0-9:_-]+$/.test(value)
 
-const sourceRankers = new Set<string>([
+const legacySourceRankers = new Set<string>([
   ThirdPartyRanker.HARRIS,
   ThirdPartyRanker.ESPN,
   ThirdPartyRanker.FPROS,
 ])
-const boardRankers = new Set<string>([
+const legacyBoardRankers = new Set<string>([
   ...Object.values(ThirdPartyRanker),
   ...Object.values(DataRanker),
 ])
@@ -199,12 +201,19 @@ const validateSettings = (value: unknown): FantasySettings => {
   return settings
 }
 
-const validateBoardSettings = (value: unknown): BoardSettings => {
+const validateBoardSettings = (
+  value: unknown,
+  context: PortableDataValidationContext,
+): BoardSettings => {
   const record = recordValue(value, "preferences.board")
   hasOnlyKeys(record, ["ranker", "adpRanker"], "preferences.board")
   const ranker = stringValue(record.ranker, "preferences.board.ranker", 64)
   const adpRanker = stringValue(record.adpRanker, "preferences.board.adpRanker", 64)
-  if (!boardRankers.has(ranker)) fail("preferences.board.ranker is unsupported")
+  const supportedRankers = new Set([
+    ...Array.from(legacyBoardRankers),
+    ...Array.from(context.rankers || []),
+  ])
+  if (!supportedRankers.has(ranker)) fail("preferences.board.ranker is unsupported")
   if (!adpRankers.has(adpRanker)) fail("preferences.board.adpRanker is unsupported")
   return { ranker: ranker as FantasyRanker, adpRanker: adpRanker as ThirdPartyADPRanker }
 }
@@ -216,7 +225,13 @@ const validateRankingSnapshot = (
   const record = recordValue(value, "custom_rankings")
   hasOnlyKeys(record, ["source_ranker", "scoring", "positions"], "custom_rankings")
   const sourceRanker = stringValue(record.source_ranker, "custom_rankings.source_ranker", 64)
-  if (!sourceRankers.has(sourceRanker)) fail("custom_rankings.source_ranker is unsupported")
+  const supportedSourceRankers = new Set([
+    ...Array.from(legacySourceRankers),
+    ...Array.from(context.rankers || []),
+  ])
+  if (!supportedSourceRankers.has(sourceRanker)) {
+    fail("custom_rankings.source_ranker is unsupported")
+  }
   if (record.scoring !== "ppr" && record.scoring !== "standard") {
     fail("custom_rankings.scoring must be ppr or standard")
   }
@@ -258,7 +273,7 @@ const validateRankingSnapshot = (
     })
   }
   return {
-    source_ranker: sourceRanker as ThirdPartyRanker,
+    source_ranker: sourceRanker,
     scoring: record.scoring as PortableScoring,
     positions,
   }
@@ -296,7 +311,7 @@ const validatePreferences = (
   const record = recordValue(value, "preferences")
   hasOnlyKeys(record, ["settings", "board", "my_pick_num", "player_targets"], "preferences")
   const settings = validateSettings(record.settings)
-  const board = validateBoardSettings(record.board)
+  const board = validateBoardSettings(record.board, context)
   const myPickNum = integer(record.my_pick_num, "preferences.my_pick_num", 1, settings.numTeams)
   if (!Array.isArray(record.player_targets) || record.player_targets.length > PORTABLE_DATA_MAX_TARGETS) {
     fail("preferences.player_targets must be a bounded array")
@@ -430,7 +445,7 @@ const tierFor = (
   entries: PortableRankingEntry[],
   tierNumber: number,
   players: Map<string, Player>,
-  sourceRanker: ThirdPartyRanker,
+  sourceRanker: FantasyRanker,
   scoring: PortableScoring,
 ): Tier => {
   const members = entries.filter(entry => entry.user_tier === tierNumber)
@@ -501,7 +516,7 @@ export const applyPortableRankingSnapshot = (
 export const applyRankingProfileV2Snapshot = (
   rankings: Rankings,
   profile: RankingProfileV2 | null,
-  sourceRanker: ThirdPartyRanker = ThirdPartyRanker.HARRIS,
+  sourceRanker: FantasyRanker = ThirdPartyRanker.HARRIS,
 ): Rankings => applyPortableRankingSnapshot(
   rankings,
   profile ? {
@@ -543,7 +558,7 @@ export const portableRankingProfile = (
 
 export const portableRankingSource = (
   value: PortableDataPackage,
-): ThirdPartyRanker => (
+): FantasyRanker => (
   value.version === PORTABLE_DATA_V1_VERSION && value.data.custom_rankings
     ? value.data.custom_rankings.source_ranker
     : ThirdPartyRanker.HARRIS

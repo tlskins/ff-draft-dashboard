@@ -24,6 +24,7 @@ import { commitCanonicalRankingProfile } from "../rankingProfileStorage"
 import { PlayerRanks } from "../draft"
 import {
   BoardSettings,
+  FantasyRanker,
   FantasyPosition,
   FantasySettings,
   Player,
@@ -47,7 +48,7 @@ interface UseRankingProfilesOptions {
   settings: FantasySettings
   boardSettings: BoardSettings
   onLoadPlayers: (rankings: Rankings) => void
-  onSetRanker: (ranker: ThirdPartyRanker) => void
+  onSetRanker: (ranker: FantasyRanker) => void
   localProfile?: RankingProfileV2 | null
   onLocalProfileCommitted?: (profile: RankingProfileV2 | null) => void
   /**

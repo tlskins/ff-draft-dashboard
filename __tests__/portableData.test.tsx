@@ -195,6 +195,17 @@ describe("portable local-data package", () => {
       .toThrow("bounded array")
   })
 
+  it("accepts API-published ranker names without weakening unknown-source checks", () => {
+    const dynamic = packageFor()
+    dynamic.data.preferences.board.ranker = "Matt Harmon"
+
+    expect(() => parse(dynamic)).toThrow("ranker is unsupported")
+    expect(parsePortableDataPackage(JSON.stringify(dynamic), {
+      ...context,
+      rankers: new Set(["Matt Harmon"]),
+    }).data.preferences.board.ranker).toBe("Matt Harmon")
+  })
+
   it("continues accepting an explicitly versioned portable-v1 package", () => {
     const current = packageFor()
     const legacy = {

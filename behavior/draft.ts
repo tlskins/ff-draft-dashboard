@@ -58,10 +58,10 @@ export const getPlayerMetrics = (
 
     return {
         overallRank,
-        posRank,
+        posRank: posRank ?? 9999,
         tier: settings.ppr ? ranks.pprPositionTier : ranks.standardPositionTier,
         adp: adp == null ? undefined : parseFloat(adp.toFixed(1)),
-        overallOrPosRank: overallRank == null ? posRank : overallRank,
+        overallOrPosRank: overallRank == null ? posRank ?? 9999 : overallRank,
     }
 }
 

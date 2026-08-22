@@ -83,7 +83,9 @@ export const getDataRankerMetric = (ranker: DataRanker) => {
 
 export type RankBuckets = FantasyPosition.QUARTERBACK | FantasyPosition.RUNNING_BACK | FantasyPosition.WIDE_RECEIVER | FantasyPosition.TIGHT_END | "Purge"
 
-export type FantasyRanker = DataRanker | ThirdPartyRanker;
+// Expert boards are catalog data supplied by the API. The legacy enum remains
+// for stable built-in constants, but it is not the closed set of rankers.
+export type FantasyRanker = string;
 
 export interface FantasySettings {
     ppr: boolean;
@@ -200,13 +202,18 @@ export interface PlayerRanking {
     position: FantasyPosition;
     metricValuePpr?: number;
     metricValueStd?: number;
+    metricValueHalfPpr?: number;
     adp?: number;
     standardOverallRank?: number;
+    halfPprOverallRank?: number;
     pprOverallRank?: number;
-    standardPositionRank: number; // positional rank must exist
+    standardPositionRank?: number;
     standardPositionTier?: Tier;
-    pprPositionRank: number; // positional rank must exist
+    halfPprPositionRank?: number;
+    halfPprPositionTier?: Tier;
+    pprPositionRank?: number;
     pprPositionTier?: Tier;
+    sourcePositionTiers?: Partial<Record<"standard" | "halfPpr" | "ppr", number>>;
 }
 
 export type PlayerAvailabilityState =
@@ -290,6 +297,17 @@ export interface Rankings {
     editedAt: string;
     copiedRanker?: FantasyRanker;
     settings: FantasySettings;
+    allThirdPartyRankers?: FantasyRanker[];
+    rankingSources?: {
+      schemaVersion: number;
+      sources: Array<{
+        id: string;
+        ranker: string;
+        scoringFormats?: Array<"standard" | "half_ppr" | "ppr">;
+        ingestionMode?: "managed" | "user_import" | "reference_only";
+        sourceUpdatedAt?: string | null;
+      }>;
+    };
 }
 
 export enum DraftView {

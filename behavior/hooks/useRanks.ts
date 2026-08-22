@@ -34,6 +34,10 @@ import {
 import { PlayerRankingDiff } from '../../types/DraftBoardTypes'
 import { cloneDeep } from 'lodash'
 import { LEGACY_RANKING_PROFILE_STORAGE_KEY } from '../rankingProfileStorage'
+import {
+  fallbackExpertRanker,
+  selectableExpertRankers,
+} from '../rankingCatalog'
 
 interface UseRanksProps {
   settings: FantasySettings
@@ -103,10 +107,34 @@ export const useRanks = ({
     onRecalculatePlayerRanks()
   }, [settings.ppr, boardSettings.ranker, boardSettings.adpRanker, playerLib])
 
+  useEffect(() => {
+    if (
+      rankings.players.length === 0
+      || boardSettings.ranker === ThirdPartyRanker.CUSTOM
+    ) return
+    const selectable = selectableExpertRankers(rankings, settings)
+    if (!selectable.includes(boardSettings.ranker)) {
+      setBoardSettings(current => ({
+        ...current,
+        ranker: fallbackExpertRanker(rankings, settings),
+      }))
+    }
+  }, [boardSettings.ranker, rankings, settings])
+
   const onLoadPlayers = useCallback((
     rankings: Rankings
   ) => {
-    const nextPlayerRanks = createPlayerRanks(rankings.players, settings, boardSettings)
+    const selectable = selectableExpertRankers(rankings, settings)
+    const nextRanker = selectable.includes(boardSettings.ranker)
+      ? boardSettings.ranker
+      : fallbackExpertRanker(rankings, settings)
+    const nextBoardSettings = {...boardSettings, ranker: nextRanker}
+    const nextPlayerRanks = createPlayerRanks(
+      rankings.players, settings, nextBoardSettings,
+    )
+    if (nextRanker !== boardSettings.ranker) {
+      setBoardSettings(nextBoardSettings)
+    }
     setPlayerRanks(nextPlayerRanks)
     createPlayerLibrary(rankings.players)
     setRankingSummaries(rankings.rankingsSummaries)
@@ -133,7 +161,7 @@ export const useRanks = ({
     setRankings(nextRankings)
   }, [])
 
-  const onLoadCustomPlayerRanks = useCallback((rankings: Rankings, ranker: ThirdPartyRanker) => {
+  const onLoadCustomPlayerRanks = useCallback((rankings: Rankings, ranker: FantasyRanker) => {
     // First load the players with the source ranker to get proper rankings
     const tempPlayerRanks = createPlayerRanks(rankings.players, settings, { ...boardSettings, ranker })
     const tempPlayerLib = rankings.players.reduce((acc: PlayerLibrary, player) => {
@@ -344,7 +372,7 @@ export const useRanks = ({
   // Helper function to create custom rankings for all players
   const createCustomRankingsForPlayers = useCallback((
     playersToUpdate: Player[],
-    sourceRanker: ThirdPartyRanker,
+    sourceRanker: FantasyRanker,
     currentPlayerLib: PlayerLibrary,
     currentPlayerRanks: PlayerRanks,
     currentPlayersByPosByTeam: PlayersByPositionAndTeam
@@ -389,7 +417,7 @@ export const useRanks = ({
     }
   }, [])
 
-  const onStartCustomRanking = useCallback((selectedRankerToCopy: ThirdPartyRanker) => {
+  const onStartCustomRanking = useCallback((selectedRankerToCopy: FantasyRanker) => {
     if (!canEditCustomRankings()) {
       console.warn("Cannot edit custom rankings when players have been drafted or purged")
       return false
@@ -397,7 +425,7 @@ export const useRanks = ({
 
     // If editing custom ranks selected ranker should be the original copied ranker
     if ( selectedRankerToCopy === ThirdPartyRanker.CUSTOM && rankings.copiedRanker ) {
-      selectedRankerToCopy = rankings.copiedRanker as ThirdPartyRanker
+      selectedRankerToCopy = rankings.copiedRanker
     }
 
     // Get all currently available players
@@ -611,8 +639,8 @@ export const useRanks = ({
             playerName: player.fullName,
             adpDiff,
             posRankDiff,
-            prevStandardPositionRank: currRanking.standardPositionRank,
-            prevPprPositionRank: currRanking.pprPositionRank,
+            prevStandardPositionRank: currRanking.standardPositionRank || 999,
+            prevPprPositionRank: currRanking.pprPositionRank || 999,
             prevStandardPositionTier: currRanking.standardPositionTier,
             prevPprPositionTier: currRanking.pprPositionTier,
           }
@@ -645,7 +673,9 @@ export const useRanks = ({
     }
     console.log('onSyncPendingRankings', updatedRankings)
     
-    onLoadCustomPlayerRanks(updatedRankings, rankings.copiedRanker as ThirdPartyRanker)
+    if (rankings.copiedRanker) {
+      onLoadCustomPlayerRanks(updatedRankings, rankings.copiedRanker)
+    }
     
   }, [latestRankings, isEditingCustomRanking, canEditCustomRankings, calculateRankingDiffs, rankings, playerLib, settings, boardSettings, setPendingRankings, onLoadCustomPlayerRanks]) 
 

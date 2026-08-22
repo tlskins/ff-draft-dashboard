@@ -1,5 +1,5 @@
 import React from "react"
-import {render, within} from "@testing-library/react"
+import {fireEvent, render, within} from "@testing-library/react"
 
 import {
   normalizePlayerOutlook,
@@ -105,6 +105,7 @@ describe("Phase 14B ESPN player outlook contract", () => {
       text: "Current outlook.", source: "espn", season: 2026,
       observedAt: "2026-08-16T12:00:00Z",
     }})
+    fireEvent.click(current.getByRole("button", {name: "Outlook"}))
     let outlook = current.getByRole("region", {name: "ESPN player outlook"})
     expect(within(outlook).getByText("Current outlook.")).toBeTruthy()
     expect(within(outlook).getByLabelText("Player outlook provenance").textContent)

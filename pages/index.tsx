@@ -50,6 +50,7 @@ import {
   useRealtimeConversation,
 } from "../behavior/hooks/useRealtimeConversation"
 import { Player, ThirdPartyRanker } from "types"
+import {selectableExpertRankers} from "../behavior/rankingCatalog"
 import {
   createAdvisorSnapshotPersistenceCoordinator,
   createAdvisorInputFingerprint,
@@ -204,6 +205,10 @@ const Home: FC = () => {
   } = useRanks({ settings, myPickNum })
 
   const usingCustomRanking = boardSettings.ranker === ThirdPartyRanker.CUSTOM
+  const rankingSourceOptions = useMemo(
+    () => selectableExpertRankers(rankings, settings),
+    [rankings, settings],
+  )
 
   const [startupProfile, setStartupProfile] = useState<RankingProfileV2 | null>(null)
   const [startupMigrationStatus, setStartupMigrationStatus] = useState<string | null>(null)
@@ -626,7 +631,8 @@ const Home: FC = () => {
 
   const portableValidationContext = useMemo(() => ({
     playersById: new Map(Object.values(playerLib).map(player => [player.id, player])),
-  }), [playerLib])
+    rankers: new Set(rankings.allThirdPartyRankers || []),
+  }), [playerLib, rankings.allThirdPartyRankers])
 
   const createPortableData = useCallback(() => createPortableDataPackage({
     rankings,
@@ -917,7 +923,7 @@ const Home: FC = () => {
 
   // Custom ranking wrapper functions
   const handleStartCustomRanking = () => {
-    const success = onStartCustomRanking(boardSettings.ranker as ThirdPartyRanker)
+    const success = onStartCustomRanking(boardSettings.ranker)
     if (success) {
       setDraftView(DraftView.CUSTOM_RANKING)
     }
@@ -981,6 +987,7 @@ const Home: FC = () => {
               onRetryDraftPersistence={retryDraftPersistence}
               onSetAdpRanker={onSetAdpRanker}
               onSetRanker={onSetRanker}
+              rankingSources={rankingSourceOptions}
               setIsPpr={setIsPpr}
               setMyPickNum={setMyPickNum}
               setNumTeams={setNumTeams}
@@ -1019,6 +1026,7 @@ const Home: FC = () => {
             setIsPpr={setIsPpr}
             setMyPickNum={setMyPickNum}
             onSetRanker={onSetRanker}
+            rankingSources={rankingSourceOptions}
             onSetAdpRanker={onSetAdpRanker}
           />
         </div>}
@@ -1386,6 +1394,7 @@ const Home: FC = () => {
                   setIsPpr={setIsPpr}
                   setMyPickNum={setMyPickNum}
                   onSetRanker={onSetRanker}
+                  rankingSources={rankingSourceOptions}
                   onSetAdpRanker={onSetAdpRanker}
                   rankingSummaries={rankingSummaries}
                   ranker={boardSettings.ranker}

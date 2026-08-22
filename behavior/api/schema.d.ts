@@ -628,13 +628,20 @@ export interface components {
             position: components["schemas"]["FantasyPosition"];
             metric_value_ppr: number | null;
             metric_value_std: number | null;
+            metric_value_half_ppr?: number | null;
             adp: number | null;
             standard_overall_rank: number | null;
+            half_ppr_overall_rank?: number | null;
             ppr_overall_rank: number | null;
             standard_position_rank: number | null;
             standard_position_tier: components["schemas"]["Tier"] | null;
+            half_ppr_position_rank?: number | null;
+            half_ppr_position_tier?: components["schemas"]["Tier"] | null;
             ppr_position_rank: number | null;
             ppr_position_tier: components["schemas"]["Tier"] | null;
+            source_position_tiers?: {
+                [key: string]: number;
+            };
         };
         EspnSourcePresence: {
             present_in_current_response: boolean;
@@ -731,6 +738,12 @@ export interface components {
             provider_id: string;
             provider_name: string;
             ranker: string;
+            publisher?: string;
+            /** @enum {string} */
+            ingestion_mode: "managed" | "user_import" | "reference_only";
+            scoring_formats: ("standard" | "half_ppr" | "ppr")[];
+            /** Format: uri */
+            source_url: string;
             season: number;
             /** Format: date-time */
             retrieved_at: string;
@@ -739,6 +752,7 @@ export interface components {
             raw_source_fingerprint: string;
             record_count: number;
             tier_method: string;
+            source_native_tier_count: number;
         };
         RankingArtifactSources: {
             /** @constant */
@@ -1092,6 +1106,16 @@ export interface components {
             id: string;
             provider_id: string;
             provider_name: string;
+            ranker?: string;
+            /** @enum {string} */
+            catalog_status?: "integrated" | "candidate" | "blocked";
+            /** @enum {string} */
+            ingestion_mode?: "managed" | "user_import" | "reference_only";
+            scoring_formats?: ("standard" | "half_ppr" | "ppr")[];
+            /** @enum {string} */
+            tier_policy?: "none" | "drafty_derived" | "source_native" | "source_or_drafty_derived";
+            /** Format: uri */
+            source_url?: string;
             /** @enum {string} */
             storage_transport: "sqlite" | "artifact";
             /** @enum {string} */
@@ -1113,6 +1137,7 @@ export interface components {
             raw_source_fingerprint: string | null;
             record_count: number | null;
             tier_method: string | null;
+            source_native_tier_count?: number;
         };
         RankingSourceListResponse: {
             sources: components["schemas"]["RankingSourceStatus"][];

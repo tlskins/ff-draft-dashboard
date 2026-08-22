@@ -28,7 +28,7 @@ interface DraftDeskAppBarProps {
   setNumTeams: (numTeams: number) => void
   setIsPpr: (isPpr: boolean) => void
   setMyPickNum: (pickNum: number) => void
-  onSetRanker: (ranker: ThirdPartyRanker) => void
+  onSetRanker: (ranker: FantasyRanker) => void
   onSetAdpRanker: (ranker: ThirdPartyADPRanker) => void
   activeDraftListenerTitle: string | null
   draftCaptureState: DraftCaptureConnectionState
@@ -38,6 +38,7 @@ interface DraftDeskAppBarProps {
   onRetryDraftPersistence: () => void
   setupOperations?: ReactNode
   workspaceOperations?: ReactNode
+  rankingSources?: FantasyRanker[]
 }
 
 const DraftDeskAppBar = ({
@@ -58,6 +59,7 @@ const DraftDeskAppBar = ({
   onRetryDraftPersistence,
   setupOperations,
   workspaceOperations,
+  rankingSources,
 }: DraftDeskAppBarProps) => {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const drawerRef = useRef<HTMLDivElement>(null)
@@ -71,6 +73,11 @@ const DraftDeskAppBar = ({
   const lockLabel = draftStarted
     ? "Draft setup is locked after the first pick."
     : "Draft setup is editable until the first pick."
+  const rankerOptions = Array.from(new Set(
+    rankingSources?.length
+      ? rankingSources
+      : Object.values(ThirdPartyRanker),
+  ))
 
   return (
     <header className={`${styles.desk} ${styles.appBar} hidden w-full text-left xl:grid`}>
@@ -189,10 +196,10 @@ const DraftDeskAppBar = ({
                   aria-label="Ranking source"
                   className={`${styles.focusRing} mt-1 block w-full rounded border border-slate-500 bg-slate-800 p-2 text-sm`}
                   disabled={draftStarted}
-                  onChange={event => onSetRanker(event.target.value as ThirdPartyRanker)}
+                  onChange={event => onSetRanker(event.target.value)}
                   value={boardSettings.ranker}
                 >
-                  {Object.values(ThirdPartyRanker).map(ranker => (
+                  {rankerOptions.map(ranker => (
                     <option key={ranker} value={ranker}>{ranker}</option>
                   ))}
                 </select>

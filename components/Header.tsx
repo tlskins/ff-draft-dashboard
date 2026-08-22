@@ -17,8 +17,9 @@ interface HeaderProps {
   setNumTeams: (numTeams: number) => void
   setIsPpr: (isPpr: boolean) => void
   setMyPickNum: (pickNum: number) => void
-  onSetRanker: (ranker: ThirdPartyRanker) => void
+  onSetRanker: (ranker: FantasyRanker) => void
   onSetAdpRanker: (ranker: ThirdPartyADPRanker) => void
+  rankingSources?: FantasyRanker[]
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -31,12 +32,18 @@ const Header: React.FC<HeaderProps> = ({
   setMyPickNum,
   onSetRanker,
   onSetAdpRanker,
+  rankingSources,
 }) => {
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
 
   const toggleHeaderCollapse = () => {
     setIsHeaderCollapsed(!isHeaderCollapsed)
   }
+  const rankerOptions = Array.from(new Set(
+    rankingSources?.length
+      ? rankingSources
+      : Object.values(ThirdPartyRanker),
+  ))
 
   return (
     <div 
@@ -143,11 +150,11 @@ const Header: React.FC<HeaderProps> = ({
               className={`p-1 m-1 border rounded md:w-auto w-32 ${draftStarted ? 'bg-gray-300' : ''}`}
               value={boardSettings.ranker}
               onChange={ e => {
-                onSetRanker(e.target.value as ThirdPartyRanker)
+                onSetRanker(e.target.value)
               }}
               disabled={draftStarted}
             >
-              { Object.values(ThirdPartyRanker).map( ranker => <option key={ranker} value={ ranker }> { ranker } </option>) }
+              { rankerOptions.map( ranker => <option key={ranker} value={ ranker }> { ranker } </option>) }
             </select>
           </div>
 

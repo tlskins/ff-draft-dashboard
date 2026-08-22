@@ -3,7 +3,7 @@ import OptimalRosterDisplay from './OptimalRosterDisplay'
 import RankingSummaryDisplay from './RankingSummary'
 import Header from "./Header"
 import { FantasyPosition, NFLTeam } from '../types'
-import type { FantasySettings, BoardSettings, RankingSummary, Player, ThirdPartyADPRanker, ThirdPartyRanker } from '../types'
+import type { FantasySettings, BoardSettings, RankingSummary, Player, ThirdPartyADPRanker, FantasyRanker } from '../types'
 
 interface OptimalPick {
   player: any
@@ -32,8 +32,9 @@ interface MobileTiersViewProps {
   setNumTeams: (numTeams: number) => void
   setIsPpr: (isPpr: boolean) => void
   setMyPickNum: (pickNum: number) => void
-  onSetRanker: (ranker: ThirdPartyRanker) => void
+  onSetRanker: (ranker: FantasyRanker) => void
   onSetAdpRanker: (ranker: ThirdPartyADPRanker) => void
+  rankingSources?: FantasyRanker[]
 }
 
 const MobileTiersView: React.FC<MobileTiersViewProps> = ({
@@ -52,6 +53,7 @@ const MobileTiersView: React.FC<MobileTiersViewProps> = ({
   setMyPickNum,
   onSetRanker,
   onSetAdpRanker,
+  rankingSources,
 }) => {
   const [selectedPosition, setSelectedPosition] = useState<Position>(FantasyPosition.QUARTERBACK)
 
@@ -83,6 +85,7 @@ const MobileTiersView: React.FC<MobileTiersViewProps> = ({
           setMyPickNum={setMyPickNum}
           onSetRanker={onSetRanker}
           onSetAdpRanker={onSetAdpRanker}
+          rankingSources={rankingSources}
         />
       </div> 
 
@@ -130,4 +133,4 @@ const MobileTiersView: React.FC<MobileTiersViewProps> = ({
   )
 }
 
-export default MobileTiersView 
+export default MobileTiersView

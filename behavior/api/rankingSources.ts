@@ -99,6 +99,13 @@ const rankingSourcesLoader: ReadApiLoader<RankingSourceListResponse> = async (
     source.failure_reason,
     source.source_updated_at,
     source.tier_method,
+    source.ranker,
+    source.catalog_status,
+    source.ingestion_mode,
+    source.scoring_formats,
+    source.tier_policy,
+    source.source_url,
+    source.source_native_tier_count,
   ])
   if (
     response.sources.length === 0
@@ -168,6 +175,13 @@ export const useRankingSourceDetail = (
         source.failure_reason,
         source.source_updated_at,
         source.tier_method,
+        source.ranker,
+        source.catalog_status,
+        source.ingestion_mode,
+        source.scoring_formats,
+        source.tier_policy,
+        source.source_url,
+        source.source_native_tier_count,
       ])}`,
       ...(source.availability === "stale" || source.is_stale ? {
         staleReason: `${source.provider_name} source metadata is stale.`,

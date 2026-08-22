@@ -63,7 +63,28 @@ describe("rankings freshness", () => {
         settings: {},
         rankings_summaries: [],
         all_data_rankers: [],
-        all_third_party_rankers: [],
+        all_third_party_rankers: ["Matt Harmon"],
+        ranking_sources: {
+          schema_version: 1,
+          sources: [{
+            id: "matt-harmon",
+            provider_id: "import-matt-harmon",
+            provider_name: "Yahoo Sports / Reception Perception",
+            ranker: "Matt Harmon",
+            publisher: "Yahoo Sports / Reception Perception",
+            ingestion_mode: "user_import",
+            scoring_formats: ["half_ppr", "ppr"],
+            source_url: "https://sports.yahoo.com/fantasy/topic/rankings/",
+            season: 2026,
+            retrieved_at: "2026-08-22T12:00:00Z",
+            source_updated_at: "2026-08-21T16:00:00Z",
+            fingerprint: "a".repeat(64),
+            raw_source_fingerprint: "b".repeat(64),
+            record_count: 1,
+            tier_method: "last_season_ppg_rank_band_v1",
+            source_native_tier_count: 1,
+          }],
+        },
         players: [{
           id: "101",
           first_name: "Alpha",
@@ -71,7 +92,25 @@ describe("rankings freshness", () => {
           full_name: "Alpha Runner",
           team: "BUF",
           position: "RB",
-          ranks: {},
+          ranks: {"Matt Harmon": {
+            player_id: "101",
+            ranker: "Matt Harmon",
+            position: "RB",
+            metric_value_ppr: null,
+            metric_value_std: null,
+            metric_value_half_ppr: null,
+            adp: null,
+            standard_overall_rank: null,
+            half_ppr_overall_rank: 7,
+            ppr_overall_rank: 8,
+            standard_position_rank: null,
+            standard_position_tier: null,
+            half_ppr_position_rank: 3,
+            half_ppr_position_tier: null,
+            ppr_position_rank: 4,
+            ppr_position_tier: null,
+            source_position_tiers: {half_ppr: 2},
+          }},
           historical_stats: {},
           source_presence: {espn: {
             present_in_current_response: false,
@@ -118,6 +157,19 @@ describe("rankings freshness", () => {
         source: "espn",
         observedAt: "2026-08-20T20:00:00Z",
       },
+      ranks: {"Matt Harmon": {
+        halfPprOverallRank: 7,
+        halfPprPositionRank: 3,
+        pprPositionRank: 4,
+        sourcePositionTiers: {halfPpr: 2},
+      }},
+    })
+    expect(loaded.allThirdPartyRankers).toEqual(["Matt Harmon"])
+    expect(loaded.rankingSources?.sources[0]).toMatchObject({
+      id: "matt-harmon",
+      ranker: "Matt Harmon",
+      scoringFormats: ["half_ppr", "ppr"],
+      ingestionMode: "user_import",
     })
   })
 })
