@@ -20,6 +20,20 @@ describe("useDraftBoard authoritative draft metadata", () => {
     expect(result.current.settings).toMatchObject({
       numTeams: 10,
       ppr: true,
+      scoringFormat: "ppr",
     })
+  })
+
+  it("retains half-PPR as a distinct reception-sensitive format", () => {
+    const {result} = renderHook(() => useDraftBoard())
+    act(() => result.current.setScoringFormat("half_ppr"))
+    expect(result.current.settings).toMatchObject({
+      ppr: true,
+      scoringFormat: "half_ppr",
+    })
+    act(() => result.current.applyAuthoritativeDraftSettings({
+      scoringFormat: "half_ppr",
+    }))
+    expect(result.current.settings.scoringFormat).toBe("half_ppr")
   })
 })

@@ -10,6 +10,7 @@ import {
 import {loadHistoricalComparisonResource} from "../../behavior/api/historicalResources"
 import type {AdvisorComparisonController} from "../../behavior/hooks/useAdvisorComparisonController"
 import type {FantasySettings, Player} from "../../types"
+import {scoringFormatFor} from "../../behavior/scoringFormat"
 import AdvisorComparisonSurface from "../AdvisorComparisonSurface"
 import PlayerLabHistorical from "../analysis/PlayerLabHistorical"
 import styles from "./InsightDeck.module.css"
@@ -35,8 +36,9 @@ const PlayerLabInsightSurface = ({
     || windows[windows.length - 1]
     || null
   const [windowSize, setWindowSize] = useState<1 | 3 | 5>(5)
+  const activeScoringProfile = scoringFormatFor(settings)
   const [scoringProfile, setScoringProfile] = useState<ScoringProfileId>(
-    settings.ppr ? "ppr" : "standard",
+    activeScoringProfile,
   )
   const [result, setResult] = useState<HistoricalComparisonResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -48,8 +50,8 @@ const PlayerLabInsightSurface = ({
   const playerSignature = playerIds.join("|")
 
   useEffect(() => {
-    setScoringProfile(settings.ppr ? "ppr" : "standard")
-  }, [settings.ppr])
+    setScoringProfile(activeScoringProfile)
+  }, [activeScoringProfile])
 
   useEffect(() => {
     if (!defaultWindow) return

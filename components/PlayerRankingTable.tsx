@@ -7,6 +7,7 @@ import {
   PlayerMetrics,
 } from '../types';
 import { getPlayerMetrics, getRoundAndPickShortText } from '../behavior/draft';
+import {overallRankFor, positionRankFor, scoringFormatFor} from '../behavior/scoringFormat';
 
 interface PlayerRankingTableProps {
   player: Player | null;
@@ -43,8 +44,9 @@ const PlayerRankingTable: React.FC<PlayerRankingTableProps> = ({
       };
     }
 
-    const overallRank = settings.ppr ? ranking.pprOverallRank : ranking.standardOverallRank;
-    const posRank = settings.ppr ? ranking.pprPositionRank : ranking.standardPositionRank;
+    const scoringFormat = scoringFormatFor(settings);
+    const overallRank = overallRankFor(ranking, scoringFormat);
+    const posRank = positionRankFor(ranking, scoringFormat);
     const roundAndPick = overallRank 
       ? getRoundAndPickShortText(overallRank, settings.numTeams)
       : 'N/A';

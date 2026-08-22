@@ -13,6 +13,7 @@ import type {
 import type {DataReadinessState} from "../api/dataReadiness"
 import {ThirdPartyRanker} from "../../types"
 import type {FantasySettings, Player} from "../../types"
+import {positionRankFor, positionTierFor, scoringFormatFor} from "../scoringFormat"
 
 
 export interface HistoricalInsightModel {
@@ -116,15 +117,12 @@ export const buildRankTierDisagreementModel = (
     ThirdPartyRanker.CUSTOM,
   ])
   const compared = players.slice(0, 3).flatMap(player => {
+    const scoringFormat = scoringFormatFor(settings)
     const ranks = Object.entries(player.ranks || {})
       .filter(([source]) => publishedSources.has(source))
       .flatMap(([source, rank]) => {
-      const positionRank = settings.ppr
-        ? rank?.pprPositionRank
-        : rank?.standardPositionRank
-      const tier = settings.ppr
-        ? rank?.pprPositionTier?.tierNumber
-        : rank?.standardPositionTier?.tierNumber
+      const positionRank = positionRankFor(rank, scoringFormat)
+      const tier = positionTierFor(rank, scoringFormat)?.tierNumber
       return finitePositiveInteger(positionRank) ? [{
         source,
         rank: positionRank,

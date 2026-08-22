@@ -14,6 +14,12 @@ import {
   ThirdPartyRanker,
   Tier,
 } from "../types"
+import {
+  metricValueFor,
+  positionRankFor,
+  positionTierFor,
+  scoringFormatFor,
+} from "./scoringFormat"
 import type { DraftPlanDocument } from "./realtime/contracts"
 import {
   adaptPortableV1ToProfileV2,
@@ -48,7 +54,7 @@ const POSITIONS = [
 ] as const
 
 type PortablePosition = typeof POSITIONS[number]
-type PortableScoring = "ppr" | "standard"
+type PortableScoring = "ppr" | "half_ppr" | "standard"
 
 export interface PortableRankingEntry {
   player_id: string
@@ -181,12 +187,21 @@ const adpRankers = new Set<string>(Object.values(ThirdPartyADPRanker))
 const validateSettings = (value: unknown): FantasySettings => {
   const record = recordValue(value, "preferences.settings")
   hasOnlyKeys(record, [
-    "ppr", "numTeams", "numStartingQbs", "numStartingRbs", "numStartingWrs",
+    "ppr", "scoringFormat", "numTeams", "numStartingQbs", "numStartingRbs", "numStartingWrs",
     "numStartingTes", "numFlex", "numBenchPlayers",
   ], "preferences.settings")
   if (typeof record.ppr !== "boolean") fail("preferences.settings.ppr must be boolean")
+  if (
+    record.scoringFormat !== undefined
+    && record.scoringFormat !== "standard"
+    && record.scoringFormat !== "half_ppr"
+    && record.scoringFormat !== "ppr"
+  ) fail("preferences.settings.scoringFormat is unsupported")
   const settings: FantasySettings = {
     ppr: record.ppr as boolean,
+    ...(record.scoringFormat === undefined ? {} : {
+      scoringFormat: record.scoringFormat as PortableScoring,
+    }),
     numTeams: integer(record.numTeams, "preferences.settings.numTeams", 10, 14),
     numStartingQbs: integer(record.numStartingQbs, "preferences.settings.numStartingQbs", 0, 4),
     numStartingRbs: integer(record.numStartingRbs, "preferences.settings.numStartingRbs", 0, 6),
@@ -194,6 +209,9 @@ const validateSettings = (value: unknown): FantasySettings => {
     numStartingTes: integer(record.numStartingTes, "preferences.settings.numStartingTes", 0, 3),
     numFlex: integer(record.numFlex, "preferences.settings.numFlex", 0, 6),
     numBenchPlayers: integer(record.numBenchPlayers, "preferences.settings.numBenchPlayers", 0, 25),
+  }
+  if ((scoringFormatFor(settings) !== "standard") !== settings.ppr) {
+    fail("preferences.settings.ppr must agree with scoringFormat")
   }
   if (![10, 12, 14].includes(settings.numTeams)) {
     fail("preferences.settings.numTeams must be one of 10, 12, or 14")
@@ -232,8 +250,8 @@ const validateRankingSnapshot = (
   if (!supportedSourceRankers.has(sourceRanker)) {
     fail("custom_rankings.source_ranker is unsupported")
   }
-  if (record.scoring !== "ppr" && record.scoring !== "standard") {
-    fail("custom_rankings.scoring must be ppr or standard")
+  if (record.scoring !== "ppr" && record.scoring !== "half_ppr" && record.scoring !== "standard") {
+    fail("custom_rankings.scoring must be ppr, half_ppr, or standard")
   }
   const positionRecord = recordValue(record.positions, "custom_rankings.positions")
   hasOnlyKeys(positionRecord, POSITIONS, "custom_rankings.positions")
@@ -393,8 +411,8 @@ export const parsePortableDataPackage = (
     const customRankings = dataRecord.custom_rankings === null
       ? null
       : validateRankingSnapshot(dataRecord.custom_rankings, context)
-    if (customRankings && (customRankings.scoring === "ppr") !== preferences.settings.ppr) {
-      fail("custom_rankings.scoring must match preferences.settings.ppr")
+    if (customRankings && customRankings.scoring !== scoringFormatFor(preferences.settings)) {
+      fail("custom_rankings.scoring must match preferences.settings scoring format")
     }
     if (preferences.board.ranker === ThirdPartyRanker.CUSTOM && !customRankings) {
       fail("Custom board ranking requires custom_rankings")
@@ -413,8 +431,8 @@ export const parsePortableDataPackage = (
   const rankingProfile = dataRecord.ranking_profile === null
     ? null
     : validatePortableRankingProfileV2(dataRecord.ranking_profile, context)
-  if (rankingProfile && (rankingProfile.scoring_type === "ppr") !== preferences.settings.ppr) {
-    fail("ranking_profile.scoring_type must match preferences.settings.ppr")
+  if (rankingProfile && rankingProfile.scoring_type !== scoringFormatFor(preferences.settings)) {
+    fail("ranking_profile.scoring_type must match preferences.settings scoring format")
   }
   if (preferences.board.ranker === ThirdPartyRanker.CUSTOM && !rankingProfile) {
     fail("Custom board ranking requires ranking_profile")
@@ -453,7 +471,7 @@ const tierFor = (
   const last = members[members.length - 1]
   const valueOf = (entry: PortableRankingEntry) => {
     const rank = players.get(entry.player_id)?.ranks[sourceRanker]
-    return scoring === "ppr" ? rank?.metricValuePpr || 0 : rank?.metricValueStd || 0
+    return metricValueFor(rank, scoring) || 0
   }
   return {
     tierNumber,
@@ -498,8 +516,10 @@ export const applyPortableRankingSnapshot = (
         copiedRanker: snapshot.source_ranker,
         position,
         standardPositionRank: snapshot.scoring === "standard" ? entry.rank : source.standardPositionRank,
+        halfPprPositionRank: snapshot.scoring === "half_ppr" ? entry.rank : source.halfPprPositionRank,
         pprPositionRank: snapshot.scoring === "ppr" ? entry.rank : source.pprPositionRank,
         standardPositionTier: snapshot.scoring === "standard" ? tiers.get(entry.user_tier) : source.standardPositionTier,
+        halfPprPositionTier: snapshot.scoring === "half_ppr" ? tiers.get(entry.user_tier) : source.halfPprPositionTier,
         pprPositionTier: snapshot.scoring === "ppr" ? tiers.get(entry.user_tier) : source.pprPositionTier,
       }
       player.ranks[ThirdPartyRanker.CUSTOM] = custom
@@ -587,27 +607,21 @@ export const createPortableDataPackage = ({
 }): PortableDataPackageV2 => {
   const hasCustomRanks = rankings.players.some(player => Boolean(customRankFor(player)))
   const shouldExportProfile = hasCustomRanks || rankingProfile !== null
-  const scoring: PortableScoring = settings.ppr ? "ppr" : "standard"
+  const scoring: PortableScoring = scoringFormatFor(settings)
   const positions = {} as Record<PortablePosition, PortableRankingEntry[]>
   for (const position of POSITIONS) {
     const positionPlayers = rankings.players
       .filter(player => player.position === position && Boolean(customRankFor(player)))
       .sort((left, right) => {
-        const leftRank = scoring === "ppr"
-          ? customRankFor(left)?.pprPositionRank
-          : customRankFor(left)?.standardPositionRank
-        const rightRank = scoring === "ppr"
-          ? customRankFor(right)?.pprPositionRank
-          : customRankFor(right)?.standardPositionRank
+        const leftRank = positionRankFor(customRankFor(left), scoring)
+        const rightRank = positionRankFor(customRankFor(right), scoring)
         return (leftRank || Number.MAX_SAFE_INTEGER) - (rightRank || Number.MAX_SAFE_INTEGER)
           || left.id.localeCompare(right.id)
       })
     let normalizedTier = 1
     let previousTier: number | undefined
     positions[position] = positionPlayers.map((player, index) => {
-      const rawTier = scoring === "ppr"
-        ? customRankFor(player)?.pprPositionTier?.tierNumber
-        : customRankFor(player)?.standardPositionTier?.tierNumber
+      const rawTier = positionTierFor(customRankFor(player), scoring)?.tierNumber
       if (index > 0 && rawTier !== undefined && rawTier !== previousTier) normalizedTier += 1
       previousTier = rawTier
       return { player_id: player.id, rank: index + 1, user_tier: normalizedTier }

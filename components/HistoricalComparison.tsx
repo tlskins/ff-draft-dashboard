@@ -11,6 +11,7 @@ import {
   useDataReadiness,
 } from "../behavior/api/dataReadiness"
 import { FantasySettings, Player } from "../types"
+import {scoringFormatFor} from "../behavior/scoringFormat"
 
 
 interface HistoricalComparisonProps {
@@ -128,8 +129,9 @@ const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
     [eligiblePlayers, primaryPlayer],
   )
   const [comparisonId, setComparisonId] = useState("")
+  const activeScoringProfile = scoringFormatFor(settings)
   const [profile, setProfile] = useState<ScoringProfileId>(
-    settings.ppr ? "ppr" : "standard",
+    activeScoringProfile,
   )
   const [seasonWindow, setSeasonWindow] = useState(5)
   const [comparison, setComparison] =
@@ -160,8 +162,8 @@ const HistoricalComparison: React.FC<HistoricalComparisonProps> = ({
   }, [candidates])
 
   useEffect(() => {
-    setProfile(settings.ppr ? "ppr" : "standard")
-  }, [settings.ppr])
+    setProfile(activeScoringProfile)
+  }, [activeScoringProfile])
 
   useEffect(() => {
     if (!readiness.data || completedSeasonWindows.length === 0) return

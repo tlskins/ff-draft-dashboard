@@ -33,6 +33,12 @@ import {
   ThirdPartyRanker,
   Tier,
 } from "../../types"
+import {
+  metricValueFor,
+  positionRankFor,
+  positionTierFor,
+  scoringFormatFor,
+} from "../scoringFormat"
 
 
 const POSITIONS = [
@@ -60,9 +66,7 @@ interface UseRankingProfilesOptions {
 
 export type RankingProfile = RankingProfileV2Record
 
-const scoringProfile = (settings: FantasySettings) => (
-  settings.ppr ? "ppr" as const : "standard" as const
-)
+const scoringProfile = scoringFormatFor
 
 export const createRankingProfileSnapshot = (
   playerRanks: PlayerRanks,
@@ -76,10 +80,9 @@ export const createRankingProfileSnapshot = (
       position,
       playerRanks[position].map((player, index) => {
         const customRank = player.ranks[ThirdPartyRanker.CUSTOM]
-        const sourceTier = (
-          settings.ppr
-            ? customRank?.pprPositionTier
-            : customRank?.standardPositionTier
+        const sourceTier = positionTierFor(
+          customRank,
+          scoringFormatFor(settings),
         )?.tierNumber
         if (
           sourceTier !== undefined &&
@@ -135,24 +138,20 @@ export const createRankingProfileV2Snapshot = (
 
 const valueFor = (
   player: Player,
-  sourceRanker: ThirdPartyRanker,
+  sourceRanker: FantasyRanker,
   settings: FantasySettings,
 ) => {
   const ranking = (
     player.ranks[ThirdPartyRanker.CUSTOM] ||
     player.ranks[sourceRanker]
   )
-  return (
-    settings.ppr
-      ? ranking?.metricValuePpr
-      : ranking?.metricValueStd
-  ) || 0
+  return metricValueFor(ranking, scoringFormatFor(settings)) || 0
 }
 
 const tiersFor = (
   entries: RankingProfileSnapshot["positions"]["QB"],
   players: Map<string, Player>,
-  sourceRanker: ThirdPartyRanker,
+  sourceRanker: FantasyRanker,
   settings: FantasySettings,
 ) => {
   const tiers = new Map<number, Tier>()
@@ -185,7 +184,7 @@ export const applyRankingProfileSnapshot = (
   if (profile.snapshot.schema_version === 2) {
     const sourceRanker = String(
       profile.source_ranker || rankings.copiedRanker || ThirdPartyRanker.HARRIS,
-    ) as ThirdPartyRanker
+    )
     return applyRankingProfileV2Snapshot(
       rankings,
       profile.snapshot as unknown as RankingProfileV2,
@@ -198,7 +197,7 @@ export const applyRankingProfileSnapshot = (
     profile.source_ranker ||
     rankings.copiedRanker ||
     ThirdPartyRanker.HARRIS
-  ) as ThirdPartyRanker
+  )
 
   const legacySnapshot = profile.snapshot as LegacyRankingProfile["snapshot"]
   POSITIONS.forEach(position => {
@@ -227,14 +226,20 @@ export const applyRankingProfileSnapshot = (
         standardPositionRank: settings.ppr
           ? source.standardPositionRank
           : entry.rank,
-        pprPositionRank: settings.ppr
+        halfPprPositionRank: scoringFormatFor(settings) === "half_ppr"
           ? entry.rank
+          : source.halfPprPositionRank,
+        pprPositionRank: settings.ppr
+          && scoringFormatFor(settings) === "ppr" ? entry.rank
           : source.pprPositionRank,
         standardPositionTier: settings.ppr
           ? source.standardPositionTier
           : tier,
-        pprPositionTier: settings.ppr
+        halfPprPositionTier: scoringFormatFor(settings) === "half_ppr"
           ? tier
+          : source.halfPprPositionTier,
+        pprPositionTier: settings.ppr
+          && scoringFormatFor(settings) === "ppr" ? tier
           : source.pprPositionTier,
       }
       player.ranks[ThirdPartyRanker.CUSTOM] = custom

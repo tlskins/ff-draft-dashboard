@@ -1,12 +1,14 @@
 import React, { useState } from "react"
 import Image from "next/image"
 import Dropdown from "./dropdown"
-import { ThirdPartyRanker, ThirdPartyADPRanker, FantasyRanker } from "../types"
+import { ThirdPartyRanker, ThirdPartyADPRanker, FantasyRanker, ScoringFormat } from "../types"
+import {scoringFormatFor} from "../behavior/scoringFormat"
 
 interface HeaderProps {
   settings: {
     numTeams: number
     ppr: boolean
+    scoringFormat?: ScoringFormat
   }
   boardSettings: {
     ranker: FantasyRanker
@@ -16,6 +18,7 @@ interface HeaderProps {
   myPickNum: number
   setNumTeams: (numTeams: number) => void
   setIsPpr: (isPpr: boolean) => void
+  setScoringFormat?: (scoringFormat: ScoringFormat) => void
   setMyPickNum: (pickNum: number) => void
   onSetRanker: (ranker: FantasyRanker) => void
   onSetAdpRanker: (ranker: ThirdPartyADPRanker) => void
@@ -29,6 +32,7 @@ const Header: React.FC<HeaderProps> = ({
   myPickNum,
   setNumTeams,
   setIsPpr,
+  setScoringFormat,
   setMyPickNum,
   onSetRanker,
   onSetAdpRanker,
@@ -44,6 +48,7 @@ const Header: React.FC<HeaderProps> = ({
       ? rankingSources
       : Object.values(ThirdPartyRanker),
   ))
+  const scoringFormat = scoringFormatFor(settings)
 
   return (
     <div 
@@ -127,18 +132,20 @@ const Header: React.FC<HeaderProps> = ({
 
           <div className={`flex flex-row text-sm text-center md:mr-4 mr-0 rounded shadow-md md:w-auto w-full justify-between ${draftStarted ? 'bg-gray-300' : 'bg-gray-100' }`}>
             <p className="align-text-bottom align-bottom p-1 m-1 font-semibold">
-              STD / PPR
+              Scoring
             </p>
             <select
               className={`p-1 m-1 border rounded md:w-auto w-24 ${draftStarted ? 'bg-gray-300' : ''}`}
-              value={settings.ppr ? "PPR" : "Standard"}
+              value={scoringFormat}
               onChange={ e => {
-                const isPpr = e.target.value === "PPR"
-                setIsPpr(isPpr)
+                const format = e.target.value as ScoringFormat
+                setScoringFormat ? setScoringFormat(format) : setIsPpr(format !== "standard")
               }}
               disabled={draftStarted}
             >
-              { ["Standard", "PPR"].map( opt => <option key={opt} value={ opt }> { opt } </option>) }
+              <option value="standard">Standard</option>
+              <option value="half_ppr">Half PPR</option>
+              <option value="ppr">PPR</option>
             </select>
           </div>
 

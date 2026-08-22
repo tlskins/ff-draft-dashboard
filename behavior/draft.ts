@@ -1,4 +1,5 @@
 import { Player, FantasyPosition, FantasySettings, PlayerMetrics, BoardSettings, Tier, RankingSummary, DataRanker, FantasyRanker } from 'types'
+import {overallRankFor, positionRankFor, positionTierFor, scoringFormatFor} from './scoringFormat'
 
 // Type Definitions
 export type PlayerLibrary = {
@@ -52,14 +53,15 @@ export const getPlayerMetrics = (
             overallOrPosRank: undefined,
         }
     }
-    const overallRank = settings.ppr ? ranks.pprOverallRank : ranks.standardOverallRank
-    const posRank = settings.ppr ? ranks.pprPositionRank : ranks.standardPositionRank
+    const scoringFormat = scoringFormatFor(settings)
+    const overallRank = overallRankFor(ranks, scoringFormat)
+    const posRank = positionRankFor(ranks, scoringFormat)
     const adp = adpRanks?.adp
 
     return {
         overallRank,
         posRank: posRank ?? 9999,
-        tier: settings.ppr ? ranks.pprPositionTier : ranks.standardPositionTier,
+        tier: positionTierFor(ranks, scoringFormat),
         adp: adp == null ? undefined : parseFloat(adp.toFixed(1)),
         overallOrPosRank: overallRank == null ? posRank ?? 9999 : overallRank,
     }
@@ -82,9 +84,7 @@ export const getProjectedTier = (
         return undefined
     }
 
-    const positionRank = settings.ppr
-        ? playerRanks.pprPositionRank
-        : playerRanks.standardPositionRank;
+    const positionRank = positionRankFor(playerRanks, scoringFormatFor(settings));
 
     if ( !summary || !positionRank ) {
         return undefined

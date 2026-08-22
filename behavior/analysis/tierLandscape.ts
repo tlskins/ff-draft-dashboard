@@ -18,6 +18,7 @@ import {
 import { getAdvisorProjection } from "../draft-advisor/recommendations"
 import type { DraftRecommendationSet } from "../draft-advisor/recommendations"
 import type { OpponentForecast } from "../draft-advisor/types"
+import {positionRankFor, positionTierFor, scoringFormatFor} from "../scoringFormat"
 
 /** The fixed visual order is intentionally independent of board ordering. */
 export const TIER_LANDSCAPE_POSITIONS = [
@@ -184,9 +185,9 @@ const customTierFor = (
   settings: FantasySettings,
 ): number | null => {
   const custom = player.ranks?.[ThirdPartyRanker.CUSTOM]
-  return usablePositiveInteger(settings.ppr
-    ? custom?.pprPositionTier?.tierNumber
-    : custom?.standardPositionTier?.tierNumber)
+  return usablePositiveInteger(
+    positionTierFor(custom, scoringFormatFor(settings))?.tierNumber,
+  )
 }
 
 const activeRankAndTierFor = (
@@ -195,13 +196,10 @@ const activeRankAndTierFor = (
   boardSettings: BoardSettings,
 ): {positionRank: number | null; tier: number | null} => {
   const active = player.ranks?.[boardSettings.ranker]
+  const scoringFormat = scoringFormatFor(settings)
   return {
-    positionRank: usablePositiveInteger(settings.ppr
-      ? active?.pprPositionRank
-      : active?.standardPositionRank),
-    tier: usablePositiveInteger(settings.ppr
-      ? active?.pprPositionTier?.tierNumber
-      : active?.standardPositionTier?.tierNumber),
+    positionRank: usablePositiveInteger(positionRankFor(active, scoringFormat)),
+    tier: usablePositiveInteger(positionTierFor(active, scoringFormat)?.tierNumber),
   }
 }
 

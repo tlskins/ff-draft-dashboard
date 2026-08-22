@@ -902,7 +902,7 @@ export interface components {
             misses: components["schemas"]["IdentityMiss"][];
         };
         /** @enum {string} */
-        RankingProfileV2ScoringType: "ppr" | "standard";
+        RankingProfileV2ScoringType: "ppr" | "half_ppr" | "standard";
         RankingProfileV2Player: {
             player_id: string;
             user_tier: number;

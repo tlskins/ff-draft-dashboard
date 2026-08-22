@@ -49,6 +49,12 @@ describe("ranking catalog authority", () => {
     expect(selectableExpertRankers(rankings, {ppr: false})).toEqual([
       "Harris", ThirdPartyRanker.CUSTOM,
     ])
+    expect(selectableExpertRankers(rankings, {
+      ppr: true,
+      scoringFormat: "half_ppr",
+    })).toEqual([
+      "Matt Harmon", "Josh Norris", ThirdPartyRanker.CUSTOM,
+    ])
   })
 
   it("chooses the first compatible published board as a safe fallback", () => {

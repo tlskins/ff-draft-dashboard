@@ -112,6 +112,14 @@ describe("ESPN extension selector contract", () => {
     expect(result.preferredPicks).toEqual(result.historyPicks)
   })
 
+  it.each(["Half PPR", "0.5 PPR", "Half-PPR"])(
+    "preserves an explicit %s scoring format",
+    label => {
+      document.querySelector(".title").textContent = `12-Team ${label} Mock`
+      expect(inspectEspnDraft(document).completion.scoringFormat).toBe("HALF_PPR")
+    },
+  )
+
   it.each([
     [10, 16, 20],
     [12, 16, 24],

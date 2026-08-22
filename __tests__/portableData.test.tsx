@@ -173,6 +173,24 @@ describe("portable local-data package", () => {
     expect(parsed.data.ranking_profile).toEqual(base)
   })
 
+  it("round-trips and applies an explicit half-PPR custom profile", () => {
+    const value = packageFor()
+    value.data.preferences.settings = {
+      ...value.data.preferences.settings,
+      ppr: true,
+      scoringFormat: "half_ppr",
+    }
+    value.data.ranking_profile!.scoring_type = "half_ppr"
+    const parsed = parseV2(value)
+    expect(parsed.data.ranking_profile?.scoring_type).toBe("half_ppr")
+    const applied = applyRankingProfileV2Snapshot(
+      rankings,
+      parsed.data.ranking_profile,
+    )
+    expect(applied.players.find(item => item.id === "wr-1")
+      ?.ranks.Custom?.halfPprPositionRank).toBe(1)
+  })
+
   it.each([
     ["malformed JSON", "{"],
     ["wrong schema", JSON.stringify({ ...packageFor(), schema: "other" })],

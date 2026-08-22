@@ -9,6 +9,7 @@ import {
   ReceivingStats,
   FantasySettings,
 } from '../types';
+import {scoringFormatFor} from '../behavior/scoringFormat';
 
 interface HistoricalStatsProps {
   player: Player | null;
@@ -42,6 +43,7 @@ const STAT_ABBREVIATION_MAP: { [key: string]: string } = {
     'recTd': 'R.TDs',
     'fantasyPointsPerGame': 'PPG',
     'pprPointsPerGame': 'PPR PPG',
+    'halfPprPointsPerGame': 'Half PPR PPG',
     'team': 'Tm',
 };
 
@@ -56,7 +58,7 @@ const formatHeaderV2 = (key: string) => {
     return STAT_ABBREVIATION_MAP[key] ?? formatHeader(key);
 }
 
-type HistoricalStat = PlayerStats & { year: string };
+type HistoricalStat = PlayerStats & { year: string; halfPprPointsPerGame?: number };
 
 const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player, settings }) => {
   if (!player) {
@@ -74,7 +76,17 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player, settings }) =
 
   const historicalStatsArray: HistoricalStat[] = player.historicalStats 
     ? Object.entries(player.historicalStats)
-        .map(([year, stats]) => ({ ...stats, year }))
+        .map(([year, stats]) => ({
+          ...stats,
+          year,
+          ...(Number.isFinite(stats.fantasyPointsPerGame)
+            && Number.isFinite(stats.pprPointsPerGame) ? {
+              halfPprPointsPerGame: (
+                (stats.fantasyPointsPerGame as number)
+                + (stats.pprPointsPerGame as number)
+              ) / 2,
+            } : {}),
+        }))
         .sort((a, b) => parseInt(b.year) - parseInt(a.year))
     : [];
   
@@ -89,7 +101,11 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player, settings }) =
     );
   }
   
-  const baseStatKeys = [...BaseStats, settings.ppr ? 'pprPointsPerGame' : 'fantasyPointsPerGame'];
+  const scoringFormat = scoringFormatFor(settings)
+  const scoringKey = scoringFormat === "half_ppr"
+    ? "halfPprPointsPerGame"
+    : scoringFormat === "ppr" ? "pprPointsPerGame" : "fantasyPointsPerGame"
+  const baseStatKeys = [...BaseStats, scoringKey];
   let passingStatKeys: string[] = [];
   let rushingStatKeys: string[] = [];
   let receivingStatKeys: string[] = [];
@@ -154,4 +170,4 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ player, settings }) =
   );
 };
 
-export default HistoricalStats; 
+export default HistoricalStats;

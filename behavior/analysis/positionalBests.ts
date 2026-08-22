@@ -12,6 +12,7 @@ import type {
   FantasySettings,
   Player,
 } from "../../types"
+import {positionRankFor, positionTierFor, scoringFormatFor} from "../scoringFormat"
 
 
 export interface ProjectionRangeInput {
@@ -210,13 +211,10 @@ const customRankAndTier = (
   settings: FantasySettings,
 ): {rank: number | null; tier: number | null} => {
   const custom = player.ranks?.[ThirdPartyRanker.CUSTOM]
+  const scoringFormat = scoringFormatFor(settings)
   return {
-    rank: usableRank(settings.ppr
-      ? custom?.pprPositionRank
-      : custom?.standardPositionRank),
-    tier: usableTier(settings.ppr
-      ? custom?.pprPositionTier?.tierNumber
-      : custom?.standardPositionTier?.tierNumber),
+    rank: usableRank(positionRankFor(custom, scoringFormat)),
+    tier: usableTier(positionTierFor(custom, scoringFormat)?.tierNumber),
   }
 }
 

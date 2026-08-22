@@ -64,6 +64,7 @@ describe("Phase 14A desk components", () => {
 
   it("renders and selects API-published expert boards without enum changes", () => {
     const onSetRanker = jest.fn()
+    const setScoringFormat = jest.fn()
     render(
       <DraftDeskAppBar
         activeDraftListenerTitle={null}
@@ -78,6 +79,7 @@ describe("Phase 14A desk components", () => {
         onSetAdpRanker={jest.fn()}
         onSetRanker={onSetRanker}
         rankingSources={["Harris", "Matt Harmon", "Custom"]}
+        setScoringFormat={setScoringFormat}
         setIsPpr={jest.fn()}
         setMyPickNum={jest.fn()}
         setNumTeams={jest.fn()}
@@ -92,6 +94,12 @@ describe("Phase 14A desk components", () => {
     )).toEqual(["Harris", "Matt Harmon", "Custom"])
     fireEvent.change(selector, {target: {value: "Matt Harmon"}})
     expect(onSetRanker).toHaveBeenCalledWith("Matt Harmon")
+    const scoring = screen.getByLabelText("Scoring") as HTMLSelectElement
+    expect(Array.from(scoring.options).map(option => option.value)).toEqual([
+      "standard", "half_ppr", "ppr",
+    ])
+    fireEvent.change(scoring, {target: {value: "half_ppr"}})
+    expect(setScoringFormat).toHaveBeenCalledWith("half_ppr")
   })
 
   it("uses an accessible settings drawer and retains draft locks", async () => {

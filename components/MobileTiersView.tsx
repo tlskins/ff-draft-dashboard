@@ -3,7 +3,7 @@ import OptimalRosterDisplay from './OptimalRosterDisplay'
 import RankingSummaryDisplay from './RankingSummary'
 import Header from "./Header"
 import { FantasyPosition, NFLTeam } from '../types'
-import type { FantasySettings, BoardSettings, RankingSummary, Player, ThirdPartyADPRanker, FantasyRanker } from '../types'
+import type { FantasySettings, BoardSettings, RankingSummary, Player, ThirdPartyADPRanker, FantasyRanker, ScoringFormat } from '../types'
 
 interface OptimalPick {
   player: any
@@ -31,6 +31,7 @@ interface MobileTiersViewProps {
   myPickNum: number
   setNumTeams: (numTeams: number) => void
   setIsPpr: (isPpr: boolean) => void
+  setScoringFormat?: (scoringFormat: ScoringFormat) => void
   setMyPickNum: (pickNum: number) => void
   onSetRanker: (ranker: FantasyRanker) => void
   onSetAdpRanker: (ranker: ThirdPartyADPRanker) => void
@@ -50,6 +51,7 @@ const MobileTiersView: React.FC<MobileTiersViewProps> = ({
   myPickNum,
   setNumTeams,
   setIsPpr,
+  setScoringFormat,
   setMyPickNum,
   onSetRanker,
   onSetAdpRanker,
@@ -82,6 +84,7 @@ const MobileTiersView: React.FC<MobileTiersViewProps> = ({
           myPickNum={myPickNum}
           setNumTeams={setNumTeams}
           setIsPpr={setIsPpr}
+          setScoringFormat={setScoringFormat}
           setMyPickNum={setMyPickNum}
           onSetRanker={onSetRanker}
           onSetAdpRanker={onSetAdpRanker}

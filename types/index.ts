@@ -87,8 +87,15 @@ export type RankBuckets = FantasyPosition.QUARTERBACK | FantasyPosition.RUNNING_
 // for stable built-in constants, but it is not the closed set of rankers.
 export type FantasyRanker = string;
 
+export type ScoringFormat = "standard" | "half_ppr" | "ppr";
+
 export interface FantasySettings {
     ppr: boolean;
+    /**
+     * Canonical scoring profile. `ppr` remains for older saved drafts and the
+     * binary opponent-model feature; readers must prefer this field when set.
+     */
+    scoringFormat?: ScoringFormat;
     numTeams: number;
     numStartingQbs: number;
     numStartingRbs: number;

@@ -20,6 +20,7 @@ import {
   ProjectionScale,
   rankingSourceLabel,
 } from "./positionalBests"
+import {positionRankFor, positionTierFor, scoringFormatFor} from "../scoringFormat"
 
 export const INTRA_POSITION_POSITIONS = [
   FantasyPosition.QUARTERBACK,
@@ -96,13 +97,10 @@ const rankAndTierFor = (
   settings: FantasySettings,
 ): {rank: number | null; tier: number | null} => {
   const ranking = player.ranks?.[ranker]
+  const scoringFormat = scoringFormatFor(settings)
   return {
-    rank: usablePositiveInteger(settings.ppr
-      ? ranking?.pprPositionRank
-      : ranking?.standardPositionRank),
-    tier: usablePositiveInteger(settings.ppr
-      ? ranking?.pprPositionTier?.tierNumber
-      : ranking?.standardPositionTier?.tierNumber),
+    rank: usablePositiveInteger(positionRankFor(ranking, scoringFormat)),
+    tier: usablePositiveInteger(positionTierFor(ranking, scoringFormat)?.tierNumber),
   }
 }
 

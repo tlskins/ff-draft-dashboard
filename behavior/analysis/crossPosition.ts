@@ -12,6 +12,7 @@ import type {AdvisorComparisonItem} from "../advisorComparisonSet"
 import {getPlayerMetrics} from "../draft"
 import {ThirdPartyRanker} from "../../types"
 import type { BoardSettings, FantasySettings, Player } from "../../types"
+import {scoringFormatFor, scoringFormatLabel} from "../scoringFormat"
 import type {
   TierLandscapeLaneModel,
   TierLandscapePosition,
@@ -57,7 +58,7 @@ export interface CrossPositionPresentationModel {
   nextUserPick: number | null
   picksBeforeNextUserPick: number | null
   leagueSize: number | null
-  scoringFormat: "PPR" | "Standard"
+  scoringFormat: "PPR" | "Half PPR" | "Standard"
   explanation: string
   projectionScale: ProjectionScale
   metricScales: Record<CrossPositionMetricId, MetricComparisonScale>
@@ -416,7 +417,7 @@ export const buildCrossPositionPresentationModel = ({
     nextUserPick: positionalBests.nextUserPick,
     picksBeforeNextUserPick: positionalBests.picksRemainingUntilNextUserPick,
     leagueSize: safeLeagueSize(settings.numTeams),
-    scoringFormat: settings.ppr ? "PPR" : "Standard",
+    scoringFormat: scoringFormatLabel(scoringFormatFor(settings)),
     explanation: "The shared advisor comparison set is shown in controller order. Recommendation evidence is displayed only when supplied.",
     projectionScale: positionalBests.projectionScale,
     metricScales,

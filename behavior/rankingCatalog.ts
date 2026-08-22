@@ -4,6 +4,7 @@ import {
   type Rankings,
   ThirdPartyRanker,
 } from "../types"
+import {positionRankFor, scoringFormatFor} from "./scoringFormat"
 
 
 const LEGACY_EXPERT_RANKERS: FantasyRanker[] = [
@@ -30,20 +31,20 @@ export const publishedExpertRankers = (
 
 export const selectableExpertRankers = (
   rankings: Pick<Rankings, "players" | "allThirdPartyRankers">,
-  settings: Pick<FantasySettings, "ppr">,
+  settings: Pick<FantasySettings, "ppr" | "scoringFormat">,
 ): FantasyRanker[] => {
-  const rankField = settings.ppr
-    ? "pprPositionRank" as const
-    : "standardPositionRank" as const
+  const scoringFormat = scoringFormatFor(settings)
   const compatible = publishedExpertRankers(rankings).filter(ranker => (
-    rankings.players.some(player => finitePositive(player.ranks?.[ranker]?.[rankField]))
+    rankings.players.some(player => finitePositive(
+      positionRankFor(player.ranks?.[ranker], scoringFormat),
+    ))
   ))
   return [...compatible, ThirdPartyRanker.CUSTOM]
 }
 
 export const fallbackExpertRanker = (
   rankings: Pick<Rankings, "players" | "allThirdPartyRankers">,
-  settings: Pick<FantasySettings, "ppr">,
+  settings: Pick<FantasySettings, "ppr" | "scoringFormat">,
 ): FantasyRanker => (
   selectableExpertRankers(rankings, settings).find(
     ranker => ranker !== ThirdPartyRanker.CUSTOM,

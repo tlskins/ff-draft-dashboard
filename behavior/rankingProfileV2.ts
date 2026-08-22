@@ -7,7 +7,7 @@ const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/
 const HASH_PATTERN = /^[a-f0-9]{64}$/
 
 export type ProfilePosition = typeof POSITIONS[number]
-export type ProfileScoringType = "ppr" | "standard"
+export type ProfileScoringType = "ppr" | "half_ppr" | "standard"
 export type UnresolvedReason =
   | "missing_from_target"
   | "position_changed"
@@ -192,7 +192,9 @@ const position = (value: unknown, label: string): ProfilePosition => {
 }
 
 const scoring = (value: unknown, label: string): ProfileScoringType => {
-  if (value !== "ppr" && value !== "standard") return fail(`${label}: unsupported scoring type`)
+  if (value !== "ppr" && value !== "half_ppr" && value !== "standard") {
+    return fail(`${label}: unsupported scoring type`)
+  }
   return value
 }
 

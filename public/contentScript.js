@@ -115,8 +115,10 @@ const readEspnDraftMetadata = (title) => {
   return {
     numTeams: Number.isFinite(teamCount) ? teamCount : undefined,
     targetRosterIndex,
-    scoringFormat: /\bPPR\b/i.test(title)
-      ? "PPR"
+    scoringFormat: /\b(?:Half|0\.5)[ -]?PPR\b/i.test(title)
+      ? "HALF_PPR"
+      : /\bPPR\b/i.test(title)
+        ? "PPR"
       : /\bStandard\b/i.test(title)
         ? "STANDARD"
         : null,

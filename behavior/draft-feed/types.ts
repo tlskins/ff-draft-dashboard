@@ -28,7 +28,7 @@ export interface DraftSnapshot {
   sourceUrl?: string
   numTeams?: number
   targetRosterIndex?: number | null
-  scoringFormat?: "STANDARD" | "PPR" | null
+  scoringFormat?: "STANDARD" | "HALF_PPR" | "PPR" | null
   completion?: {
     complete: boolean
     totalPicks: number
@@ -37,7 +37,7 @@ export interface DraftSnapshot {
     platformRosterSize: number
     targetRosterIndex: number | null
     excludedPositions: string[]
-    scoringFormat: "STANDARD" | "PPR" | null
+    scoringFormat: "STANDARD" | "HALF_PPR" | "PPR" | null
   }
 }
 

@@ -19,6 +19,7 @@ import type {DraftAdvisorContext, OpponentForecast} from "../../behavior/draft-a
 import type {DraftRecommendationSet} from "../../behavior/draft-advisor/recommendations"
 import type {Roster} from "../../behavior/draft"
 import type {AdvisorComparisonController} from "../../behavior/hooks/useAdvisorComparisonController"
+import {scoringFormatFor} from "../../behavior/scoringFormat"
 import {useInsightDeckController} from "../../behavior/hooks/useInsightDeckController"
 import {useInsightReadEvidence} from "../../behavior/hooks/useInsightReadEvidence"
 import {buildInsightCandidates} from "../../behavior/insights/insightCandidates"
@@ -107,7 +108,7 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
   )
   const readEvidence = useInsightReadEvidence({
     playerIds: comparisonPlayerIds,
-    scoringProfile: settings.ppr ? "ppr" : "standard",
+    scoringProfile: scoringFormatFor(settings),
   })
   const crossPosition = useMemo(() => recommendations
     ? buildCrossPositionPresentationModel({

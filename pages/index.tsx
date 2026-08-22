@@ -51,6 +51,7 @@ import {
 } from "../behavior/hooks/useRealtimeConversation"
 import { Player, ThirdPartyRanker } from "types"
 import {selectableExpertRankers} from "../behavior/rankingCatalog"
+import {scoringFormatFor} from "../behavior/scoringFormat"
 import {
   createAdvisorSnapshotPersistenceCoordinator,
   createAdvisorInputFingerprint,
@@ -136,7 +137,7 @@ const Home: FC = () => {
   const apiFeatures = getDashboardApiFeatures()
   const {
     // state
-    settings, setNumTeams, setIsPpr, replaceSettings,
+    settings, setNumTeams, setIsPpr, setScoringFormat, replaceSettings,
     applyAuthoritativeDraftSettings,
     draftStarted, setDraftStarted,
     myPickNum, setMyPickNum,
@@ -249,7 +250,7 @@ const Home: FC = () => {
       applyAuthoritativeDraftSettings({
         ...(snapshot.numTeams ? { numTeams: snapshot.numTeams } : {}),
         ...(snapshot.scoringFormat
-          ? { ppr: snapshot.scoringFormat === "PPR" }
+          ? { scoringFormat: snapshot.scoringFormat.toLocaleLowerCase() as "standard" | "half_ppr" | "ppr" }
           : {}),
       })
       if (snapshot.targetRosterIndex !== null
@@ -765,7 +766,7 @@ const Home: FC = () => {
       const migration = runRankingProfileStartupMigration(
         localStorage,
         currentRankings.players,
-        settings.ppr ? "ppr" : "standard",
+        scoringFormatFor(settings),
       )
       if (migration.status === "migrated" || migration.status === "already_current") {
         canonicalAuthorityEstablished = true
@@ -989,6 +990,7 @@ const Home: FC = () => {
               onSetRanker={onSetRanker}
               rankingSources={rankingSourceOptions}
               setIsPpr={setIsPpr}
+              setScoringFormat={setScoringFormat}
               setMyPickNum={setMyPickNum}
               setNumTeams={setNumTeams}
               settings={settings}
@@ -1024,6 +1026,7 @@ const Home: FC = () => {
             myPickNum={myPickNum}
             setNumTeams={setNumTeams}
             setIsPpr={setIsPpr}
+            setScoringFormat={setScoringFormat}
             setMyPickNum={setMyPickNum}
             onSetRanker={onSetRanker}
             rankingSources={rankingSourceOptions}
@@ -1392,6 +1395,7 @@ const Home: FC = () => {
                   myPickNum={myPickNum}
                   setNumTeams={setNumTeams}
                   setIsPpr={setIsPpr}
+                  setScoringFormat={setScoringFormat}
                   setMyPickNum={setMyPickNum}
                   onSetRanker={onSetRanker}
                   rankingSources={rankingSourceOptions}

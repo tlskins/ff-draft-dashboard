@@ -3,9 +3,11 @@ import Image from "next/image"
 
 import {
   FantasyRanker,
+  ScoringFormat,
   ThirdPartyADPRanker,
   ThirdPartyRanker,
 } from "../types"
+import {scoringFormatFor, scoringFormatLabel} from "../behavior/scoringFormat"
 import type { DraftSourceHealth } from "../behavior/draft-feed/types"
 import type {
   DraftCaptureConnectionState,
@@ -21,12 +23,13 @@ import {
 import styles from "./DraftDesk.module.css"
 
 interface DraftDeskAppBarProps {
-  settings: {numTeams: number, ppr: boolean, numStartingQbs: number}
+  settings: {numTeams: number, ppr: boolean, scoringFormat?: ScoringFormat, numStartingQbs: number}
   boardSettings: {ranker: FantasyRanker, adpRanker: ThirdPartyADPRanker}
   draftStarted: boolean
   myPickNum: number
   setNumTeams: (numTeams: number) => void
   setIsPpr: (isPpr: boolean) => void
+  setScoringFormat?: (scoringFormat: ScoringFormat) => void
   setMyPickNum: (pickNum: number) => void
   onSetRanker: (ranker: FantasyRanker) => void
   onSetAdpRanker: (ranker: ThirdPartyADPRanker) => void
@@ -48,6 +51,7 @@ const DraftDeskAppBar = ({
   myPickNum,
   setNumTeams,
   setIsPpr,
+  setScoringFormat,
   setMyPickNum,
   onSetRanker,
   onSetAdpRanker,
@@ -78,6 +82,12 @@ const DraftDeskAppBar = ({
       ? rankingSources
       : Object.values(ThirdPartyRanker),
   ))
+  const scoringFormat = scoringFormatFor(settings)
+  const applyScoringFormat = (format: ScoringFormat) => (
+    setScoringFormat
+      ? setScoringFormat(format)
+      : setIsPpr(format !== "standard")
+  )
 
   return (
     <header className={`${styles.desk} ${styles.appBar} hidden w-full text-left xl:grid`}>
@@ -89,7 +99,7 @@ const DraftDeskAppBar = ({
       </div>
       <div className={styles.appBarLeague}>
         <span>{activeDraftListenerTitle || "Draft workspace"}</span>
-        <span>{settings.numTeams} team · {settings.ppr ? "PPR" : "Standard"} · {settings.numStartingQbs}QB</span>
+        <span>{settings.numTeams} team · {scoringFormatLabel(scoringFormat)} · {settings.numStartingQbs}QB</span>
       </div>
       <div className={styles.appBarStatus}>
         <span className={draftCaptureState === "live" ? styles.liveDot : styles.idleDot} aria-hidden="true" />
@@ -183,11 +193,12 @@ const DraftDeskAppBar = ({
                   aria-label="Scoring"
                   className={`${styles.focusRing} mt-1 block w-full rounded border border-slate-500 bg-slate-800 p-2 text-sm`}
                   disabled={draftStarted}
-                  onChange={event => setIsPpr(event.target.value === "PPR")}
-                  value={settings.ppr ? "PPR" : "Standard"}
+                  onChange={event => applyScoringFormat(event.target.value as ScoringFormat)}
+                  value={scoringFormat}
                 >
-                  <option value="Standard">Standard</option>
-                  <option value="PPR">PPR</option>
+                  <option value="standard">Standard</option>
+                  <option value="half_ppr">Half PPR</option>
+                  <option value="ppr">PPR</option>
                 </select>
               </label>
               <label className="block text-sm font-semibold">

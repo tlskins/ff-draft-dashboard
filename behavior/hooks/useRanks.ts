@@ -38,6 +38,7 @@ import {
   fallbackExpertRanker,
   selectableExpertRankers,
 } from '../rankingCatalog'
+import {overallRankFor, positionRankFor, scoringFormatFor} from '../scoringFormat'
 
 interface UseRanksProps {
   settings: FantasySettings
@@ -105,7 +106,7 @@ export const useRanks = ({
 
   useEffect(() => {
     onRecalculatePlayerRanks()
-  }, [settings.ppr, boardSettings.ranker, boardSettings.adpRanker, playerLib])
+  }, [settings.ppr, settings.scoringFormat, boardSettings.ranker, boardSettings.adpRanker, playerLib])
 
   useEffect(() => {
     if (
@@ -493,11 +494,19 @@ export const useRanks = ({
     
     // Update the position ranks for all players in this position
     const editedPlayers = [] as Player[]
+    const scoringFormat = scoringFormatFor(settings)
     positionPlayers.forEach((p, index) => {
       const customRanking = p.ranks?.[ThirdPartyRanker.CUSTOM]
       if (customRanking) {
         const newRank = index + 1
-        if (settings.ppr) {
+        if (scoringFormat === "half_ppr") {
+          customRanking.halfPprPositionRank = newRank
+          if (p.id === playerId) {
+            customRanking.halfPprPositionTier = currentPlayer
+              ? currentPlayer.ranks?.[ThirdPartyRanker.CUSTOM]?.halfPprPositionTier
+              : undefined
+          }
+        } else if (scoringFormat === "ppr") {
           customRanking.pprPositionRank = newRank
           // update tier to match the tier of index of player being replaced
           if ( p.id === playerId ) {
@@ -551,9 +560,12 @@ export const useRanks = ({
     positionPlayers.forEach((player, index) => {
       const customRanking = player.ranks?.[ThirdPartyRanker.CUSTOM]
       if (customRanking) {
-        const tier = settings.ppr 
-        ? customRanking.pprPositionTier 
-        : customRanking.standardPositionTier
+        const scoringFormat = scoringFormatFor(settings)
+        const tier = scoringFormat === "half_ppr"
+          ? customRanking.halfPprPositionTier
+          : scoringFormat === "ppr"
+            ? customRanking.pprPositionTier
+            : customRanking.standardPositionTier
         const tierNum = tier?.tierNumber
         
         if (tierNum !== currentTierNum && currentTierNum !== undefined) {
@@ -584,7 +596,10 @@ export const useRanks = ({
 
         const nextTier = tiersMap[currentTier]
         
-        if (settings.ppr) {
+        const scoringFormat = scoringFormatFor(settings)
+        if (scoringFormat === "half_ppr") {
+          customRanking.halfPprPositionTier = nextTier
+        } else if (scoringFormat === "ppr") {
           customRanking.pprPositionTier = nextTier
         } else {
           customRanking.standardPositionTier = nextTier
@@ -630,9 +645,13 @@ export const useRanks = ({
       const playerAdpRank = player.ranks?.[adpRanker]
       const currRanking = currentPlayerLib[player.id]?.ranks?.[ThirdPartyRanker.CUSTOM]
       const currAdpRank = currentPlayerLib[player.id]?.ranks?.[adpRanker]
-      if (playerRanks && currRanking && playerAdpRank && currAdpRank && ((currRanking.standardOverallRank || 999) <= 150 || (currRanking.pprOverallRank || 999) <= 150)) {
+      if (playerRanks && currRanking && playerAdpRank && currAdpRank && (
+        (overallRankFor(currRanking, scoringFormatFor(settings)) || 999) <= 150
+      )) {
         const adpDiff = (currAdpRank?.adp || 999) - (playerAdpRank?.adp || 999)
-        const posRankDiff = (settings.ppr ? currRanking.pprPositionRank || 999 : currRanking.standardPositionRank || 999) - (settings.ppr ? playerRanks.pprPositionRank || 999 :  playerRanks.standardPositionRank || 999)
+        const scoringFormat = scoringFormatFor(settings)
+        const posRankDiff = (positionRankFor(currRanking, scoringFormat) || 999)
+          - (positionRankFor(playerRanks, scoringFormat) || 999)
         if (Math.abs(adpDiff) >= 1.0 || posRankDiff !== 0) {
           diffs[player.id] = {
             playerId: player.id,

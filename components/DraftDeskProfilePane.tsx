@@ -8,6 +8,11 @@ import type {
 } from "../types"
 import {DataRanker, ThirdPartyRanker} from "../types"
 import {getPlayerMetrics, getProjectedTier, getRoundAndPickShortText} from "../behavior/draft"
+import {
+  positionRankFor,
+  scoringFormatFor,
+  scoringFormatLabel,
+} from "../behavior/scoringFormat"
 import type { PlayerStatusCacheSnapshot } from "../behavior/api/playerStatusCache"
 import {
   currentPlayerStatus,
@@ -62,18 +67,25 @@ interface DraftDeskProfilePaneProps {
 
 const profileHistory = (player: Player, settings: FantasySettings) =>
   Object.entries(player.historicalStats || {})
-    .map(([season, stats]) => ({
-      season,
-      games: stats.g,
-      points: settings.ppr
-        ? stats.pprPointsPerGame
-        : stats.fantasyPointsPerGame,
-      touches: player.position === "RB"
-        ? (stats.rushAtt || 0) + (stats.rec || 0)
-        : player.position === "QB"
-          ? (stats.passAtt || 0) + (stats.rushAtt || 0)
-          : stats.recTgt,
-    }))
+    .map(([season, stats]) => {
+      const scoringFormat = scoringFormatFor(settings)
+      const standard = stats.fantasyPointsPerGame
+      const ppr = stats.pprPointsPerGame
+      const points = scoringFormat === "half_ppr"
+        && Number.isFinite(standard) && Number.isFinite(ppr)
+        ? ((standard as number) + (ppr as number)) / 2
+        : scoringFormat === "ppr" ? ppr : standard
+      return {
+        season,
+        games: stats.g,
+        points,
+        touches: player.position === "RB"
+          ? (stats.rushAtt || 0) + (stats.rec || 0)
+          : player.position === "QB"
+            ? (stats.passAtt || 0) + (stats.rushAtt || 0)
+            : stats.recTgt,
+      }
+    })
     .sort((left, right) => Number(left.season) - Number(right.season))
     .slice(-1)
 
@@ -114,7 +126,7 @@ const HistoryChart = ({player, settings}: {
   return (
     <section aria-label={`${player.fullName} seasonal fantasy output`} className={styles.profileHistory}>
       <header className={styles.profileSectionHeader}>
-        <div><strong>Seasonal fantasy output</strong><span>Last {history.length} seasons · {settings.ppr ? "PPR" : "Standard"}</span></div>
+        <div><strong>Seasonal fantasy output</strong><span>Last {history.length} seasons · {scoringFormatLabel(scoringFormatFor(settings))}</span></div>
         <span>Points per game</span>
       </header>
       <DeskLineChart
@@ -274,9 +286,7 @@ const ProfileDraftContext = ({
       const rank = player.ranks?.[ranker]
       return {
         ranker,
-        positionRank: settings.ppr
-          ? rank?.pprPositionRank
-          : rank?.standardPositionRank,
+        positionRank: positionRankFor(rank, scoringFormatFor(settings)),
       }
     })
 
@@ -361,7 +371,7 @@ const DraftDeskProfilePane = ({
   const [pinnedModule, setPinnedModule] = useState<ProfileModuleId | null>("draft_context")
   const profileHistorical = useProfileHistoricalAnalysis({
     playerId: player?.id || "",
-    scoringProfile: settings.ppr ? "ppr" : "standard",
+    scoringProfile: scoringFormatFor(settings),
   })
   return <section aria-label="Player profile and history" className={`${styles.pane} ${styles.profilePane} h-full text-left`}>
     <DeskPaneHeader

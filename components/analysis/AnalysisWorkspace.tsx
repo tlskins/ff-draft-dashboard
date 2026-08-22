@@ -23,6 +23,7 @@ import {
   formatSeasonList,
   useDataReadiness,
 } from "../../behavior/api/dataReadiness"
+import {scoringFormatFor} from "../../behavior/scoringFormat"
 import type {
   DraftRecommendationSet,
 } from "../../behavior/draft-advisor/recommendations"
@@ -201,8 +202,9 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   const [viewState, setViewState] =
     useState<AnalysisViewState>(loadViewState)
   const [seasonWindow, setSeasonWindow] = useState<1 | 3 | 5>(5)
+  const activeScoringProfile = scoringFormatFor(settings)
   const [scoringProfile, setScoringProfile] =
-    useState<ScoringProfileId>(settings.ppr ? "ppr" : "standard")
+    useState<ScoringProfileId>(activeScoringProfile)
   const [result, setResult] =
     useState<AnalysisQueryResponse | null>(null)
   const [playerLabResult, setPlayerLabResult] =
@@ -318,8 +320,8 @@ const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   }, [activePlayer, followActivePlayer])
 
   useEffect(() => {
-    setScoringProfile(settings.ppr ? "ppr" : "standard")
-  }, [settings.ppr])
+    setScoringProfile(activeScoringProfile)
+  }, [activeScoringProfile])
 
   useEffect(() => {
     if (!readiness.data || completedSeasonWindows.length === 0) return
