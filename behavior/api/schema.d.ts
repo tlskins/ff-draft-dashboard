@@ -1117,6 +1117,12 @@ export interface components {
             /** Format: uri */
             source_url?: string;
             /** @enum {string} */
+            authorization_status: "approved" | "unreviewed" | "restricted";
+            /** @enum {string} */
+            records_transport: "managed" | "user_import" | "reference_only" | "metadata_only";
+            minimum_refresh_interval_hours: number | null;
+            records_unavailable_reason: string | null;
+            /** @enum {string} */
             storage_transport: "sqlite" | "artifact";
             /** @enum {string} */
             metadata_status: "recorded" | "not_recorded";

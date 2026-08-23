@@ -114,6 +114,10 @@ describe("compact API insight surfaces", () => {
         id: "espn",
         provider_id: "espn",
         provider_name: "ESPN",
+        authorization_status: "approved",
+        records_transport: "managed",
+        minimum_refresh_interval_hours: null,
+        records_unavailable_reason: null,
         storage_transport: "sqlite",
         metadata_status: "not_recorded",
         availability: "unavailable",
@@ -138,6 +142,55 @@ describe("compact API insight surfaces", () => {
     }} />)
 
     expect(screen.getByText(/Rankings loaded from Aug 20, 2026 artifact/)).toBeTruthy()
+    expect(screen.getByText("Freshness not recorded")).toBeTruthy()
+    expect(screen.getByText("Approved · Managed")).toBeTruthy()
+  })
+
+  it("distinguishes an approved Yahoo page from an unavailable record transport", () => {
+    render(<SourceReadinessSurface model={{
+      state: "unavailable",
+      fingerprint: "yahoo-sources",
+      rankingSources: [{
+        schema_version: 1,
+        id: "matt-harmon",
+        provider_id: "matt-harmon",
+        provider_name: "Yahoo Sports · Matt Harmon",
+        ranker: "Matt Harmon",
+        catalog_status: "candidate",
+        ingestion_mode: "user_import",
+        scoring_formats: ["half_ppr", "ppr"],
+        tier_policy: "source_or_drafty_derived",
+        source_url: "https://sports.yahoo.com/fantasy/article/example",
+        authorization_status: "approved",
+        records_transport: "metadata_only",
+        minimum_refresh_interval_hours: 24,
+        records_unavailable_reason: "rankings_payload_is_external_and_robots_disallow_automated_collection",
+        storage_transport: "sqlite",
+        metadata_status: "not_recorded",
+        availability: "unavailable",
+        is_stale: false,
+        last_attempt_at: null,
+        last_success_at: null,
+        last_success_provider_id: null,
+        failure_reason: null,
+        retrieved_at: null,
+        source_updated_at: null,
+        season: null,
+        scoring_type: null,
+        fingerprint: null,
+        raw_source_fingerprint: null,
+        record_count: null,
+        tier_method: null,
+        source_native_tier_count: 0,
+      }],
+      statusSources: [],
+      historicalSeasons: [],
+      rankingsCachedAt: null,
+      error: null,
+      unavailableReason: "Ranking source records are unavailable.",
+    }} />)
+
+    expect(screen.getByText("Approved · Metadata only")).toBeTruthy()
     expect(screen.getByText("Freshness not recorded")).toBeTruthy()
   })
 })

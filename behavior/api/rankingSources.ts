@@ -105,6 +105,10 @@ const rankingSourcesLoader: ReadApiLoader<RankingSourceListResponse> = async (
     source.scoring_formats,
     source.tier_policy,
     source.source_url,
+    source.authorization_status,
+    source.records_transport,
+    source.minimum_refresh_interval_hours,
+    source.records_unavailable_reason,
     source.source_native_tier_count,
   ])
   if (
@@ -181,13 +185,18 @@ export const useRankingSourceDetail = (
         source.scoring_formats,
         source.tier_policy,
         source.source_url,
+        source.authorization_status,
+        source.records_transport,
+        source.minimum_refresh_interval_hours,
+        source.records_unavailable_reason,
         source.source_native_tier_count,
       ])}`,
       ...(source.availability === "stale" || source.is_stale ? {
         staleReason: `${source.provider_name} source metadata is stale.`,
       } : {}),
       ...(source.availability === "unavailable" ? {
-        unavailableReason: source.failure_reason
+        unavailableReason: source.records_unavailable_reason
+          || source.failure_reason
           || `${source.provider_name} freshness metadata has not been recorded.`,
       } : {}),
     })

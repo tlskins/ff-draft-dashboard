@@ -31,6 +31,17 @@ const artifactDateLabel = (value: string | null): string => {
   })
 }
 
+const sourceLabel = (value: string): string => value
+  .replaceAll("_", " ")
+  .replace(/^./, character => character.toUpperCase())
+
+const sourceAvailabilityReason = (value: string | null): string => {
+  if (value === "rankings_payload_is_external_and_robots_disallow_automated_collection") {
+    return "Ranking records are hosted outside the approved Yahoo source and automated collection is disallowed."
+  }
+  return value ? sourceLabel(value) : "None reported"
+}
+
 const StateMessage: React.FC<{
   state: string
   reason?: string | null
@@ -61,12 +72,18 @@ const RankingSourceDetail: React.FC<{sourceId: string; label: string}> = ({
             <p>Freshness metadata not recorded. Rankings may still be loaded from the published artifact.</p>
           )}
         <dl>
+          <div><dt>Authorization</dt><dd>{sourceLabel(resource.data.authorization_status)}</dd></div>
+          <div><dt>Records</dt><dd>{sourceLabel(resource.data.records_transport)}</dd></div>
+          <div><dt>Cadence</dt><dd>{resource.data.minimum_refresh_interval_hours === null
+            ? "Not restricted"
+            : `Every ${resource.data.minimum_refresh_interval_hours}h or slower`}</dd></div>
           <div><dt>Provenance</dt><dd>{resource.data.storage_transport}</dd></div>
           <div><dt>Last success</dt><dd>{resource.data.last_success_at || "—"}</dd></div>
           <div><dt>Retrieved</dt><dd>{resource.data.retrieved_at || "—"}</dd></div>
           <div><dt>Source update</dt><dd>{resource.data.source_updated_at || "—"}</dd></div>
           <div><dt>Season</dt><dd>{resource.data.season || "—"}</dd></div>
           <div><dt>Tier method</dt><dd>{resource.data.tier_method || "—"}</dd></div>
+          <div><dt>Record access</dt><dd>{sourceAvailabilityReason(resource.data.records_unavailable_reason)}</dd></div>
           <div><dt>Failure</dt><dd>{resource.data.failure_reason || "None reported"}</dd></div>
         </dl>
         </>
@@ -310,10 +327,11 @@ export const SourceReadinessSurface: React.FC<{
         ? model.historicalSeasons.join(", ") : "unavailable"}
     </p>
     <table className={styles.table}>
-      <thead><tr><th>Ranking source</th><th>State</th><th>Records</th></tr></thead>
+      <thead><tr><th>Ranking source</th><th>Authority</th><th>State</th><th>Records</th></tr></thead>
       <tbody>{model.rankingSources.map(source => (
         <tr key={source.id}>
           <th scope="row">{source.provider_name}</th>
+          <td>{sourceLabel(source.authorization_status)} · {sourceLabel(source.records_transport)}</td>
           <td>{source.metadata_status === "not_recorded"
             ? "Freshness not recorded"
             : source.availability}</td>
