@@ -128,7 +128,7 @@ describe("Phase 14B ESPN player outlook contract", () => {
     })
   })
 
-  it("renders Harris good, bad, and mixed notes first and sorts each group by recency", () => {
+  it("renders multi-source analyst notes, sorts by recency, and filters by analyst", () => {
     const note = (
       noteId: string,
       category: "good" | "bad" | "watch",
@@ -148,26 +148,43 @@ describe("Phase 14B ESPN player outlook contract", () => {
       episodeId: noteId, episodeTitle: `Episode ${noteId}`,
       coverage: "full-transcript" as const, confidence: "high" as const, publishedAt,
     })
+    const yahooNote = {
+      ...note("yahoo", "good", "2026-08-22T12:00:00Z", "Yahoo upside."),
+      speakers: ["Josh Norris", "Hayden Winks"],
+      source: "yahoo_josh_hayden_youtube",
+      sourceLabel: "Yahoo Fantasy — Josh & Hayden",
+      coverage: "captions" as const,
+    }
     const view = profile({...basePlayer, profileNotes: [
       note("old-bad", "bad", "2026-08-10T12:00:00Z", "Older risk."),
       note("good", "good", "2026-08-20T12:00:00Z", "Recent upside."),
       note("new-bad", "bad", "2026-08-21T12:00:00Z", "Newest risk."),
       note("watch", "watch", "2026-08-19T12:00:00Z", "Team uncertainty.", "team"),
+      yahooNote,
     ]})
 
     fireEvent.click(view.getByRole("button", {name: "Outlook"}))
-    const notes = view.getByRole("region", {name: "One Player Harris Football notes"})
-    const bad = within(notes).getByRole("region", {name: "Bad / risk Harris notes"})
+    const notes = view.getByRole("region", {name: "One Player analyst notes"})
+    const bad = within(notes).getByRole("region", {name: "Bad / risk analyst notes"})
     expect(within(bad).getAllByRole("listitem").map(item => item.textContent)).toEqual([
       expect.stringContaining("Newest risk."),
       expect.stringContaining("Older risk."),
     ])
-    expect(within(notes).getByRole("region", {name: "Good Harris notes"}).textContent)
+    expect(within(notes).getByRole("region", {name: "Good analyst notes"}).textContent)
       .toContain("Recent upside.")
-    expect(within(notes).getByRole("region", {name: "Mixed / watch Harris notes"}).textContent)
+    expect(within(notes).getByRole("region", {name: "Good analyst notes"}).textContent)
+      .toContain("Yahoo upside.")
+    expect(within(notes).getByRole("region", {name: "Mixed / watch analyst notes"}).textContent)
       .toContain("team: Buffalo Bills offense")
     expect(within(notes).getByRole("link", {name: "Episode new-bad"}).getAttribute("href"))
       .toBe("https://example.test/new-bad")
+    expect(notes.textContent).toContain("Yahoo Fantasy — Josh & Hayden · Josh Norris, Hayden Winks")
+
+    fireEvent.click(within(notes).getByText("Analysts"))
+    fireEvent.click(within(notes).getByRole("checkbox", {name: /Josh Norris/}))
+    fireEvent.click(within(notes).getByRole("checkbox", {name: /Hayden Winks/}))
+    expect(within(notes).queryByText("Yahoo upside.")).toBeNull()
+    expect(within(notes).getByText("Recent upside.")).toBeTruthy()
   })
 
   it("renders current, prior-season, and unknown-season provenance honestly", () => {

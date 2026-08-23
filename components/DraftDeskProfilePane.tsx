@@ -544,6 +544,7 @@ const DraftDeskProfilePane = ({
             role="region"
           >
             <PlayerProfileNotes
+              allNotes={players.flatMap(candidate => candidate.profileNotes || [])}
               notes={player.profileNotes}
               playerName={player.fullName}
             />
