@@ -100,6 +100,76 @@ describe("Phase 14B ESPN player outlook contract", () => {
     })
   })
 
+  it("retains attributed profile notes from the API contract", () => {
+    const raw = {
+      cached_at: "2026-08-16T12:00:00Z", season: 2026,
+      settings: {}, rankings_summaries: [], all_data_rankers: [], all_third_party_rankers: [],
+      players: [{
+        id: "one", first_name: "One", last_name: "Player", full_name: "One Player",
+        team: "BUF", position: "RB", ranks: {}, historical_stats: {},
+        profile_notes: [{
+          note_id: "episode:n001", subject: "One Player", scope: "player",
+          category: "good", sentiment: "positive", action_type: "target",
+          action_qualifier: null, summary: "A current positive note.", evidence: null,
+          counterweight: null, practical_implication: "Target at the right price.",
+          speakers: ["Christopher Harris"], source: "harris_football_podcast",
+          source_label: "Harris Football", source_url: "https://example.test/episode",
+          episode_id: "episode", episode_title: "Episode title", coverage: "full-transcript",
+          confidence: "high", published_at: "2026-08-15T12:00:00Z",
+        }],
+      }],
+    } as unknown as ApiComponents["schemas"]["RankingsResponse"]
+
+    expect(toDomainRankings(raw).players[0].profileNotes?.[0]).toMatchObject({
+      noteId: "episode:n001",
+      category: "good",
+      publishedAt: "2026-08-15T12:00:00Z",
+      sourceLabel: "Harris Football",
+    })
+  })
+
+  it("renders Harris good, bad, and mixed notes first and sorts each group by recency", () => {
+    const note = (
+      noteId: string,
+      category: "good" | "bad" | "watch",
+      publishedAt: string,
+      summary: string,
+      scope: "player" | "team" = "player",
+    ) => ({
+      noteId, subject: scope === "team" ? "Buffalo Bills offense" : "One Player",
+      scope, category,
+      sentiment: category === "good" ? "positive" as const
+        : category === "bad" ? "negative" as const : "mixed" as const,
+      actionType: category === "good" ? "target" : "monitor",
+      actionQualifier: null, summary, evidence: null, counterweight: null,
+      practicalImplication: "Use this at the right price.",
+      speakers: ["Christopher Harris"], source: "harris_football_podcast",
+      sourceLabel: "Harris Football", sourceUrl: `https://example.test/${noteId}`,
+      episodeId: noteId, episodeTitle: `Episode ${noteId}`,
+      coverage: "full-transcript" as const, confidence: "high" as const, publishedAt,
+    })
+    const view = profile({...basePlayer, profileNotes: [
+      note("old-bad", "bad", "2026-08-10T12:00:00Z", "Older risk."),
+      note("good", "good", "2026-08-20T12:00:00Z", "Recent upside."),
+      note("new-bad", "bad", "2026-08-21T12:00:00Z", "Newest risk."),
+      note("watch", "watch", "2026-08-19T12:00:00Z", "Team uncertainty.", "team"),
+    ]})
+
+    fireEvent.click(view.getByRole("button", {name: "Outlook"}))
+    const notes = view.getByRole("region", {name: "One Player Harris Football notes"})
+    const bad = within(notes).getByRole("region", {name: "Bad / risk Harris notes"})
+    expect(within(bad).getAllByRole("listitem").map(item => item.textContent)).toEqual([
+      expect.stringContaining("Newest risk."),
+      expect.stringContaining("Older risk."),
+    ])
+    expect(within(notes).getByRole("region", {name: "Good Harris notes"}).textContent)
+      .toContain("Recent upside.")
+    expect(within(notes).getByRole("region", {name: "Mixed / watch Harris notes"}).textContent)
+      .toContain("team: Buffalo Bills offense")
+    expect(within(notes).getByRole("link", {name: "Episode new-bad"}).getAttribute("href"))
+      .toBe("https://example.test/new-bad")
+  })
+
   it("renders current, prior-season, and unknown-season provenance honestly", () => {
     const current = profile({...basePlayer, outlook: {
       text: "Current outlook.", source: "espn", season: 2026,

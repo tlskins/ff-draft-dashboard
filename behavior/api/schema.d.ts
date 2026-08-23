@@ -679,6 +679,35 @@ export interface components {
             /** Format: date-time */
             observed_at: string | null;
         };
+        PlayerProfileNote: {
+            note_id: string;
+            subject: string;
+            /** @enum {string} */
+            scope: "player" | "team";
+            /** @enum {string} */
+            category: "good" | "bad" | "watch";
+            /** @enum {string} */
+            sentiment: "positive" | "negative" | "mixed" | "neutral";
+            action_type: string;
+            action_qualifier: string | null;
+            summary: string;
+            evidence: string | null;
+            counterweight: string | null;
+            practical_implication: string | null;
+            speakers: string[];
+            source: string;
+            source_label: string;
+            /** Format: uri */
+            source_url: string;
+            episode_id: string;
+            episode_title: string;
+            /** @enum {string} */
+            coverage: "full-transcript" | "captions" | "transcript-derived" | "show-notes-only";
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low";
+            /** Format: date-time */
+            published_at: string;
+        };
         PlayerInjuryStatus: {
             status: string;
             injured: boolean;
@@ -703,6 +732,7 @@ export interface components {
             source_presence?: components["schemas"]["PlayerSourcePresence"];
             availability?: components["schemas"]["PlayerAvailability"];
             outlook?: components["schemas"]["PlayerOutlook"] | null;
+            profile_notes?: components["schemas"]["PlayerProfileNote"][];
             injury_status?: components["schemas"]["PlayerInjuryStatus"] | null;
         };
         ReplacementLevel: [

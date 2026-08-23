@@ -265,6 +265,29 @@ export interface PlayerOutlook {
     observedAt: string | null;
 }
 
+export interface PlayerProfileNote {
+    noteId: string;
+    subject: string;
+    scope: "player" | "team";
+    category: "good" | "bad" | "watch";
+    sentiment: "positive" | "negative" | "mixed" | "neutral";
+    actionType: string;
+    actionQualifier: string | null;
+    summary: string;
+    evidence: string | null;
+    counterweight: string | null;
+    practicalImplication: string | null;
+    speakers: string[];
+    source: string;
+    sourceLabel: string;
+    sourceUrl: string;
+    episodeId: string;
+    episodeTitle: string;
+    coverage: "full-transcript" | "captions" | "transcript-derived" | "show-notes-only";
+    confidence: "high" | "medium" | "low";
+    publishedAt: string;
+}
+
 export interface PlayerInjuryStatus {
     status: string;
     injured: boolean;
@@ -291,6 +314,7 @@ export interface Player {
     sourcePresence?: { espn: EspnSourcePresence }
     availability?: PlayerAvailability
     outlook?: PlayerOutlook | null
+    profileNotes?: PlayerProfileNote[]
     injuryStatus?: PlayerInjuryStatus | null
 
     // TODO - need to handle "target"

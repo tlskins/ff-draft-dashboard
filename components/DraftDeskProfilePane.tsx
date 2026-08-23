@@ -48,6 +48,7 @@ import {
 import {useProfileHistoricalAnalysis} from "../behavior/hooks/useProfileHistoricalAnalysis"
 import {formatSeasonList} from "../behavior/api/dataReadiness"
 import DeclarativeChart from "./analysis/DeclarativeChart"
+import PlayerProfileNotes from "./PlayerProfileNotes"
 
 export interface DraftDeskFixtureProfileDetails {
   byeWeek?: number
@@ -439,7 +440,9 @@ const DraftDeskProfilePane = ({
         ),
         historySeasonCount,
         hasOutlook: Boolean(statusSummary?.text || artifactOutlook),
-        hasPlayerNotes: Boolean(player.pros || player.cons),
+        hasPlayerNotes: Boolean(
+          player.pros || player.cons || player.profileNotes?.length,
+        ),
         statusImpact,
       })
       const activeModule = pinnedModule || automaticModule.id
@@ -540,6 +543,10 @@ const DraftDeskProfilePane = ({
             hidden={activeModule !== "outlook"}
             role="region"
           >
+            <PlayerProfileNotes
+              notes={player.profileNotes}
+              playerName={player.fullName}
+            />
             {activeModule === "outlook" && (primaryStatusEvent || artifactInjuryStatus) && (
               <aside
                 aria-label={`${player.fullName} outlook injury designation`}
