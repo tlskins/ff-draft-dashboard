@@ -2,7 +2,7 @@ import React from "react"
 import {fireEvent, render, screen, waitFor} from "@testing-library/react"
 
 import DraftDeskProfilePane from "../components/DraftDeskProfilePane"
-import type {AnalysisQuery, AnalysisQueryResponse} from "../behavior/api/historicalAnalysis"
+import type {HistoricalComparisonResponse} from "../behavior/api/historical"
 import {ReadApiCache} from "../behavior/api/readApiCache"
 import {ReadApiProvider} from "../behavior/api/readApiContext"
 import {useDataReadiness} from "../behavior/api/dataReadiness"
@@ -45,49 +45,69 @@ const players: Player[] = ["One", "Two"].map((name, index) => ({
   ranks: {},
 }))
 
+const distribution = (points: number[]) => ({
+  games: points.length,
+  mean: points.reduce((sum, value) => sum + value, 0) / points.length,
+  median: 16,
+  std_dev: 4,
+  minimum: Math.min(...points),
+  p10: 8,
+  p25: 12,
+  p50: 16,
+  p75: 20,
+  p90: 24,
+  maximum: Math.max(...points),
+})
+
 const historicalResponse = (
-  query: AnalysisQuery,
   player: Player,
-): AnalysisQueryResponse => {
-  const seasonRange = query.seasons
-  const querySeasons = Array.isArray(seasonRange)
-    ? seasonRange
-    : Array.from(
-      {length: seasonRange.end - seasonRange.start + 1},
-      (_, index) => seasonRange.start + index,
-    )
-  const rows = querySeasons.flatMap(season => Array.from(
-    {length: 17},
-    (_, index) => ({
-      dimensions: {
-        player_id: player.id,
-        player_name: player.fullName,
-        position: player.position,
-        season,
-        week: index + 1,
-      },
-      metrics: {games: 1, fantasy_points_mean: 8 + index + (season - 2024)},
-    }),
-  ))
+  scoring: "standard" | "half_ppr" | "ppr" = "ppr",
+): HistoricalComparisonResponse => {
+  const points = Array.from({length: 17}, (_, index) => 8 + index)
   return {
-    query,
-    scoring_profile: {id: "ppr", weights: {}},
-    sources: [{
-      id: "weekly",
-      provider: "nflverse",
-      dataset: "stats_player_week",
-      sha256: "source-sha",
-      retrieved_at: "2026-08-20T00:00:00Z",
-      schema_version: 1,
-    }],
-    columns: {
-      dimensions: ["player_id", "player_name", "position", "season", "week"],
-      metrics: ["games", "fantasy_points_mean"],
+    season: 2025,
+    seasons: [2025],
+    source: {
+      id: "weekly", provider: "nflverse", dataset: "stats_player_week",
+      sha256: "source-sha", retrieved_at: "2026-08-20T00:00:00Z", schema_version: 1,
     },
-    visualization: query.visualization,
-    row_count: rows.length,
-    truncated: false,
-    rows,
+    sources: [{
+      id: "weekly", provider: "nflverse", dataset: "stats_player_week",
+      sha256: "source-sha", retrieved_at: "2026-08-20T00:00:00Z", schema_version: 1,
+    }],
+    availability_sources: [
+      {id: "schedule", provider: "nflverse", dataset: "schedules", season: 2025, sha256: "schedule-sha", retrieved_at: "2026-08-20T00:00:00Z", schema_version: 1},
+      {id: "injury", provider: "nflverse", dataset: "injuries", season: 2025, sha256: "injury-sha", retrieved_at: "2026-08-20T00:00:00Z", schema_version: 1},
+    ],
+    scoring_profile: {id: scoring, weights: {}},
+    identity_miss_count: 0,
+    players: [{
+      player_id: player.id,
+      player_name: player.fullName,
+      position: player.position,
+      distribution: distribution(points),
+      season_distributions: [{season: 2025, distribution: distribution(points)}],
+      weeks: points.map((value, index) => ({
+        season: 2025,
+        week: index + 1,
+        team: "BUF",
+        opponent: "MIA",
+        points: value,
+        contributions: {},
+      })),
+      availability: Array.from({length: 18}, (_, index) => ({
+        season: 2025,
+        week: index + 1,
+        team: "BUF",
+        opponent: index === 17 ? "" : "MIA",
+        status: index === 17 ? "bye" as const : "played" as const,
+        played: index !== 17,
+        detail: index === 17 ? "BUF bye week." : "Played MIA.",
+        report_status: "",
+        practice_status: "",
+        primary_injury: "",
+      })),
+    }],
   }
 }
 
@@ -104,26 +124,26 @@ const profile = (player: Player, cache = new ReadApiCache()) => render(
   </ReadApiProvider>,
 )
 
-const profileHistoryQueries = (): AnalysisQuery[] => jest.mocked(global.fetch).mock.calls
-  .flatMap(call => call[1]?.body
-    ? [JSON.parse(String(call[1].body)) as AnalysisQuery]
-    : [])
-  .filter(query => query.group_by === "week"
-    && query.player_ids.length === 1
-    && query.visualization.type === "heatmap")
+const profileHistoryUrls = (): URL[] => jest.mocked(global.fetch).mock.calls
+  .map(call => new URL(String(call[0])))
+  .filter(url => (
+    url.pathname === "/v1/historical/comparison"
+    && !url.searchParams.get("player_ids")?.includes(",")
+    && url.searchParams.get("seasons") === "2025"
+  ))
 
-describe("adaptive profile historical API hookup", () => {
+describe("weekly player-profile scoring history", () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_API_HOST = "https://drafty-api.example.test"
     process.env.NEXT_PUBLIC_HISTORICAL_COMPARISON_ENABLED = "true"
     mockedReadiness.mockReturnValue(completedDataReadinessState)
-    global.fetch = jest.fn(async (_url, init) => {
-      const query = JSON.parse(String(init?.body)) as AnalysisQuery
-      const player = players.find(candidate => candidate.id === query.player_ids[0])!
-      return {
-        ok: true,
-        json: async () => historicalResponse(query, player),
-      } as Response
+    global.fetch = jest.fn(async input => {
+      const url = new URL(String(input))
+      const player = players.find(candidate => (
+        candidate.id === url.searchParams.get("player_ids")
+      ))!
+      const scoring = url.searchParams.get("scoring_profile") as "standard" | "half_ppr" | "ppr"
+      return {ok: true, json: async () => historicalResponse(player, scoring)} as Response
     })
   })
 
@@ -133,37 +153,28 @@ describe("adaptive profile historical API hookup", () => {
     global.fetch = originalFetch
   })
 
-  it("loads one weekly query, selects density, and switches views without refetching", async () => {
+  it("loads the latest season under league scoring and expands weekly bars by default", async () => {
     const view = profile(players[0])
-    fireEvent.click(screen.getByRole("button", {name: "Production"}))
     await waitFor(() => expect(
-      view.container.querySelector('[data-chart-type="density"]'),
+      view.container.querySelector('[data-chart-type="weekly-bars"]'),
     ).not.toBeNull())
-    expect(screen.getByText(/enough recorded weeks are available/i)).toBeTruthy()
-    expect(profileHistoryQueries()).toHaveLength(1)
-    const query = profileHistoryQueries()[0]
-    expect(query).toMatchObject({
-      player_ids: [players[0].id],
-      seasons: [2025],
-      group_by: "week",
-    })
 
-    fireEvent.click(screen.getByRole("button", {name: "Weekly heatmap"}))
-    expect(view.container.querySelector('[data-chart-type="heatmap"]')).not.toBeNull()
-    expect(view.container.querySelectorAll('[data-chart-cell="true"]')).toHaveLength(17)
-    expect(screen.getAllByText(/remains pinned while player focus changes/i).length)
-      .toBeGreaterThan(0)
-    expect(profileHistoryQueries()).toHaveLength(1)
+    expect(screen.getByRole("button", {name: "Production"}).getAttribute("aria-pressed"))
+      .toBe("true")
+    expect(screen.getByText(/PPR league scoring/)).toBeTruthy()
+    expect(view.container.querySelectorAll('[data-scoring-bar="true"]')).toHaveLength(17)
+    expect(view.container.querySelectorAll('[data-point-label="true"]')).toHaveLength(17)
+    expect(view.container.querySelector('[data-week-status="bye"]')).not.toBeNull()
+    expect(profileHistoryUrls()).toHaveLength(1)
+    expect(profileHistoryUrls()[0].searchParams.get("player_ids")).toBe(players[0].id)
+    expect(profileHistoryUrls()[0].searchParams.get("seasons")).toBe("2025")
+    expect(profileHistoryUrls()[0].searchParams.get("scoring_profile")).toBe("ppr")
   })
 
-  it("preserves a manual chart pin when player focus changes", async () => {
+  it("keeps production pinned and reloads the scoring chart when player focus changes", async () => {
     const cache = new ReadApiCache()
     const view = profile(players[0], cache)
-    fireEvent.click(screen.getByRole("button", {name: "Production"}))
-    await waitFor(() => expect(
-      view.container.querySelector('[data-chart-type="density"]'),
-    ).not.toBeNull())
-    fireEvent.click(screen.getByRole("button", {name: "Weekly trend"}))
+    await waitFor(() => expect(profileHistoryUrls()).toHaveLength(1))
 
     view.rerender(
       <ReadApiProvider cache={cache}>
@@ -177,20 +188,15 @@ describe("adaptive profile historical API hookup", () => {
         />
       </ReadApiProvider>,
     )
-    await waitFor(() => expect(
-      view.container.querySelector('[data-chart-type="line"]'),
-    ).not.toBeNull())
-    expect(screen.getByRole("button", {name: "Weekly trend"}).getAttribute("aria-pressed"))
+    await waitFor(() => expect(profileHistoryUrls()).toHaveLength(2))
+    expect(screen.getByRole("button", {name: "Production"}).getAttribute("aria-pressed"))
       .toBe("true")
-    expect(screen.getAllByText(/remains pinned while player focus changes/i).length)
-      .toBeGreaterThan(0)
-    expect(profileHistoryQueries()).toHaveLength(2)
+    expect(screen.getByRole("img", {name: /Player Two/})).toBeTruthy()
   })
 
   it("coalesces rapid hover focus before loading weekly history", async () => {
     const cache = new ReadApiCache()
     const view = profile(players[0], cache)
-    fireEvent.click(screen.getByRole("button", {name: "Production"}))
     view.rerender(
       <ReadApiProvider cache={cache}>
         <DraftDeskProfilePane
@@ -204,9 +210,8 @@ describe("adaptive profile historical API hookup", () => {
       </ReadApiProvider>,
     )
 
-    await waitFor(() => expect(profileHistoryQueries()).toHaveLength(1))
-    const query = profileHistoryQueries()[0]
-    expect(query.player_ids).toEqual([players[1].id])
+    await waitFor(() => expect(profileHistoryUrls()).toHaveLength(1))
+    expect(profileHistoryUrls()[0].searchParams.get("player_ids")).toBe(players[1].id)
   })
 
   it("falls back honestly when the historical endpoint fails", async () => {
@@ -216,9 +221,8 @@ describe("adaptive profile historical API hookup", () => {
       json: async () => ({error: "Published weekly history unavailable"}),
     } as Response))
     profile(players[0])
-    fireEvent.click(screen.getByRole("button", {name: "Production"}))
     await waitFor(() => expect(
-      screen.getByText("Published weekly history unavailable"),
+      screen.getByText(/Historical comparison API returned 503/),
     ).toBeTruthy())
     expect(screen.getByText(/Historical production unavailable/)).toBeTruthy()
     fireEvent.click(screen.getByRole("button", {name: "Draft value"}))

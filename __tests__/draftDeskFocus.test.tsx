@@ -115,11 +115,11 @@ describe("Phase 14A profile focus boundary", () => {
       />,
     )
 
-    expect(screen.getByRole("button", {name: "Draft value"}).getAttribute("aria-pressed"))
+    expect(screen.getByRole("button", {name: "Production"}).getAttribute("aria-pressed"))
       .toBe("true")
     expect(screen.getByText("Advanced rankings and historical comparison").parentElement?.hasAttribute("open"))
       .toBe(true)
-    expect(screen.getByRole("region", {name: "Draft value profile module"}))
+    expect(screen.getByRole("region", {name: "Production profile module"}))
       .toBeTruthy()
     fireEvent.click(screen.getByRole("button", {name: "Outlook"}))
     expect(screen.getByRole("region", {name: "Outlook profile module"}))
@@ -198,6 +198,7 @@ describe("Phase 14A profile focus boundary", () => {
       />,
     )
 
+    fireEvent.click(screen.getByRole("button", {name: "Draft value"}))
     expect(screen.getByText("RB 4")).toBeTruthy()
     expect(screen.getByText("16.8–20.4")).toBeTruthy()
     expect(screen.getByText("9.2 (R1.9)")).toBeTruthy()

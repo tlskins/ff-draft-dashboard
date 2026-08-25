@@ -37,18 +37,10 @@ import {
   ProfileModuleId,
   selectProfileModule,
 } from "../behavior/profile/profileModuleController"
-import {
-  PROFILE_HISTORICAL_VIEW_IDS,
-  PROFILE_HISTORICAL_VIEWS,
-  ProfileHistoricalViewId,
-  historicalSeasonCount,
-  presentProfileHistoricalView,
-  selectProfileHistoricalView,
-} from "../behavior/profile/profileHistoricalViews"
 import {useProfileHistoricalAnalysis} from "../behavior/hooks/useProfileHistoricalAnalysis"
 import {formatSeasonList} from "../behavior/api/dataReadiness"
-import DeclarativeChart from "./analysis/DeclarativeChart"
 import PlayerProfileNotes from "./PlayerProfileNotes"
+import WeeklyScoringBarChart from "./profile/WeeklyScoringBarChart"
 
 export interface DraftDeskFixtureProfileDetails {
   byeWeek?: number
@@ -161,16 +153,8 @@ const ProfileHistoricalAnalysis = ({
   seasons: number[]
   settings: FantasySettings
 }) => {
-  const [pinnedView, setPinnedView] = useState<ProfileHistoricalViewId | null>(null)
   const readyResponse = resource.data && ["ready", "stale"].includes(resource.state)
     ? resource.data
-    : null
-  const automaticView = readyResponse
-    ? selectProfileHistoricalView(readyResponse)
-    : null
-  const activeView = pinnedView || automaticView?.id || "weekly_trend"
-  const presentedResponse = readyResponse
-    ? presentProfileHistoricalView(readyResponse, activeView)
     : null
   const localHistoryAvailable = profileHistory(player, settings).length > 0
   const unavailableReason = resource.error
@@ -179,32 +163,12 @@ const ProfileHistoricalAnalysis = ({
 
   return (
     <section aria-label={`${player.fullName} API historical analysis`} className={styles.profileHistoricalAnalysis}>
-      <header className={styles.profileHistoricalController}>
-        <div>
-          <strong>{pinnedView ? "Pinned historical view" : "Auto historical view"}</strong>
-          <span aria-live="polite">{pinnedView
-            ? `${PROFILE_HISTORICAL_VIEWS[pinnedView].label} remains pinned while player focus changes.`
-            : automaticView?.explanation || "Waiting for validated weekly history."}</span>
-        </div>
-        <div aria-label="Historical profile view selection" className={styles.profileHistoricalButtons} role="group">
-          <button aria-pressed={pinnedView === null} onClick={() => setPinnedView(null)} type="button">Auto</button>
-          {PROFILE_HISTORICAL_VIEW_IDS.map(viewId => (
-            <button
-              aria-pressed={activeView === viewId}
-              disabled={!readyResponse}
-              key={viewId}
-              onClick={() => setPinnedView(viewId)}
-              type="button"
-            >{PROFILE_HISTORICAL_VIEWS[viewId].label}</button>
-          ))}
-        </div>
-      </header>
-
-      {presentedResponse ? (
+      {readyResponse ? (
         <>
-          <DeclarativeChart compact response={presentedResponse} />
+          <WeeklyScoringBarChart playerId={player.id} response={readyResponse} />
           <footer className={styles.profileHistoricalProvenance}>
-            nflverse weekly stats · {formatSeasonList(seasons)} · {presentedResponse.row_count} recorded weeks
+            {formatSeasonList(seasons)} completed season · {scoringFormatLabel(readyResponse.scoring_profile.id)} scoring
+            {` · ${readyResponse.players[0]?.weeks.length || 0} recorded games`}
             {resource.state === "stale" && ` · ${resource.staleReason || "refresh pending"}`}
           </footer>
         </>
@@ -369,7 +333,7 @@ const DraftDeskProfilePane = ({
   rankingsSeason,
 }: DraftDeskProfilePaneProps) => {
   const [detailsOpen, setDetailsOpen] = useState(true)
-  const [pinnedModule, setPinnedModule] = useState<ProfileModuleId | null>("draft_context")
+  const [pinnedModule, setPinnedModule] = useState<ProfileModuleId | null>("production")
   const profileHistorical = useProfileHistoricalAnalysis({
     playerId: player?.id || "",
     scoringProfile: scoringFormatFor(settings),
@@ -420,7 +384,11 @@ const DraftDeskProfilePane = ({
         : null
       const historySeasonCount = Math.max(
         profileHistory(player, settings).length,
-        historicalSeasonCount(profileHistorical.resource.data),
+        new Set(
+          profileHistorical.resource.data?.players.flatMap(candidate => (
+            candidate.weeks.map(week => week.season)
+          )) || [],
+        ).size,
       )
       const statusImpact = recommendationEvidence.some(
         event => event.recommendation_impact === "material",

@@ -5,13 +5,13 @@ import {
   useDataReadiness,
 } from "../api/dataReadiness"
 import {
-  AnalysisQueryResponse,
+  HistoricalComparisonResponse,
   ScoringProfileId,
-  executeHistoricalAnalysis,
-} from "../api/historicalAnalysis"
+  loadHistoricalComparison,
+} from "../api/historical"
 import {
-  HISTORICAL_QUERY_TTL_MS,
-  historicalQueryResourceKey,
+  HISTORICAL_COMPARISON_TTL_MS,
+  historicalComparisonResourceKey,
 } from "../api/historicalResources"
 import {
   useReadApiResource,
@@ -21,11 +21,6 @@ import type {
   ReadApiResourceSnapshot,
 } from "../api/readApiCache"
 import {readApiOutcome} from "../api/readApiCache"
-import {
-  buildProfileHistoricalQuery,
-} from "../profile/profileHistoricalViews"
-
-
 const DISABLED_PROFILE_HISTORY_KEY = "read-api:profile-history:disabled"
 export const PROFILE_HISTORY_FOCUS_DELAY_MS = 250
 
@@ -37,7 +32,7 @@ export const useProfileHistoricalAnalysis = ({
   scoringProfile: ScoringProfileId
 }): {
   readiness: ReturnType<typeof useDataReadiness>
-  resource: ReadApiResourceSnapshot<AnalysisQueryResponse>
+  resource: ReadApiResourceSnapshot<HistoricalComparisonResponse>
   seasons: number[]
 } => {
   const readiness = useDataReadiness()
@@ -73,45 +68,61 @@ export const useProfileHistoricalAnalysis = ({
     && boundedSeasons.length > 0
     && !readiness.error,
   )
-  const query = useMemo(() => buildProfileHistoricalQuery({
-    playerId: settledPlayerId,
-    scoringProfile,
-    seasons: boundedSeasons,
-  }), [boundedSeasons, scoringProfile, settledPlayerId])
   const key = enabled
-    ? historicalQueryResourceKey(query)
+    ? historicalComparisonResourceKey({
+      playerIds: [settledPlayerId],
+      scoringProfile,
+      seasons: boundedSeasons,
+    })
     : DISABLED_PROFILE_HISTORY_KEY
-  const loader = useCallback<ReadApiLoader<AnalysisQueryResponse>>(
+  const loader = useCallback<ReadApiLoader<HistoricalComparisonResponse>>(
     async ({signal}) => {
-      const response = await executeHistoricalAnalysis(query, {signal})
+      const response = await loadHistoricalComparison({
+        playerIds: [settledPlayerId],
+        scoringProfile,
+        seasons: boundedSeasons,
+        signal,
+      })
+      const result = response.players.find(
+        candidate => candidate.player_id === settledPlayerId,
+      )
       return readApiOutcome({
         data: response,
-        state: response.row_count > 0 ? "ready" : "unavailable",
+        state: result && result.weeks.length > 0 ? "ready" : "unavailable",
         fingerprint: `profile-history:${JSON.stringify({
           playerId: settledPlayerId,
-          rows: response.rows.map(row => [
-            row.dimensions.season,
-            row.dimensions.week,
-            row.metrics.fantasy_points_mean,
+          weeks: result?.weeks.map(week => [
+            week.season,
+            week.week,
+            week.points,
+          ]),
+          availability: result?.availability?.map(item => [
+            item.season,
+            item.week,
+            item.status,
+            item.detail,
           ]),
           scoring: response.scoring_profile.id,
           sources: response.sources.map(source => source.sha256),
+          availabilitySources: (response.availability_sources || []).map(
+            source => source.sha256,
+          ),
         })}`,
-        ...(response.row_count === 0 ? {
+        ...(!result || result.weeks.length === 0 ? {
           unavailableReason: "No recorded NFL weeks matched this player and scoring profile.",
         } : {}),
       })
     },
-    [query, settledPlayerId],
+    [boundedSeasons, scoringProfile, settledPlayerId],
   )
   const loadedResource = useReadApiResource({
     enabled,
     key,
     loader,
-    ttlMs: HISTORICAL_QUERY_TTL_MS,
+    ttlMs: HISTORICAL_COMPARISON_TTL_MS,
   })
   const focusSettling = Boolean(playerId && settledPlayerId !== playerId)
-  const resource = useMemo<ReadApiResourceSnapshot<AnalysisQueryResponse>>(() => {
+  const resource = useMemo<ReadApiResourceSnapshot<HistoricalComparisonResponse>>(() => {
     if (enabled) return loadedResource
     const unavailableReason = process.env.NEXT_PUBLIC_HISTORICAL_COMPARISON_ENABLED !== "true"
       ? "Historical analysis is disabled for this deployment."

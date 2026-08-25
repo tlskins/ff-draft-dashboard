@@ -631,6 +631,22 @@
 .profileHistoricalButtons button:disabled { opacity: .5; cursor: not-allowed; }
 .profileHistoricalState { margin: 0; padding: 7px 9px; color: #68767d; background: #edf0ef; font-size: 8px; line-height: 1.3; }
 .profileHistoricalProvenance { padding: 4px 7px; border-top: 1px solid #d8dcdd; color: #69767d; background: #e7eae9; font-size: 7px; line-height: 1.3; }
+.profileWeeklyChart { margin: 0; border-bottom: 1px solid #cbd2d4; background: #f0f2f1; }
+.profileWeeklyChart > header { display: flex; min-height: 38px; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 8px; border-bottom: 1px solid #d0d6d7; background: #e3e7e6; }
+.profileWeeklyChart > header > div:first-child { min-width: 0; }
+.profileWeeklyChart > header strong { color: #27343b; font-size: 8px; letter-spacing: .035em; text-transform: uppercase; }
+.profileWeeklyChart > header span { display: block; margin-top: 1px; color: #67757b; font-size: 7px; }
+.profileWeeklySummary { display: flex; flex: 0 0 auto; gap: 2px; }
+.profileWeeklySummary span { min-width: 38px; margin: 0 !important; padding: 3px 4px; border-left: 1px solid #c4cbcd; text-align: center; }
+.profileWeeklySummary strong { display: block; color: #244f64 !important; font-size: 9px !important; letter-spacing: 0 !important; text-transform: none !important; }
+.profileWeeklySvg { display: block; width: 100%; height: auto; min-height: 176px; background: #f3f4f2; }
+.profileWeeklyChart figcaption { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-top: 1px solid #d5dadb; color: #55636a; background: #e8ebe9; font-size: 6.5px; }
+.profileWeeklyChart figcaption span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.profileWeeklyChart figcaption i { width: 7px; height: 7px; border: 1px solid #617078; border-radius: 1px; background: #397792; }
+.profileWeeklyChart figcaption i[data-legend="injury"] { border-color: #9b6628; background: #b87931; }
+.profileWeeklyChart figcaption i[data-legend="bye"] { border-style: dashed; background: #dce1e2; }
+.profileWeeklyChart figcaption i[data-legend="other"] { border-color: #8a5a52; border-style: dashed; background: #e7d7d4; }
+.profileWeeklyChart figcaption small { margin-left: auto; overflow: hidden; color: #748086; font-size: 6.5px; text-overflow: ellipsis; white-space: nowrap; }
 
 .comparisonSet {
   margin-bottom: 5px;

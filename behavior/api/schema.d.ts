@@ -897,6 +897,32 @@ export interface components {
                 [key: string]: number;
             };
         };
+        HistoricalAvailabilitySource: {
+            id: string;
+            /** @constant */
+            provider: "nflverse";
+            /** @enum {string} */
+            dataset: "schedules" | "injuries";
+            season: number;
+            sha256: string;
+            /** Format: date-time */
+            retrieved_at: string;
+            /** @constant */
+            schema_version: 1;
+        };
+        HistoricalWeekAvailability: {
+            season: number;
+            week: number;
+            team: string;
+            opponent: string;
+            /** @enum {string} */
+            status: "played" | "injury" | "bye" | "other";
+            played: boolean;
+            detail: string;
+            report_status: string;
+            practice_status: string;
+            primary_injury: string;
+        };
         SeasonDistribution: {
             season: number;
             distribution: components["schemas"]["PointDistribution"];
@@ -908,12 +934,14 @@ export interface components {
             distribution: components["schemas"]["PointDistribution"];
             season_distributions: components["schemas"]["SeasonDistribution"][];
             weeks: components["schemas"]["HistoricalWeek"][];
+            availability?: components["schemas"]["HistoricalWeekAvailability"][];
         };
         HistoricalComparisonResponse: {
             season: number;
             seasons: number[];
             source: components["schemas"]["HistoricalSource"];
             sources: components["schemas"]["HistoricalSource"][];
+            availability_sources?: components["schemas"]["HistoricalAvailabilitySource"][];
             scoring_profile: components["schemas"]["ScoringProfile"];
             identity_miss_count: number;
             players: components["schemas"]["HistoricalPlayerComparison"][];

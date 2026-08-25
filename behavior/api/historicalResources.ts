@@ -64,10 +64,17 @@ const comparisonFingerprint = (
     p10: player.distribution.p10,
     p50: player.distribution.p50,
     p90: player.distribution.p90,
+    availability: player.availability?.map(item => [
+      item.season,
+      item.week,
+      item.status,
+      item.detail,
+    ]),
   })),
   seasons: response.seasons,
   scoring: response.scoring_profile.id,
   sources: response.sources.map(source => source.sha256),
+  availabilitySources: response.availability_sources?.map(source => source.sha256),
 })
 
 export const loadHistoricalComparisonResource = (
@@ -119,4 +126,3 @@ export const loadHistoricalQueryResource = (
     })
   }, {force, ttlMs: HISTORICAL_QUERY_TTL_MS})
 }
-

@@ -74,6 +74,9 @@ export const useInsightReadEvidence = ({
           seasons: response.seasons,
           scoring: response.scoring_profile.id,
           sources: response.sources.map(source => source.sha256),
+          availabilitySources: response.availability_sources?.map(
+            source => source.sha256,
+          ),
         })}`,
         ...(response.players.length === 0 ? {
           unavailableReason: "No historical games match the current comparison set.",
