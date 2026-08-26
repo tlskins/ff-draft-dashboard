@@ -1,5 +1,5 @@
 import { PlayerRanks, Roster } from '../behavior/draft'
-import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, PlayerTarget, Tier } from './index'
+import { Player, FantasyPosition, FantasySettings, BoardSettings, RankingSummary, Rankings, PlayerTarget, Tier } from './index'
 import { SortOption } from '../pages'
 import { HighlightOption } from '../behavior/hooks/usePredictions'
 import type { RankingProfileControls } from '../behavior/hooks/useRankingProfiles'
@@ -30,6 +30,12 @@ export type PredictedPicks = {
   [key: string]: number
 }
 
+export type RankingLanePosition =
+  | FantasyPosition.QUARTERBACK
+  | FantasyPosition.RUNNING_BACK
+  | FantasyPosition.WIDE_RECEIVER
+  | FantasyPosition.TIGHT_END
+
 // Shared props that all view components need
 export interface SharedViewProps {
   playerRanks: PlayerRanks
@@ -55,6 +61,7 @@ export interface SharedViewProps {
   compact?: boolean
   pinnedPlayerId?: string | null
   onPinPlayer?: (playerId: string) => void
+  onVisiblePositionsChange?: (positions: RankingLanePosition[]) => void
 }
 
 // Props specific to ranking view

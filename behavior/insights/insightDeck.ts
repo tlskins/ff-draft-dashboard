@@ -188,6 +188,11 @@ export interface InsightDeckPolicy {
   maxQueuedAlternatives: number
 }
 
+export type InsightDeckInitialViews = Partial<Record<
+  InsightDeckSlotId,
+  InsightViewId
+>>
+
 export const DEFAULT_INSIGHT_DECK_POLICY: InsightDeckPolicy = {
   significanceMargin: 1,
   minimumMaterialEventDwell: 1,
@@ -515,6 +520,7 @@ export const reconcileInsightDeck = (
   event: MaterialInsightEvent,
   suppliedCandidates: InsightCandidate[],
   suppliedPolicy?: Partial<InsightDeckPolicy>,
+  initialViews?: InsightDeckInitialViews,
 ): InsightDeckTransitionResult => {
   const eventId = materialInsightEventId(event)
   const policy = policyFor(suppliedPolicy)
@@ -580,6 +586,13 @@ export const reconcileInsightDeck = (
       && !usedViewIds.has(candidate.viewId)
     ))
       || null
+    const preferredInitial = initial.lastMaterialEventId === null
+      ? slotCandidates.find(candidate => (
+          candidate.viewId === initialViews?.[slot]
+          && isInsightViewAutoEligible(candidate)
+          && !usedViewIds.has(candidate.viewId)
+        )) || null
+      : null
     const readyChallenger = bestReady?.viewId === refreshed?.viewId
       ? null
       : bestReady
@@ -588,7 +601,7 @@ export const reconcileInsightDeck = (
       candidate => candidate.viewId === currentSelection.viewId,
     ))
     const replacement = !currentSelection || currentEvidenceMissing
-      ? bestReady || bestFallback
+      ? preferredInitial || bestReady || bestFallback
       : bestFallback
     if (!next && replacement) {
       next = selectionFrom(replacement!, "auto", false, materialEventCount)

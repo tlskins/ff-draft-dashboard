@@ -63,6 +63,34 @@ describe("Phase 14C1 InsightDeck controller", () => {
     expect(outcome.announcement).toBeUndefined()
   })
 
+  it("honors an unpinned initial view preference without overriding later auto arbitration", () => {
+    const initial = reconcileInsightDeck(
+      createInsightDeckState("draft-one"),
+      event("draft:empty"),
+      [
+        candidate("candidate_comparison", "primary_decision", 90),
+        candidate("current_tier_market", "primary_decision", 1),
+        candidate("rank_tier_disagreement", "market_watch", 20),
+      ],
+      undefined,
+      {primary_decision: "current_tier_market"},
+    )
+
+    expect(initial.state.slots.primary_decision.selection).toMatchObject({
+      viewId: "current_tier_market",
+      pinned: false,
+      source: "auto",
+    })
+
+    const later = reconcileInsightDeck(initial.state, event("draft:next"), [
+      candidate("candidate_comparison", "primary_decision", 90),
+      candidate("current_tier_market", "primary_decision", 1),
+      candidate("rank_tier_disagreement", "market_watch", 20),
+    ])
+    expect(later.state.slots.primary_decision.selection?.viewId)
+      .toBe("candidate_comparison")
+  })
+
   it("uses score, registry priority, and ID as a stable tie-break", () => {
     const outcome = reconcileInsightDeck(
       createInsightDeckState("draft-one"),

@@ -6,7 +6,7 @@ import { Player, FantasySettings, BoardSettings, RankingSummary, Rankings, Fanta
 import { DraftView, SortOption } from "../pages"
 import { HighlightOption } from "../behavior/hooks/usePredictions"
 import { getDraftBoard } from '../behavior/DraftBoardUtils'
-import { isTitleCard, PlayerRankingDiff, PredictedPicks } from '../types/DraftBoardTypes'
+import { isTitleCard, PlayerRankingDiff, PredictedPicks, type RankingLanePosition } from '../types/DraftBoardTypes'
 import { getPosStyle } from '../behavior/styles'
 import RankingView from './views/RankingView'
 import BestAvailByRoundView from './views/BestAvailByRoundView'
@@ -88,6 +88,7 @@ interface RankingsBoardProps {
   hideCompactModeControl?: boolean
   pinnedPlayerId?: string | null
   onPinPlayer?: (playerId: string) => void
+  onVisiblePositionsChange?: (positions: RankingLanePosition[]) => void
 }
 
 const RankingsBoard = ({
@@ -147,6 +148,7 @@ const RankingsBoard = ({
   hideCompactModeControl = false,
   pinnedPlayerId,
   onPinPlayer,
+  onVisiblePositionsChange,
 }: RankingsBoardProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
@@ -211,6 +213,7 @@ const RankingsBoard = ({
     compact,
     pinnedPlayerId,
     onPinPlayer,
+    onVisiblePositionsChange,
   }
 
   const renderCurrentView = () => {

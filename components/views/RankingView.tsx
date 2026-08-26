@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 
 import {
   getPlayerMetrics,
@@ -6,8 +6,9 @@ import {
 } from "../../behavior/draft"
 import { getIconTypes, getDraftBoard } from "../../behavior/DraftBoardUtils"
 import { HighlightOption } from "../../behavior/hooks/usePredictions"
-import { isTitleCard, RankingViewProps } from "../../types/DraftBoardTypes"
-import type { FantasyPosition, Player, PlayerTarget } from "../../types"
+import { isTitleCard, type RankingLanePosition, RankingViewProps } from "../../types/DraftBoardTypes"
+import { FantasyPosition } from "../../types"
+import type { Player, PlayerTarget } from "../../types"
 import PlayerSearchModal from "../PlayerSearchModal"
 import DraftDeskPlayerCard from "../shared/DraftDeskPlayerCard"
 import styles from "../DraftDesk.module.css"
@@ -18,9 +19,9 @@ import {
 
 type PositionPair = "RB_WR" | "QB_TE"
 
-const lanesForPair: Record<PositionPair, FantasyPosition[]> = {
-  RB_WR: ["RB" as FantasyPosition, "WR" as FantasyPosition],
-  QB_TE: ["QB" as FantasyPosition, "TE" as FantasyPosition],
+const lanesForPair: Record<PositionPair, RankingLanePosition[]> = {
+  RB_WR: [FantasyPosition.RUNNING_BACK, FantasyPosition.WIDE_RECEIVER],
+  QB_TE: [FantasyPosition.QUARTERBACK, FantasyPosition.TIGHT_END],
 }
 
 const positionLabels: Record<string, string> = {
@@ -58,6 +59,7 @@ const RankingView = ({
   compact = false,
   pinnedPlayerId,
   onPinPlayer,
+  onVisiblePositionsChange,
 }: RankingViewProps) => {
   const [pair, setPair] = useState<PositionPair>("RB_WR")
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
@@ -74,6 +76,11 @@ const RankingView = ({
     .map(column => [column.columnTitle, column])), [draftBoard.standardView])
   const myRoster = rosters[myPickNum - 1]
   const isUsingCustomRanks = rankings.copiedRanker && rankings.cachedAt && rankings.editedAt
+
+  useEffect(() => {
+    if (!compact) return
+    onVisiblePositionsChange?.(lanesForPair[pair])
+  }, [compact, onVisiblePositionsChange, pair])
 
   const favorite = (playerId: string): PlayerTarget | undefined => playerTargets
     .find(target => target.playerId === playerId)

@@ -79,13 +79,26 @@ describe("Phase 14A unified rankings pane", () => {
   })
 
   it("shows two positional lanes and switches between the approved pairs", () => {
-    render(<RankingsBoard {...props()} compact />)
+    const onVisiblePositionsChange = jest.fn()
+    render(<RankingsBoard
+      {...props()}
+      compact
+      onVisiblePositionsChange={onVisiblePositionsChange}
+    />)
 
     expect(screen.getByTestId("ranking-position-lane-RB")).toBeTruthy()
     expect(screen.getByTestId("ranking-position-lane-WR")).toBeTruthy()
+    expect(onVisiblePositionsChange).toHaveBeenLastCalledWith([
+      FantasyPosition.RUNNING_BACK,
+      FantasyPosition.WIDE_RECEIVER,
+    ])
     fireEvent.click(screen.getByRole("button", {name: "QB + TE"}))
     expect(screen.getByTestId("ranking-position-lane-QB")).toBeTruthy()
     expect(screen.getByTestId("ranking-position-lane-TE")).toBeTruthy()
+    expect(onVisiblePositionsChange).toHaveBeenLastCalledWith([
+      FantasyPosition.QUARTERBACK,
+      FantasyPosition.TIGHT_END,
+    ])
   })
 
   it("retains interactive tier-boundary placement in custom-ranking mode", () => {

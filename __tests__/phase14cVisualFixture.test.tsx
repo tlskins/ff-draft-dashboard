@@ -28,7 +28,7 @@ describe("Phase 14C visual acceptance fixture", () => {
     expect(paneStyle).toContain("overflow: hidden")
     expect(document.querySelectorAll("[aria-live]")).toHaveLength(1)
     expect(selectedSlotTitles()).toEqual([
-      "Position decision table",
+      "Current tier market",
       "Rank & tier disagreement",
     ])
     expect(new Set(selectedSlotTitles()).size).toBe(selectedSlotTitles().length)
@@ -40,7 +40,7 @@ describe("Phase 14C visual acceptance fixture", () => {
 
     fireEvent.click(within(controls).getByTestId("phase14c-scenario-matrix"))
     await waitFor(() => expect(selectedSlotTitles()).toEqual([
-      "Position decision table",
+      "Current tier market",
       "Two-round run matrix",
     ]))
     expect(screen.getByText("What can run before the next two turns?")).toBeTruthy()

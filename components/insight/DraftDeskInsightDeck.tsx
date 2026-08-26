@@ -9,6 +9,7 @@ import {
 } from "../../behavior/analysis/roundMarket"
 import {
   buildTierLandscapePresentationModel,
+  type TierLandscapePosition,
 } from "../../behavior/analysis/tierLandscape"
 import {
   buildIntraPositionPresentationModel,
@@ -43,6 +44,7 @@ import type {
   Player,
   RankingSummary,
 } from "../../types"
+import {FantasyPosition} from "../../types"
 import TierLandscapeLiveSurface from "../analysis/TierLandscapeLiveSurface"
 import type {DraftPlanDocument} from "../../behavior/realtime/contracts"
 import InsightDeck from "./InsightDeck"
@@ -75,7 +77,14 @@ export interface DraftDeskInsightDeckProps {
   myRosterIndex: number
   draftPlan: DraftPlanDocument | null
   onInspectPlayer: (player: Player) => void
+  visibleTierPositions?: readonly TierLandscapePosition[]
 }
+
+const DEFAULT_TIER_POSITIONS: readonly TierLandscapePosition[] = [
+  FantasyPosition.RUNNING_BACK,
+  FantasyPosition.WIDE_RECEIVER,
+]
+const INITIAL_INSIGHT_VIEWS = {primary_decision: "current_tier_market"} as const
 
 /**
  * Bounded integration shell for Phase 14C.  It only adapts prepared live
@@ -97,6 +106,7 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
   myRosterIndex,
   draftPlan,
   onInspectPlayer,
+  visibleTierPositions = DEFAULT_TIER_POSITIONS,
 }) => {
   const comparisonPlayers = useMemo(
     () => comparisonController.items.map(item => item.player),
@@ -125,20 +135,28 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
       recommendations,
       settings,
     ])
-  const tierLandscape = useMemo(() => buildTierLandscapePresentationModel({
+  const tierLandscape = useMemo(() => {
+    const model = buildTierLandscapePresentationModel({
+      availablePlayers,
+      recommendations,
+      opponentForecast,
+      boardSettings,
+      settings,
+      rankingSummaries,
+    })
+    const selected = new Set(visibleTierPositions)
+    return {
+      ...model,
+      lanes: model.lanes.filter(lane => selected.has(lane.position)),
+    }
+  }, [
     availablePlayers,
-    recommendations,
-    opponentForecast,
-    boardSettings,
-    settings,
-    rankingSummaries,
-  }), [
-    availablePlayers,
     boardSettings,
     opponentForecast,
     rankingSummaries,
     recommendations,
     settings,
+    visibleTierPositions,
   ])
   const activeBoardTiers = useMemo(() => buildActiveBoardTierInputs({
     availablePlayers,
@@ -248,11 +266,16 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
     comparisonPlayerIds,
     recommendations,
   ])
-  const controller = useInsightDeckController({materialEvent, candidates})
+  const controller = useInsightDeckController({
+    materialEvent,
+    candidates,
+    initialViews: INITIAL_INSIGHT_VIEWS,
+  })
 
   return (
     <InsightDeck
       controller={controller}
+      defaultExpandedViewId="current_tier_market"
       renderView={viewId => {
         switch (viewId) {
           case "candidate_comparison":

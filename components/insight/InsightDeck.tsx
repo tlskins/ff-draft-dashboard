@@ -35,6 +35,7 @@ export interface InsightDeckRenderContext {
 
 export interface InsightDeckProps {
   controller: InsightDeckController
+  defaultExpandedViewId?: InsightViewId
   /**
    * Deliberately bounded to registered IDs. Returning null/undefined makes the
    * slot visibly unavailable rather than silently rendering arbitrary content.
@@ -45,7 +46,11 @@ export interface InsightDeckProps {
   ) => React.ReactNode | null | undefined
 }
 
-const InsightDeck: React.FC<InsightDeckProps> = ({controller, renderView}) => {
+const InsightDeck: React.FC<InsightDeckProps> = ({
+  controller,
+  defaultExpandedViewId,
+  renderView,
+}) => {
   const selectionSignature = VISIBLE_INSIGHT_DECK_SLOTS.map(slot => (
     controller.state.slots[slot].selection?.viewId || "none"
   )).join("|")
@@ -54,6 +59,7 @@ const InsightDeck: React.FC<InsightDeckProps> = ({controller, renderView}) => {
     slot: typeof VISIBLE_INSIGHT_DECK_SLOTS[number]
     viewId: InsightViewId
   } | null>(null)
+  const defaultExpansionApplied = useRef(false)
   const [expandedSlot, setExpandedSlot] = useState<typeof VISIBLE_INSIGHT_DECK_SLOTS[number] | null>(null)
   useEffect(() => {
     if (previousSelectionSignature.current === selectionSignature) return
@@ -67,11 +73,21 @@ const InsightDeck: React.FC<InsightDeckProps> = ({controller, renderView}) => {
       setExpandedSlot(defaultSpan(requested.viewId) === 2 ? requested.slot : null)
       return
     }
+    if (!defaultExpansionApplied.current && defaultExpandedViewId) {
+      const defaultSlot = VISIBLE_INSIGHT_DECK_SLOTS.find(slot => (
+        controller.state.slots[slot].selection?.viewId === defaultExpandedViewId
+      ))
+      if (defaultSlot) {
+        defaultExpansionApplied.current = true
+        setExpandedSlot(defaultSlot)
+        return
+      }
+    }
     const wideSlot = VISIBLE_INSIGHT_DECK_SLOTS.find(slot => defaultSpan(
       controller.state.slots[slot].selection?.viewId,
     ) === 2)
     setExpandedSlot(wideSlot || null)
-  }, [controller.state.slots, selectionSignature])
+  }, [controller.state.slots, defaultExpandedViewId, selectionSignature])
   const renderedViewIds = new Set<InsightViewId>()
 
   return <section aria-label="Draft insight deck" className={styles.deck}>

@@ -44,23 +44,56 @@ const forecast = (): OpponentForecast => ({
   runProbabilities: positions.map(position => ({position, minimumPicks: 3, probability: .9})), tierBoundaryProbabilities: [],
 })
 
-const Harness: React.FC<{forecastEnabled?: boolean; materialKey?: string}> = ({forecastEnabled = false, materialKey = "initial"}) => {
+const Harness: React.FC<{
+  forecastEnabled?: boolean
+  materialKey?: string
+  visibleTierPositions?: readonly (typeof positions)[number][]
+}> = ({
+  forecastEnabled = false,
+  materialKey = "initial",
+  visibleTierPositions,
+}) => {
   const comparisonController = useAdvisorComparisonController({automaticSet: comparisonItems(), materialEventKey: materialKey})
-  return <DraftDeskInsightDeck advisorContext={advisorContext()} availablePlayers={players} boardSettings={boardSettings} comparisonController={comparisonController} draftPlan={null} materialEvent={{streamId: "deck-test", draftKey: materialKey}} myRosterIndex={0} onInspectPlayer={jest.fn()} opponentForecast={forecastEnabled ? forecast() : null} rankingSummaries={[]} recommendations={recommendations()} rosters={[roster(), roster(), roster()]} settings={settings} />
+  return <DraftDeskInsightDeck advisorContext={advisorContext()} availablePlayers={players} boardSettings={boardSettings} comparisonController={comparisonController} draftPlan={null} materialEvent={{streamId: "deck-test", draftKey: materialKey}} myRosterIndex={0} onInspectPlayer={jest.fn()} opponentForecast={forecastEnabled ? forecast() : null} rankingSummaries={[]} recommendations={recommendations()} rosters={[roster(), roster(), roster()]} settings={settings} visibleTierPositions={visibleTierPositions} />
 }
 
 describe("DraftDeskInsightDeck", () => {
-  it("owns the only live region, exposes two closed view selectors, and renders the position table", () => {
+  it("defaults to an expanded tier market filtered to the visible RB + WR ranking lanes", () => {
     render(<Harness />)
     expect(document.querySelectorAll("[aria-live]")).toHaveLength(1)
     expect(screen.getByRole("region", {name: "Draft insight deck"})).toBeTruthy()
-    expect(screen.getByRole("region", {name: "Top option at each position"})).toBeTruthy()
-    expect(screen.getByRole("columnheader", {name: "Best projected next target"})).toBeTruthy()
-    expect(screen.getByRole("region", {name: "Rank and tier disagreement"})).toBeTruthy()
+    expect(screen.getByRole("heading", {name: "Where will each tier run out?"})).toBeTruthy()
+    expect(screen.getByTestId("tier-landscape-lane-RB")).toBeTruthy()
+    expect(screen.getByTestId("tier-landscape-lane-WR")).toBeTruthy()
+    expect(screen.queryByTestId("tier-landscape-lane-QB")).toBeNull()
+    expect(screen.queryByTestId("tier-landscape-lane-TE")).toBeNull()
     expect(screen.getAllByRole("combobox")).toHaveLength(2)
     expect(screen.getAllByRole("option", {name: "Player Lab"})).toHaveLength(2)
+    expect((screen.getByRole("combobox", {name: "Decision view view"}) as HTMLSelectElement).value)
+      .toBe("current_tier_market")
+    expect(screen.getByRole("button", {
+      name: "Restore two insight views from Current tier market",
+    })).toBeTruthy()
     const decisionMode = screen.getByRole("group", {name: "Decision view mode"})
     expect(within(decisionMode).getByRole("button", {name: "Auto"}).getAttribute("aria-pressed")).toBe("true")
+  })
+
+  it("updates tier density when the left ranking position pair changes", async () => {
+    const view = render(<Harness visibleTierPositions={[
+      FantasyPosition.RUNNING_BACK,
+      FantasyPosition.WIDE_RECEIVER,
+    ]} />)
+    expect(screen.getByTestId("tier-landscape-lane-RB")).toBeTruthy()
+    expect(screen.getByTestId("tier-landscape-lane-WR")).toBeTruthy()
+
+    view.rerender(<Harness visibleTierPositions={[
+      FantasyPosition.QUARTERBACK,
+      FantasyPosition.TIGHT_END,
+    ]} />)
+    await waitFor(() => expect(screen.getByTestId("tier-landscape-lane-QB")).toBeTruthy())
+    expect(screen.getByTestId("tier-landscape-lane-TE")).toBeTruthy()
+    expect(screen.queryByTestId("tier-landscape-lane-RB")).toBeNull()
+    expect(screen.queryByTestId("tier-landscape-lane-WR")).toBeNull()
   })
 
   it("uses a material boundary to select the two-round market without nested announcers", async () => {

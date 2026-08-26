@@ -49,7 +49,7 @@ import {
 import {
   useRealtimeConversation,
 } from "../behavior/hooks/useRealtimeConversation"
-import { Player, ThirdPartyRanker } from "types"
+import { FantasyPosition, Player, ThirdPartyRanker } from "types"
 import {selectableExpertRankers} from "../behavior/rankingCatalog"
 import {scoringFormatFor} from "../behavior/scoringFormat"
 import {
@@ -117,6 +117,7 @@ import {
   buildAdvisorComparisonSet,
   createMaterialDraftEventKey,
 } from "@/behavior/advisorComparisonSet"
+import type {RankingLanePosition} from "@/types/DraftBoardTypes"
 
 export enum DraftView {
   RANKING = "Rankings By Position",
@@ -348,6 +349,10 @@ const Home: FC = () => {
   ), [activeDraftSessionId, materialDraftEventKey])
 
   const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
+  const [rankingVisiblePositions, setRankingVisiblePositions] = useState<RankingLanePosition[]>([
+    FantasyPosition.RUNNING_BACK,
+    FantasyPosition.WIDE_RECEIVER,
+  ])
   const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   const [pinnedProfilePlayerId, setPinnedProfilePlayerId] = useState<string | null>(null)
@@ -1126,6 +1131,7 @@ const Home: FC = () => {
                             setViewPlayerId={focusBoardPlayer}
                             pinnedPlayerId={pinnedProfilePlayerId}
                             onPinPlayer={togglePinnedProfilePlayer}
+                            onVisiblePositionsChange={setRankingVisiblePositions}
                             isEditingCustomRanking={isEditingCustomRanking}
                             hasCustomRanking={usingCustomRanking}
                             canEditCustomRankings={canEditCustomRankings()}
@@ -1196,6 +1202,7 @@ const Home: FC = () => {
                               recommendations={recommendations}
                               rosters={rosters}
                               settings={settings}
+                              visibleTierPositions={rankingVisiblePositions}
                             />
                           </div>
                         ) : (

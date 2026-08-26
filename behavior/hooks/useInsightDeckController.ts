@@ -4,6 +4,7 @@ import {
   createInsightDeckState,
   InsightCandidate,
   InsightDeckPolicy,
+  InsightDeckInitialViews,
   InsightDeckSlotId,
   InsightDeckState,
   InsightViewId,
@@ -33,10 +34,12 @@ export const useInsightDeckController = ({
   materialEvent,
   candidates,
   policy,
+  initialViews,
 }: {
   materialEvent: MaterialInsightEvent
   candidates: InsightCandidate[]
   policy?: Partial<InsightDeckPolicy>
+  initialViews?: InsightDeckInitialViews
 }): InsightDeckController => {
   const [state, setState] = useState<InsightDeckState>(() => (
     createInsightDeckState(materialEvent.streamId)
@@ -48,8 +51,9 @@ export const useInsightDeckController = ({
       materialEvent,
       candidates,
       policy,
+      initialViews,
     ).state)
-  }, [candidates, materialEvent, policy])
+  }, [candidates, initialViews, materialEvent, policy])
 
   const pinSlot = useCallback((slot: InsightDeckSlotId) => {
     setState(current => setInsightDeckSlotPinned(current, slot, true).state)
