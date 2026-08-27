@@ -101,6 +101,23 @@ describe("Phase 14A unified rankings pane", () => {
     ])
   })
 
+  it("follows the shared position authority when another pane changes the pair", () => {
+    render(<RankingsBoard
+      {...props()}
+      compact
+      visiblePositions={[
+        FantasyPosition.QUARTERBACK,
+        FantasyPosition.TIGHT_END,
+      ]}
+    />)
+
+    expect(screen.getByRole("button", {name: "QB + TE"}).getAttribute("aria-pressed"))
+      .toBe("true")
+    expect(screen.getByTestId("ranking-position-lane-QB")).toBeTruthy()
+    expect(screen.getByTestId("ranking-position-lane-TE")).toBeTruthy()
+    expect(screen.queryByTestId("ranking-position-lane-RB")).toBeNull()
+  })
+
   it("retains interactive tier-boundary placement in custom-ranking mode", () => {
     const makePlayer = (id: string, positionRank: number, tierNumber: number): any => ({
       id, firstName: id, lastName: "Runner", fullName: `${id} Runner`,

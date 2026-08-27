@@ -61,6 +61,7 @@ export interface SharedViewProps {
   compact?: boolean
   pinnedPlayerId?: string | null
   onPinPlayer?: (playerId: string) => void
+  visiblePositions?: readonly RankingLanePosition[]
   onVisiblePositionsChange?: (positions: RankingLanePosition[]) => void
 }
 

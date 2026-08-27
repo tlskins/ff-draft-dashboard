@@ -59,6 +59,7 @@ const RankingView = ({
   compact = false,
   pinnedPlayerId,
   onPinPlayer,
+  visiblePositions,
   onVisiblePositionsChange,
 }: RankingViewProps) => {
   const [pair, setPair] = useState<PositionPair>("RB_WR")
@@ -76,6 +77,11 @@ const RankingView = ({
     .map(column => [column.columnTitle, column])), [draftBoard.standardView])
   const myRoster = rosters[myPickNum - 1]
   const isUsingCustomRanks = rankings.copiedRanker && rankings.cachedAt && rankings.editedAt
+
+  useEffect(() => {
+    if (!compact || !visiblePositions) return
+    setPair(visiblePositions.includes(FantasyPosition.QUARTERBACK) ? "QB_TE" : "RB_WR")
+  }, [compact, visiblePositions])
 
   useEffect(() => {
     if (!compact) return

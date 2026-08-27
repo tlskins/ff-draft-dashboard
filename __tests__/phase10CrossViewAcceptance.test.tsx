@@ -403,8 +403,8 @@ const viewCases: Array<{
   {
     id: "tier_landscape",
     button: "Position tiers",
-    heading: "Where will each tier run out?",
-    source: /Choose a position to see every available player/,
+    heading: "Position tier density",
+    source: /Targeted players are highlighted/,
     historical: "Historical positional tier drilldown",
   },
   {

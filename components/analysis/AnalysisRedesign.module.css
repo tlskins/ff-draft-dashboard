@@ -799,6 +799,12 @@
   border-top: 1px solid #e2e8f0;
 }
 
+.rangeRowTarget {
+  border-left: 3px solid #0284c7;
+  background: #eff9ff;
+  box-shadow: inset 0 0 0 1px #bae6fd;
+}
+
 .rangePlayerControl {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 30px;

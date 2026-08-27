@@ -568,8 +568,9 @@ describe("live positional tier landscape surface", () => {
       "tier-landscape-lane-WR",
       "tier-landscape-lane-TE",
     ])
-    expect(view.getByText("Current pick")).toBeTruthy()
-    expect(view.getByText("Supplied opponent-pick horizon")).toBeTruthy()
+    expect(view.getByRole("heading", {name: "Position tier density"})).toBeTruthy()
+    expect(view.queryByText("Current pick")).toBeNull()
+    expect(view.queryByText("Supplied opponent-pick horizon")).toBeNull()
     expect(view.getAllByText("Current-tier exhaustion · supplied forecast"))
       .toHaveLength(4)
     expect(view.getAllByText("Modeled positional run · supplied"))
@@ -577,7 +578,7 @@ describe("live positional tier landscape surface", () => {
     expect(view.getByText("40% · at least 3 positional picks")).toBeTruthy()
     expect(view.getAllByText("2 available players across 1 tier band."))
       .toHaveLength(4)
-    expect(view.getByText(/Later-user-pick expected tiers are unavailable:/)).toBeTruthy()
+    expect(view.queryByText(/Later-user-pick expected tiers are unavailable:/)).toBeNull()
     expect(view.getByRole("img", {
       name: /rb-a Player projection range overlay: floor/,
     })).toBeTruthy()
@@ -764,10 +765,11 @@ describe("live positional tier landscape surface", () => {
       <TierLandscapeLiveSurface model={model} onInspectPlayer={jest.fn()} />,
     )
 
-    expect(view.getByText("Current pick")).toBeTruthy()
+    expect(view.getByRole("heading", {name: "Position tier density"})).toBeTruthy()
+    expect(view.queryByText("Current pick")).toBeNull()
     expect(view.getAllByText(/No explicitly available .* players are supplied/))
       .toHaveLength(4)
-    expect(view.getAllByText("Unavailable").length).toBeGreaterThan(0)
+    expect(view.getAllByText("0 tiered players").length).toBeGreaterThan(0)
   })
 })
 
@@ -799,7 +801,7 @@ describe("tier landscape workspace boundaries", () => {
     fireEvent.click(view.getByRole("button", {name: "Position tiers"}))
     fireEvent.click(view.getByRole("button", {name: /RB 2 tiered/}))
 
-    expect(view.getByText("Where will each tier run out?")).toBeTruthy()
+    expect(view.getByText("Position tier density")).toBeTruthy()
     expect(view.getAllByText("rb-a Player").length).toBeGreaterThan(0)
     expect(view.queryByText("drafted-rb Player")).toBeNull()
     expect(mockedExecute).not.toHaveBeenCalled()

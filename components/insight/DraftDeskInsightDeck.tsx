@@ -42,6 +42,7 @@ import type {
   BoardSettings,
   FantasySettings,
   Player,
+  PlayerTarget,
   RankingSummary,
 } from "../../types"
 import {FantasyPosition} from "../../types"
@@ -77,7 +78,9 @@ export interface DraftDeskInsightDeckProps {
   myRosterIndex: number
   draftPlan: DraftPlanDocument | null
   onInspectPlayer: (player: Player) => void
+  playerTargets?: readonly PlayerTarget[]
   visibleTierPositions?: readonly TierLandscapePosition[]
+  onVisibleTierPositionsChange?: (positions: TierLandscapePosition[]) => void
 }
 
 const DEFAULT_TIER_POSITIONS: readonly TierLandscapePosition[] = [
@@ -106,7 +109,9 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
   myRosterIndex,
   draftPlan,
   onInspectPlayer,
+  playerTargets = [],
   visibleTierPositions = DEFAULT_TIER_POSITIONS,
+  onVisibleTierPositionsChange,
 }) => {
   const comparisonPlayers = useMemo(
     () => comparisonController.items.map(item => item.player),
@@ -115,6 +120,10 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
   const comparisonPlayerIds = useMemo(
     () => comparisonPlayers.map(player => player.id),
     [comparisonPlayers],
+  )
+  const targetPlayerIds = useMemo(
+    () => playerTargets.map(target => target.playerId),
+    [playerTargets],
   )
   const readEvidence = useInsightReadEvidence({
     playerIds: comparisonPlayerIds,
@@ -309,6 +318,9 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
               announceUpdates={false}
               model={tierLandscape}
               onInspectPlayer={onInspectPlayer}
+              onVisiblePositionsChange={onVisibleTierPositionsChange}
+              targetPlayerIds={targetPlayerIds}
+              visiblePositions={visibleTierPositions}
             />
           case "two_round_run_matrix":
             return <RoundRunMatrix model={roundMarket} />

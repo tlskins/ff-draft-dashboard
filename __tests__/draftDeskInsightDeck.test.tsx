@@ -48,13 +48,17 @@ const Harness: React.FC<{
   forecastEnabled?: boolean
   materialKey?: string
   visibleTierPositions?: readonly (typeof positions)[number][]
+  onVisibleTierPositionsChange?: (positions: (typeof positions)[number][]) => void
+  playerTargets?: Array<{playerId: string; targetAsEarlyAsRound: number}>
 }> = ({
   forecastEnabled = false,
   materialKey = "initial",
   visibleTierPositions,
+  onVisibleTierPositionsChange,
+  playerTargets = [],
 }) => {
   const comparisonController = useAdvisorComparisonController({automaticSet: comparisonItems(), materialEventKey: materialKey})
-  return <DraftDeskInsightDeck advisorContext={advisorContext()} availablePlayers={players} boardSettings={boardSettings} comparisonController={comparisonController} draftPlan={null} materialEvent={{streamId: "deck-test", draftKey: materialKey}} myRosterIndex={0} onInspectPlayer={jest.fn()} opponentForecast={forecastEnabled ? forecast() : null} rankingSummaries={[]} recommendations={recommendations()} rosters={[roster(), roster(), roster()]} settings={settings} visibleTierPositions={visibleTierPositions} />
+  return <DraftDeskInsightDeck advisorContext={advisorContext()} availablePlayers={players} boardSettings={boardSettings} comparisonController={comparisonController} draftPlan={null} materialEvent={{streamId: "deck-test", draftKey: materialKey}} myRosterIndex={0} onInspectPlayer={jest.fn()} onVisibleTierPositionsChange={onVisibleTierPositionsChange} opponentForecast={forecastEnabled ? forecast() : null} playerTargets={playerTargets} rankingSummaries={[]} recommendations={recommendations()} rosters={[roster(), roster(), roster()]} settings={settings} visibleTierPositions={visibleTierPositions} />
 }
 
 describe("DraftDeskInsightDeck", () => {
@@ -62,7 +66,7 @@ describe("DraftDeskInsightDeck", () => {
     render(<Harness />)
     expect(document.querySelectorAll("[aria-live]")).toHaveLength(1)
     expect(screen.getByRole("region", {name: "Draft insight deck"})).toBeTruthy()
-    expect(screen.getByRole("heading", {name: "Where will each tier run out?"})).toBeTruthy()
+    expect(screen.getByRole("heading", {name: "Position tier density"})).toBeTruthy()
     expect(screen.getByTestId("tier-landscape-lane-RB")).toBeTruthy()
     expect(screen.getByTestId("tier-landscape-lane-WR")).toBeTruthy()
     expect(screen.queryByTestId("tier-landscape-lane-QB")).toBeNull()
@@ -76,6 +80,23 @@ describe("DraftDeskInsightDeck", () => {
     })).toBeTruthy()
     const decisionMode = screen.getByRole("group", {name: "Decision view mode"})
     expect(within(decisionMode).getByRole("button", {name: "Auto"}).getAttribute("aria-pressed")).toBe("true")
+  })
+
+  it("lets the tier surface change the shared position group and marks targets", () => {
+    const onVisibleTierPositionsChange = jest.fn()
+    render(<Harness
+      onVisibleTierPositionsChange={onVisibleTierPositionsChange}
+      playerTargets={[{playerId: "rb-one", targetAsEarlyAsRound: 3}]}
+    />)
+    fireEvent.click(within(screen.getByRole("group", {name: "Position tier groups"}))
+      .getByRole("button", {name: "QB + TE"}))
+    expect(onVisibleTierPositionsChange).toHaveBeenCalledWith([
+      FantasyPosition.QUARTERBACK,
+      FantasyPosition.TIGHT_END,
+    ])
+    expect(screen.getAllByText(/TARGET/).some(element => (
+      Boolean(element.closest("[data-target-player='true']"))
+    ))).toBe(true)
   })
 
   it("updates tier density when the left ranking position pair changes", async () => {

@@ -670,7 +670,7 @@ describe("workspace live and historical boundaries", () => {
     }))
     fireEvent.click(view.getByRole("button", {name: /RB 2 tiered/}))
 
-    expect(view.getByText("Where will each tier run out?")).toBeTruthy()
+    expect(view.getByText("Position tier density")).toBeTruthy()
     expect(view.getAllByText("one Player").length).toBeGreaterThan(0)
     expect(mockedExecute).not.toHaveBeenCalled()
 

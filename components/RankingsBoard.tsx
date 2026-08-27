@@ -88,6 +88,7 @@ interface RankingsBoardProps {
   hideCompactModeControl?: boolean
   pinnedPlayerId?: string | null
   onPinPlayer?: (playerId: string) => void
+  visiblePositions?: readonly RankingLanePosition[]
   onVisiblePositionsChange?: (positions: RankingLanePosition[]) => void
 }
 
@@ -148,6 +149,7 @@ const RankingsBoard = ({
   hideCompactModeControl = false,
   pinnedPlayerId,
   onPinPlayer,
+  visiblePositions,
   onVisiblePositionsChange,
 }: RankingsBoardProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
@@ -213,6 +215,7 @@ const RankingsBoard = ({
     compact,
     pinnedPlayerId,
     onPinPlayer,
+    visiblePositions,
     onVisiblePositionsChange,
   }
 

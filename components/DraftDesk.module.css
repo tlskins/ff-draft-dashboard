@@ -194,9 +194,9 @@
   min-height: 0;
   flex: 1 1 auto;
   grid-template-columns:
-    minmax(440px, 1.35fr)
-    minmax(340px, 1fr)
-    minmax(380px, 1.15fr);
+    minmax(380px, .95fr)
+    minmax(360px, 1fr)
+    minmax(430px, 1.2fr);
   gap: 1px;
   overflow: hidden;
   background: var(--desk-divider);
@@ -344,7 +344,7 @@
   display: grid;
   grid-template-columns: 21px minmax(0, 1fr);
   min-width: 0;
-  min-height: 38px;
+  min-height: 35px;
   padding: 2px 5px 2px 2px;
   border: 0;
   border-bottom: 1px solid #d9ddde;
@@ -374,8 +374,8 @@
   white-space: nowrap;
 }
 .playerCardDetails { display: flex; min-width: 0; align-items: center; gap: 4px; margin-top: 1px; }
-.playerCardMeta { min-width: 0; flex: 1 1 auto; margin: 0; overflow: hidden; color: var(--desk-text-muted); font-size: 7px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
-.playerCardEvidence { display: flex; min-width: 0; flex: 0 1 auto; align-items: center; gap: 3px; margin: 0; overflow: hidden; color: var(--desk-text-muted); font-size: 7px; line-height: 1.2; white-space: nowrap; }
+.playerCardMeta { min-width: 0; flex: 1 1 auto; margin: 0; overflow: hidden; color: var(--desk-text-muted); font-size: 8px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.playerCardEvidence { display: flex; min-width: 0; flex: 0 1 auto; align-items: center; gap: 3px; margin: 0; overflow: hidden; color: var(--desk-text-muted); font-size: 8px; line-height: 1.2; white-space: nowrap; }
 .playerCardUrgency { flex: 0 0 auto; padding: 1px 3px; border: 1px solid #d4b77c; border-radius: 2px; overflow: hidden; color: #805b1f; background: #eee3cf; font-size: 6px; font-weight: 750; letter-spacing: .02em; line-height: 1.1; text-overflow: ellipsis; }
 .playerCardActions { display: none; align-items: center; gap: 3px; margin-top: 3px; }
 .playerCard:hover .playerCardActions,
@@ -387,21 +387,23 @@
   top: 2px;
   right: 3px;
   display: none;
-  width: 17px;
-  height: 17px;
-  padding: 0;
+  width: auto;
+  min-width: 31px;
+  height: 18px;
+  padding: 1px 4px;
   border: 1px solid #9dabb1;
   border-radius: 2px;
   color: #315e75;
   background: #f4f3ef;
-  font-size: 10px;
+  font-size: 7px;
+  font-weight: 750;
   line-height: 1;
 }
 .playerCard:hover .playerCardPin,
 .playerCard:focus-within .playerCardPin,
 .playerCardPin[aria-pressed="true"] { display: grid; place-items: center; }
 .playerCard:hover .tierFlag,
-.playerCard:focus-within .tierFlag { margin-right: 18px; }
+.playerCard:focus-within .tierFlag { margin-right: 36px; }
 .adpTimingCue { flex: 0 0 auto; padding: 1px 3px; border-radius: 2px; font-size: 6px; font-weight: 750; letter-spacing: .02em; }
 .adpTimingEarly { color: #71541d; background: #eee0bd; }
 .adpTimingRange { color: #315e75; background: #d6e5eb; }
@@ -455,8 +457,8 @@
 }
 .positionLane { display: flex; min-width: 0; min-height: 0; flex-direction: column; background: var(--desk-surface); }
 .positionLaneHeader { display: flex; min-height: 28px; align-items: center; justify-content: space-between; gap: 4px; padding: 5px 8px; border-bottom: 1px solid #cfd4d5; color: #334047; background: var(--desk-surface-muted); font-size: 9px; font-weight: 650; letter-spacing: .04em; }
-.positionLaneHeader span:last-child { color: #737e84; font-size: 8px; font-weight: 450; letter-spacing: 0; }
-.positionLaneColumns { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 3px; padding: 3px 5px; border-bottom: 1px solid #d3d7d8; color: #707a80; background: #e7e9e8; font-size: 7px; letter-spacing: .05em; }
+.positionLaneHeader span:last-child { color: #737e84; font-size: 9px; font-weight: 450; letter-spacing: 0; }
+.positionLaneColumns { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 3px; padding: 3px 5px; border-bottom: 1px solid #d3d7d8; color: #707a80; background: #e7e9e8; font-size: 8px; letter-spacing: .05em; }
 .positionLaneCards { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; padding: 0; overflow-y: auto; }
 
 .rankingsToolbar { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 4px; padding: 4px 7px; border-bottom: 1px solid #d7dbdd; color: #737d83; background: var(--desk-surface); font-size: 9px; }
@@ -710,20 +712,21 @@
 .targetWindows { display: flex; min-height: 26px; align-items: center; gap: 5px; padding: 4px 6px; border-bottom: 1px solid #c9ced0; background: #eceeed; overflow: hidden; }
 .targetWindows > span { flex: 0 0 auto; color: #6b767d; font-size: 7px; letter-spacing: .05em; }
 .targetWindows button { min-width: 0; padding: 2px 4px; overflow: hidden; border: 0; border-left: 3px solid var(--desk-selection); color: #43525a; background: #d6e2e8; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
-.adpGrid { display: grid; min-height: 0; flex: 1 1 auto; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; }
+.adpGrid { display: grid; min-height: 0; flex: 1 1 auto; grid-template-columns: minmax(92px, .85fr) repeat(3, minmax(0, 1fr)); overflow: hidden; }
 .adpColumn { display: flex; min-width: 0; min-height: 0; flex-direction: column; border-left: 1px solid #c9ced0; }
 .adpColumn:first-child { border-left: 0; }
 .adpColumn > header { display: grid; min-height: 58px; flex: 0 0 58px; align-content: center; gap: 2px; padding: 6px 7px; border-bottom: 1px solid #c9ced0; background: #dde2e3; box-sizing: border-box; }
 .adpColumn > header span,
 .adpColumn > header strong,
 .adpColumn > header small { display: block; }
-.adpColumn > header span { color: #637078; font-size: 7px; letter-spacing: .06em; line-height: 1.2; }
+.adpColumn > header span { color: #637078; font-size: 8px; letter-spacing: .06em; line-height: 1.2; }
 .adpColumn > header strong { font-size: 9px; font-weight: 650; line-height: 1.2; }
-.adpColumn > header small { color: #7b858a; font-size: 7px; line-height: 1.2; }
+.adpColumn > header small { color: #7b858a; font-size: 8px; line-height: 1.2; }
 .adpCards { min-height: 0; flex: 1 1 auto; overflow-y: auto; }
-.adpCards .playerCard { grid-template-columns: 18px minmax(0, 1fr); min-height: 54px; }
-.adpCards .playerCardName { font-size: 8px; }
-.adpCards .playerCardMeta { font-size: 7px; }
+.adpCards .playerCard { grid-template-columns: 18px minmax(0, 1fr); min-height: 48px; }
+.adpColumn:first-child .adpCards .playerCard { min-height: 39px; }
+.adpCards .playerCardName { font-size: 9px; }
+.adpCards .playerCardMeta { font-size: 8px; }
 .adpCards .playerCardEvidence { display: none; }
 .adpCards .adpRoundPlayerCard .playerCardEvidence { display: flex; margin-left: auto; overflow: visible; }
 .adpValueCue {
@@ -975,6 +978,59 @@
 .dockTicker li strong { flex: 0 0 auto; color: #d9e0e2; font-size: 7px; }
 .dockTicker li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dockTicker .dockTickerWarning strong { color: #e0b56e; }
+
+/* Dense, legible profile typography: preserve the accepted spacing while
+   lifting supporting copy above the 6–8px legacy floor. */
+.profileModuleController strong,
+.profileAnalystNotes > header > span,
+.profileInjuryBanner strong,
+.profileHistoricalController strong,
+.profileWeeklyChart > header strong { font-size: 9px; }
+.profileModuleController span,
+.profileStatus > span,
+.profileStatusMeta,
+.profileOutlook header span,
+.profileOutlook header a,
+.profileOutlook footer,
+.profileAnalystNotes > header > small,
+.profileAnalystFilter,
+.profileAnalystFilter button,
+.profileAnalystNoteGroup h4,
+.profileAnalystAction,
+.profileAnalystNoteGroup footer,
+.profileInjuryBanner small,
+.profileEvidenceBody small,
+.profileContextHeader div > span,
+.profileContextHeader > span,
+.profileRankSources span,
+.profilePpgBandHeader div > span,
+.profilePpgBandFooter,
+.profileTierPeers,
+.profileHistoricalController span,
+.profileHistoricalButtons button,
+.profileHistoricalProvenance,
+.profileWeeklyChart > header span,
+.profileWeeklyChart figcaption,
+.profileWeeklyChart figcaption small { font-size: 8px !important; }
+.profileStatus p,
+.profileOutlook p,
+.profileAnalystNoteGroup li p,
+.profileInjuryBanner p,
+.profileNotes p,
+.profileDetails,
+.profileDetails > summary,
+.profileDetails p,
+.profileHistoryTable,
+.profileHistoryDisclosure > summary,
+.profileHistoryEmpty,
+.profileHistoricalState { font-size: 9px; }
+.profileDetails table,
+.profileDetails th,
+.profileDetails td { font-size: 8px !important; }
+.profileSectionHeader span,
+.profileRankSources strong,
+.profilePpgBandHeader strong { font-size: 9px; }
+.profileAnalystFilter label small { font-size: 7.5px; }
 
 @media (max-width: 1439px) {
   .dockLayout { grid-template-columns: 130px minmax(400px, 1.15fr) minmax(350px, 1.2fr) 190px; }

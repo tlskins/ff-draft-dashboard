@@ -1131,6 +1131,7 @@ const Home: FC = () => {
                             setViewPlayerId={focusBoardPlayer}
                             pinnedPlayerId={pinnedProfilePlayerId}
                             onPinPlayer={togglePinnedProfilePlayer}
+                            visiblePositions={rankingVisiblePositions}
                             onVisiblePositionsChange={setRankingVisiblePositions}
                             isEditingCustomRanking={isEditingCustomRanking}
                             hasCustomRanking={usingCustomRanking}
@@ -1202,7 +1203,9 @@ const Home: FC = () => {
                               recommendations={recommendations}
                               rosters={rosters}
                               settings={settings}
+                              playerTargets={playerTargets}
                               visibleTierPositions={rankingVisiblePositions}
+                              onVisibleTierPositionsChange={setRankingVisiblePositions}
                             />
                           </div>
                         ) : (

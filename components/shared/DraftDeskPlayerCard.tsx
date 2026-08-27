@@ -158,7 +158,7 @@ const DraftDeskPlayerCard = ({
           }}
           title={pinned ? "Unlock player profile" : "Lock player profile"}
           type="button"
-        >{pinned ? "●" : "○"}</button>}
+        >{pinned ? "Unlock" : "Lock"}</button>}
       </div>
     </div>
   )

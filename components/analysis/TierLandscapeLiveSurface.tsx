@@ -11,6 +11,7 @@ import type {
   TierLandscapePresentationModel,
   TierLandscapeTierBandModel,
 } from "../../behavior/analysis/tierLandscape"
+import { FantasyPosition } from "../../types"
 import type { Player } from "../../types"
 import styles from "./AnalysisRedesign.module.css"
 
@@ -20,6 +21,9 @@ interface TierLandscapeLiveSurfaceProps {
   runwayForecast?: TierRunwayForecast
   /** Standalone behavior remains enabled unless a parent owns announcements. */
   announceUpdates?: boolean
+  targetPlayerIds?: readonly string[]
+  visiblePositions?: readonly TierLandscapePosition[]
+  onVisiblePositionsChange?: (positions: TierLandscapePosition[]) => void
 }
 
 export interface TierRunwayHorizon {
@@ -73,11 +77,12 @@ const positionProjectionTicks = (
 
 const RangeRow: React.FC<{
   isShortlisted: boolean
+  isTarget: boolean
   player: TierLandscapePlayerModel
   lane: TierLandscapeLaneModel
   onInspectPlayer: (player: Player) => void
   onToggleShortlist: (playerId: string) => void
-}> = ({isShortlisted, player, lane, onInspectPlayer, onToggleShortlist}) => {
+}> = ({isShortlisted, isTarget, player, lane, onInspectPlayer, onToggleShortlist}) => {
   const scale = positionProjectionScale(lane)
   const percent = (value: number | null): number | null => (
     value === null || !scale.available
@@ -98,7 +103,7 @@ const RangeRow: React.FC<{
   } as React.CSSProperties
 
   return (
-    <div className={styles.rangeRow}>
+    <div className={`${styles.rangeRow} ${isTarget ? styles.rangeRowTarget : ""}`} data-target-player={isTarget || undefined}>
       <span className={styles.rangePlayerControl}>
         <button
           aria-label={`Inspect ${player.player.fullName}`}
@@ -107,7 +112,7 @@ const RangeRow: React.FC<{
           type="button"
         >
           <strong>{player.player.fullName}</strong>
-          <span>{player.player.team || "FA"} · {player.positionRankSourceLabel} #{player.positionRank ?? "—"} · Tier {player.primaryTier}</span>
+          <span>{player.player.team || "FA"} · {player.positionRankSourceLabel} #{player.positionRank ?? "—"} · Tier {player.primaryTier}{isTarget ? " · TARGET" : ""}</span>
         </button>
         <button
           aria-label={`${isShortlisted ? "Remove" : "Add"} ${player.player.fullName} ${isShortlisted ? "from" : "to"} short list`}
@@ -298,8 +303,9 @@ const TierLandscapePlayerCard: React.FC<{
   player: TierLandscapePlayerModel
   model: TierLandscapePresentationModel
   onInspectPlayer: (player: Player) => void
-}> = ({player, model, onInspectPlayer}) => (
-  <li className="min-w-0 rounded border border-slate-200 bg-white p-3">
+  isTarget: boolean
+}> = ({player, model, onInspectPlayer, isTarget}) => (
+  <li className={`min-w-0 rounded border bg-white p-3 ${isTarget ? "border-sky-500 ring-1 ring-sky-200" : "border-slate-200"}`} data-target-player={isTarget || undefined}>
     <article aria-labelledby={`tier-landscape-player-${player.player.id}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -312,6 +318,7 @@ const TierLandscapePlayerCard: React.FC<{
           <p className="text-xs text-slate-500">
             {player.player.position}
             {player.player.team ? ` · ${player.player.team}` : ""}
+            {isTarget ? " · TARGET" : ""}
           </p>
         </div>
         <button
@@ -371,7 +378,8 @@ const TierBand: React.FC<{
   lane: TierLandscapeLaneModel
   model: TierLandscapePresentationModel
   onInspectPlayer: (player: Player) => void
-}> = ({band, lane, model, onInspectPlayer}) => {
+  targetPlayerIds: Set<string>
+}> = ({band, lane, model, onInspectPlayer, targetPlayerIds}) => {
   const headingId = `tier-landscape-${lane.position}-${band.id}`
   return (
     <li>
@@ -405,6 +413,7 @@ const TierBand: React.FC<{
               model={model}
               onInspectPlayer={onInspectPlayer}
               player={player}
+              isTarget={targetPlayerIds.has(player.player.id)}
             />
           ))}
         </ol>
@@ -417,7 +426,8 @@ const Lane: React.FC<{
   lane: TierLandscapeLaneModel
   model: TierLandscapePresentationModel
   onInspectPlayer: (player: Player) => void
-}> = ({lane, model, onInspectPlayer}) => {
+  targetPlayerIds: Set<string>
+}> = ({lane, model, onInspectPlayer, targetPlayerIds}) => {
   const headingId = `tier-landscape-lane-${lane.position}`
   const current = lane.currentTopAvailableTier
   const tieredBands = lane.visibleTierBands.filter(band => band.tier !== null)
@@ -519,6 +529,7 @@ const Lane: React.FC<{
               lane={lane}
               model={model}
               onInspectPlayer={onInspectPlayer}
+              targetPlayerIds={targetPlayerIds}
             />
           ))}
         </ol>
@@ -532,6 +543,9 @@ const TierLandscapeLiveSurface: React.FC<TierLandscapeLiveSurfaceProps> = ({
   onInspectPlayer,
   runwayForecast = {},
   announceUpdates = true,
+  targetPlayerIds = [],
+  visiblePositions,
+  onVisiblePositionsChange,
 }) => {
   const previousUpdateKey = useRef<string | null>(null)
   const announcementCount = useRef(0)
@@ -539,6 +553,7 @@ const TierLandscapeLiveSurface: React.FC<TierLandscapeLiveSurfaceProps> = ({
   const [selectedPosition, setSelectedPosition] = useState<TierLandscapePosition | null>(null)
   const [displayMode, setDisplayMode] = useState<"available" | "shortlist">("available")
   const [shortlistedIds, setShortlistedIds] = useState<string[]>([])
+  const targetIds = useMemo(() => new Set(targetPlayerIds), [targetPlayerIds])
   const updateKey = landscapeUpdateKey(model)
   const selectedLane = useMemo(() => (
     model?.lanes.find(lane => lane.position === selectedPosition)
@@ -618,26 +633,20 @@ const TierLandscapeLiveSurface: React.FC<TierLandscapeLiveSurfaceProps> = ({
         <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">
           Position tiers
         </p>
-        <h2 className="text-2xl font-bold text-slate-950" id="live-tier-landscape-title">
-          Where will each tier run out?
+        <h2 className="text-xl font-bold text-slate-950" id="live-tier-landscape-title">
+          Position tier density
         </h2>
-        <p className="mt-1 max-w-4xl text-sm text-slate-700">
-          Choose a position to see every available player on its own
-          projected-points scale. Color identifies the player tier; the three
-          values are floor, median, and ceiling.
+        <p className="mt-1 max-w-4xl text-xs text-slate-700">
+          Targeted players are highlighted. Color identifies tier; ranges show projected floor, median, and ceiling.
         </p>
       </header>
 
-      <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-lg border border-slate-300 bg-white p-3"><dt className="text-slate-500">Current pick</dt><dd className="font-semibold text-slate-950">{model.currentPick ?? "Unavailable"}</dd></div>
-        <div className="rounded-lg border border-slate-300 bg-white p-3"><dt className="text-slate-500">Next user pick</dt><dd className="font-semibold text-slate-950">{model.nextUserPick ?? "Unavailable"}</dd></div>
-        <div className="rounded-lg border border-slate-300 bg-white p-3"><dt className="text-slate-500">Picks before next user pick</dt><dd className="font-semibold text-slate-950">{model.picksBeforeNextUserPick ?? "Unavailable"}</dd></div>
-        <div className="rounded-lg border border-slate-300 bg-white p-3"><dt className="text-slate-500">Supplied opponent-pick horizon</dt><dd className="font-semibold text-slate-950">{forecastHorizonLabel(model)}</dd></div>
-      </dl>
-      <p className="mt-3 rounded border border-violet-100 bg-white p-2 text-xs text-violet-900">
-        Later-user-pick expected tiers are unavailable: the supplied
-        forecast covers only the opponent picks before your next turn.
-      </p>
+      {onVisiblePositionsChange && (
+        <div aria-label="Position tier groups" className="mt-3 inline-flex rounded border border-slate-300 bg-slate-200 p-1" role="group">
+          <button aria-pressed={!visiblePositions?.includes(FantasyPosition.QUARTERBACK)} className="rounded px-3 py-1 text-xs font-bold aria-pressed:bg-white aria-pressed:text-indigo-800" onClick={() => onVisiblePositionsChange([FantasyPosition.RUNNING_BACK, FantasyPosition.WIDE_RECEIVER])} type="button">RB + WR</button>
+          <button aria-pressed={visiblePositions?.includes(FantasyPosition.QUARTERBACK) || false} className="rounded px-3 py-1 text-xs font-bold aria-pressed:bg-white aria-pressed:text-indigo-800" onClick={() => onVisiblePositionsChange([FantasyPosition.QUARTERBACK, FantasyPosition.TIGHT_END])} type="button">QB + TE</button>
+        </div>
+      )}
 
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-wide text-indigo-800">Choose a position</p>
@@ -702,7 +711,7 @@ const TierLandscapeLiveSurface: React.FC<TierLandscapeLiveSurfaceProps> = ({
             </div>
             <div className={styles.rangeBody}>
               {displayedPlayers.length > 0 ? displayedPlayers.map(player => (
-                <RangeRow isShortlisted={shortlistedIds.includes(player.player.id)} key={player.player.id} lane={selectedLane} onInspectPlayer={onInspectPlayer} onToggleShortlist={toggleShortlist} player={player} />
+                <RangeRow isShortlisted={shortlistedIds.includes(player.player.id)} isTarget={targetIds.has(player.player.id)} key={player.player.id} lane={selectedLane} onInspectPlayer={onInspectPlayer} onToggleShortlist={toggleShortlist} player={player} />
               )) : (
                 <p className="p-5 text-sm text-slate-500">{displayMode === "shortlist" ? `No tiered ${selectedLane.position} players are on your short list. Return to Available players and use the star controls to add some.` : `No available ${selectedLane.position} players have a user or board tier.`}</p>
               )}
@@ -801,7 +810,7 @@ const TierLandscapeLiveSurface: React.FC<TierLandscapeLiveSurfaceProps> = ({
       <details className="mt-4 rounded-xl border-2 border-slate-300 bg-white">
         <summary className="cursor-pointer rounded-xl p-3 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">Detailed tier and forecast evidence</summary>
         <div className="grid min-w-0 gap-3 border-t border-violet-100 p-3 xl:grid-cols-2">
-          {model.lanes.map(lane => <Lane key={lane.position} lane={lane} model={model} onInspectPlayer={onInspectPlayer} />)}
+          {model.lanes.map(lane => <Lane key={lane.position} lane={lane} model={model} onInspectPlayer={onInspectPlayer} targetPlayerIds={targetIds} />)}
         </div>
       </details>
     </section>
