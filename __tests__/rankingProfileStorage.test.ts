@@ -527,7 +527,7 @@ describe("restart-safe ranking profile v2 browser migration", () => {
     }
   })
 
-  it("fails closed for corrupt authority, canonical data, and authority-less canonical data", () => {
+  it("fails closed for corrupt authority or canonical data and repairs validated authority-less v2 data", () => {
     const profile = validateRankingProfileV2(fixture.rebase.expected_profile)
     const authorityCorrupt = new MemoryStorage(new Map([
       [RANKING_PROFILE_V2_STORAGE_KEY, JSON.stringify(profile)],
@@ -543,10 +543,20 @@ describe("restart-safe ranking profile v2 browser migration", () => {
       .toMatchObject({status: "rejected", evidence: {code: "authority_conflict"}})
 
     const missingAuthority = new MemoryStorage(new Map([
-      [RANKING_PROFILE_V2_STORAGE_KEY, JSON.stringify(profile)],
+      [RANKING_PROFILE_V2_STORAGE_KEY, JSON.stringify(profile, null, 2)],
     ]))
     expect(runRankingProfileStartupMigration(missingAuthority, [], "ppr"))
-      .toMatchObject({status: "rejected", evidence: {code: "authority_missing"}})
+      .toMatchObject({status: "migrated", profile, evidence: {code: "authority_recovered"}})
+    expect(missingAuthority.getItem(RANKING_PROFILE_V2_AUTHORITY_KEY)).not.toBeNull()
+    expect(runRankingProfileStartupMigration(missingAuthority, [], "ppr"))
+      .toMatchObject({status: "already_current", profile, evidence: {code: "already_v2"}})
+
+    const invalidDestination = new MemoryStorage(new Map([
+      [RANKING_PROFILE_V2_STORAGE_KEY, '{"schema_version":2}'],
+    ]))
+    expect(runRankingProfileStartupMigration(invalidDestination, [], "ppr"))
+      .toMatchObject({status: "rejected", evidence: {code: "destination_invalid"}})
+    expect(invalidDestination.getItem(RANKING_PROFILE_V2_AUTHORITY_KEY)).toBeNull()
   })
 
   it("rolls back an import transaction at every write and readback failure position", () => {

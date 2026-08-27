@@ -39,6 +39,7 @@ import {
   selectableExpertRankers,
 } from '../rankingCatalog'
 import {overallRankFor, positionRankFor, scoringFormatFor} from '../scoringFormat'
+import {usePersistedPlayerTargets} from './usePersistedPlayerTargets'
 
 interface UseRanksProps {
   settings: FantasySettings
@@ -68,7 +69,7 @@ export const useRanks = ({
 
   const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
   const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})
-  const [playerTargets, setPlayerTargets] = useState<PlayerTarget[]>([])
+  const [playerTargets, setPlayerTargets] = usePersistedPlayerTargets()
   const [playerRanks, setPlayerRanks] = useState<PlayerRanks>({
     [FantasyPosition.QUARTERBACK]: [],
     [FantasyPosition.RUNNING_BACK]: [],

@@ -89,6 +89,7 @@ import {
 } from "@/behavior/rankingProfileStorage"
 import type { RankingProfileV2 } from "@/behavior/rankingProfileV2"
 import { draftPlanStorageKey } from "@/behavior/realtime/storage"
+import {PLAYER_TARGETS_STORAGE_KEY} from "@/behavior/playerTargetStorage"
 import {
   getSnapshotObservedThroughOverallPick,
   isDraftCaptureComplete,
@@ -701,7 +702,7 @@ const Home: FC = () => {
       : null
     const additionalWrites = [
       {
-        key: "ff-draft-favorites",
+        key: PLAYER_TARGETS_STORAGE_KEY,
         value: JSON.stringify(importedTargets),
       },
       ...(importedPlan ? [{
@@ -778,15 +779,19 @@ const Home: FC = () => {
         migratedProfile = migration.profile
         setStartupProfile(migration.profile)
         setStartupMigrationStatus(
-          migration.status === "migrated"
-            ? "Local rankings were migrated to canonical profile v2."
+          migration.evidence.code === "authority_recovered"
+            ? "Your existing local rankings profile was verified and repaired."
+            : migration.status === "migrated"
+              ? "Local rankings were migrated to canonical profile v2."
             : "Canonical profile v2 is current.",
         )
       } else if (migration.status === "unavailable") {
         setStartupMigrationStatus("Local profile migration is unavailable; browser rankings remain usable.")
       } else {
         migrationRejected = true
-        setStartupMigrationStatus("Local profile migration was rejected safely; untrusted browser rankings were not loaded.")
+        setStartupMigrationStatus(
+          `Local profile recovery could not be completed (${migration.evidence.code}); published rankings remain active.`,
+        )
       }
     }
 

@@ -10,6 +10,11 @@ import PlayerTargetsView from './PlayerTargetsView'
 import PlayerSearchModal from '../PlayerSearchModal'
 import DraftDeskAdpRoundView from '../draft-desk/DraftDeskAdpRoundView'
 import DraftDeskTargetChart from '../draft-desk/DraftDeskTargetChart'
+import {
+  PLAYER_TARGETS_STORAGE_KEY,
+  readStoredPlayerTargets,
+  serializePlayerTargets,
+} from '../../behavior/playerTargetStorage'
 
 type ViewType = 'playersByRound' | 'playersByADPRound' | 'playerTargets'
 
@@ -80,7 +85,7 @@ const ADPView: React.FC<ADPViewProps> = ({
   // Mobile target management handlers
   const handleSaveFavorites = () => {
     try {
-      localStorage.setItem('ff-draft-favorites', JSON.stringify(playerTargets))
+      localStorage.setItem(PLAYER_TARGETS_STORAGE_KEY, serializePlayerTargets(playerTargets))
       toast.success('Targets saved successfully!')
     } catch (error) {
       toast.error('Failed to save targets')
@@ -89,11 +94,10 @@ const ADPView: React.FC<ADPViewProps> = ({
 
   const handleLoadFavorites = () => {
     try {
-      const savedFavorites = localStorage.getItem('ff-draft-favorites')
-      if (savedFavorites) {
-        const savedTargets = JSON.parse(savedFavorites) as PlayerTarget[]
-        if (Array.isArray(savedTargets) && savedTargets.length > 0) {
-          const newTargets = savedTargets.filter( target => {
+      const stored = readStoredPlayerTargets(localStorage.getItem(PLAYER_TARGETS_STORAGE_KEY))
+      if (stored.status === 'ready') {
+        if (stored.targets.length > 0) {
+          const newTargets = stored.targets.filter( target => {
             const player = playerLib[target.playerId]
             return Boolean(player)
           })
@@ -115,7 +119,7 @@ const ADPView: React.FC<ADPViewProps> = ({
       const playerIds = playerTargets.map(target => target.playerId)
       removePlayerTargets(playerIds)
       try {
-        localStorage.removeItem('ff-draft-favorites')
+        localStorage.removeItem(PLAYER_TARGETS_STORAGE_KEY)
         toast.success('Targets cleared successfully!')
       } catch (error) {
         // Ignore localStorage errors on clear

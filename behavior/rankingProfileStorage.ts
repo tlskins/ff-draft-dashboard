@@ -42,6 +42,7 @@ export interface RankingProfileStorageMigrationEvidence {
     | "authority_invalid"
     | "authority_conflict"
     | "authority_missing"
+    | "authority_recovered"
     | "commit_invalid"
     | "commit_conflict"
     | "commit_write_failed"
@@ -371,8 +372,21 @@ export const commitCanonicalRankingProfile = (
     return rejectCommit("storage_read_failed", error)
   }
   if (backupValue !== null && !validateBackup(backupValue)) return rejectCommit("backup_invalid", "Migration backup is invalid")
-  if (previousAuthority === null && previousDestination !== null && (!allowUncommittedDestination || previousDestination !== destinationValue)) {
-    return rejectCommit("authority_missing", "Canonical destination exists without established authority")
+  if (previousAuthority === null && previousDestination !== null) {
+    let destinationMatches = previousDestination === destinationValue
+    if (allowUncommittedDestination && !destinationMatches) {
+      try {
+        const previousProfile = readCanonicalValue(previousDestination)
+        destinationMatches = previousProfile !== null
+          && profile !== null
+          && profileFingerprint(previousProfile) === profileFingerprint(profile)
+      } catch {
+        destinationMatches = false
+      }
+    }
+    if (!allowUncommittedDestination || !destinationMatches) {
+      return rejectCommit("authority_missing", "Canonical destination exists without established authority")
+    }
   }
   if (previousAuthority === null && legacySource !== null && !allowUncommittedDestination) {
     return rejectCommit("authority_missing", "Legacy migration must establish authority before a canonical commit")
@@ -870,12 +884,27 @@ export const runRankingProfileStartupMigration = (
     const sourceValue = storage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)
     const destinationValue = storage.getItem(RANKING_PROFILE_V2_STORAGE_KEY)
     if (sourceValue === null && destinationValue !== null) {
+      let profile: RankingProfileV2
       try {
-        readCanonicalValue(destinationValue)
+        const canonical = readCanonicalValue(destinationValue)
+        if (canonical === null) throw new Error("Canonical destination is empty")
+        profile = canonical
       } catch (error) {
         return {status: "rejected", evidence: evidence("destination_invalid", "profile_v2", error instanceof Error ? error.message : "Canonical destination is invalid")}
       }
-      return {status: "rejected", evidence: evidence("authority_missing", "profile_v2", "Canonical destination exists without established authority")}
+      const authorityCommit = commitCanonicalRankingProfile(storage, profile, [], true)
+      if (authorityCommit.status === "rejected") {
+        return {status: "rejected", evidence: evidence(authorityCommit.code, "profile_v2", authorityCommit.message)}
+      }
+      return {
+        status: "migrated",
+        profile,
+        evidence: evidence(
+          "authority_recovered",
+          "profile_v2",
+          "Validated canonical profile v2 and established its browser authority record",
+        ),
+      }
     }
   } catch (error) {
     return {status: "rejected", evidence: evidence("storage_read_failed", null, error instanceof Error ? error.message : "Storage read failed")}

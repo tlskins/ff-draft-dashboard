@@ -2,6 +2,11 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import { toast } from 'react-toastify'
 import { Player, FantasySettings, BoardSettings, PlayerTarget, FantasyPosition } from '../../types'
 import { getPlayerAdp, getPlayerMetrics, PlayerRanks, getRoundIdxForPickNum } from '../draft'
+import {
+  PLAYER_TARGETS_STORAGE_KEY,
+  readStoredPlayerTargets,
+  serializePlayerTargets,
+} from '../playerTargetStorage'
 
 export type PositionFilter = 'All' | 'QB' | 'RB' | 'WR' | 'TE'
 
@@ -39,7 +44,6 @@ export const useADPView = ({
     onCurrentPageChange?.(page)
   }, [controlledCurrentPage, onCurrentPageChange])
   const [isMobile, setIsMobile] = useState(false)
-  const [hasAttemptedAutoLoad, setHasAttemptedAutoLoad] = useState(false)
   
   // Detect mobile viewport
   useEffect(() => {
@@ -200,7 +204,7 @@ export const useADPView = ({
   // Favorites management functions
   const handleSaveFavorites = () => {
     try {
-      localStorage.setItem('ff-draft-favorites', JSON.stringify(playerTargets))
+      localStorage.setItem(PLAYER_TARGETS_STORAGE_KEY, serializePlayerTargets(playerTargets))
       toast.success('Targets saved successfully!')
     } catch (error) {
       toast.error('Failed to save targets')
@@ -209,11 +213,10 @@ export const useADPView = ({
 
   const handleLoadFavorites = useCallback(() => {
     try {
-      const savedFavorites = localStorage.getItem('ff-draft-favorites')
-      if (savedFavorites) {
-        const savedTargets = JSON.parse(savedFavorites) as PlayerTarget[]
-        if (Array.isArray(savedTargets) && savedTargets.length > 0) {
-          const newTargets = savedTargets.filter( target => {
+      const stored = readStoredPlayerTargets(localStorage.getItem(PLAYER_TARGETS_STORAGE_KEY))
+      if (stored.status === 'ready') {
+        if (stored.targets.length > 0) {
+          const newTargets = stored.targets.filter( target => {
             const player = playerLib[target.playerId]
             return Boolean(player)
           })
@@ -229,37 +232,12 @@ export const useADPView = ({
     }
   }, [playerLib, replacePlayerTargets])
 
-  // Auto-load favorites when playerLib is available (only once)
-  useEffect(() => {
-    // Only auto-load if we haven't tried yet and playerLib has data
-    if (!hasAttemptedAutoLoad && Object.keys(playerLib).length > 0) {
-      setHasAttemptedAutoLoad(true)
-      try {
-        const savedFavorites = localStorage.getItem('ff-draft-favorites')
-        if (savedFavorites) {
-          const savedTargets = JSON.parse(savedFavorites) as PlayerTarget[]
-          if (Array.isArray(savedTargets) && savedTargets.length > 0) {
-            const newTargets = savedTargets.filter( target => {
-              const player = playerLib[target.playerId]
-              return Boolean(player)
-            })
-            if (newTargets.length > 0) {
-              replacePlayerTargets(newTargets)
-            }
-          }
-        }
-      } catch (error) {
-        // Silently ignore errors during auto-load
-      }
-    }
-  }, [hasAttemptedAutoLoad, playerLib, replacePlayerTargets])
-
   const handleClearFavorites = () => {
     if (confirm('Are you sure you want to clear all player targets?')) {
       const playerIds = playerTargets.map(target => target.playerId)
       removePlayerTargets(playerIds)
       try {
-        localStorage.removeItem('ff-draft-favorites')
+        localStorage.removeItem(PLAYER_TARGETS_STORAGE_KEY)
       } catch (error) {
         // Ignore localStorage errors on clear
       }
