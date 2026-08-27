@@ -4978,6 +4978,102 @@
       },
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n005",
+          "subject": "Arizona Cardinals backfield",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Follow James Conner's status and Week 1 depth chart; Trey Benson is no longer a 2026 option.",
+          "summary": "Arizona has gone from apparent RB surplus to an unclear Week 1 group, with Benson definitively unavailable.",
+          "evidence": "Harris says Conner remains largely inactive, the coach said he is running out of time, and Benson cleared waivers before reverting to injured reserve for the season.",
+          "counterweight": "Conner's absence is not yet a sure declaration that he will miss the opener.",
+          "practical_implication": "Remove Benson from redraft consideration and stay ready to adjust Arizona's remaining backs when Conner's status becomes official.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n008",
+          "subject": "Jeremiyah Love",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "fade",
+          "action_qualifier": "Do not take at a late-second-round price while the high-ankle sprain is unresolved.",
+          "summary": "Harris is not willing to select Love in the late second round because the high-ankle injury leaves too much early-season uncertainty.",
+          "evidence": "He says the injury has cleared the path for a possible Week 1 Allgeier-heavy workload and references unresolved concerns discussed on the prior day's episode.",
+          "counterweight": "The transcript does not rule out recovery before Week 1, so the conclusion is price- and information-dependent rather than a talent condemnation.",
+          "practical_implication": "Pass on Love at current early price and wait for health confirmation or a materially lower acquisition cost.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n007",
+          "subject": "Arizona Cardinals backfield",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Monitor through the Week 1 injury/transaction reports.",
+          "summary": "Benson's release simplifies the Cardinals backfield numerically but leaves it fantasy-uncertain for entirely different reasons.",
+          "evidence": "Harris says James Conner has not participated in 11-on-11 practices and Jeremiyah Love has a high-ankle sprain, making Tyler Allgeier a possible heavy Week 1 user.",
+          "counterweight": "Conner could simply be a veteran managing preseason work, and the team may not clarify the situation before a decisive transaction or IR move.",
+          "practical_implication": "Do not assume the depth chart is settled; follow Conner and Love news closely and prepare for Allgeier to matter in Week 1.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
+          "note_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554:n012",
+          "subject": "Jeremiyah Love",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "fade",
+          "action_qualifier": "Do not take him as RB13-14 in the early third round while recovering from a high ankle sprain.",
+          "summary": "Harris calls Love his No. 1 bust because the market has barely discounted a high ankle sprain, and Daugherty agrees that RB13-14 is hyper-risky after the injury.",
+          "evidence": "They stress that the injury was explicitly reported as a high ankle sprain, not a generic ankle issue; Harris doubts Love plays Week 1 and compares the injury type with prior prolonged absences, while both describe the early-third-round price as insufficiently discounted rookie hype.",
+          "counterweight": "Daugherty had considered the pre-injury price an unusually favorable RB2 opportunity, and the summer timing could allow an unusually long recovery window; neither claims a particular player's injury outcome guarantees Love's outcome.",
+          "practical_implication": "Treat Love as an injury-monitoring decision rather than a locked high-end RB2, avoid him at the current early-third price, and reassess only after a credible timetable and Week 1 availability are established.",
+          "speakers": [
+            "Consensus: Christopher Harris + Patrick Daugherty"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_lz6pj9ozdav2jym2",
+          "episode_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554",
+          "episode_title": "Five Busts For 2026 & Jeanty Injury",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-24T15:30:04Z"
+        },
+        {
           "note_id": "38986103-c68b-46bb-87c7-ffa3977c8abe:n008",
           "subject": "Jeremiyah Love",
           "scope": "player",
@@ -5774,6 +5870,54 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n001",
+          "subject": "Ashton Jeanty",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Do not draft in Round 1 without a reassuring injury update; Harris ranks him standard overall 20 and PPR overall 21.",
+          "summary": "Harris cannot justify a first-round Jeanty selection while the severity and Week 1 implications of Sunday's ankle sprain remain unclear.",
+          "evidence": "He says the injury looked more severe than a routine low-ankle sprain and notes that the team had provided no additional clarity by Tuesday morning.",
+          "counterweight": "Harris would change course with a credible positive update; if the team merely kept a healthy Jeanty quiet, the mid-second-round buyer could receive a bargain.",
+          "practical_implication": "Treat a current Jeanty pick as an injury-risk wager, pass in Round 1, and reconsider only when the status before Week 1 is meaningfully clearer.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
+          "note_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554:n002",
+          "subject": "Ashton Jeanty",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Avoid near the end of Round 1 or start of Round 2 until the Raiders provide a clearer ankle timeline.",
+          "summary": "Harris has not yet changed Jeanty's rank, but says drafters should not take the first-round/second-round-turn risk while the extent of the reported ankle sprain is unclear.",
+          "evidence": "He recounts reports that Jeanty took an awkward step, could not bear weight, and teammates prayed before the team characterized it as not long term; Harris considers that reassurance potentially typical NFL damage control.",
+          "counterweight": "Harris has no inside source and concedes the later report may mean Jeanty avoided catastrophic knee damage or that the injury proves minor.",
+          "practical_implication": "Pass on Jeanty at that premium price for now, then revisit his ranking when practice participation and a credible recovery timeline clarify Week 1 workload and reinjury risk.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_lz6pj9ozdav2jym2",
+          "episode_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554",
+          "episode_title": "Five Busts For 2026 & Jeanty Injury",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-24T15:30:04Z"
+        },
         {
           "note_id": "dKvsp7Pich8:n018",
           "subject": "Ashton Jeanty",
@@ -6827,6 +6971,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554:n008",
+          "subject": "Omarion Hampton",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "fade",
+          "action_qualifier": "Do not pay the roughly 13th-18th overall price; Harris ranks him RB17.",
+          "summary": "Both hosts view Hampton's early-second-round-type market as wish-casting after an underwhelming, injured rookie season rather than as a proven RB1 profile.",
+          "evidence": "They say he looked big and ponderously slow on rookie tape, had two separate injuries, faces enduring offensive-line issues including an injured new center, and may be a poor fit for Kyle Shanahan-style blocking; Daugherty also doubts a three-down role.",
+          "counterweight": "They concede the injuries could explain the rookie tape and he may be more explosive than he looked, but neither sees prior NFL evidence comparable to an established star returning from injury.",
+          "practical_implication": "Do not select Hampton ahead of established workhorse veterans or similarly young players with stronger demonstrated production; require a substantial discount.",
+          "speakers": [
+            "Consensus: Christopher Harris + Patrick Daugherty"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_lz6pj9ozdav2jym2",
+          "episode_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554",
+          "episode_title": "Five Busts For 2026 & Jeanty Injury",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-24T15:30:04Z"
+        },
+        {
           "note_id": "026727f1-3e4f-4c1c-a23b-4adbb0eb3a95:n008",
           "subject": "Omarion Hampton",
           "scope": "player",
@@ -7441,6 +7609,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n012",
+          "subject": "Saquon Barkley",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "target",
+          "action_qualifier": "Target around pick 8 in Round 1.",
+          "summary": "Harris experiences Barkley around the eighth pick as a reassuring first-round choice after a disappointing Eagles season.",
+          "evidence": "His tape review did not persuade him Barkley had declined; he attributes much of Philadelphia's collapse to offensive-line losses and also says the quarterback needed to play better.",
+          "counterweight": "The offense could fail to recover, the team has another offensive coordinator, and the offensive-line coach departed, so Harris does not call Barkley risk-free.",
+          "practical_implication": "Take Barkley confidently at that mid-first value instead of reaching for more volatile alternatives.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "788e5689-8d37-41e1-b0e0-12dd97e1dcc1:n010",
           "subject": "Saquon Barkley",
           "scope": "player",
@@ -7854,6 +8046,30 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n011",
+          "subject": "Derrick Henry",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "target",
+          "action_qualifier": "Comfortable in Round 2; Erickson has occasionally taken him in Round 3.",
+          "summary": "Erickson calls Henry a safe early pick because he expects elite ability, rushing volume, and goal-line carries to persist.",
+          "evidence": "He says Henry showed no decline last year and emphasizes Baltimore's behavior, while Harris notes the Ravens do not appear to be planning for an immediate end to the role.",
+          "counterweight": "Henry turns 33, has a new center and first-time play-caller Declan Doyle, and Harris notes that recent age-32 rushing history is poor even if Henry is an unusual case.",
+          "practical_implication": "Draft Henry as an early foundational RB when he reaches that range, accepting age-driven decline as the principal risk.",
+          "speakers": [
+            "Jeff Erickson"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "788e5689-8d37-41e1-b0e0-12dd97e1dcc1:n015",
           "subject": "Derrick Henry",
@@ -10686,6 +10902,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n014",
+          "subject": "A.J. Brown",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "target",
+          "action_qualifier": "Target around overall pick 20; do not elevate above CeeDee Lamb or Justin Jefferson.",
+          "summary": "Harris sees Brown around pick 20 as a low-stress second-round selection with a strong chance to lead the Patriots' receiving production.",
+          "evidence": "He says Brown was excellent in camp after worries about the future first-round pick price and believes the Patriots will use him more creatively than Philadelphia did last season.",
+          "counterweight": "Brown's knee required maintenance with Philadelphia and may have cost him a step; Harris also says he would still take Lamb and Jefferson ahead of him.",
+          "practical_implication": "Buy Brown at ordinary second-round ADP, but resist an NFFC-style premium that pushes him over elite receivers.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "788e5689-8d37-41e1-b0e0-12dd97e1dcc1:n030",
           "subject": "A.J. Brown",
           "scope": "player",
@@ -12366,6 +12606,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554:n006",
+          "subject": "Javonte Williams",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "fade",
+          "action_qualifier": "Fade as a high-end RB2, particularly in the RB16-17 range.",
+          "summary": "Daugherty will fully fade Williams as a high-end RB2 because he doubts last season's production repeats and expects the Cowboys to need another receiving option.",
+          "evidence": "He labels the 1,200-yard season a massive outlier, calls Williams startlingly inefficient as a receiver, and highlights sustained Cowboys-coach praise for Jaydon Blue after last year's nonexistent hype; Malik Davis also received RB2 buzz.",
+          "counterweight": "Daugherty acknowledges Blue could disappoint again and the backfield could shift to Davis instead, while Harris says he is acceptable with Williams around a third-round ADP.",
+          "practical_implication": "At that cost, draft a back with a larger growth case and avoid relying on Williams for premium RB2 receiving volume.",
+          "speakers": [
+            "Patrick Daugherty"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_lz6pj9ozdav2jym2",
+          "episode_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554",
+          "episode_title": "Five Busts For 2026 & Jeanty Injury",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-24T15:30:04Z"
+        },
+        {
           "note_id": "788e5689-8d37-41e1-b0e0-12dd97e1dcc1:n038",
           "subject": "Javonte Williams",
           "scope": "player",
@@ -12754,6 +13018,30 @@
         "observed_at": "2026-08-21T04:15:30.662151Z"
       },
       "profile_notes": [
+        {
+          "note_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554:n009",
+          "subject": "Malik Nabers",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "fade",
+          "action_qualifier": "Harris will not spend a second-round pick while the knee recovery remains uncertain.",
+          "summary": "Harris says Nabers's talent and long-term trajectory are not the issue, but he cannot take the injury and Giants-environment risk in Round 2.",
+          "evidence": "Nabers was still in a non-contact jersey late in August after ACL recovery and a follow-up procedure; Harris says there is a nontrivial chance the knee is not right, causes swelling, or limits him through the season, alongside doubts about the quarterback and coaching staff.",
+          "counterweight": "The team has kept Nabers off PUP and expects a September return, and Harris previously believed the recovery could be on schedule; a healthy Nabers would be a borderline first-round player for him.",
+          "practical_implication": "Build the injury and offense downside into the projection and choose a safer Round-2 profile until Nabers demonstrates full health and normal practice participation.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_lz6pj9ozdav2jym2",
+          "episode_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554",
+          "episode_title": "Five Busts For 2026 & Jeanty Injury",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-24T15:30:04Z"
+        },
         {
           "note_id": "dKvsp7Pich8:n003",
           "subject": "Malik Nabers",
@@ -13901,6 +14189,31 @@
         "observed_at": "2026-08-21T04:15:30.662151Z"
       },
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n013",
+          "subject": "DeVonta Smith",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "target",
+          "action_qualifier": "Draft as a solid WR2.",
+          "summary": "Erickson expects Smith to provide safe WR2 production through strong play and a large target role; Harris endorses him as a flag player.",
+          "evidence": "Erickson says Smith should receive many targets, while Harris argues the limited short-touchdown history reflects Jalen Hurts and Saquon Barkley near the goal line rather than an inability to win there.",
+          "counterweight": "The Eagles' goal-line concentration can still suppress Smith's touchdown total, and neither speaker gives a precise market rank here.",
+          "practical_implication": "Use Smith as a dependable WR2 target and do not downgrade him simply because short touchdowns have been scarce.",
+          "speakers": [
+            "Jeff Erickson",
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "38986103-c68b-46bb-87c7-ffa3977c8abe:n003",
           "subject": "DeVonta Smith",
@@ -15276,6 +15589,31 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n016",
+          "subject": "Travis Etienne",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "target",
+          "action_qualifier": "Target in the late third or early fourth round.",
+          "summary": "Harris views Etienne as a comforting third/fourth-round buy, treating his poor 2024 as a likely injury-driven exception rather than the player he is now.",
+          "evidence": "He calls Etienne the Jaguars' best offensive player last year and trusts Kellen Moore; Harris and Erickson both cite Alvin Kamara's injury and Devin Neal being next as added runway in New Orleans.",
+          "counterweight": "The episode does not supply a touch projection, and the Saints' expected improvement and Tyler Shough's adequacy are still assumptions rather than game evidence.",
+          "practical_implication": "Draft Etienne repeatedly at that cost as a safe core RB, while maintaining normal contingency depth.",
+          "speakers": [
+            "Christopher Harris",
+            "Jeff Erickson"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "OI9Jevz2fYQ:n032",
           "subject": "Travis Etienne Jr.",
           "scope": "player",
@@ -15732,6 +16070,30 @@
         "observed_at": "2026-08-21T04:15:30.662151Z"
       },
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
@@ -17002,6 +17364,31 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n019",
+          "subject": "Ladd McConkey",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "target",
+          "action_qualifier": "Target in Round 4 or around overall pick 45.",
+          "summary": "Harris believes McConkey offers a believable weekly floor at a fourth-round discount compared with last year's much higher price.",
+          "evidence": "He calls McConkey a very good player and expects the Chargers to avoid repeating the pass-protection disaster that spoiled last year; Erickson adds that Keenan Allen's absence should help targets.",
+          "counterweight": "Harris does not call him a true alpha, while Erickson flags an already-thinning line: Bozeman is out for the year and Rashawn Slater remains limited after last year's Joe Alt turning point.",
+          "practical_implication": "Draft McConkey as a stable WR option at that discount, while factoring line health into his ceiling.",
+          "speakers": [
+            "Christopher Harris",
+            "Jeff Erickson"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "cOv7dXYX860:n014",
           "subject": "Los Angeles Chargers offense",
           "scope": "team",
@@ -17442,6 +17829,30 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
@@ -19415,6 +19826,30 @@
       },
       "profile_notes": [
         {
+          "note_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554:n004",
+          "subject": "Carnell Tate",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "fade",
+          "action_qualifier": "Do not select at his current sixth/seventh-round-type cost; Daugherty expects him outside the top 36 WRs.",
+          "summary": "Daugherty is skeptical that Tate returns a top-five-wide-receiver draft pedigree in fantasy this year and is not drafting him at market cost.",
+          "evidence": "He points to Tate never posting a 1,000-yard college season or clearly being his college team's WR1, expected short-area target competition from Wan'Dale Robinson, concern over Cam Ward's accuracy, and an unusually quiet Titans camp.",
+          "counterweight": "Daugherty admits that sparse camp buzz can prove meaningless and that Tennessee's coverage may be limited; he does not predict Tate will necessarily be terrible.",
+          "practical_implication": "Choose a more trusted receiver at Tate's market price and require a meaningful discount or stronger role evidence before investing.",
+          "speakers": [
+            "Patrick Daugherty"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_lz6pj9ozdav2jym2",
+          "episode_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554",
+          "episode_title": "Five Busts For 2026 & Jeanty Injury",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-24T15:30:04Z"
+        },
+        {
           "note_id": "07d2fd69-91fd-4737-9f0c-939234c2ab8b:n009",
           "subject": "Carnell Tate",
           "scope": "player",
@@ -19933,6 +20368,30 @@
         "observed_at": "2026-08-21T04:15:30.662151Z"
       },
       "profile_notes": [
+        {
+          "note_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554:n011",
+          "subject": "Luther Burden",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "fade",
+          "action_qualifier": "Avoid the pre-injury third-round cost and remain cautious even if he returns for Week 1.",
+          "summary": "Daugherty's No. 1 bust is Burden because he does not trust the receiver's contact-seeking style to keep him available, and he sees too many offensive variables even when healthy.",
+          "evidence": "As a Missouri fan who watched every college game, Daugherty says Burden repeatedly sought damaging contact and limped off; he says that continued as a rookie and in camp, leaving him highly questionable for Week 1. He also cites Caleb Williams's accuracy, uncertain pass volume, and competition from Colston Loveland and Rome Odunze.",
+          "counterweight": "Daugherty acknowledges this forecast is made more tenuous because Burden is currently hurt, the target competition is reduced from before, and he may improve as a second-year player.",
+          "practical_implication": "Do not make a fantasy season hinge on Burden at premium WR cost; prefer Davante Adams at the then-adjacent market, as Harris explicitly says he would.",
+          "speakers": [
+            "Patrick Daugherty"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_lz6pj9ozdav2jym2",
+          "episode_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554",
+          "episode_title": "Five Busts For 2026 & Jeanty Injury",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-24T15:30:04Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
@@ -20735,6 +21194,54 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n003",
+          "subject": "Jayden Daniels",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "hold",
+          "action_qualifier": "Harris keeps him QB7 and already below market; do not add a further practice-based downgrade.",
+          "summary": "The Commanders practice result validates Harris's existing below-market Daniels ranking without making him undraftable.",
+          "evidence": "Harris links the concern to the line's poor joint-practice showing against Baltimore and says he has not been getting Daniels at his current rank.",
+          "counterweight": "He explicitly leaves open that the performance was only a blip and declines to lower Daniels further on this evidence.",
+          "practical_implication": "Keep Daniels at the current discounted valuation and reassess once Washington's opening-game protection is observable.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
@@ -22337,6 +22844,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554:n010",
+          "subject": "Bhayshul Tuten",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "fade",
+          "action_qualifier": "Rank below his fifth/sixth-round ADP; prefer TreVeyon Henderson if choosing between the two.",
+          "summary": "Daugherty and Harris believe Tuten's athletic testing and best-ball enthusiasm exceed what he showed as a rookie, making him an easy redraft fade at current ADP.",
+          "evidence": "They say he was not explosive on rookie film and struggled with vision and letting a play develop; Daugherty expects Chris Rodriguez to matter on early downs and notes LeQuint Allen had been a passing-down candidate before injury, while Harris sees a likely committee and a better step-forward case for Henderson.",
+          "counterweight": "Tuten did become a goal-line option, splits are normal across the NFL, and both acknowledge he could make a second-year leap despite their bad film assessment.",
+          "practical_implication": "Do not let best-ball upside narratives set a redraft price; draft Henderson or another back with stronger shown NFL explosiveness instead.",
+          "speakers": [
+            "Consensus: Christopher Harris + Patrick Daugherty"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_lz6pj9ozdav2jym2",
+          "episode_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554",
+          "episode_title": "Five Busts For 2026 & Jeanty Injury",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-24T15:30:04Z"
+        },
+        {
           "note_id": "e4440f1a-ff82-4873-848f-99184c5a2ba5:n006",
           "subject": "Bhayshul Tuten",
           "scope": "player",
@@ -22750,6 +23281,30 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n015",
+          "subject": "D'Andre Swift",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "target",
+          "action_qualifier": "Draft at the end of Round 5 or start of Round 6, especially after a receiver-heavy start.",
+          "summary": "Erickson expects Swift to be a safe RB2/3 because he fits Chicago's offense and should retain a heavy role at a useful price.",
+          "evidence": "He projects roughly 1,000 yards plus catches, sees the Bears as a good offense, and notes they did not add a major challenger; Harris adds that Kyle Monangai's injury could supply early runway.",
+          "counterweight": "Erickson worries about the center change, Harris does not see league-winning upside, and a committee remains likely over the full season.",
+          "practical_implication": "Use Swift to stabilize an RB2 build rather than expecting a league-winning ceiling.",
+          "speakers": [
+            "Jeff Erickson"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "026727f1-3e4f-4c1c-a23b-4adbb0eb3a95:n002",
           "subject": "D'Andre Swift",
@@ -25856,6 +26411,54 @@
       },
       "profile_notes": [
         {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n024",
+          "subject": "D.K. Metcalf",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "target",
+          "action_qualifier": "Erickson will take him at the reluctant seventh-round price as a bench receiver.",
+          "summary": "Erickson will select Metcalf at the market's reluctant seventh-round price because a meaningful ceiling path still exists.",
+          "evidence": "He notes Metcalf can turn a short slant into a 60-yard gain and suggests an Aaron Rodgers early exit could actually improve the receiver's environment.",
+          "counterweight": "Erickson acknowledges the potential for sideline frustration over targets and agrees that the team context drags the entire group down.",
+          "practical_implication": "If the board reaches that late price, Metcalf is an acceptable upside bench swing, not a player to force into the starting lineup.",
+          "speakers": [
+            "Jeff Erickson"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n023",
+          "subject": "D.K. Metcalf",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "fade",
+          "action_qualifier": "Harris has passed even around the seventh round because Aaron Rodgers depresses both ceiling and floor.",
+          "summary": "Harris has not drafted Metcalf because he sees both a poor weekly floor and a diminished 2026 ceiling in the Steelers/Rodgers context.",
+          "evidence": "He says Metcalf's downfield plays were too infrequent last year and worries the offense will be built on occasional deep shots plus short, low-value third-down throws.",
+          "counterweight": "The seventh-round price is modest and Metcalf retains the physical ability to create a long play, but Harris says no one in his many drafts has forced him to take the profile.",
+          "practical_implication": "Choose another bench receiver with either a clearer ceiling or a sturdier floor instead of treating Metcalf's name value as sufficient.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "92e5e20a-60f4-40c3-84ad-1a4dc17bd3a5:n011",
           "subject": "DK Metcalf",
           "scope": "player",
@@ -26646,6 +27249,54 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n017",
+          "subject": "Harold Fannin",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "target",
+          "action_qualifier": "Target as low as TE10; Erickson believes he belongs closer to TE6.",
+          "summary": "Erickson trusts Fannin's skill set and usage enough to see him as a safe discounted tight end despite Cleveland's quarterback chaos.",
+          "evidence": "Fannin produced with three poor quarterbacks last year, and Erickson expects the Browns to keep manufacturing touches, red-zone looks, and creative usage for their glue player.",
+          "counterweight": "Erickson concedes Fannin has the lowest ceiling in a LaPorta, Warren, Loveland, Fannin comparison and that the Browns may use three or four quarterbacks.",
+          "practical_implication": "Take Fannin when that tier is your best board value; he is a price-sensitive alternative to paying for an elite tight end.",
+          "speakers": [
+            "Jeff Erickson"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "38986103-c68b-46bb-87c7-ffa3977c8abe:n010",
           "subject": "Harold Fannin",
           "scope": "player",
@@ -27029,6 +27680,31 @@
         "observed_at": "2026-08-21T04:15:30.662151Z"
       },
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n018",
+          "subject": "Sam LaPorta",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "neutral",
+          "action_type": "monitor",
+          "action_qualifier": "Reassess the hip issue before using him as the preferred option in his tight-end tier.",
+          "summary": "LaPorta can be the value of the Fannin/Warren/Loveland tier, but the current hip issue keeps the speakers from calling him the safer choice.",
+          "evidence": "Harris has drafted LaPorta most from that group because others seem most afraid of him; Erickson says he might have selected LaPorta as safe absent the practice hip concern.",
+          "counterweight": "LaPorta missed the second half of last season with an injury and the new hip issue remains unresolved, making injury optimism a poor assumption.",
+          "practical_implication": "Do not rule out LaPorta at a discount, but verify health before selecting him over the healthier alternatives.",
+          "speakers": [
+            "Christopher Harris",
+            "Jeff Erickson"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "bf87791e-e720-4681-807a-be842008cbe3:n017",
           "subject": "Sam LaPorta",
@@ -29440,6 +30116,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n001",
+          "subject": "Brian Thomas Jr.",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "neutral",
+          "action_type": "monitor",
+          "action_qualifier": "Monitor the shoulder through Week 1; no rank change from this practice report.",
+          "summary": "Harris expects Thomas to be fine after a shoulder issue in the Jaguars-Buccaneers joint practice, but keeps the report on the injury watch list.",
+          "evidence": "Thomas landed hard and hurt the shoulder in the first session, then returned to drills the following day.",
+          "counterweight": "Harris calls the injury probably nothing, but does not have a definitive Week 1 designation.",
+          "practical_implication": "Continue to draft Thomas on existing valuation, while checking final practice/injury information before setting Week 1 lineups.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "026727f1-3e4f-4c1c-a23b-4adbb0eb3a95:n010",
           "subject": "Jacksonville Jaguars pass catchers",
           "scope": "team",
@@ -30194,6 +30894,31 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n021",
+          "subject": "Dak Prescott",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "target",
+          "action_qualifier": "Use as a wait-on-quarterback option; Harris ranks him QB9.",
+          "summary": "Erickson sees Prescott as a safe late-QB foundation who allows drafters to build other positions first; Harris agrees and ranks him QB9.",
+          "evidence": "Erickson's baseline is 4,000 yards and 30 touchdowns, and he does not require rushing upside because Prescott reliably supplies passing production.",
+          "counterweight": "Injuries are possible for anyone, Prescott has had painful real-life Cowboys moments, and Harris slightly favors Stafford on his board despite calling Dak safer.",
+          "practical_implication": "Let Prescott fall as part of a delayed-QB plan and use the saved early capital to strengthen RB/WR/TE.",
+          "speakers": [
+            "Jeff Erickson",
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "cOv7dXYX860:n008",
           "subject": "Dallas Cowboys offense",
@@ -31161,6 +31886,30 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n020",
+          "subject": "Matthew Stafford",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "target",
+          "action_qualifier": "A waiting-on-quarterback option when available before Dak Prescott on Harris's board.",
+          "summary": "Harris has Stafford ranked above Prescott and says that preference is the main reason he has not drafted Dak more often.",
+          "evidence": "The only direct comparison supplied is Harris's personal board order in a wait-on-quarterback approach.",
+          "counterweight": "Harris simultaneously calls Prescott a little safer because Stafford has a back disc issue that could deteriorate; no specific Stafford ADP or projection is given.",
+          "practical_implication": "Stafford is an acceptable board-driven late QB preference, but his back requires contingency planning rather than an unconditional target label.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "low",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n004",
           "subject": "Matthew Stafford",
@@ -32903,6 +33652,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554:n007",
+          "subject": "Josh Downs",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "fade",
+          "action_qualifier": "Avoid around pick 88 as a first reserve WR or late flex.",
+          "summary": "Harris considers Downs a good but limited player whose current price does not build in enough ceiling for a first bench receiver or flex selection.",
+          "evidence": "He describes Downs as very small and repeatedly banged up, believes he is largely slot-bound, expects short-area competition from Keenan Allen and eventually Alec Pierce or another X receiver, and says Downs has been solid rather than a true breakout player.",
+          "counterweight": "Harris likes the player and allows that an expanded role could change the ceiling, but questions whether a receiver of this size can stay healthy enough to realize it.",
+          "practical_implication": "Use that roster spot on a receiver with a more credible home-run outcome instead of paying Downs's current middle-round cost.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_lz6pj9ozdav2jym2",
+          "episode_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554",
+          "episode_title": "Five Busts For 2026 & Jeanty Injury",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-24T15:30:04Z"
+        },
+        {
           "note_id": "4dea5081-86ab-44c3-ba2e-495334de351c:n005",
           "subject": "Josh Downs",
           "scope": "player",
@@ -34468,6 +35241,31 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n022",
+          "subject": "Jaylen Warren",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "target",
+          "action_qualifier": "Target as a sixth-round flex; Harris would take him in Round 5.",
+          "summary": "Harris calls Warren a very safe flex despite Pittsburgh's split backfield and says he would buy him even a round earlier than his current sixth-round cost.",
+          "evidence": "Harris's film-room view is that Warren is a very good player who could handle more work, while Erickson says the Steelers' unexciting context depresses the price for solid building-block players.",
+          "counterweight": "Rico Dowdle joins the established larger-back pairing, and Harris acknowledges there will be frustrating weekly splits.",
+          "practical_implication": "Draft Warren as a stable flex/RB depth piece and accept committee volatility instead of requiring an unrealistic bell-cow workload.",
+          "speakers": [
+            "Christopher Harris",
+            "Jeff Erickson"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "4dea5081-86ab-44c3-ba2e-495334de351c:n011",
           "subject": "Jaylen Warren",
@@ -36943,6 +37741,30 @@
       },
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n004",
+          "subject": "Tucker Kraft",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "A pleasant early-season snap-count surprise could create value; do not assume a full-time role.",
+          "summary": "Kraft's full participation and physical red-zone score are encouraging, but Harris still expects a limited early role.",
+          "evidence": "Kraft practiced fully against Arizona and scored a red-zone touchdown after running through tacklers.",
+          "counterweight": "Kraft has told reporters that he does not expect to be a full-time player early in the season.",
+          "practical_implication": "Monitor Week 1 usage; add or elevate Kraft only if snaps prove much better than his stated expectation.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "38986103-c68b-46bb-87c7-ffa3977c8abe:n013",
           "subject": "Tucker Kraft",
           "scope": "player",
@@ -38093,6 +38915,30 @@
         "observed_at": "2026-08-21T04:15:30.662151Z"
       },
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "67302917-dcf8-4a5b-b801-c56a54c84a6d:n003",
           "subject": "Washington Commanders offense",
@@ -41913,7 +42759,33 @@
         "season": 2026,
         "observed_at": "2026-08-21T04:15:30.662151Z"
       },
-      "injury_status": null
+      "injury_status": null,
+      "profile_notes": [
+        {
+          "note_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554:n005",
+          "subject": "Dalton Kincaid",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "fade",
+          "action_qualifier": "Pass at approximately TE11 and a top-100 overall cost.",
+          "summary": "Harris does not expect Kincaid to become the fantasy difference-maker his current tight-end price suggests and would choose many other delayed-TE options first.",
+          "evidence": "He cites three seasons without a larger role despite Buffalo's need for reliable pass catchers, last year's sub-40-reception output, and a profile that still looks like a more-than-half-the-snaps role player rather than a focal point.",
+          "counterweight": "Kincaid was hurt last year and tight end can develop slowly, but Harris believes a first-round pick near age 27 should already have provided clearer evidence.",
+          "practical_implication": "When waiting at tight end, select the alternatives Harris prefers before Kincaid and do not pay for a projected breakout without new role evidence.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_lz6pj9ozdav2jym2",
+          "episode_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554",
+          "episode_title": "Five Busts For 2026 & Jeanty Injury",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-24T15:30:04Z"
+        }
+      ]
     },
     {
       "availability": {
@@ -42382,6 +43254,30 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "dKvsp7Pich8:n012",
           "subject": "Bill Croskey-Merritt",
@@ -43792,6 +44688,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
           "scope": "team",
@@ -44674,6 +45594,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
           "scope": "team",
@@ -45507,6 +46451,30 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n005",
+          "subject": "Romeo Doubs",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "target",
+          "action_qualifier": "Take a shot in double-digit rounds.",
+          "summary": "Harris considers Doubs a more credible late-round New England receiver than Boutte and sees potential for an interesting secondary role.",
+          "evidence": "He calls Doubs a substantially better Boutte analogue: a contested-catch deep option who also runs good intermediate routes and creates after shorter catches.",
+          "counterweight": "Harris says A.J. Brown may be the only Patriots receiver usable consistently, and Doubs needs the offense to become a wagon to realize the stronger role.",
+          "practical_implication": "Draft Doubs as a cheap bench bet on a usable No. 2 job, with no expectation of automatic weekly use.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "cOv7dXYX860:n027",
           "subject": "New England Patriots offense",
@@ -46342,6 +47310,30 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
@@ -47594,6 +48586,31 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n014",
+          "subject": "Daniel Jones",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "stream",
+          "action_qualifier": "Undrafted single-QB option; consider after Week 1 if Indianapolis looks like last year's productive offense.",
+          "summary": "Harris believes Jones is a market-ignored streaming possibility if he opens as Indianapolis's starter and the offense again proves strong.",
+          "evidence": "Harris says the offense was a wagon until Jones's Week 14 injury; Ciely cites seven top-12 weeks in 12 games, passing scores in every healthy start, and a plausible six-to-seven future rushing-TD path.",
+          "counterweight": "The Achilles could limit designed/goal-line rushing, last year's result may be nonrepeatable, and neither speaker tells managers to pre-draft him in single-QB leagues.",
+          "practical_implication": "Leave Jones undrafted in standard single-QB formats, then stream or add him if Week 1 confirms a viable Colts offense and starting role.",
+          "speakers": [
+            "Christopher Harris",
+            "Jake Ciely"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "a2c9d424-55c6-4979-825d-1da1e716ea7a:n002",
           "subject": "Daniel Jones",
@@ -50403,6 +51420,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
           "scope": "team",
@@ -52637,6 +53678,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554:n003",
+          "subject": "Mike Washington",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "stash",
+          "action_qualifier": "Monitor as Jeanty's contingent Raiders handcuff while the ankle update develops.",
+          "summary": "Harris sees Washington as the likely first candidate for a larger Raiders opportunity if Jeanty's ankle limits him, but not as a clean talent bet.",
+          "evidence": "Harris notes that the alternatives are limited, calls Washington a huge and unusually fast fourth-round rookie, and cites a 1,300-yard Arkansas season; he also says Jeanty's rookie workload was already among the league leaders.",
+          "counterweight": "Harris's own profile flags upright running, stiffness, difficulty shedding tacklers, and extensive ball-security issues, so the Latavius Murray comparison is as much caution as praise.",
+          "practical_implication": "Use Washington as a late handcuff/watch-list option, not an assumed replacement starter, and update the decision alongside Jeanty's official prognosis.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_lz6pj9ozdav2jym2",
+          "episode_id": "4e74b01b-dd88-45a6-b333-9e0b550d9554",
+          "episode_title": "Five Busts For 2026 & Jeanty Injury",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-24T15:30:04Z"
+        },
+        {
           "note_id": "dKvsp7Pich8:n017",
           "subject": "Mike Washington Jr.",
           "scope": "player",
@@ -52948,6 +54013,54 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n005",
+          "subject": "Arizona Cardinals backfield",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Follow James Conner's status and Week 1 depth chart; Trey Benson is no longer a 2026 option.",
+          "summary": "Arizona has gone from apparent RB surplus to an unclear Week 1 group, with Benson definitively unavailable.",
+          "evidence": "Harris says Conner remains largely inactive, the coach said he is running out of time, and Benson cleared waivers before reverting to injured reserve for the season.",
+          "counterweight": "Conner's absence is not yet a sure declaration that he will miss the opener.",
+          "practical_implication": "Remove Benson from redraft consideration and stay ready to adjust Arizona's remaining backs when Conner's status becomes official.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n007",
+          "subject": "Arizona Cardinals backfield",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Monitor through the Week 1 injury/transaction reports.",
+          "summary": "Benson's release simplifies the Cardinals backfield numerically but leaves it fantasy-uncertain for entirely different reasons.",
+          "evidence": "Harris says James Conner has not participated in 11-on-11 practices and Jeremiyah Love has a high-ankle sprain, making Tyler Allgeier a possible heavy Week 1 user.",
+          "counterweight": "Conner could simply be a veteran managing preseason work, and the team may not clarify the situation before a decisive transaction or IR move.",
+          "practical_implication": "Do not assume the depth chart is settled; follow Conner and Love news closely and prepare for Allgeier to matter in Week 1.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "c7b78239-7961-4b8d-b760-9d5ddc099042:n010",
           "subject": "Arizona Cardinals backfield",
           "scope": "team",
@@ -53101,6 +54214,30 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
@@ -56853,6 +57990,54 @@
       },
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n005",
+          "subject": "Arizona Cardinals backfield",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Follow James Conner's status and Week 1 depth chart; Trey Benson is no longer a 2026 option.",
+          "summary": "Arizona has gone from apparent RB surplus to an unclear Week 1 group, with Benson definitively unavailable.",
+          "evidence": "Harris says Conner remains largely inactive, the coach said he is running out of time, and Benson cleared waivers before reverting to injured reserve for the season.",
+          "counterweight": "Conner's absence is not yet a sure declaration that he will miss the opener.",
+          "practical_implication": "Remove Benson from redraft consideration and stay ready to adjust Arizona's remaining backs when Conner's status becomes official.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n007",
+          "subject": "Arizona Cardinals backfield",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Monitor through the Week 1 injury/transaction reports.",
+          "summary": "Benson's release simplifies the Cardinals backfield numerically but leaves it fantasy-uncertain for entirely different reasons.",
+          "evidence": "Harris says James Conner has not participated in 11-on-11 practices and Jeremiyah Love has a high-ankle sprain, making Tyler Allgeier a possible heavy Week 1 user.",
+          "counterweight": "Conner could simply be a veteran managing preseason work, and the team may not clarify the situation before a decisive transaction or IR move.",
+          "practical_implication": "Do not assume the depth chart is settled; follow Conner and Love news closely and prepare for Allgeier to matter in Week 1.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "c7b78239-7961-4b8d-b760-9d5ddc099042:n010",
           "subject": "Arizona Cardinals backfield",
           "scope": "team",
@@ -58676,6 +59861,31 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n010",
+          "subject": "Ryan Flournoy",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "monitor",
+          "action_qualifier": "Undrafted in normal leagues; watch for an injury to CeeDee Lamb or George Pickens in a high-volume passing offense.",
+          "summary": "Harris keeps Flournoy on the deep list because strong camp feedback and a good Dallas passing environment could make him relevant after a top-two disruption.",
+          "evidence": "Harris wrote an Almanac profile and recalls broadcasts praising Flournoy during prior opportunities; Ciely notes both Lamb and Pickens have injury or behavioral concerns.",
+          "counterweight": "The two lead receivers should dominate immediately, leaving insufficient work for a reliable third option unless the depth chart changes.",
+          "practical_implication": "Do not roster him now; add him to an injury-contingency watch list for a potentially top-five passing offense.",
+          "speakers": [
+            "Christopher Harris",
+            "Jake Ciely"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "cOv7dXYX860:n008",
           "subject": "Dallas Cowboys offense",
           "scope": "team",
@@ -58811,6 +60021,30 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
@@ -59025,6 +60259,30 @@
         "observed_at": "2026-08-21T04:15:30.662151Z"
       },
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n003",
+          "subject": "Jaylin Noel",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "target",
+          "action_qualifier": "Take a very-late-round chance among Texans receivers.",
+          "summary": "Noel remains Harris's preferred very-late Texans receiver lottery ticket despite Boutte's arrival.",
+          "evidence": "Harris explicitly names Noel as the second Texans wideout he would be most willing to take a late chance on, ahead of Boutte's uncertain assimilation.",
+          "counterweight": "The receiving group is unsettled after Jayden Higgins's torn ACL and Tank Dell is rehabbing, so the comment does not guarantee a stable opening role.",
+          "practical_implication": "Use Noel as a final-round bench upside pick, not as an expected Week 1 starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "c7b78239-7961-4b8d-b760-9d5ddc099042:n003",
           "subject": "Houston Texans offensive line",
@@ -60293,6 +61551,31 @@
       },
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n009",
+          "subject": "Chris Bell",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "stash",
+          "action_qualifier": "Consider only as an IR/deep-bench stash; do not expect a Week 1 role after the ACL recovery.",
+          "summary": "Ciely sees Bell as a low-cost Dolphins talent bet whose injury-delayed timeline leaves a later opening in an unsettled receiver room.",
+          "evidence": "Bell tore an ACL in December after being discussed as a potential first-round talent; he has recently returned to drills while Miami's beat reports keep changing on its receiver hierarchy.",
+          "counterweight": "He may not be full strength or see meaningful September action, and a weak offense could distribute targets among many players instead of elevating one receiver.",
+          "practical_implication": "Do not draft Bell in standard formats; use an IR stash if available and monitor whether talent overtakes the more immediately active alternatives.",
+          "speakers": [
+            "Jake Ciely",
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n009",
           "subject": "Miami Dolphins offense",
           "scope": "team",
@@ -60773,6 +62056,31 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n007",
+          "subject": "Kaelon Black",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "target",
+          "action_qualifier": "Harris is willing to use a final-round standard-league pick; Ciely prefers waiting until the 49ers clarify the backup role.",
+          "summary": "Black is the episode's draftability dispute: Harris has taken shares as a late contingent McCaffrey bet, while Ciely will not draft him until San Francisco names the next-up back.",
+          "evidence": "Black has emerged while Jordan James has missed about a month with a broken rib, and both speakers recognize Kyle Shanahan's history of generating RB production.",
+          "counterweight": "The next man may not be Black: James could return, Isaac Guerendo remains in the mix, and Shanahan has repeatedly overturned assumed backup orders.",
+          "practical_implication": "If drafting Black, treat him solely as a cheap contingency asset and revisit immediately when the 49ers publish a usable depth chart.",
+          "speakers": [
+            "Christopher Harris",
+            "Jake Ciely"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "07d2fd69-91fd-4737-9f0c-939234c2ab8b:n003",
           "subject": "Kaelon Black",
           "scope": "player",
@@ -60975,6 +62283,30 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "67302917-dcf8-4a5b-b801-c56a54c84a6d:n003",
           "subject": "Washington Commanders offense",
@@ -61472,6 +62804,30 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
@@ -62490,6 +63846,31 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n013",
+          "subject": "Nicholas Singleton",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Undrafted third RB with a possible late-season path if Tony Pollard or Tyjae Spears opens work.",
+          "summary": "Ciely does not rate Singleton as an automatic talent target, but sees a no-cost route from Tennessee's third back toward a committee role or future lead opportunity.",
+          "evidence": "Pollard and Spears are both free agents after the year; Ciely sees Pollard as volume-reliant and Spears as inconsistent/injury-prone, with a new staff potentially auditioning Singleton.",
+          "counterweight": "Brian Daboll has historically used committees, Singleton is currently third, and the suggested 2027 contract logic is an inference rather than a promised 2026 role.",
+          "practical_implication": "Keep Singleton on a long-horizon watch list; react if injury or a clear workload shift moves him ahead of one incumbent.",
+          "speakers": [
+            "Jake Ciely",
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "07d2fd69-91fd-4737-9f0c-939234c2ab8b:n005",
           "subject": "Nick Singleton",
@@ -64565,6 +65946,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n002",
+          "subject": "Kayshon Boutte",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "no-action",
+          "action_qualifier": "Do not treat the Texans trade as a meaningful redraft opportunity.",
+          "summary": "Harris views Boutte as a Texans depth addition rather than a fantasy-relevant replacement receiver.",
+          "evidence": "He cites 33 catches last season, limited route-running value, and the late-preseason challenge of learning a new offense while competing with Xavier Hutchinson, Jaylin Noel, and Tank Dell.",
+          "counterweight": "Harris concedes Boutte could fight past those depth receivers and calls him a strong professional and locker-room addition.",
+          "practical_implication": "Leave Boutte undrafted in typical leagues and reassess only if the Houston depth chart changes materially.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "cOv7dXYX860:n027",
           "subject": "New England Patriots offense",
           "scope": "team",
@@ -66557,6 +67962,31 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n012",
+          "subject": "George Holani",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "A very deep Seattle contingent bet behind higher-ranked Emmanuel Wilson and others.",
+          "summary": "Harris nominates Holani as the extra-deep Seahawks back whose limited NFL moments have appealed to him, while admitting several more obvious competitors exist.",
+          "evidence": "Harris cites Holani's motion skills and has stashed him in dynasty; Ciely reports divided beat-writer support between Holani and Emmanuel Wilson.",
+          "counterweight": "Zach Charbonnet could return, Seattle has Jadarian Price and Wilson, and Holani may not even make the roster.",
+          "practical_implication": "Do not force-draft Holani; follow Seattle's final roster and react only if a clearer depth-chart opening develops.",
+          "speakers": [
+            "Christopher Harris",
+            "Jake Ciely"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "low",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "cOv7dXYX860:n004",
           "subject": "George Holani",
           "scope": "player",
@@ -68054,6 +69484,31 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n011",
+          "subject": "Dontayvion Wicks",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Undrafted outside the top 200; prioritize on waivers if he opens as Philadelphia's No. 2 or earns early target volume.",
+          "summary": "Ciely believes Wicks has a clear enough Philadelphia path to merit early-season attention, even though he will not draft him over his preferred rookie competitor.",
+          "evidence": "Wicks has been with the team all offseason, could open as the No. 2 if the rookie is not ready, and is at least the No. 3 behind an uncertain adjacent role.",
+          "counterweight": "Ciely says Wicks's hands are a serious flaw and Harris agrees he is not draftable in standard leagues; the rookie could take the role quickly.",
+          "practical_implication": "Track Week 1 routes and targets, then make Wicks a priority waiver pivot if the expected depth-chart path is real.",
+          "speakers": [
+            "Jake Ciely",
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "78c4e710-6f2b-4b2a-ba55-5142e5b37a78:n011",
           "subject": "Philadelphia Eagles offensive line",
@@ -69650,6 +71105,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
           "scope": "team",
@@ -71021,6 +72500,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
           "scope": "team",
@@ -71481,6 +72984,30 @@
       "outlook": null,
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
@@ -72008,6 +73535,31 @@
       "outlook": null,
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n015",
+          "subject": "Jahan Dotson",
+          "scope": "player",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not draft; only revisit if he maintains Atlanta's outside No. 2 role and the offense proves functional.",
+          "summary": "Ciely gives Dotson one last no-cost watch-list chance because the current depth chart may make him Atlanta's outside No. 2 receiver.",
+          "evidence": "Ciely thinks Zachariah Branch overlaps more with Olamide Zaccheaus and is being slow-played, leaving Dotson as the established outside option; Harris agrees the depth chart points that way.",
+          "counterweight": "Ciely has repeatedly been disappointed by Dotson, does not want to draft him, and says a poor quarterback/offense outcome could make him permanently irrelevant.",
+          "practical_implication": "Watch Atlanta's routes and targets; add Dotson only if the No. 2 job produces usable volume in a capable offense.",
+          "speakers": [
+            "Jake Ciely",
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
@@ -73246,6 +74798,31 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n016",
+          "subject": "Seth McGowan",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "monitor",
+          "action_qualifier": "Keep as a Jonathan Taylor contingency name; a late handcuff is more defensible if DJ Giddens falls out of the picture.",
+          "summary": "Harris files McGowan as a Colts depth back to remember because a trusted Patriots observer and beat reports have both been much more positive than expected.",
+          "evidence": "A Harris contact came away impressed after Patriots-Colts practice, and Harris says that matches favorable beat reports; Ciely compares the possible role to a physical Chris Rodriguez-style backup.",
+          "counterweight": "Jonathan Taylor owns the job whenever healthy, McGowan may not be clearly ahead of Giddens, and camp praise is often empty.",
+          "practical_implication": "Monitor Colts cuts and McGowan's backup status; add only if Taylor's workload creates an injury opening and McGowan is the clear successor.",
+          "speakers": [
+            "Christopher Harris",
+            "Jake Ciely"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "07d2fd69-91fd-4737-9f0c-939234c2ab8b:n007",
           "subject": "Seth McGowan",
@@ -75737,6 +77314,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
           "scope": "team",
@@ -76293,6 +77894,30 @@
       },
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
@@ -77210,6 +78835,54 @@
       "outlook": null,
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n005",
+          "subject": "Arizona Cardinals backfield",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Follow James Conner's status and Week 1 depth chart; Trey Benson is no longer a 2026 option.",
+          "summary": "Arizona has gone from apparent RB surplus to an unclear Week 1 group, with Benson definitively unavailable.",
+          "evidence": "Harris says Conner remains largely inactive, the coach said he is running out of time, and Benson cleared waivers before reverting to injured reserve for the season.",
+          "counterweight": "Conner's absence is not yet a sure declaration that he will miss the opener.",
+          "practical_implication": "Remove Benson from redraft consideration and stay ready to adjust Arizona's remaining backs when Conner's status becomes official.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n007",
+          "subject": "Arizona Cardinals backfield",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Monitor through the Week 1 injury/transaction reports.",
+          "summary": "Benson's release simplifies the Cardinals backfield numerically but leaves it fantasy-uncertain for entirely different reasons.",
+          "evidence": "Harris says James Conner has not participated in 11-on-11 practices and Jeremiyah Love has a high-ankle sprain, making Tyler Allgeier a possible heavy Week 1 user.",
+          "counterweight": "Conner could simply be a veteran managing preseason work, and the team may not clarify the situation before a decisive transaction or IR move.",
+          "practical_implication": "Do not assume the depth chart is settled; follow Conner and Love news closely and prepare for Allgeier to matter in Week 1.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "c7b78239-7961-4b8d-b760-9d5ddc099042:n010",
           "subject": "Arizona Cardinals backfield",
@@ -83817,6 +85490,30 @@
       },
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
           "scope": "team",
@@ -84318,6 +86015,30 @@
       "outlook": null,
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n004",
+          "subject": "Demario Douglas",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "fade",
+          "action_qualifier": "Avoid a repeat investment even if camp reports are positive.",
+          "summary": "Harris will not draft Douglas again, viewing the usual positive-camp narrative as unpersuasive.",
+          "evidence": "He expects Douglas to be the third receiver in three-wide sets and to work from the slot, then notes that the player has drawn glowing camp reports every year without changing Harris's result.",
+          "counterweight": "The trade could marginally clarify New England's receiver room, but Harris gives no evidence that it creates a weekly fantasy ceiling for Douglas.",
+          "practical_implication": "Do not chase Douglas based on training-camp buzz; allocate late receiver picks to stronger role or talent bets.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "cOv7dXYX860:n027",
           "subject": "New England Patriots offense",
@@ -86973,6 +88694,31 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n008",
+          "subject": "Cyrus Allen",
+          "scope": "player",
+          "category": "good",
+          "sentiment": "positive",
+          "action_type": "monitor",
+          "action_qualifier": "Leave undrafted, but be ready for an early waiver claim if he plays substantial September snaps.",
+          "summary": "Harris sees Allen as a no-cost Chiefs rookie name to file away, not someone to draft before a real role is visible.",
+          "evidence": "Allen went from unknown in a May rookie draft to receiving broad Kansas City praise and flattering words from Patrick Mahomes.",
+          "counterweight": "Ciely warns that analysts repeatedly chase the hypothetical Chiefs No. 2, while Harris remains more inclined to fade the entire offense and the role may never form.",
+          "practical_implication": "Watch September routes and targets; if Allen becomes a real downfield complement to Rashee Rice, move quickly on waivers rather than pre-drafting him.",
+          "speakers": [
+            "Christopher Harris",
+            "Jake Ciely"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "dR200dfAXCg:n009",
           "subject": "Cyrus Allen",
           "scope": "player",
@@ -88797,6 +90543,30 @@
       },
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
           "scope": "team",
@@ -89719,6 +91489,30 @@
       "outlook": null,
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
@@ -90985,6 +92779,30 @@
       "outlook": null,
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
@@ -93127,6 +94945,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
           "scope": "team",
@@ -93971,6 +95813,30 @@
         "observed_at": "2026-08-21T04:15:30.662151Z"
       },
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
@@ -95743,6 +97609,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
           "scope": "team",
@@ -96876,6 +98766,30 @@
       "outlook": null,
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
@@ -101537,6 +103451,30 @@
       },
       "profile_notes": [
         {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
           "scope": "team",
@@ -101897,6 +103835,30 @@
         "observed_at": "2026-08-21T04:15:30.662151Z"
       },
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
@@ -102927,6 +104889,78 @@
       },
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n005",
+          "subject": "Arizona Cardinals backfield",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Follow James Conner's status and Week 1 depth chart; Trey Benson is no longer a 2026 option.",
+          "summary": "Arizona has gone from apparent RB surplus to an unclear Week 1 group, with Benson definitively unavailable.",
+          "evidence": "Harris says Conner remains largely inactive, the coach said he is running out of time, and Benson cleared waivers before reverting to injured reserve for the season.",
+          "counterweight": "Conner's absence is not yet a sure declaration that he will miss the opener.",
+          "practical_implication": "Remove Benson from redraft consideration and stay ready to adjust Arizona's remaining backs when Conner's status becomes official.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "high",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n007",
+          "subject": "Arizona Cardinals backfield",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Monitor through the Week 1 injury/transaction reports.",
+          "summary": "Benson's release simplifies the Cardinals backfield numerically but leaves it fantasy-uncertain for entirely different reasons.",
+          "evidence": "Harris says James Conner has not participated in 11-on-11 practices and Jeremiyah Love has a high-ankle sprain, making Tyler Allgeier a possible heavy Week 1 user.",
+          "counterweight": "Conner could simply be a veteran managing preseason work, and the team may not clarify the situation before a decisive transaction or IR move.",
+          "practical_implication": "Do not assume the depth chart is settled; follow Conner and Love news closely and prepare for Allgeier to matter in Week 1.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n006",
+          "subject": "Trey Benson",
+          "scope": "player",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "no-action",
+          "action_qualifier": "Do not expect an immediate 2026 contribution after his release.",
+          "summary": "Harris does not expect Benson, released by Arizona, to land elsewhere and become a fantasy contributor immediately.",
+          "evidence": "He cites last year's meniscus tear, only 29 carries, and a report that the knee swelled again during camp before the Cardinals moved on.",
+          "counterweight": "Harris hopes Benson can get the knee right and receive another opportunity with a new team.",
+          "practical_implication": "Keep Benson off normal redraft rosters and revisit only after a new signing and demonstrable health progress.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
+        {
           "note_id": "c7b78239-7961-4b8d-b760-9d5ddc099042:n010",
           "subject": "Arizona Cardinals backfield",
           "scope": "team",
@@ -103724,6 +105758,30 @@
       "injury_status": null,
       "profile_notes": [
         {
+          "note_id": "86e35bd9-6366-4b84-b038-85853e9ccf52:n002",
+          "subject": "Washington Commanders offense",
+          "scope": "team",
+          "category": "bad",
+          "sentiment": "negative",
+          "action_type": "downgrade",
+          "action_qualifier": "Use an opposing-player tiebreaker rather than a large rank drop after the Baltimore joint practice.",
+          "summary": "Harris gives Washington a modest negative adjustment after unanimous beat-writer concern that Baltimore dominated an undermanned Commanders offense.",
+          "evidence": "The line drew an 'inoperable' description; Laremy Tunsil was absent, the starting center has missed most of camp with a calf injury, and the right guard missed the session with illness.",
+          "counterweight": "Washington also sat its two starting backs, and Harris says a joint practice can be a blip rather than a season verdict.",
+          "practical_implication": "Avoid sweeping fades, but prefer the comparable non-Commander in tight draft decisions and monitor the line in early games.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/79147/episode/68652313",
+          "episode_id": "86e35bd9-6366-4b84-b038-85853e9ccf52",
+          "episode_title": "Super-Deep Sleepers For 2026 - Part 1",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-27T14:49:06Z"
+        },
+        {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n011",
           "subject": "Falcons, Vikings, Bears, and Commanders passing environments",
           "scope": "team",
@@ -103867,6 +105925,30 @@
       "outlook": null,
       "injury_status": null,
       "profile_notes": [
+        {
+          "note_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2:n009",
+          "subject": "Cleveland Browns offense",
+          "scope": "team",
+          "category": "watch",
+          "sentiment": "mixed",
+          "action_type": "monitor",
+          "action_qualifier": "Do not automatically alter associated skill-player ranks solely because Deshaun Watson was named starter.",
+          "summary": "Harris strongly dislikes Cleveland naming Watson the starter but does not believe the announcement alone merits rank changes for Quinshon Judkins, Casey Concepcion, or Denzel Boston.",
+          "evidence": "He says Watson has not played well but is unconvinced alternatives such as Shedeur Sanders or Dylan Gabriel would necessarily be better for the offense.",
+          "counterweight": "The quarterback decision could still prove damaging, and Harris calls it indefensible, but the transcript does not establish a player-specific volume change.",
+          "practical_implication": "Monitor Browns quarterback play and avoid a reflexive skill-player adjustment based only on the named starter.",
+          "speakers": [
+            "Christopher Harris"
+          ],
+          "source": "harris_football_podcast",
+          "source_label": "Harris Football",
+          "source_url": "https://podscan.fm/dashboard/podcasts/pd_w6go3jmp4blj2la7/episode/ep_b63pjk2q3yk9jwoa",
+          "episode_id": "f3a5c4ba-0349-4af5-9e3e-8750ba6befd2",
+          "episode_title": "Five Safe Players For 2026",
+          "coverage": "full-transcript",
+          "confidence": "medium",
+          "published_at": "2026-08-25T15:09:33Z"
+        },
         {
           "note_id": "e1934fbc-4cb4-4666-b8ad-2af99b9d0956:n010",
           "subject": "Cleveland Browns offense",
