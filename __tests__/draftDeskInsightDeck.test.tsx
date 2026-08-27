@@ -48,7 +48,7 @@ const Harness: React.FC<{
   forecastEnabled?: boolean
   materialKey?: string
   visibleTierPositions?: readonly (typeof positions)[number][]
-  onVisibleTierPositionsChange?: (positions: (typeof positions)[number][]) => void
+  onVisibleTierPositionsChange?: (selectedPositions: (typeof positions)[number][]) => void
   playerTargets?: Array<{playerId: string; targetAsEarlyAsRound: number}>
 }> = ({
   forecastEnabled = false,
