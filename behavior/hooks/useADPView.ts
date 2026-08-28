@@ -22,6 +22,8 @@ interface UseADPViewProps {
   positionFilter: PositionFilter
   currentPage?: number
   onCurrentPageChange?: (page: number) => void
+  roundsPerPage?: number
+  maxRound?: number
 }
 
 export const useADPView = ({
@@ -36,6 +38,8 @@ export const useADPView = ({
   positionFilter,
   currentPage: controlledCurrentPage,
   onCurrentPageChange,
+  roundsPerPage: configuredRoundsPerPage,
+  maxRound = 14,
 }: UseADPViewProps) => {
   const [uncontrolledCurrentPage, setUncontrolledCurrentPage] = useState(0)
   const currentPage = controlledCurrentPage ?? uncontrolledCurrentPage
@@ -57,10 +61,14 @@ export const useADPView = ({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
   
-  const roundsPerPage = isMobile ? 3 : 4
-  const totalPages = 14 - roundsPerPage + 1 // Dynamic based on mobile/desktop
+  const roundsPerPage = configuredRoundsPerPage ?? (isMobile ? 3 : 4)
+  const totalPages = Math.max(1, maxRound - roundsPerPage + 1)
   const startRound = currentPage + 1
-  const endRound = Math.min(startRound + roundsPerPage - 1, 14)
+  const endRound = Math.min(startRound + roundsPerPage - 1, maxRound)
+
+  useEffect(() => {
+    if (currentPage > totalPages - 1) setCurrentPage(totalPages - 1)
+  }, [currentPage, setCurrentPage, totalPages])
   
   // Calculate rounds to show
   const roundsToShow = useMemo(() => {

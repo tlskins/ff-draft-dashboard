@@ -44,25 +44,32 @@ export const getPlayerMetrics = (
 ): PlayerMetrics => {
     const ranks = player.ranks?.[boardSettings.ranker]
     const adpRanks = player.ranks?.[boardSettings.adpRanker]
+    const sourceAdp = adpRanks?.adp
+    const adp = sourceAdp == null || !Number.isFinite(sourceAdp) || sourceAdp <= 0
+        ? undefined
+        : parseFloat(sourceAdp.toFixed(1))
     if ( !ranks ) {
         return {
             overallRank: undefined,
             posRank: 9999,
             tier: undefined,
-            adp: undefined,
+            // ADP belongs to its configured source and remains useful even
+            // when the primary ranker does not rank this player. Individual
+            // views remain responsible for deciding whether unranked players
+            // are eligible for presentation.
+            adp,
             overallOrPosRank: undefined,
         }
     }
     const scoringFormat = scoringFormatFor(settings)
     const overallRank = overallRankFor(ranks, scoringFormat)
     const posRank = positionRankFor(ranks, scoringFormat)
-    const adp = adpRanks?.adp
 
     return {
         overallRank,
         posRank: posRank ?? 9999,
         tier: positionTierFor(ranks, scoringFormat),
-        adp: adp == null ? undefined : parseFloat(adp.toFixed(1)),
+        adp,
         overallOrPosRank: overallRank == null ? posRank ?? 9999 : overallRank,
     }
 }

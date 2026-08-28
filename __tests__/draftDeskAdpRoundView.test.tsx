@@ -1,5 +1,5 @@
 import React from "react"
-import {render, screen} from "@testing-library/react"
+import {fireEvent, render, screen} from "@testing-library/react"
 
 import DraftDeskAdpRoundView from "../components/draft-desk/DraftDeskAdpRoundView"
 import {
@@ -90,5 +90,56 @@ describe("Draft Desk ADP-round rank value", () => {
     expect(cue.textContent).toContain("+2")
     expect(cue.getAttribute("title")).toBe("Configured rank R1 · ESPN ADP R3")
     expect(screen.getByText("T1").className).toContain("tierFlag1")
+  })
+
+  it("can navigate to the final occupied ranked ADP round", () => {
+    const latePlayer: Player = {
+      ...player,
+      id: "late-ranked",
+      firstName: "Late",
+      lastName: "Ranked",
+      fullName: "Late Ranked",
+      ranks: {
+        ...player.ranks,
+        [ThirdPartyRanker.HARRIS]: {
+          ...player.ranks![ThirdPartyRanker.HARRIS]!,
+          playerId: "late-ranked",
+          pprOverallRank: 160,
+          standardOverallRank: 160,
+        },
+        [ThirdPartyRanker.ESPN]: {
+          ...player.ranks![ThirdPartyRanker.ESPN]!,
+          playerId: "late-ranked",
+          adp: 169.48,
+        },
+      },
+    }
+    const playerRanks = {
+      QB: [], RB: [latePlayer], WR: [], TE: [], Purge: [],
+      availPlayersByOverallRank: [latePlayer],
+      availPlayersByAdp: [latePlayer],
+    }
+    render(<DraftDeskAdpRoundView
+      addPlayerTarget={jest.fn()}
+      boardSettings={{ranker: ThirdPartyRanker.HARRIS, adpRanker: ThirdPartyADPRanker.ESPN}}
+      fantasySettings={settings}
+      myPicks={[1, 24, 25]}
+      onSwitchToTargetsView={jest.fn()}
+      playerLib={{[latePlayer.id]: latePlayer}}
+      playerRanks={playerRanks}
+      playerTargets={[]}
+      removePlayerTarget={jest.fn()}
+      removePlayerTargets={jest.fn()}
+      replacePlayerTargets={jest.fn()}
+      setViewPlayerId={jest.fn()}
+      viewPlayerId={null}
+    />)
+
+    const next = screen.getByRole("button", {name: "Next ADP rounds"})
+    for (let page = 0; page < 12; page += 1) fireEvent.click(next)
+
+    expect(screen.getByText("ADP rounds 13–15")).toBeTruthy()
+    expect(screen.getByText("Late Ranked")).toBeTruthy()
+    expect(next.hasAttribute("disabled")).toBe(true)
   })
 })

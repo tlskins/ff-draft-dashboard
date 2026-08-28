@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from "react"
+import React, {useCallback, useMemo, useState} from "react"
 
 import {
   getPlayerMetrics,
@@ -8,7 +8,7 @@ import {
   PlayerRanks,
 } from "../../behavior/draft"
 import {PositionFilter, useADPView} from "../../behavior/hooks/useADPView"
-import {useADPRoundView} from "../../behavior/hooks/useADPRoundView"
+import {getLastRankedADPRound, useADPRoundView} from "../../behavior/hooks/useADPRoundView"
 import type {BoardSettings, FantasySettings, Player, PlayerTarget} from "../../types"
 import DraftDeskPlayerCard from "../shared/DraftDeskPlayerCard"
 import styles from "../DraftDesk.module.css"
@@ -94,6 +94,11 @@ const DraftDeskAdpRoundView = ({
   onPinPlayer,
 }: DraftDeskAdpRoundViewProps) => {
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("All")
+  const lastRankedAdpRound = useMemo(() => getLastRankedADPRound(
+    playerRanks.availPlayersByOverallRank,
+    fantasySettings,
+    boardSettings,
+  ), [boardSettings, fantasySettings, playerRanks.availPlayersByOverallRank])
   const {
     currentPage,
     totalPages,
@@ -117,8 +122,10 @@ const DraftDeskAdpRoundView = ({
     positionFilter,
     currentPage: controlledCurrentPage,
     onCurrentPageChange,
+    roundsPerPage: 3,
+    maxRound: lastRankedAdpRound,
   })
-  const visibleRounds = roundsToShow.slice(0, 3)
+  const visibleRounds = roundsToShow
   const {playersByADPRound, getRoundCount} = useADPRoundView({
     playerRanks,
     fantasySettings,
@@ -176,7 +183,7 @@ const DraftDeskAdpRoundView = ({
               <DraftDeskPlayerCard
                 actions={<>
                   <select aria-label={`Move ${player.fullName} target round`} onChange={event => moveTarget(player.id, Number(event.target.value))} value={target.targetAsEarlyAsRound}>
-                    {Array.from({length: 14}, (_, round) => <option key={round + 1} value={round + 1}>R{round + 1}</option>)}
+                    {Array.from({length: lastRankedAdpRound}, (_, round) => <option key={round + 1} value={round + 1}>R{round + 1}</option>)}
                   </select>
                   <button onClick={() => removePlayerTarget(player.id)} type="button">Remove</button>
                 </>}
