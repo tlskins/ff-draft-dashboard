@@ -800,7 +800,8 @@
 }
 
 .rangeRowTarget {
-  border-left: 3px solid #0284c7;
+  border: 1px solid #0284c7;
+  border-left-width: 3px;
   background: #eff9ff;
   box-shadow: inset 0 0 0 1px #bae6fd;
 }
@@ -842,6 +843,36 @@
   text-decoration-color: #c7d2fe;
   text-underline-offset: 2px;
 }
+
+.rangePlayerButton .rangePlayerName {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.rangePlayerButton .rangePlayerNameText {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rangePlayerButton .tierTargetMarker,
+.tierTargetMarker {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  margin: 0;
+  color: #0369a1;
+}
+
+.tierTargetMarker svg { width: 100%; height: 100%; }
 
 .rangePlayerButton span {
   margin-top: 1px;

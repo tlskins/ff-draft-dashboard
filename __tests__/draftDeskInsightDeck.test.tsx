@@ -97,6 +97,9 @@ describe("DraftDeskInsightDeck", () => {
     expect(screen.getAllByText(/TARGET/).some(element => (
       Boolean(element.closest("[data-target-player='true']"))
     ))).toBe(true)
+    const targetedTierRows = Array.from(document.querySelectorAll("[data-target-player='true']"))
+    expect(targetedTierRows.some(row => row.querySelector("[data-target-marker='true']")))
+      .toBe(true)
   })
 
   it("updates tier density when the left ranking position pair changes", async () => {

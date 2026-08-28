@@ -4,6 +4,7 @@ import { getPlayerMetrics, getRoundAndPickShortText } from "../../behavior/draft
 import { playerShortName } from "../../behavior/presenters"
 import type { BoardSettings, FantasySettings, Player, PlayerTarget } from "../../types"
 import styles from "../DraftDesk.module.css"
+import TargetMarker from "./TargetMarker"
 
 interface DraftDeskPlayerCardProps {
   player: Player
@@ -100,7 +101,8 @@ const DraftDeskPlayerCard = ({
     <div
       {...rootProps}
       aria-label={`${player.fullName}, ${player.position}, ${player.team}. ${rankContext || defaultRankContext}. ${adpText}${tierNumber ? `. Tier ${tierNumber}` : ""}${target ? `. Target round ${target.targetAsEarlyAsRound}` : ""}${urgency ? `. ${urgency}` : ""}`}
-      className={`${styles.playerCard} ${positionClass(player.position)} ${focused ? styles.playerCardFocused : ""} ${compact ? styles.playerCardCompact : ""} ${dock ? styles.playerCardDock : ""} ${className}`}
+      className={`${styles.playerCard} ${positionClass(player.position)} ${target ? styles.playerCardTarget : ""} ${focused ? styles.playerCardFocused : ""} ${compact ? styles.playerCardCompact : ""} ${dock ? styles.playerCardDock : ""} ${className}`}
+      data-target-player={target ? "true" : undefined}
       onClick={event => {
         rootProps?.onClick?.(event)
         onFocusPlayer?.(player.id)
@@ -120,7 +122,10 @@ const DraftDeskPlayerCard = ({
       <div className={styles.playerCardBody}>
         {dock && <span className={styles.playerCardDockPick}>{rankContext || defaultRankContext}</span>}
         <div className={styles.playerCardHeader}>
-          <span className={styles.playerCardName}>{dock ? playerShortName(player.fullName) : player.fullName}</span>
+          <span className={styles.playerCardNameGroup}>
+            <span className={styles.playerCardName}>{dock ? playerShortName(player.fullName) : player.fullName}</span>
+            {target && <TargetMarker className={styles.playerCardTargetMarker} />}
+          </span>
           {!dock && tierNumber && (
             <span className={`${styles.tierFlag} ${tierFlagClass(tierNumber)}`}>T{tierNumber}</span>
           )}

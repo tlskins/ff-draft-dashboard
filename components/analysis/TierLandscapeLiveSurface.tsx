@@ -13,6 +13,7 @@ import type {
 } from "../../behavior/analysis/tierLandscape"
 import { FantasyPosition } from "../../types"
 import type { Player } from "../../types"
+import TargetMarker from "../shared/TargetMarker"
 import styles from "./AnalysisRedesign.module.css"
 
 interface TierLandscapeLiveSurfaceProps {
@@ -111,7 +112,10 @@ const RangeRow: React.FC<{
           onClick={() => onInspectPlayer(player.player)}
           type="button"
         >
-          <strong>{player.player.fullName}</strong>
+          <strong className={styles.rangePlayerName}>
+            <span className={styles.rangePlayerNameText}>{player.player.fullName}</span>
+            {isTarget && <TargetMarker className={styles.tierTargetMarker} />}
+          </strong>
           <span>{player.player.team || "FA"} · {player.positionRankSourceLabel} #{player.positionRank ?? "—"} · Tier {player.primaryTier}{isTarget ? " · TARGET" : ""}</span>
         </button>
         <button
@@ -305,15 +309,16 @@ const TierLandscapePlayerCard: React.FC<{
   onInspectPlayer: (player: Player) => void
   isTarget: boolean
 }> = ({player, model, onInspectPlayer, isTarget}) => (
-  <li className={`min-w-0 rounded border bg-white p-3 ${isTarget ? "border-sky-500 ring-1 ring-sky-200" : "border-slate-200"}`} data-target-player={isTarget || undefined}>
+  <li className={`min-w-0 rounded border bg-white p-3 ${isTarget ? "border-sky-600 bg-sky-50 ring-2 ring-sky-200" : "border-slate-200"}`} data-target-player={isTarget || undefined}>
     <article aria-labelledby={`tier-landscape-player-${player.player.id}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h5
-            className="truncate font-semibold text-slate-950"
+            className="flex min-w-0 items-center gap-1 font-semibold text-slate-950"
             id={`tier-landscape-player-${player.player.id}`}
           >
-            {player.player.fullName}
+            <span className="truncate">{player.player.fullName}</span>
+            {isTarget && <TargetMarker className={styles.tierTargetMarker} />}
           </h5>
           <p className="text-xs text-slate-500">
             {player.player.position}
