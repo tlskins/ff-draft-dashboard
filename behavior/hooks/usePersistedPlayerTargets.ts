@@ -9,8 +9,10 @@ import {
 export const usePersistedPlayerTargets = (): [
   PlayerTarget[],
   Dispatch<SetStateAction<PlayerTarget[]>>,
+  boolean,
 ] => {
   const [playerTargets, setPlayerTargets] = useState<PlayerTarget[]>([])
+  const [hydrated, setHydrated] = useState(false)
   const hydrationState = useRef<"pending" | "ready" | "rejected">("pending")
   const skipInitialPersist = useRef(false)
 
@@ -22,12 +24,14 @@ export const usePersistedPlayerTargets = (): [
     } catch {
       hydrationState.current = "rejected"
       skipInitialPersist.current = true
+      setHydrated(true)
       return
     }
 
     hydrationState.current = stored.status === "rejected" ? "rejected" : "ready"
     skipInitialPersist.current = true
     if (stored.status === "ready") setPlayerTargets(stored.targets)
+    setHydrated(true)
   }, [])
 
   useEffect(() => {
@@ -45,5 +49,5 @@ export const usePersistedPlayerTargets = (): [
     }
   }, [playerTargets])
 
-  return [playerTargets, setPlayerTargets]
+  return [playerTargets, setPlayerTargets, hydrated]
 }

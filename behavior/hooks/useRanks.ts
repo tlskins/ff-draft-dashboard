@@ -69,7 +69,7 @@ export const useRanks = ({
 
   const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
   const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})
-  const [playerTargets, setPlayerTargets] = usePersistedPlayerTargets()
+  const [playerTargets, setPlayerTargets, playerTargetsHydrated] = usePersistedPlayerTargets()
   const [playerRanks, setPlayerRanks] = useState<PlayerRanks>({
     [FantasyPosition.QUARTERBACK]: [],
     [FantasyPosition.RUNNING_BACK]: [],
@@ -862,6 +862,7 @@ export const useRanks = ({
     viewRosterIdx,
     isEditingCustomRanking,
     playerTargets,
+    playerTargetsHydrated,
     rankings,
     customAndLatestRankingsDiffs,
     setLatestRankings,

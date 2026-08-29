@@ -32,6 +32,7 @@ import DeskPaneHeader from "../components/draft-desk/DeskPaneHeader"
 import DeskSegmentedControl from "../components/draft-desk/DeskSegmentedControl"
 import DraftDeskAdvisorDisclosure from "../components/draft-desk/DraftDeskAdvisorDisclosure"
 import DraftDeskInsightDeck from "../components/insight/DraftDeskInsightDeck"
+import CloudProfileControl from "../components/CloudProfileControl"
 import draftDeskStyles from "../components/DraftDesk.module.css"
 
 import { useRanks } from '../behavior/hooks/useRanks'
@@ -49,6 +50,8 @@ import {
 import {
   useRealtimeConversation,
 } from "../behavior/hooks/useRealtimeConversation"
+import {useDraftyAuth} from "../behavior/hooks/useDraftyAuth"
+import {useCloudProfileSync} from "../behavior/hooks/useCloudProfileSync"
 import { FantasyPosition, Player, ThirdPartyRanker } from "types"
 import {selectableExpertRankers} from "../behavior/rankingCatalog"
 import {scoringFormatFor} from "../behavior/scoringFormat"
@@ -87,9 +90,16 @@ import {
   commitCanonicalRankingProfile,
   runRankingProfileStartupMigration,
 } from "@/behavior/rankingProfileStorage"
-import type { RankingProfileV2 } from "@/behavior/rankingProfileV2"
+import {
+  validateRankingProfileV2,
+  type RankingProfileV2,
+} from "@/behavior/rankingProfileV2"
 import { draftPlanStorageKey } from "@/behavior/realtime/storage"
-import {PLAYER_TARGETS_STORAGE_KEY} from "@/behavior/playerTargetStorage"
+import {
+  PLAYER_TARGETS_STORAGE_KEY,
+  serializePlayerTargets,
+} from "@/behavior/playerTargetStorage"
+import type {UserDraftProfilePayload} from "@/behavior/cloudProfileSync"
 import {
   getSnapshotObservedThroughOverallPick,
   isDraftCaptureComplete,
@@ -172,6 +182,7 @@ const Home: FC = () => {
     draftHistory,
     isEditingCustomRanking,
     playerTargets,
+    playerTargetsHydrated,
     rankings,
     latestRankings,
     customAndLatestRankingsDiffs,
@@ -216,6 +227,7 @@ const Home: FC = () => {
 
   const [startupProfile, setStartupProfile] = useState<RankingProfileV2 | null>(null)
   const [startupMigrationStatus, setStartupMigrationStatus] = useState<string | null>(null)
+  const [rankingsHydrated, setRankingsHydrated] = useState(false)
 
   const rankingProfileControls = useRankingProfiles({
     playerRanks,
@@ -227,6 +239,71 @@ const Home: FC = () => {
     localProfile: startupProfile,
     onLocalProfileCommitted: setStartupProfile,
     serverPersistenceEnabled: apiFeatures.rankingProfilePersistenceEnabled,
+  })
+  const draftyAuth = useDraftyAuth(apiFeatures.cloudProfileSyncEnabled)
+
+  const applyCloudProfile = useCallback((cloud: UserDraftProfilePayload) => {
+    if (typeof localStorage === "undefined") {
+      throw new Error("Browser storage is unavailable; the cloud profile was not applied")
+    }
+    const nextProfile = cloud.ranking_profile
+      ? validateRankingProfileV2(cloud.ranking_profile)
+      : null
+    const nextTargets = cloud.targets.map(target => ({
+      playerId: target.player_id,
+      targetAsEarlyAsRound: target.target_as_early_as_round,
+    }))
+    const committed = commitCanonicalRankingProfile(
+      localStorage,
+      nextProfile,
+      [{
+        key: PLAYER_TARGETS_STORAGE_KEY,
+        value: serializePlayerTargets(nextTargets),
+      }],
+    )
+    if (committed.status === "rejected") {
+      throw new Error(`Cloud profile browser commit failed (${committed.code}): ${committed.message}`)
+    }
+
+    replacePlayerTargets(nextTargets)
+    setStartupProfile(nextProfile)
+    const published = latestRankings || rankings
+    if (published.players.length === 0) return
+    if (nextProfile) {
+      onLoadPlayers({
+        ...applyRankingProfileV2Snapshot(
+          published,
+          nextProfile,
+          (cloud.source_ranker || ThirdPartyRanker.HARRIS),
+        ),
+        settings,
+      })
+      onSetRanker(ThirdPartyRanker.CUSTOM)
+    } else {
+      onLoadPlayers({...published, settings})
+      resetBoardSettings()
+    }
+  }, [
+    latestRankings,
+    onLoadPlayers,
+    onSetRanker,
+    rankings,
+    replacePlayerTargets,
+    resetBoardSettings,
+    settings,
+  ])
+
+  const cloudProfileSync = useCloudProfileSync({
+    enabled: apiFeatures.cloudProfileSyncEnabled,
+    user: draftyAuth.user,
+    hydrated: rankingsHydrated
+      && playerTargetsHydrated
+      && !draftStarted
+      && !draftHistory.some(Boolean),
+    rankingProfile: startupProfile,
+    targets: playerTargets,
+    sourceRanker: String(rankings.copiedRanker || boardSettings.ranker || "") || null,
+    onApplyRemote: applyCloudProfile,
   })
 
   const {
@@ -843,6 +920,7 @@ const Home: FC = () => {
       onLoadPlayers(currentRankings)
       resetBoardSettings()
     }
+    setRankingsHydrated(true)
   }, [onLoadPlayers, onSetRanker, readApiCache, resetBoardSettings, browserLoaded, loadCustomRankingsData, setLatestRankings, calculateRankingDiffs, settings, boardSettings, setCustomAndLatestRankingsDiffs])
 
   useEffect(() => {
@@ -984,6 +1062,13 @@ const Home: FC = () => {
   return (
     <div className={`flex flex-col items-center justify-center min-h-screen relative ${draftDeskEnabled ? draftDeskStyles.deskViewport : ""}`}>
       <PageHead />
+      <div className="fixed right-2 top-2 z-50 xl:hidden">
+        <CloudProfileControl
+          auth={draftyAuth}
+          compact
+          sync={cloudProfileSync}
+        />
+      </div>
       <main className={`flex flex-col items-center justify-center w-full flex-1 text-center bg-gray-50 ${draftDeskEnabled ? draftDeskStyles.deskMain : "md:px-20"}`}>
         {draftDeskEnabled && (
           <div className="hidden w-full xl:block">
@@ -1006,14 +1091,20 @@ const Home: FC = () => {
               setNumTeams={setNumTeams}
               settings={settings}
               workspaceOperations={(
-                <button
-                  className={`${draftDeskStyles.focusRing} rounded border border-slate-500 px-3 py-2 text-sm font-semibold hover:bg-slate-800`}
-                  onClick={() => setDraftDeskPanePlacement(current =>
-                    swapDraftDeskPanePlacement(current))}
-                  type="button"
-                >
-                  Swap rankings and insight panes
-                </button>
+                <div className="grid gap-3">
+                  <CloudProfileControl
+                    auth={draftyAuth}
+                    sync={cloudProfileSync}
+                  />
+                  <button
+                    className={`${draftDeskStyles.focusRing} rounded border border-slate-500 px-3 py-2 text-sm font-semibold hover:bg-slate-800`}
+                    onClick={() => setDraftDeskPanePlacement(current =>
+                      swapDraftDeskPanePlacement(current))}
+                    type="button"
+                  >
+                    Swap rankings and insight panes
+                  </button>
+                </div>
               )}
               setupOperations={!noPlayers ? (
                 <PortableDataControls

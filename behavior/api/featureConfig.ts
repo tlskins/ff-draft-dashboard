@@ -13,6 +13,7 @@ export interface DashboardApiFeatureEnvironment {
   NEXT_PUBLIC_DRAFT_SESSION_PERSISTENCE_ENABLED?: string
   NEXT_PUBLIC_ADVISOR_SNAPSHOT_PERSISTENCE_ENABLED?: string
   NEXT_PUBLIC_RANKING_PROFILE_PERSISTENCE_ENABLED?: string
+  NEXT_PUBLIC_CLOUD_PROFILE_SYNC_ENABLED?: string
   NEXT_PUBLIC_REALTIME_ADVISOR_ENABLED?: string
 }
 
@@ -22,6 +23,7 @@ export interface DashboardApiFeatures {
   draftSessionPersistenceEnabled: boolean
   advisorSnapshotPersistenceEnabled: boolean
   rankingProfilePersistenceEnabled: boolean
+  cloudProfileSyncEnabled: boolean
   realtimeAdvisorEnabled: boolean
 }
 
@@ -34,6 +36,8 @@ const dashboardApiEnvironment = (): DashboardApiFeatureEnvironment => ({
     process.env.NEXT_PUBLIC_ADVISOR_SNAPSHOT_PERSISTENCE_ENABLED,
   NEXT_PUBLIC_RANKING_PROFILE_PERSISTENCE_ENABLED:
     process.env.NEXT_PUBLIC_RANKING_PROFILE_PERSISTENCE_ENABLED,
+  NEXT_PUBLIC_CLOUD_PROFILE_SYNC_ENABLED:
+    process.env.NEXT_PUBLIC_CLOUD_PROFILE_SYNC_ENABLED,
   NEXT_PUBLIC_REALTIME_ADVISOR_ENABLED:
     process.env.NEXT_PUBLIC_REALTIME_ADVISOR_ENABLED,
 })
@@ -92,6 +96,11 @@ export const getDashboardApiFeatures = (
       environment.NEXT_PUBLIC_RANKING_PROFILE_PERSISTENCE_ENABLED,
       localDevelopmentApi,
     ),
+    // Authenticated cross-device profiles are a separate, narrow mutation
+    // boundary and always require an explicit browser-build opt-in.
+    cloudProfileSyncEnabled: booleanValue(
+      environment.NEXT_PUBLIC_CLOUD_PROFILE_SYNC_ENABLED,
+    ) === true,
     // Realtime always requires an explicit opt-in, including locally.
     realtimeAdvisorEnabled: booleanValue(
       environment.NEXT_PUBLIC_REALTIME_ADVISOR_ENABLED,

@@ -25,7 +25,7 @@ To use the API rankings, copy `.env.example` to `.env.local` and run the API on
 port 5000. If the API is unavailable, the dashboard automatically falls back
 to `behavior/playerData.json`.
 
-## Stateless production API
+## Production API boundaries
 
 The dashboard treats `NEXT_PUBLIC_API_HOST` as a **read-only** data boundary:
 rankings, data readiness, historical comparison/query, and player-status
@@ -38,21 +38,45 @@ NEXT_PUBLIC_HISTORICAL_COMPARISON_ENABLED=true
 NEXT_PUBLIC_DRAFT_SESSION_PERSISTENCE_ENABLED=false
 NEXT_PUBLIC_ADVISOR_SNAPSHOT_PERSISTENCE_ENABLED=false
 NEXT_PUBLIC_RANKING_PROFILE_PERSISTENCE_ENABLED=false
+NEXT_PUBLIC_CLOUD_PROFILE_SYNC_ENABLED=false
 NEXT_PUBLIC_REALTIME_ADVISOR_ENABLED=false
 ```
 
-Draft events, advisor calculations, draft plans, and custom rankings remain in
-the browser. A loopback API retains the legacy local-development defaults for
-the three persistence flags; public deployments must opt into each write path
-separately after authentication and durable storage exist. `NEXT_PUBLIC_*`
-values are embedded at build time, so changing the API URL or any feature flag
-requires a dashboard rebuild and redeploy.
+Draft events, advisor calculations, and draft plans remain in the browser. A
+loopback API retains the legacy local-development defaults for the three
+revision-history persistence flags; public deployments must opt into each
+write path separately. `NEXT_PUBLIC_*` values are embedded at build time, so
+changing the API URL or any feature flag requires a dashboard rebuild and
+redeploy.
 
 The tracked `.env.production` records the reviewed Cloud Run origin as
 `DRAFTY_PRODUCTION_API_HOST`; `next.config.js` maps it to
 `NEXT_PUBLIC_API_HOST` during production builds. This keeps an old hosting
 platform variable from silently overriding the release while preserving the
 loopback `.env.local` workflow for development.
+
+### Authenticated rankings and target sync
+
+`NEXT_PUBLIC_CLOUD_PROFILE_SYNC_ENABLED=true` enables a separate, narrow
+Google-authenticated boundary for canonical ranking profile v2 and player
+targets. It requires the three public Firebase Web settings shown in
+`.env.example` and `USER_PROFILE_PERSISTENCE_ENABLED=true` on the companion
+API. Firebase Web API keys identify the project but do not grant data access;
+the API verifies each Firebase ID token and owns Firestore access through its
+runtime service account.
+
+The browser remains local-first. Drafty waits for both rankings and targets to
+hydrate before syncing, never applies a cloud profile after a draft has begun,
+and keeps local edits usable while offline. A fresh empty device adopts the
+cloud copy; divergent non-empty copies require the user to choose **Use cloud
+copy** or **Keep this device**. Optimistic revisions prevent a stale device
+from silently overwriting a newer one.
+
+Provider refreshes and user edits remain distinct. The synced payload carries
+the provider baseline plus explicit rank/tier override player IDs when that
+evidence is available. A pre-existing bound local profile without a separately
+stored baseline is preserved conservatively by marking every retained player
+as user-owned, rather than guessing which edits may be overwritten.
 
 After every configured roster slot has been drafted, the live advisor exposes
 **Export replay fixture**. For ESPN, open the completed room's **Board** tab so

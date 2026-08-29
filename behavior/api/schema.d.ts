@@ -154,6 +154,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/draft-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the signed-in user's cross-device Drafty profile. */
+        get: operations["getUserDraftProfile"];
+        /**
+         * Create or atomically replace the signed-in user's Drafty profile.
+         * @description The Firebase UID is taken only from the verified bearer token. expected_revision provides optimistic concurrency; mutation_id makes an identical retry idempotent.
+         */
+        put: operations["putUserDraftProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ranking-profiles-v2": {
         parameters: {
             query?: never;
@@ -989,6 +1010,49 @@ export interface components {
             source_season: number | null;
             source_scoring_type: components["schemas"]["RankingProfileV2ScoringType"] | null;
             player_universe_fingerprint: string | null;
+        };
+        UserDraftProfileTarget: {
+            player_id: string;
+            target_as_early_as_round: number;
+        };
+        UserDraftProfilePayload: {
+            /** @constant */
+            schema_version: 1;
+            source_ranker: string | null;
+            ranking_profile: components["schemas"]["RankingProfileV2"] | null;
+            ranking_authority: components["schemas"]["UserDraftProfileRankingAuthority"];
+            targets: components["schemas"]["UserDraftProfileTarget"][];
+        };
+        /** @description Three-way rebase evidence. Existing unbound profiles use a null base and conservatively mark retained user authorities as overrides. */
+        UserDraftProfileRankingAuthority: {
+            base_profile: components["schemas"]["RankingProfileV2"] | null;
+            rank_override_player_ids: string[];
+            tier_override_player_ids: string[];
+        };
+        UserDraftProfilePutRequest: {
+            expected_revision: number;
+            mutation_id: string;
+            device_id: string;
+            profile: components["schemas"]["UserDraftProfilePayload"];
+        };
+        UserDraftProfileRecord: {
+            /** @constant */
+            schema_version: 1;
+            revision: number;
+            profile: components["schemas"]["UserDraftProfilePayload"];
+            content_fingerprint: string;
+            last_mutation_id: string;
+            last_writer_device_id: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        UserDraftProfileErrorResponse: {
+            error: string;
+            /** @enum {string} */
+            code: "authentication_required" | "profile_not_found" | "invalid_profile" | "stale_revision" | "mutation_conflict";
+            current_revision?: number | null;
         };
         /** @description Canonical profile v2. At most 500 unique player IDs may appear in total across all four active position arrays plus unresolved_players. */
         RankingProfileV2: {
@@ -1965,6 +2029,104 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getUserDraftProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The current user-owned profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDraftProfileRecord"];
+                };
+            };
+            /** @description A valid Firebase ID token is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDraftProfileErrorResponse"];
+                };
+            };
+            /** @description The user has not created a cloud profile. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDraftProfileErrorResponse"];
+                };
+            };
+        };
+    };
+    putUserDraftProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserDraftProfilePutRequest"];
+            };
+        };
+        responses: {
+            /** @description The existing profile was updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDraftProfileRecord"];
+                };
+            };
+            /** @description The first cloud profile was created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDraftProfileRecord"];
+                };
+            };
+            /** @description The profile contract is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDraftProfileErrorResponse"];
+                };
+            };
+            /** @description A valid Firebase ID token is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDraftProfileErrorResponse"];
+                };
+            };
+            /** @description The expected revision is stale or the mutation ID was reused with different content. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDraftProfileErrorResponse"];
                 };
             };
         };

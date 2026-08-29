@@ -11,6 +11,7 @@ describe("public API feature boundaries", () => {
       draftSessionPersistenceEnabled: false,
       advisorSnapshotPersistenceEnabled: false,
       rankingProfilePersistenceEnabled: false,
+      cloudProfileSyncEnabled: false,
       realtimeAdvisorEnabled: false,
     })
   })
@@ -24,6 +25,7 @@ describe("public API feature boundaries", () => {
       draftSessionPersistenceEnabled: true,
       advisorSnapshotPersistenceEnabled: true,
       rankingProfilePersistenceEnabled: true,
+      cloudProfileSyncEnabled: false,
       realtimeAdvisorEnabled: false,
     })
   })
@@ -35,11 +37,13 @@ describe("public API feature boundaries", () => {
       NEXT_PUBLIC_DRAFT_SESSION_PERSISTENCE_ENABLED: "true",
       NEXT_PUBLIC_ADVISOR_SNAPSHOT_PERSISTENCE_ENABLED: "true",
       NEXT_PUBLIC_RANKING_PROFILE_PERSISTENCE_ENABLED: "true",
+      NEXT_PUBLIC_CLOUD_PROFILE_SYNC_ENABLED: "true",
       NEXT_PUBLIC_REALTIME_ADVISOR_ENABLED: "true",
     })).toMatchObject({
       draftSessionPersistenceEnabled: true,
       advisorSnapshotPersistenceEnabled: true,
       rankingProfilePersistenceEnabled: true,
+      cloudProfileSyncEnabled: true,
       realtimeAdvisorEnabled: true,
     })
   })
