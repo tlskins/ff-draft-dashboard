@@ -9,6 +9,7 @@ import {
   RANKING_PROFILE_V2_AUTHORITY_KEY,
   RANKING_PROFILE_V2_COMMIT_KEY,
   RANKING_PROFILE_V2_STORAGE_KEY,
+  REJECTED_LEGACY_RANKING_PROFILE_STORAGE_KEY,
   RankingProfileStorageAdapter,
   restoreRankingProfileStorageBackup,
   runRankingProfileStartupMigration,
@@ -186,6 +187,21 @@ describe("restart-safe ranking profile v2 browser migration", () => {
     expect(runRankingProfileStartupMigration(migrated, [{id: "rb-1", position: "RB"}], "ppr"))
       .toMatchObject({status: "already_current", evidence: {code: "already_v2"}})
     expect(migrated.getItem(RANKING_PROFILE_V2_STORAGE_KEY)).toBe(destination)
+  })
+
+  it("archives an incompatible legacy profile once and stops retrying it at startup", () => {
+    const incompatibleLegacy = JSON.stringify([])
+    const storage = new MemoryStorage(new Map([
+      [LEGACY_RANKING_PROFILE_STORAGE_KEY, incompatibleLegacy],
+    ]))
+
+    expect(runRankingProfileStartupMigration(storage, [{id: "rb-1", position: "RB"}], "ppr"))
+      .toMatchObject({status: "unavailable", evidence: {code: "source_missing"}})
+    expect(storage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBeNull()
+    expect(storage.getItem(REJECTED_LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBe(incompatibleLegacy)
+    expect(runRankingProfileStartupMigration(storage, [{id: "rb-1", position: "RB"}], "ppr"))
+      .toMatchObject({status: "unavailable", evidence: {code: "source_missing"}})
+    expect(storage.getItem(REJECTED_LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBe(incompatibleLegacy)
   })
 
   it("migrates valid portable v1 without losing order, tiers, tombstones, or provenance", () => {

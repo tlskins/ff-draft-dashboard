@@ -32,6 +32,8 @@ interface DraftDeskAdpRoundViewProps {
   currPick?: number
   pinnedPlayerId?: string | null
   onPinPlayer?: (playerId: string) => void
+  filterRankedBelowAdp?: boolean
+  onFilterRankedBelowAdpChange?: (enabled: boolean) => void
 }
 
 const AdpRankValueCue = ({
@@ -92,13 +94,31 @@ const DraftDeskAdpRoundView = ({
   currPick = 1,
   pinnedPlayerId,
   onPinPlayer,
+  filterRankedBelowAdp = false,
+  onFilterRankedBelowAdpChange,
 }: DraftDeskAdpRoundViewProps) => {
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("All")
+  const visibleRankedPlayers = useMemo(() => filterRankedBelowAdp
+    ? playerRanks.availPlayersByOverallRank.filter(player => {
+      const metrics = getPlayerMetrics(player, fantasySettings, boardSettings)
+      const roundsAhead = getRankRoundsAheadOfAdp(
+        metrics.overallRank,
+        metrics.adp,
+        fantasySettings.numTeams,
+      )
+      return roundsAhead === null || roundsAhead > -1
+    })
+    : playerRanks.availPlayersByOverallRank,
+  [boardSettings, fantasySettings, filterRankedBelowAdp, playerRanks.availPlayersByOverallRank])
+  const filteredPlayerRanks = useMemo(() => ({
+    ...playerRanks,
+    availPlayersByOverallRank: visibleRankedPlayers,
+  }), [playerRanks, visibleRankedPlayers])
   const lastRankedAdpRound = useMemo(() => getLastRankedADPRound(
-    playerRanks.availPlayersByOverallRank,
+    visibleRankedPlayers,
     fantasySettings,
     boardSettings,
-  ), [boardSettings, fantasySettings, playerRanks.availPlayersByOverallRank])
+  ), [boardSettings, fantasySettings, visibleRankedPlayers])
   const {
     currentPage,
     totalPages,
@@ -111,7 +131,7 @@ const DraftDeskAdpRoundView = ({
     handleLoadFavorites,
     handleClearFavorites,
   } = useADPView({
-    playerRanks,
+    playerRanks: filteredPlayerRanks,
     fantasySettings,
     boardSettings,
     myPicks,
@@ -127,7 +147,7 @@ const DraftDeskAdpRoundView = ({
   })
   const visibleRounds = roundsToShow
   const {playersByADPRound, getRoundCount} = useADPRoundView({
-    playerRanks,
+    playerRanks: filteredPlayerRanks,
     fantasySettings,
     boardSettings,
     positionFilter,
@@ -152,6 +172,14 @@ const DraftDeskAdpRoundView = ({
             <option value="QB">QB only</option><option value="RB">RB only</option>
             <option value="WR">WR only</option><option value="TE">TE only</option>
           </select>
+          {onFilterRankedBelowAdpChange && <label className={styles.rankAdpFilter}>
+            <input
+              checked={filterRankedBelowAdp}
+              onChange={event => onFilterRankedBelowAdpChange(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Rank ≥1 rd below ADP</span>
+          </label>}
         </div>
         <div>
           <button aria-label="Previous ADP rounds" disabled={currentPage === 0} onClick={handlePrevPage} type="button">←</button>

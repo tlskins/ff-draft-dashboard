@@ -36,6 +36,23 @@ const props = (setDraftView = jest.fn()): any => ({
 })
 
 describe("Phase 14A unified rankings pane", () => {
+  const rankedPlayer = (id: string, overallRank: number, adp: number): any => ({
+    id, firstName: id, lastName: "Runner", fullName: `${id} Runner`,
+    position: FantasyPosition.RUNNING_BACK, team: NFLTeam.BUF,
+    ranks: {
+      [ThirdPartyRanker.HARRIS]: {
+        playerId: id, ranker: ThirdPartyRanker.HARRIS,
+        position: FantasyPosition.RUNNING_BACK,
+        pprOverallRank: overallRank, standardOverallRank: overallRank,
+        pprPositionRank: overallRank, standardPositionRank: overallRank,
+      },
+      ESPN: {
+        playerId: id, ranker: "ESPN", position: FantasyPosition.RUNNING_BACK,
+        adp, pprPositionRank: overallRank, standardPositionRank: overallRank,
+      },
+    },
+  })
+
   it("uses one visible rankings mode control and never mounts duplicate boards", () => {
     const setDraftView = jest.fn()
     render(<RankingsBoard {...props(setDraftView)} />)
@@ -76,6 +93,40 @@ describe("Phase 14A unified rankings pane", () => {
     view.rerender(<RankingsBoard {...base} compact draftView="Rankings By Position" />)
     view.rerender(<RankingsBoard {...base} compact draftView="Best By ADP Round" />)
     expect(screen.getByText("ADP rounds 2–4")).toBeTruthy()
+  })
+
+  it("shares the below-ADP filter while targets override position muting", () => {
+    const lower = rankedPlayer("Lower", 25, 1)
+    const target = rankedPlayer("Target", 26, 2)
+    const base = props()
+    const playerRanks = {
+      QB: [], RB: [lower, target], WR: [], TE: [], Purge: [],
+      availPlayersByOverallRank: [lower, target], availPlayersByAdp: [lower, target],
+    }
+    const view = render(<RankingsBoard
+      {...base}
+      compact
+      playerLib={{Lower: lower, Target: target}}
+      playerRanks={playerRanks}
+      playerTargets={[{playerId: "Target", targetAsEarlyAsRound: 1}]}
+    />)
+
+    fireEvent.click(screen.getByLabelText("Rank ≥1 rd below ADP"))
+    expect(screen.getByRole("group", {name: /Lower Runner/}).className).toContain("playerCardRankAdpMuted")
+    expect(screen.getByRole("group", {name: /Target Runner/}).className).not.toContain("playerCardRankAdpMuted")
+    expect(screen.getByRole("group", {name: /Target Runner/}).getAttribute("data-target-player")).toBe("true")
+
+    view.rerender(<RankingsBoard
+      {...base}
+      compact
+      draftView="Best By ADP Round"
+      playerLib={{Lower: lower, Target: target}}
+      playerRanks={playerRanks}
+      playerTargets={[{playerId: "Target", targetAsEarlyAsRound: 1}]}
+    />)
+    expect(screen.queryByText("Lower Runner")).toBeNull()
+    expect(screen.queryByText("Target Runner")).toBeNull()
+    expect(screen.getAllByText("0 players").length).toBeGreaterThan(0)
   })
 
   it("shows two positional lanes and switches between the approved pairs", () => {

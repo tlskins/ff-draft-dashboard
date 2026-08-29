@@ -427,9 +427,9 @@ const Phase14AVisualFixture = () => {
                 <DeskPaneHeader
                   actions={<DeskSegmentedControl
                     ariaLabel="Rankings mode"
-                    items={[{id: DraftView.RANKING, label: "Position"}, {id: DraftView.ADP_ROUND, label: "ADP round"}]}
+                    items={[{id: DraftView.RANKING, label: "Position"}, {id: DraftView.ADP_ROUND, label: "ADP round"}, {id: DraftView.TARGETS, label: "Targets"}]}
                     onSelect={setDraftView}
-                    selectedId={draftView === DraftView.ADP_ROUND ? DraftView.ADP_ROUND : DraftView.RANKING}
+                    selectedId={[DraftView.ADP_ROUND, DraftView.TARGETS].includes(draftView) ? draftView : DraftView.RANKING}
                   />}
                   kicker="Board"
                   title="Rankings"

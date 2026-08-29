@@ -13,6 +13,7 @@ export const RANKING_PROFILE_V2_STORAGE_KEY = "ff-draft-ranking-profile-v2"
 export const RANKING_PROFILE_V2_BACKUP_KEY = "ff-draft-ranking-profile-v2-backup"
 export const RANKING_PROFILE_V2_AUTHORITY_KEY = "ff-draft-ranking-profile-v2-authority"
 export const RANKING_PROFILE_V2_COMMIT_KEY = "ff-draft-ranking-profile-v2-commit"
+export const REJECTED_LEGACY_RANKING_PROFILE_STORAGE_KEY = "ff-draft-custom-rankings-rejected-v1"
 
 export type LegacyRankingProfileFormat = "portable_v1" | "full_rankings_v1"
 
@@ -936,6 +937,28 @@ export const runRankingProfileStartupMigration = (
     destination_key: RANKING_PROFILE_V2_STORAGE_KEY,
     backup_key: RANKING_PROFILE_V2_BACKUP_KEY,
   })
+  if (migration.status === "rejected" && migration.evidence.code === "invalid_legacy_v1") {
+    try {
+      const rejectedLegacy = storage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)
+      const archivedLegacy = storage.getItem(REJECTED_LEGACY_RANKING_PROFILE_STORAGE_KEY)
+      if (rejectedLegacy !== null && (archivedLegacy === null || archivedLegacy === rejectedLegacy)) {
+        if (archivedLegacy === null) {
+          writeExact(storage, REJECTED_LEGACY_RANKING_PROFILE_STORAGE_KEY, rejectedLegacy)
+        }
+        writeExact(storage, LEGACY_RANKING_PROFILE_STORAGE_KEY, null)
+        return {
+          status: "unavailable",
+          evidence: evidence(
+            "source_missing",
+            null,
+            "Incompatible legacy rankings were archived; published rankings remain active",
+          ),
+        }
+      }
+    } catch {
+      // Preserve the rejection when archival cannot be verified exactly.
+    }
+  }
   if (migration.status !== "migrated" && migration.status !== "already_current") return migration
   const authorityCommit = commitCanonicalRankingProfile(storage, migration.profile, [], true)
   if (authorityCommit.status === "rejected") {

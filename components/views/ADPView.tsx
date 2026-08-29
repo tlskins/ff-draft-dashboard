@@ -40,6 +40,8 @@ interface ADPViewProps {
   onAdpRoundPageChange?: (page: number) => void
   pinnedPlayerId?: string | null
   onPinPlayer?: (playerId: string) => void
+  filterRankedBelowAdp?: boolean
+  onFilterRankedBelowAdpChange?: (enabled: boolean) => void
 }
 
 const ADPView: React.FC<ADPViewProps> = ({
@@ -63,6 +65,8 @@ const ADPView: React.FC<ADPViewProps> = ({
   onAdpRoundPageChange,
   pinnedPlayerId,
   onPinPlayer,
+  filterRankedBelowAdp = false,
+  onFilterRankedBelowAdpChange,
 }) => {
   const [currentView, setCurrentView] = useState<ViewType>('playersByADPRound')
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All')
@@ -235,6 +239,8 @@ const ADPView: React.FC<ADPViewProps> = ({
             setViewPlayerId={setViewPlayerId}
             viewPlayerId={viewPlayerId}
             pinnedPlayerId={pinnedPlayerId}
+            filterRankedBelowAdp={filterRankedBelowAdp}
+            onFilterRankedBelowAdpChange={onFilterRankedBelowAdpChange}
           />
         ) : currentView === 'playersByADPRound' ? (
           <PlayersByADPRoundView

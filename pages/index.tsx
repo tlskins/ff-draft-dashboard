@@ -123,6 +123,7 @@ import type {RankingLanePosition} from "@/types/DraftBoardTypes"
 export enum DraftView {
   RANKING = "Rankings By Position",
   ADP_ROUND = "Best By ADP Round",
+  TARGETS = "Targets",
   BEST_AVAILABLE = "Best Available By Round",
   CUSTOM_RANKING = "Edit Rankings",
 }
@@ -786,7 +787,7 @@ const Home: FC = () => {
             : "Canonical profile v2 is current.",
         )
       } else if (migration.status === "unavailable") {
-        setStartupMigrationStatus("Local profile migration is unavailable; browser rankings remain usable.")
+        setStartupMigrationStatus(null)
       } else {
         migrationRejected = true
         setStartupMigrationStatus(
@@ -1102,10 +1103,11 @@ const Home: FC = () => {
                               items={[
                                 {id: DraftView.RANKING, label: "Position"},
                                 {id: DraftView.ADP_ROUND, label: "ADP round"},
+                                {id: DraftView.TARGETS, label: "Targets"},
                               ]}
                               onSelect={setDraftView}
-                              selectedId={draftView === DraftView.ADP_ROUND
-                                ? DraftView.ADP_ROUND
+                              selectedId={[DraftView.ADP_ROUND, DraftView.TARGETS].includes(draftView)
+                                ? draftView
                                 : DraftView.RANKING}
                             />
                           )}

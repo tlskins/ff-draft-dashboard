@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react"
 
 import {
   getPlayerMetrics,
+  getRankRoundsAheadOfAdp,
   myCurrentRound,
 } from "../../behavior/draft"
 import { getIconTypes, getDraftBoard } from "../../behavior/DraftBoardUtils"
@@ -61,6 +62,8 @@ const RankingView = ({
   onPinPlayer,
   visiblePositions,
   onVisiblePositionsChange,
+  filterRankedBelowAdp,
+  onFilterRankedBelowAdpChange,
 }: RankingViewProps) => {
   const [pair, setPair] = useState<PositionPair>("RB_WR")
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
@@ -111,6 +114,16 @@ const RankingView = ({
     const focused = viewPlayerId === player.id
     const animating = animatingOutPlayers.has(player.id)
     const predictionWindow = predictedPicks[player.id]
+    const target = favorite(player.id)
+    const roundsAheadOfAdp = getRankRoundsAheadOfAdp(
+      metrics.overallRank,
+      metrics.adp,
+      fantasySettings.numTeams,
+    )
+    const mutedByRankAdpFilter = filterRankedBelowAdp
+      && roundsAheadOfAdp !== null
+      && roundsAheadOfAdp <= -1
+      && !target
     return (
       <DraftDeskPlayerCard
         actions={focused && !animating ? <>
@@ -118,7 +131,7 @@ const RankingView = ({
           <button aria-label={`Draft ${player.fullName}`} className={`${styles.focusRing} rounded border border-emerald-300 px-1 text-emerald-700 hover:bg-emerald-50`} onClick={() => selectPlayer(player)} type="button"><AnyAiFillCheckCircle size={16} /></button>
           <button aria-label={`Open ${player.fullName} game log`} className={`${styles.focusRing} rounded border border-sky-300 px-1 text-sky-700 hover:bg-sky-50`} onClick={() => window.open(`https://www.fantasypros.com/nfl/games/${player.firstName.toLowerCase()}-${player.lastName.toLowerCase()}.php`)} type="button"><AnyBsLink size={16} /></button>
         </> : undefined}
-        className={animating ? "opacity-40" : ""}
+        className={`${animating ? "opacity-40" : ""} ${mutedByRankAdpFilter ? styles.playerCardRankAdpMuted : ""}`}
         compact={compact}
         fantasySettings={fantasySettings}
         focused={focused}
@@ -131,7 +144,7 @@ const RankingView = ({
         currentPick={currPick}
         leadingRank={metrics.posRank || index + 1}
         rankContext={ranking}
-        target={favorite(player.id)}
+        target={target}
         urgency={predictionAvailabilityWindowLabel(predictionWindow) || undefined}
         urgencyCue={predictionAvailabilityCompactCue(predictionWindow) || undefined}
       />
@@ -182,6 +195,14 @@ const RankingView = ({
           <select aria-label="Ranking highlight" className={compact ? styles.deskSelect : "rounded border border-slate-300 bg-white px-1 py-0.5 text-[11px]"} onChange={event => setHighlightOption(event.target.value as typeof highlightOption)} value={highlightOption}>
             {Object.values(HighlightOption).map(option => <option key={option} value={option}>{option}</option>)}
           </select>
+          <label className={styles.rankAdpFilter}>
+            <input
+              checked={filterRankedBelowAdp}
+              onChange={event => onFilterRankedBelowAdpChange(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Rank ≥1 rd below ADP</span>
+          </label>
           <button aria-label="Search players" className={compact ? styles.deskUtilityButton : `${styles.focusRing} rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-semibold hover:bg-slate-50`} onClick={() => setIsSearchModalOpen(true)} type="button">Search</button>
           {compact && onEditRankings && <button className={styles.deskUtilityButton} onClick={onEditRankings} type="button">Edit</button>}
         </div>

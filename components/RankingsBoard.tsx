@@ -24,6 +24,7 @@ import type {
 import DraftSourceHealthBadge from './DraftSourceHealthBadge'
 import styles from "./DraftDesk.module.css"
 import DeskSegmentedControl from "./draft-desk/DeskSegmentedControl"
+import DraftDeskTargetsRoundView from "./draft-desk/DraftDeskTargetsRoundView"
 import {
   DraftCaptureStatus,
   DraftPersistenceStatus,
@@ -156,6 +157,7 @@ const RankingsBoard = ({
   const [showRostersModal, setShowRostersModal] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [adpRoundPage, setAdpRoundPage] = useState(0)
+  const [filterRankedBelowAdp, setFilterRankedBelowAdp] = useState(false)
 
   // Mobile state for EditRankingsView
   const [selectedPosition, setSelectedPosition] = useState<keyof PlayerRanks>(FantasyPosition.QUARTERBACK)
@@ -185,6 +187,7 @@ const RankingsBoard = ({
 
   const showPredAvailByRound = draftView === DraftView.BEST_AVAILABLE
   const showAdpRound = draftView === DraftView.ADP_ROUND
+  const showTargets = draftView === DraftView.TARGETS
   const draftBoardView = showPredAvailByRound ? draftBoard.predictAvailByRoundView : draftBoard.standardView
 
   const purgeColumn = draftBoardView.find((column: any) => column.columnTitle === 'Purge')
@@ -271,6 +274,26 @@ const RankingsBoard = ({
           setViewPlayerId={setViewPlayerId}
           viewPlayerId={viewPlayerId}
           pinnedPlayerId={pinnedPlayerId}
+          filterRankedBelowAdp={filterRankedBelowAdp}
+          onFilterRankedBelowAdpChange={setFilterRankedBelowAdp}
+        />
+      )
+    }
+
+    if (showTargets) {
+      return (
+        <DraftDeskTargetsRoundView
+          boardSettings={boardSettings}
+          currPick={currPick}
+          fantasySettings={fantasySettings}
+          onPinPlayer={onPinPlayer}
+          pinnedPlayerId={pinnedPlayerId}
+          playerLib={playerLib}
+          playerRanks={playerRanks}
+          playerTargets={playerTargets}
+          removePlayerTarget={removePlayerTarget}
+          setViewPlayerId={setViewPlayerId}
+          viewPlayerId={viewPlayerId}
         />
       )
     }
@@ -282,12 +305,14 @@ const RankingsBoard = ({
     return (
       <RankingView
         {...sharedProps}
+        filterRankedBelowAdp={filterRankedBelowAdp}
         sortOption={sortOption}
         setSortOption={setSortOption}
         highlightOption={highlightOption}
         setHighlightOption={setHighlightOption}
         rankings={rankings}
         onEditRankings={() => setDraftView(DraftView.CUSTOM_RANKING)}
+        onFilterRankedBelowAdpChange={setFilterRankedBelowAdp}
       />
     )
   }
@@ -325,10 +350,11 @@ const RankingsBoard = ({
                   items={[
                     {id: DraftView.RANKING, label: "Position"},
                     {id: DraftView.ADP_ROUND, label: "ADP round"},
+                    {id: DraftView.TARGETS, label: "Targets"},
                   ]}
                   onSelect={setDraftView}
-                  selectedId={draftView === DraftView.ADP_ROUND
-                    ? DraftView.ADP_ROUND
+                  selectedId={[DraftView.ADP_ROUND, DraftView.TARGETS].includes(draftView)
+                    ? draftView
                     : DraftView.RANKING}
                 />
               </div>

@@ -73,6 +73,8 @@ export interface RankingViewProps extends SharedViewProps {
   setHighlightOption: (option: HighlightOption) => void
   rankings: Rankings
   onEditRankings?: () => void
+  filterRankedBelowAdp: boolean
+  onFilterRankedBelowAdpChange: (enabled: boolean) => void
 }
 
 // Props specific to edit rankings view
