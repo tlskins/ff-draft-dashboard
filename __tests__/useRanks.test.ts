@@ -6,6 +6,9 @@ import {
   FantasySettings,
   NFLTeam,
   Player,
+  Rankings,
+  ThirdPartyADPRanker,
+  ThirdPartyRanker,
 } from "../types"
 
 const settings: FantasySettings = {
@@ -111,5 +114,78 @@ describe("useRanks live-draft fallbacks", () => {
     await waitFor(() => expect(JSON.parse(
       localStorage.getItem(PLAYER_TARGETS_STORAGE_KEY) || "[]",
     )).toEqual([{playerId: "recovery-player", targetAsEarlyAsRound: 3}]))
+  })
+
+  it("resumes an existing custom board without recopying its provider order", async () => {
+    const rankedPlayer = (id: string, name: string, positionRank: number): Player => ({
+      id,
+      firstName: name,
+      lastName: "Runner",
+      fullName: `${name} Runner`,
+      team: NFLTeam.BUF,
+      position: FantasyPosition.RUNNING_BACK,
+      ranks: {
+        [ThirdPartyRanker.HARRIS]: {
+          playerId: id,
+          ranker: ThirdPartyRanker.HARRIS,
+          position: FantasyPosition.RUNNING_BACK,
+          pprOverallRank: positionRank,
+          pprPositionRank: positionRank,
+        },
+        [ThirdPartyRanker.CUSTOM]: {
+          playerId: id,
+          copiedRanker: ThirdPartyRanker.HARRIS,
+          ranker: ThirdPartyRanker.CUSTOM,
+          position: FantasyPosition.RUNNING_BACK,
+          pprOverallRank: positionRank,
+          pprPositionRank: positionRank,
+        },
+        [ThirdPartyADPRanker.ESPN]: {
+          playerId: id,
+          ranker: ThirdPartyADPRanker.ESPN,
+          position: FantasyPosition.RUNNING_BACK,
+          adp: positionRank,
+        },
+      },
+    })
+    const alpha = rankedPlayer("alpha", "Alpha", 1)
+    const beta = rankedPlayer("beta", "Beta", 2)
+    const customRankings: Rankings = {
+      players: [alpha, beta],
+      rankingsSummaries: [],
+      cachedAt: "2026-08-29T00:00:00Z",
+      editedAt: "2026-08-29T00:00:00Z",
+      copiedRanker: ThirdPartyRanker.HARRIS,
+      settings,
+    }
+    const {result} = renderHook(() => useRanks({settings, myPickNum: 2}))
+
+    act(() => result.current.applyImportedRankings(
+      customRankings,
+      settings,
+      {ranker: ThirdPartyRanker.CUSTOM, adpRanker: ThirdPartyADPRanker.ESPN},
+    ))
+    await waitFor(() => expect(result.current.playerRanks.RB.map(player => player.id))
+      .toEqual(["alpha", "beta"]))
+
+    act(() => {
+      expect(result.current.onStartCustomRanking(ThirdPartyRanker.CUSTOM)).toBe(true)
+    })
+    act(() => result.current.onReorderPlayerInPosition(
+      "alpha",
+      FantasyPosition.RUNNING_BACK,
+      1,
+    ))
+    expect(result.current.playerRanks.RB.map(player => player.id))
+      .toEqual(["beta", "alpha"])
+
+    act(() => result.current.onFinishCustomRanking())
+    act(() => {
+      expect(result.current.onStartCustomRanking(ThirdPartyRanker.CUSTOM)).toBe(true)
+    })
+
+    expect(result.current.isEditingCustomRanking).toBe(true)
+    expect(result.current.playerRanks.RB.map(player => player.id))
+      .toEqual(["beta", "alpha"])
   })
 })
