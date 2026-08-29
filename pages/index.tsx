@@ -20,8 +20,7 @@ import RankingSummaryDisplay from "../components/RankingSummary"
 import ADPView from "../components/views/ADPView"
 import OptimalRosterDisplay from "../components/OptimalRosterDisplay"
 import PickHistoryFooter from "../components/PickHistoryFooter"
-import MobileFooter, { MobileView } from "../components/MobileFooter"
-import MobileTiersView from "../components/MobileTiersView"
+import MobileRankingsEditor from "../components/mobile/MobileRankingsEditor"
 import AnalysisWorkspace from "../components/analysis/AnalysisWorkspace"
 import LiveAdvisorPanel, {type LiveAdvisorPanelProps} from "../components/LiveAdvisorPanel"
 import PortableDataControls from "../components/PortableDataControls"
@@ -443,7 +442,6 @@ const Home: FC = () => {
     setViewPlayerId(playerId)
   }, [])
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
-  const [mobileView, setMobileView] = useState<MobileView>(MobileView.OVERVIEW)
   const [analysisOpen, setAnalysisOpen] = useState(false)
   const draftDeskEnabled = isDraftDeskEnabled()
   const phase14CInsightDeckEnabled = isPhase14CInsightDeckEnabled()
@@ -559,8 +557,6 @@ const Home: FC = () => {
       && window.matchMedia?.("(min-width: 768px)").matches
     ) {
       setAnalysisOpen(true)
-    } else {
-      setMobileView(MobileView.ANALYSIS)
     }
   }, [analysisEventStreamId, currPick, draftDeskEnabled])
   const realtimeAdvisor = useRealtimeAdvisor({
@@ -1024,6 +1020,15 @@ const Home: FC = () => {
     setDraftView(DraftView.RANKING)
   }
 
+  const handleBeginMobileRankings = useCallback(() => (
+    onStartCustomRanking(boardSettings.ranker)
+  ), [boardSettings.ranker, onStartCustomRanking])
+
+  const handleSaveMobileRankings = useCallback(() => {
+    rankingProfileControls.saveLocal()
+    onFinishCustomRanking()
+  }, [onFinishCustomRanking, rankingProfileControls])
+
   const liveAdvisorPanelProps: LiveAdvisorPanelProps = {
     draftStarted,
     onSelectPlayer,
@@ -1062,13 +1067,6 @@ const Home: FC = () => {
   return (
     <div className={`flex flex-col items-center justify-center min-h-screen relative ${draftDeskEnabled ? draftDeskStyles.deskViewport : ""}`}>
       <PageHead />
-      <div className="fixed right-2 top-2 z-50 xl:hidden">
-        <CloudProfileControl
-          auth={draftyAuth}
-          compact
-          sync={cloudProfileSync}
-        />
-      </div>
       <main className={`flex flex-col items-center justify-center w-full flex-1 text-center bg-gray-50 ${draftDeskEnabled ? draftDeskStyles.deskMain : "md:px-20"}`}>
         {draftDeskEnabled && (
           <div className="hidden w-full xl:block">
@@ -1150,17 +1148,19 @@ const Home: FC = () => {
             </button>
           </div>}
           {!draftDeskEnabled && !noPlayers && (
-            <PortableDataControls
-              createPackage={createPortableData}
-              importDisabledReason={draftStarted || draftHistory.some(Boolean)
-                ? "Finish or start a new draft before importing data; live picks stay untouched."
-                : null}
-              onApply={applyPortableData}
-              validationContext={portableValidationContext}
-            />
+            <div className="hidden w-full xl:block">
+              <PortableDataControls
+                createPackage={createPortableData}
+                importDisabledReason={draftStarted || draftHistory.some(Boolean)
+                  ? "Finish or start a new draft before importing data; live picks stay untouched."
+                  : null}
+                onApply={applyPortableData}
+                validationContext={portableValidationContext}
+              />
+            </div>
           )}
           {startupMigrationStatus && (
-            <p className="mb-2 px-3 text-left text-xs text-slate-600" role="status">
+            <p className="mb-2 hidden px-3 text-left text-xs text-slate-600 xl:block" role="status">
               {startupMigrationStatus}
             </p>
           )}
@@ -1332,8 +1332,8 @@ const Home: FC = () => {
               </div>
             </div>
           )}
-          {!analysisOpen && (
-            <div className={`w-full px-2 ${draftDeskEnabled ? "xl:hidden" : "md:px-5"}`}>
+          {!draftDeskEnabled && !analysisOpen && (
+            <div className="hidden w-full px-5 xl:block">
               <LiveAdvisorPanel {...liveAdvisorPanelProps} />
             </div>
           )}
@@ -1492,133 +1492,29 @@ const Home: FC = () => {
           </div>
           )}
 
-          {/* Mobile Layout */}
-          <div className={`${draftDeskEnabled ? "xl:hidden" : "md:hidden"} w-full h-full px-2`}>
-            {mobileView === MobileView.OVERVIEW && (
-              <div className="w-full h-full">
-                <MobileTiersView
-                  settings={settings}
-                  boardSettings={boardSettings}
-                  draftStarted={draftStarted}
-                  myPickNum={myPickNum}
-                  setNumTeams={setNumTeams}
-                  setIsPpr={setIsPpr}
-                  setScoringFormat={setScoringFormat}
-                  setMyPickNum={setMyPickNum}
-                  onSetRanker={onSetRanker}
-                  rankingSources={rankingSourceOptions}
-                  onSetAdpRanker={onSetAdpRanker}
-                  rankingSummaries={rankingSummaries}
-                  ranker={boardSettings.ranker}
-                  currentOptimalRoster={currentOptimalRoster}
-                  optimalRosters={optimalRosters}
-                  selectedOptimalRosterIdx={selectedOptimalRosterIdx}
-                  setSelectedOptimalRosterIdx={setSelectedOptimalRosterIdx}
+          <div className="h-full w-full xl:hidden">
+            <MobileRankingsEditor
+              addPlayerTarget={addPlayerTarget}
+              boardSettings={boardSettings}
+              canEditRankings={canEditCustomRankings()}
+              isEditingRankings={isEditingCustomRanking}
+              onBeginRankEdits={handleBeginMobileRankings}
+              onReorderPlayer={onReorderPlayerInPosition}
+              onSaveRankEdits={handleSaveMobileRankings}
+              playerLib={playerLib}
+              playerRanks={playerRanks}
+              playerTargets={playerTargets}
+              profileControl={(
+                <CloudProfileControl
+                  auth={draftyAuth}
+                  compact
+                  sync={cloudProfileSync}
                 />
-              </div>
-            )}
-
-            {mobileView === MobileView.RANKINGS && (
-              <RankingsBoard
-                playerRanks={playerRanks}
-                predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
-                draftView={draftView}
-                setDraftView={setDraftView}
-                sortOption={sortOption}
-                setSortOption={setSortOption}
-                highlightOption={highlightOption}
-                setHighlightOption={setHighlightOption}
-                myPickNum={myPickNum}
-                noPlayers={noPlayers}
-                currPick={currPick}
-                predNextTiers={isEditingCustomRanking || usingCustomRanking ? {} : predNextTiers}
-                fantasySettings={settings}
-                boardSettings={boardSettings}
-                rankingSummaries={rankingSummaries}
-                onSelectPlayer={onSelectPlayer}
-                onPurgePlayer={onPurgeAvailPlayer}
-                setViewPlayerId={setViewPlayerId}
-                isEditingCustomRanking={isEditingCustomRanking}
-                hasCustomRanking={usingCustomRanking}
-                canEditCustomRankings={canEditCustomRankings()}
-                onReorderPlayer={onReorderPlayerInPosition}
-                onStartCustomRanking={handleStartCustomRanking}
-                onFinishCustomRanking={handleFinishCustomRanking}
-                onUpdateTierBoundary={onUpdateTierBoundary}
-                onCancelCustomRanking={() => {
-                  setDraftView(DraftView.RANKING)
-                }}
-                rosters={rosters}
-                playerLib={playerLib}
-                draftStarted={draftStarted}
-                getDraftRoundForPickNum={getDraftRoundForPickNum}
-                viewPlayerId={viewPlayerId}
-                draftHistory={draftHistory}
-                viewRosterIdx={myPickNum-1}
-                activeDraftListenerTitle={activeDraftListenerTitle}
-                draftCaptureState={draftCaptureState}
-                draftSourceHealth={draftSourceHealth}
-                draftSourceHealthFreshness={draftSourceHealthFreshness}
-                draftPersistence={draftPersistence}
-                onRetryDraftPersistence={retryDraftPersistence}
-                loadCurrentRankings={loadCurrentRankings}
-                rankings={rankings}
-                latestRankings={latestRankings}
-                rankingProfileControls={rankingProfileControls}
-                removePlayerTargets={removePlayerTargets}
-                replacePlayerTargets={replacePlayerTargets}
-                myPicks={myPicks}
-                playerTargets={playerTargets}
-                customAndLatestRankingsDiffs={customAndLatestRankingsDiffs}
-                onSyncPendingRankings={onSyncPendingRankings}
-                onRevertPlayerToPreSync={onRevertPlayerToPreSync}
-                addPlayerTarget={addPlayerTarget}
-                removePlayerTarget={removePlayerTarget}
-              />
-            )}
-
-            {mobileView === MobileView.ADP && (
-              <ADPView
-                playerRanks={playerRanks}
-                fantasySettings={settings}
-                boardSettings={boardSettings}
-                onSelectPlayer={onSelectPlayer}
-                setViewPlayerId={setViewPlayerId}
-                viewPlayerId={viewPlayerId}
-                myPicks={myPicks}
-                currPick={currPick}
-                playerTargets={playerTargets}
-                playerLib={playerLib}
-                addPlayerTarget={addPlayerTarget}
-                replacePlayerTargets={replacePlayerTargets}
-                removePlayerTarget={removePlayerTarget}
-                removePlayerTargets={removePlayerTargets}
-                rankingSummaries={rankingSummaries}
-                myPickNum={myPickNum}
-              />
-            )}
-
-            {mobileView === MobileView.ANALYSIS && (
-              <div className="w-full pb-16">
-              <AnalysisWorkspace
-                  activePlayer={viewPlayerId ? playerLib[viewPlayerId] : null}
-                  availablePlayers={analysisAvailablePlayers}
-                  boardSettings={boardSettings}
-                  comparisonController={comparisonController}
-                  players={Object.values(playerLib)}
-                  rankingSummaries={rankingSummaries}
-                  recommendations={recommendations}
-                  opponentForecast={opponentForecast}
-                  settings={settings}
-                  playerStatus={playerStatus}
-                  analysisViewEvent={analysisViewEvents.mobile}
-                  onAnalysisViewEventHandled={
-                    acknowledgeAnalysisViewNavigation
-                  }
-                />
-              </div>
-            )}
-
+              )}
+              removePlayerTarget={removePlayerTarget}
+              replacePlayerTargets={replacePlayerTargets}
+              settings={settings}
+            />
           </div>
         </div>
       </main>
@@ -1665,13 +1561,6 @@ const Home: FC = () => {
           setViewPlayerId={setViewPlayerId}
         />
       }
-
-      {/* Mobile Footer Navigation */}
-      <MobileFooter 
-        candidateDesktop={draftDeskEnabled}
-        currentView={mobileView}
-        onViewChange={setMobileView}
-      />
     </div>
   )
 }

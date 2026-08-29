@@ -411,6 +411,19 @@ export const useRankingProfiles = ({
     updateProfileState,
   ])
 
+  const saveLocal = useCallback(() => {
+    const snapshot = createRankingProfileV2Snapshot(
+      playerRanks,
+      settings,
+      activeProfile?.snapshot.schema_version === 2
+        ? activeProfile.snapshot as unknown as RankingProfileV2
+        : localProfile,
+    )
+    const committed = persistLocalProfile(snapshot)
+    setError(null)
+    return committed
+  }, [activeProfile, localProfile, persistLocalProfile, playerRanks, settings])
+
   const select = useCallback((profileId: string) => {
     const profile = profiles.find(candidate => candidate.id === profileId)
     if (!profile) return
@@ -489,6 +502,7 @@ export const useRankingProfiles = ({
     serverPersistenceEnabled,
     refresh,
     save,
+    saveLocal,
     select,
     startNew,
     clearLocal,
@@ -504,6 +518,7 @@ export const useRankingProfiles = ({
     profiles,
     refresh,
     save,
+    saveLocal,
     select,
     startNew,
     clearLocal,

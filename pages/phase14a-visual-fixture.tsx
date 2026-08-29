@@ -489,6 +489,7 @@ const Phase14AVisualFixture = () => {
                       error: null, apiConfigured: false, serverPersistenceEnabled: false,
                       refresh: async () => undefined,
                       save: async () => { throw new Error("Fixture profile save is disabled") },
+                      saveLocal: () => { throw new Error("Fixture local save is disabled") },
                       select: () => undefined, startNew: () => undefined,
                       clearLocal: () => undefined, undo: async () => undefined, redo: async () => undefined,
                     }}

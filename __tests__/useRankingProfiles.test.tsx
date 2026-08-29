@@ -203,6 +203,20 @@ describe("useRankingProfiles canonical browser commits", () => {
       .toMatchObject({status: "already_current"})
   })
 
+  it("exposes a non-throwing local commit for compact editors", () => {
+    const callbacks = options()
+    const {result} = renderHook(() => useRankingProfiles(callbacks))
+
+    let committed: unknown
+    act(() => { committed = result.current.saveLocal() })
+
+    expect(committed).toMatchObject({schema_version: 2})
+    expect(runRankingProfileStartupMigration(localStorage, [], "ppr"))
+      .toMatchObject({status: "already_current"})
+    expect(callbacks.onLocalProfileCommitted).toHaveBeenCalledWith(committed)
+    expect(result.current.error).toBeNull()
+  })
+
   it("clears to canonical-empty across restart while retaining migration evidence", () => {
     process.env.NEXT_PUBLIC_API_HOST = ""
     const legacy = JSON.stringify({

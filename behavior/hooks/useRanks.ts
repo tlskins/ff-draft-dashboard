@@ -425,6 +425,19 @@ export const useRanks = ({
       return false
     }
 
+    // Resume an existing custom board in place. Re-copying its source ranker
+    // here would silently discard the user's previously saved ordering.
+    if (
+      selectedRankerToCopy === ThirdPartyRanker.CUSTOM
+      && rankings.copiedRanker
+      && playerRanks.availPlayersByOverallRank.some(player => (
+        Boolean(player.ranks?.[ThirdPartyRanker.CUSTOM])
+      ))
+    ) {
+      setIsEditingCustomRanking(true)
+      return true
+    }
+
     // If editing custom ranks selected ranker should be the original copied ranker
     if ( selectedRankerToCopy === ThirdPartyRanker.CUSTOM && rankings.copiedRanker ) {
       selectedRankerToCopy = rankings.copiedRanker
