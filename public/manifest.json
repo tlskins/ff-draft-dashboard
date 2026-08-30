@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
 
-  "name": "FF Draft Pulse (Local Dev)",
-  "description": "Local development build for the Drafty fantasy football dashboard",
-  "version": "0.0.0.9",
+  "name": "Drafty Draft Sync",
+  "description": "Sync live ESPN and NFL.com fantasy-football draft picks into the Drafty dashboard.",
+  "version": "0.0.0.10",
   "icons": {
     "16": "pulse-icon-16.png",
     "32": "pulse-icon-32.png",
@@ -16,13 +16,30 @@
   "content_scripts": [
       {
           "matches": [
-            "https://ff-draft-dashboard.vercel.app/*",
-            "https://fantasy.espn.com/football/draft*",
-            "https://fantasy.nfl.com/draftclient*",
-            "http://localhost:3000/*"
+            "https://fantasy.espn.com/football/draft*"
           ],
           "js": [
+            "extensionSites.js",
             "espnDraftExtractor.js",
+            "contentScript.js"
+          ]
+      },
+      {
+          "matches": [
+            "https://fantasy.nfl.com/draftclient*"
+          ],
+          "js": [
+            "extensionSites.js",
+            "contentScript.js"
+          ]
+      },
+      {
+          "matches": [
+            "https://drafty.friedchickentechnologies.com/*",
+            "https://ff-draft-dashboard.vercel.app/*"
+          ],
+          "js": [
+            "extensionSites.js",
             "contentScript.js"
           ]
       }

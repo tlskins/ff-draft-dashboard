@@ -5,12 +5,12 @@ const { spawnSync } = require("node:child_process")
 
 const { buildExtensionPackage } = require("../scripts/extension-package-lib.cjs")
 
-const assets = ["16.png", "32.png", "128.png", "icon.png", "popup.html", "background.js", "espnDraftExtractor.js", "contentScript.js"]
+const assets = ["16.png", "32.png", "128.png", "icon.png", "popup.html", "background.js", "extensionSites.js", "espnDraftExtractor.js", "contentScript.js"]
 const fixture = () => {
   const root = mkdtempSync(join(tmpdir(), "drafty package with spaces "))
   const publicRoot = join(root, "public")
   mkdirSync(publicRoot)
-  const manifest = { manifest_version: 3, version: "1.2.3.4", icons: { "16": "16.png", "32": "32.png", "128": "128.png" }, action: { default_icon: "icon.png", default_popup: "popup.html" }, background: { service_worker: "background.js" }, content_scripts: [{ matches: ["https://ff-draft-dashboard.vercel.app/*", "http://localhost:3000/*", "https://fantasy.espn.com/football/draft*"], js: ["espnDraftExtractor.js", "contentScript.js"] }] }
+  const manifest = { manifest_version: 3, version: "1.2.3.4", icons: { "16": "16.png", "32": "32.png", "128": "128.png" }, action: { default_icon: "icon.png", default_popup: "popup.html" }, background: { service_worker: "background.js" }, content_scripts: [{ matches: ["https://drafty.friedchickentechnologies.com/*", "https://ff-draft-dashboard.vercel.app/*", "https://fantasy.espn.com/football/draft*", "https://fantasy.nfl.com/draftclient*"], js: ["extensionSites.js", "espnDraftExtractor.js", "contentScript.js"] }] }
   writeFileSync(join(publicRoot, "manifest.json"), JSON.stringify(manifest, null, 2))
   for (const asset of assets) writeFileSync(join(publicRoot, asset), `source:${asset}`)
   return root

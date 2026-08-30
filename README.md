@@ -105,22 +105,35 @@ seasons imported with `scripts/import_nflverse_weekly.py`.
 
 ## Chrome extension
 
+For local dashboard development, first generate the ignored development bundle:
+
+```bash
+npm run extension:dev
+```
+
 1. Open `chrome://extensions`.
 2. Enable Developer mode.
-3. Choose **Load unpacked** and select this repository's `public` directory.
-4. Reload the unpacked extension after changing
+3. Choose **Load unpacked** and select this repository's `.extension-dev`
+   directory.
+4. Regenerate and reload the unpacked extension after changing
    `public/espnDraftExtractor.js`, `public/contentScript.js`,
-   `public/background.js`, or `public/manifest.json`.
+   `public/background.js`, `public/extensionSites.js`, or
+   `public/manifest.json`.
 
 The extension sends versioned, full draft snapshots and keys ESPN sessions by
 league ID so repeated mocks with the same title cannot merge. The dashboard
 also accepts the legacy incremental message shape so an installed older
-extension does not have to be upgraded in lockstep. Local extension version
-`0.0.0.9` packages the current half-PPR draft-setting capture together with
+extension does not have to be upgraded in lockstep. Production extension
+candidate `0.0.0.10` uses the Drafty Draft Sync identity, supports both Drafty
+production origins, and excludes localhost from the store artifact. It packages
+the current half-PPR draft-setting capture together with
 the scheduled-board completion checks in the versioned ESPN selector-health
 reports. The dashboard remains
 quiet while capture is healthy and visibly warns when the ESPN draft layout is
 unavailable or only partially readable.
+
+Chrome Web Store listing, privacy, and human acceptance guidance is recorded in
+[docs/chrome-web-store-readiness.md](docs/chrome-web-store-readiness.md).
 
 ## Verification
 

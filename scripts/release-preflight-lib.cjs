@@ -6,17 +6,19 @@ const { isChromeExtensionVersion } = require("./chrome-version.cjs")
 
 const REPORT_VERSION = 1
 const expectedMatches = [
+  "https://drafty.friedchickentechnologies.com/*",
   "https://ff-draft-dashboard.vercel.app/*",
-  "http://localhost:3000/*",
   "https://fantasy.espn.com/football/draft*",
-]
-const approvedMatches = new Set([
-  ...expectedMatches,
   "https://fantasy.nfl.com/draftclient*",
-])
+]
+const approvedMatches = new Set(expectedMatches)
+const espnMatch = "https://fantasy.espn.com/football/draft*"
+const contentOnlyMatches = expectedMatches.filter(match => match !== espnMatch)
 const focusedTests = [
   "__tests__/espnDraftExtractor.test.js",
   "__tests__/espnMockAcceptance.test.ts",
+  "__tests__/extensionSites.test.js",
+  "__tests__/chromeWebStoreReadiness.test.js",
   "__tests__/rankingProfileStorage.test.ts",
   "__tests__/rankingProfileUiAuthority.test.tsx",
   "__tests__/useRankingProfiles.test.tsx",
@@ -114,20 +116,37 @@ const validateManifest = root => {
   }
   if (manifest.manifest_version !== 3) errors.push("manifest_version must be 3")
   if (!isChromeExtensionVersion(manifest.version)) errors.push("version is not valid Chrome extension syntax")
+  if (!manifest.name || /local dev/i.test(manifest.name)) errors.push("production manifest name must not use local-development branding")
+  if (!manifest.description || manifest.description.length > 132) errors.push("manifest description must be present and no more than 132 characters")
   if (!manifest.background?.service_worker) errors.push("background.service_worker is required")
   if (!manifest.action?.default_popup) errors.push("action.default_popup is required")
   if (!["16", "32", "128"].every(size => manifest.icons?.[size])) errors.push("icons 16, 32, and 128 are required")
   const matches = new Set((manifest.content_scripts || []).flatMap(content => content.matches || []))
   for (const match of expectedMatches) if (!matches.has(match)) errors.push(`required match missing: ${match}`)
   for (const match of matches) if (!approvedMatches.has(match)) errors.push(`unapproved content-script match broadens the extension boundary: ${match}`)
+  if (matches.has("http://localhost:3000/*")) errors.push("production manifest must not request localhost access")
   if (manifest.permissions || manifest.host_permissions) errors.push("unexpected permissions or host_permissions broaden the extension boundary")
-  const selectorEntry = (manifest.content_scripts || []).find(content => JSON.stringify(content.js || []) === JSON.stringify(["espnDraftExtractor.js", "contentScript.js"]))
-  if (!selectorEntry) errors.push("extractor must precede contentScript.js")
-  else for (const match of expectedMatches) if (!(selectorEntry.matches || []).includes(match)) errors.push(`extractor content-script entry is missing required match: ${match}`)
+  const selectorEntry = (manifest.content_scripts || []).find(content => JSON.stringify(content.js || []) === JSON.stringify(["extensionSites.js", "espnDraftExtractor.js", "contentScript.js"]))
+  if (!selectorEntry) errors.push("site boundary and extractor must precede contentScript.js")
+  else if (JSON.stringify(selectorEntry.matches || []) !== JSON.stringify([espnMatch])) errors.push("ESPN extractor must run only on the approved ESPN draft match")
+  for (const match of contentOnlyMatches) {
+    const entry = (manifest.content_scripts || []).find(content => (
+      (content.matches || []).includes(match)
+      && JSON.stringify(content.js || []) === JSON.stringify(["extensionSites.js", "contentScript.js"])
+    ))
+    if (!entry) errors.push(`approved non-ESPN match must use only the site boundary and content script: ${match}`)
+  }
   const assets = assetReferences(manifest)
   for (const [source, asset] of assets) {
     const candidate = resolve(publicRoot, asset)
     if (!candidate.startsWith(`${publicRoot}${sep}`) || !existsSync(candidate)) errors.push(`missing asset: ${source} -> ${asset}`)
+  }
+  try {
+    const popup = readFileSync(join(publicRoot, manifest.action?.default_popup || ""), "utf8")
+    if (/local dev/i.test(popup)) errors.push("production popup must not use local-development branding")
+    if (!popup.includes(manifest.version)) errors.push("production popup version must match the manifest")
+  } catch {
+    // The missing-asset error above remains the canonical failure.
   }
   const archives = readdirSync(root).filter(name => /^ext_release_.*\.zip$/.test(name)).sort()
   const expectedArchive = `ext_release_${manifest.version.replaceAll(".", "_")}.zip`

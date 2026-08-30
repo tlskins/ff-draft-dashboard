@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Drafty Draft Sync Privacy Policy</title>
+    <style>
+      :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #172033; background: #eef1f4; }
+      body { margin: 0; }
+      main { max-width: 780px; margin: 32px auto; padding: 28px 32px; background: #fff; border: 1px solid #cbd3dc; border-radius: 10px; box-shadow: 0 10px 30px rgba(15, 23, 42, .08); }
+      h1 { margin: 0 0 4px; font-size: 28px; }
+      h2 { margin: 24px 0 8px; font-size: 18px; }
+      p, li { font-size: 15px; line-height: 1.55; }
+      ul { padding-left: 22px; }
+      .meta { color: #5d6b7a; margin-top: 0; }
+      a { color: #155eef; }
+      code { font-size: .9em; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Drafty Draft Sync Privacy Policy</h1>
+      <p class="meta">Effective August 30, 2026</p>
+
+      <p>Drafty Draft Sync has one purpose: relay live fantasy-football draft information from supported ESPN and NFL.com draft rooms to an open Drafty dashboard tab.</p>
+
+      <h2>Information the extension handles</h2>
+      <p>On the supported draft-room pages listed in the extension manifest, the extension reads only information needed to synchronize the draft:</p>
+      <ul>
+        <li>drafted player name, team, position, pick coordinate, and pick order;</li>
+        <li>draft title, platform, league identifier present in the page URL, team count, user roster position, scoring format, and completion state when available;</li>
+        <li>the supported draft page URL and bounded selector-health diagnostics needed to identify the session and report whether capture is working.</li>
+      </ul>
+      <p>This is website content and narrowly scoped browsing activity. The extension does not read passwords, authentication cookies, private messages, payment information, general browsing history, or pages outside its declared Drafty, ESPN draft, and NFL.com draft matches.</p>
+
+      <h2>How the information is used</h2>
+      <p>The extension uses Chrome runtime ports to relay the draft snapshot to an open Drafty dashboard tab. It does not sell data, use it for advertising or credit decisions, or transfer it to data brokers.</p>
+      <p>The extension itself makes no external network requests, uses no analytics service, executes no remote code, and writes no draft data to Chrome extension storage. Its in-memory relay state is discarded when the relevant tabs or extension worker close.</p>
+
+      <h2>Drafty account persistence</h2>
+      <p>The Drafty web application can be used locally without signing in. If a user signs into Drafty and enables its account-backed features, the web application—not the extension—may transmit season-scoped rankings, targets, and completed mock-draft results over HTTPS to Drafty's Google Cloud services. The extension does not receive Google credentials or authentication tokens.</p>
+
+      <h2>Sharing and limited use</h2>
+      <p>Information is used only to provide or improve the disclosed draft-synchronization feature, operate it securely, and diagnose capture failures. Human access is limited to a user's explicit support request, security needs, or legal obligations.</p>
+      <p>The use of information received from Google APIs will adhere to the Chrome Web Store User Data Policy, including the Limited Use requirements.</p>
+
+      <h2>Retention and deletion</h2>
+      <p>The extension does not retain draft information after its in-memory browser session. Drafty account data is grouped by fantasy season. For questions, support, or an account-data deletion request, use the <a href="/extension-support.html">Drafty extension support page</a>. Do not place private account information in a public issue.</p>
+
+      <h2>Changes</h2>
+      <p>Material changes to the extension's data practices will be reflected in this policy and disclosed through the extension or its Chrome Web Store listing before the changed practice begins.</p>
+    </main>
+  </body>
+</html>

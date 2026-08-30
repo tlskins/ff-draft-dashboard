@@ -1,14 +1,9 @@
+importScripts("extensionSites.js")
+
 const CONNECTION_NAME = "ffDraftDashboard"
 const dashboardPorts = new Set()
 const platformPorts = new Set()
-
-const isDraftPlatformUrl = (url) => {
-  const normalizedUrl = url.toLowerCase()
-  return (
-    normalizedUrl.includes("fantasy.espn.com/football/draft") ||
-    normalizedUrl.includes("fantasy.nfl.com/draftclient")
-  )
-}
+const extensionSites = globalThis.DraftyExtensionSites
 
 const removePort = (port) => {
   dashboardPorts.delete(port)
@@ -44,12 +39,16 @@ chrome.runtime.onConnect.addListener((port) => {
     return
   }
 
-  if (isDraftPlatformUrl(senderUrl)) {
+  const role = extensionSites?.roleForUrl(senderUrl)
+  if (role === "espn" || role === "nfl") {
     platformPorts.add(port)
     port.onMessage.addListener(relayDraftEvent)
-  } else {
+  } else if (role === "dashboard") {
     dashboardPorts.add(port)
     port.onMessage.addListener(() => port.postMessage(heartbeat()))
+  } else {
+    console.warn("Ignoring extension port outside approved Drafty sites")
+    return
   }
 
   port.onDisconnect.addListener(() => removePort(port))

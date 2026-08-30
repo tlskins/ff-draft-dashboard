@@ -864,7 +864,7 @@ gate passes 133 suites and 844 tests plus lint, TypeScript, and the optimized
 build. Chrome inspector enumeration and live execution of the natural-language
 task corpus remain pending in Phase 17C.
 
-Phase 17C now has a six-journey natural-language corpus, reproducible trace
+Phase 17C now has a seven-journey natural-language corpus, reproducible trace
 evaluator, catalog/output-budget regressions, and optional validated first-party
 origin-trial meta injection. The local Chrome fallback probe correctly reports
 unsupported with zero tools while the testing flag is disabled. TypeScript,
@@ -872,8 +872,12 @@ lint, the optimized build, and the expanded full gate of 135 suites and 850
 tests pass. The testing flag was subsequently enabled in Chrome 150, but the
 current Codex Chrome-control surface exposes neither WebMCP discovery nor tool
 invocation and its page-inspection channel timed out with the flag active. The
-native six-journey run therefore remains an inspector or future-agent gate, not
-a recorded Drafty failure. The exact Vercel origin was registered on August 30,
+Chrome inspector subsequently discovered all 12 tools. Native analyst-note and
+configuration journeys executed; the note/profile journey passed, while the
+configuration journey exposed and landed a Half-PPR analyst-board fallback fix
+whose native rerun remains pending. The remaining seven-journey acceptance is
+an inspector or future-agent gate, not a recorded Drafty failure. The exact
+Vercel origin was registered on August 30,
 2026, and its expiring token was added to the Vercel production environment;
 the stable production alias now returns HTTP 200 with exactly one valid token
 meta tag. Native tool discovery/invocation remains deferred to Chrome's Model
@@ -929,6 +933,17 @@ is not official depth-chart data. Counterfactual opponent collisions resolve
 to the next undrafted configured-ADP player.
 
 See `docs/phase19-mock-review.md` for contracts, slices, and exit gates.
+
+### Chrome Web Store release readiness
+
+Status: automated production-package hardening is implemented for extension
+`0.0.0.10`. The store candidate uses production Drafty branding, limits content
+scripts to the two Drafty origins and two supported draft clients, moves
+localhost into an ignored generated development bundle, and adds a public
+privacy/support packet plus deterministic policy regressions. Store upload,
+listing screenshots, distribution choices, installed-package browser smoke,
+and reviewer submission remain human-owned. See
+`docs/chrome-web-store-readiness.md`.
 
 ### Prediction-v2 promotion decision
 

@@ -4,15 +4,16 @@ Status: deterministic corpus, evaluator, output budgets, progressive fallback,
 and production token injection are implemented. The production origin was
 enrolled on August 30, 2026, and its token is configured as a Vercel production
 build variable. The token-bearing build was deployed and verified at the stable
-production alias on August 30, 2026. Native compatible-agent discovery and
-invocation remain open.
+production alias on August 30, 2026. Chrome's inspector now discovers all 12
+tools. Native profile-search and configuration journeys have executed; the
+remaining corpus and one corrected configuration rerun remain open.
 
 ## Implemented acceptance infrastructure
 
-- `behavior/webmcp/webmcp-task-corpus.json` defines six bounded natural-
+- `behavior/webmcp/webmcp-task-corpus.json` defines seven bounded natural-
   language journeys covering configuration, rankings navigation, analyst-note
   search/profile focus, reversible targets, reversible positional-rank edits,
-  and insight selection.
+  insight selection, and completed-mock review.
 - `scripts/webmcp-eval-lib.cjs` scores task success, tool choice and ordering,
   retries, result bytes, state correctness, and agreement with separately
   observed human-visible state.
@@ -47,9 +48,9 @@ Chrome's WebMCP testing flag is browser-owned state and requires a relaunch:
 2. Set **WebMCP for testing** to **Enabled** and relaunch Chrome.
 3. Start Drafty with `npm run dev` and open `http://localhost:3000`.
 4. Confirm the root element reports `data-webmcp-status="ready"` and
-   `data-webmcp-tool-count="10"`.
+   `data-webmcp-tool-count="12"`.
 5. In Chrome DevTools' WebMCP tooling or Model Context Tool Inspector, enumerate
-   all ten stable tools and execute the six corpus journeys.
+   all twelve stable tools and execute the seven corpus journeys.
 6. Record each tool call/result plus the final agent state and independently
    observed UI state in the evaluator run format.
 7. Restore any temporary target or rank change as directed by the corpus.
@@ -69,7 +70,8 @@ was relaunched. The current Codex Chrome-control surface could reconnect, list
 tabs, and observe the local Drafty tab, but it does not expose WebMCP tool
 discovery or invocation. Its page-inspection channel repeatedly timed out after
 the flag was enabled, including bounded diagnostic reads against the optimized
-local build. Consequently, the six native journeys were not executed and this
+local build. Consequently, the seven native journeys were not executed at that
+checkpoint and this
 is recorded as an agent/browser-integration limitation—not as a Drafty tool or
 human-UI failure. Complete the native journey run with Chrome's Model Context
 Tool Inspector, or repeat it when the Codex Chrome-control surface exposes
@@ -128,9 +130,9 @@ After deploying a token-bearing build:
 
 1. inspect the rendered document head for exactly one origin-trial meta tag;
 2. confirm Chrome DevTools reports a valid WebMCP trial for the top frame;
-3. confirm `document.modelContext` exists and the root diagnostic reaches ten
+3. confirm `document.modelContext` exists and the root diagnostic reaches twelve
    ready tools;
-4. rerun the six-journey corpus against production; and
+4. rerun the seven-journey corpus against production; and
 5. run ordinary browser smoke in a browser without WebMCP to prove the human UI
    remains unchanged.
 
@@ -148,3 +150,24 @@ Production deployment evidence from August 30, 2026:
 Chrome ignores invalid or expired tokens, so token renewal and repeat
 production acceptance remain release operations rather than permanent code
 assumptions.
+
+## August 30 native-agent checkpoint
+
+Chrome's Model Context Tool Inspector discovered all 12 registered tools. The
+first native execution exposed a Chrome callback compatibility defect: Chrome
+omitted the optional execution-options object. Dashboard commit `c7bd102`
+accepts that valid callback shape across all executors, and focused Chrome-style
+regressions pass.
+
+The corrected analyst-note journey then passed with exactly two calls:
+`drafty_search_players` found Tucker Kraft's Christopher Harris playing-time
+notes and `drafty_show_player_profile` pinned Outlook with advanced details
+open. Independent UI inspection agreed with the tool result.
+
+The league-configuration journey used one correct
+`drafty_configure_workspace` call but exposed an asynchronous side effect:
+Harris was removed when Half-PPR lacked dedicated source fields and the board
+fell through to empty Custom ranks. Commit `03e665c` preserves explicit Half-
+PPR ranks when published and otherwise uses the source's PPR, then Standard,
+board. The full 143-suite/878-test gate and production deployment passed. A
+native inspector rerun and independent UI confirmation remain human-owned.

@@ -7,11 +7,12 @@ const { execute, runPreflight, validateManifest } = require("../scripts/release-
 const { isChromeExtensionVersion } = require("../scripts/chrome-version.cjs")
 
 const requiredMatches = [
+  "https://drafty.friedchickentechnologies.com/*",
   "https://ff-draft-dashboard.vercel.app/*",
-  "http://localhost:3000/*",
   "https://fantasy.espn.com/football/draft*",
+  "https://fantasy.nfl.com/draftclient*",
 ]
-const assets = ["16.png", "32.png", "128.png", "icon.png", "popup.html", "background.js", "espnDraftExtractor.js", "contentScript.js"]
+const assets = ["16.png", "32.png", "128.png", "icon.png", "popup.html", "background.js", "extensionSites.js", "espnDraftExtractor.js", "contentScript.js"]
 
 const command = (commandName, args, cwd) => {
   const result = spawnSync(commandName, args, { cwd, encoding: "utf8", shell: false })
@@ -24,9 +25,13 @@ const createFixture = ({ archiveVersion = "1.2.3.4", archivePopup, archiveBackgr
   const packageRoot = join(root, "package")
   mkdirSync(publicRoot)
   mkdirSync(packageRoot)
-  const manifest = { manifest_version: 3, version: "1.2.3.4", icons: { "16": "16.png", "32": "32.png", "128": "128.png" }, action: { default_icon: "icon.png", default_popup: "popup.html" }, background: { service_worker: "background.js" }, content_scripts: [{ matches: requiredMatches, js: ["espnDraftExtractor.js", "contentScript.js"] }] }
+  const manifest = { manifest_version: 3, name: "Drafty Draft Sync", description: "Sync supported fantasy-football draft picks into Drafty.", version: "1.2.3.4", icons: { "16": "16.png", "32": "32.png", "128": "128.png" }, action: { default_icon: "icon.png", default_popup: "popup.html" }, background: { service_worker: "background.js" }, content_scripts: [
+    { matches: ["https://fantasy.espn.com/football/draft*"], js: ["extensionSites.js", "espnDraftExtractor.js", "contentScript.js"] },
+    { matches: ["https://fantasy.nfl.com/draftclient*"], js: ["extensionSites.js", "contentScript.js"] },
+    { matches: ["https://drafty.friedchickentechnologies.com/*", "https://ff-draft-dashboard.vercel.app/*"], js: ["extensionSites.js", "contentScript.js"] },
+  ] }
   writeFileSync(join(publicRoot, "manifest.json"), JSON.stringify(manifest))
-  for (const asset of [...assets, "popup-alt.html", "background-alt.js"]) writeFileSync(join(publicRoot, asset), `source:${asset}`)
+  for (const asset of [...assets, "popup-alt.html", "background-alt.js"]) writeFileSync(join(publicRoot, asset), asset.includes("popup") ? `Drafty Version ${manifest.version}` : `source:${asset}`)
   const archivedManifest = { ...manifest, version: archiveVersion }
   if (archivePopup) archivedManifest.action = { ...manifest.action, default_popup: archivePopup }
   if (archiveBackground) archivedManifest.background = { ...manifest.background, service_worker: archiveBackground }
@@ -96,16 +101,25 @@ describe("Phase 13A release preflight helpers", () => {
     expect(result.errors.join(" ")).toContain("packaged asset bytes differ")
   })
 
-  it("requires dashboard, local, and ESPN matches on the extractor entry itself", () => {
+  it("requires the shared site boundary on every non-ESPN production match", () => {
     const { root } = createFixture()
     const path = join(root, "public", "manifest.json")
     const manifest = JSON.parse(readFileSync(path, "utf8"))
     manifest.content_scripts = [
       { matches: requiredMatches, js: ["contentScript.js"] },
-      { matches: ["https://fantasy.espn.com/football/draft*"], js: ["espnDraftExtractor.js", "contentScript.js"] },
+      { matches: ["https://fantasy.espn.com/football/draft*"], js: ["extensionSites.js", "espnDraftExtractor.js", "contentScript.js"] },
     ]
     writeFileSync(path, JSON.stringify(manifest))
-    expect(validateManifest(root).errors.join(" ")).toContain("extractor content-script entry is missing required match")
+    expect(validateManifest(root).errors.join(" ")).toContain("approved non-ESPN match must use only the site boundary and content script")
+  })
+
+  it("rejects injecting the ESPN extractor into non-ESPN pages", () => {
+    const { root } = createFixture()
+    const path = join(root, "public", "manifest.json")
+    const manifest = JSON.parse(readFileSync(path, "utf8"))
+    manifest.content_scripts[0].matches.push("https://drafty.friedchickentechnologies.com/*")
+    writeFileSync(path, JSON.stringify(manifest))
+    expect(validateManifest(root).errors.join(" ")).toContain("ESPN extractor must run only")
   })
 
   it("fails when a source manifest asset is missing", () => {
@@ -121,6 +135,31 @@ describe("Phase 13A release preflight helpers", () => {
     manifest.content_scripts[0].matches.push("https://example.test/*")
     writeFileSync(path, JSON.stringify(manifest))
     expect(validateManifest(root).errors.join(" ")).toContain("unapproved content-script match")
+  })
+
+  it("rejects local-development branding and localhost access in a production package", () => {
+    const { root } = createFixture()
+    const path = join(root, "public", "manifest.json")
+    const manifest = JSON.parse(readFileSync(path, "utf8"))
+    manifest.name = "Drafty Draft Sync (Local Dev)"
+    manifest.content_scripts[0].matches.push("http://localhost:3000/*")
+    writeFileSync(path, JSON.stringify(manifest))
+    const errors = validateManifest(root).errors.join(" ")
+    expect(errors).toContain("local-development branding")
+    expect(errors).toContain("unapproved content-script match")
+    expect(errors).toContain("must not request localhost access")
+  })
+
+  it("rejects a stale popup version and an overlong manifest description", () => {
+    const { root } = createFixture()
+    const path = join(root, "public", "manifest.json")
+    const manifest = JSON.parse(readFileSync(path, "utf8"))
+    manifest.description = "x".repeat(133)
+    writeFileSync(path, JSON.stringify(manifest))
+    writeFileSync(join(root, "public", "popup.html"), "Drafty Version 1.2.3.3")
+    const errors = validateManifest(root).errors.join(" ")
+    expect(errors).toContain("no more than 132 characters")
+    expect(errors).toContain("popup version must match")
   })
 
   it("makes a missing current archive release-blocking", () => {

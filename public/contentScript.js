@@ -4,6 +4,7 @@ const READ_INTERVAL_MS = 1_000
 const KEEP_ALIVE_INTERVAL_MS = 5_000
 const HEALTH_REPORT_INTERVAL_MS = 30_000
 const espnExtractor = globalThis.DraftyEspnExtractor
+const extensionSites = globalThis.DraftyExtensionSites
 
 const state = {
   port: null,
@@ -229,19 +230,7 @@ const startDashboardListener = () => {
   keepAlive()
 }
 
-const getPageRole = () => {
-  const url = window.location.href.toLowerCase()
-  if (url.includes("fantasy.espn.com/football/draft")) {
-    return "espn"
-  }
-  if (url.includes("fantasy.nfl.com/draftclient")) {
-    return "nfl"
-  }
-  if (url.includes("localhost") || url.includes("ff-draft-dashboard")) {
-    return "dashboard"
-  }
-  return null
-}
+const getPageRole = () => extensionSites?.roleForUrl(window.location.href) || null
 
 const startRole = (role) => {
   if (role === "espn") {
