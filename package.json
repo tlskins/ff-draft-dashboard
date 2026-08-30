@@ -32,6 +32,8 @@
     "eval:opponent-empirical-base-shadow": "EMPIRICAL_BASE_SHADOW_REPORT=1 jest --runInBand __evals__/empiricalBaseShadow.eval.test.ts",
     "eval:static-window-backtest": "STATIC_WINDOW_BACKTEST_REPORT=1 jest --runInBand __evals__/staticWindowBacktest.eval.test.ts",
     "eval:phase9-prospective": "node scripts/run-phase9-prospective-report.cjs",
+    "eval:webmcp": "node scripts/run-webmcp-eval.mjs",
+    "eval:webmcp:contract": "jest --runInBand __evals__/webMcpContract.eval.test.js",
     "phase9:capture": "node scripts/phase9-capture-admission.cjs",
     "eval:phase7": "npm run api:types:check && npm run eval && (cd ../ff-draft-dashboard-python-api && .venv/bin/python -m unittest tests.test_realtime_eval)"
   },
@@ -63,6 +65,7 @@
     "openapi-typescript": "7.13.0",
     "postcss": "^8.3.6",
     "tailwindcss": "^2.2.7",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "webmcp-types": "^0.1.5"
   }
 }

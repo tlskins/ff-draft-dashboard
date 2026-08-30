@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from "react"
+import React, {useCallback, useEffect, useRef, useState} from "react"
 
 import type {InsightDeckController} from "../../behavior/hooks/useInsightDeckController"
 import {
@@ -44,12 +44,18 @@ export interface InsightDeckProps {
     viewId: InsightViewId,
     context: InsightDeckRenderContext,
   ) => React.ReactNode | null | undefined
+  expandedSlot?: typeof VISIBLE_INSIGHT_DECK_SLOTS[number] | null
+  onExpandedSlotChange?: (
+    slot: typeof VISIBLE_INSIGHT_DECK_SLOTS[number] | null,
+  ) => void
 }
 
 const InsightDeck: React.FC<InsightDeckProps> = ({
   controller,
   defaultExpandedViewId,
   renderView,
+  expandedSlot: controlledExpandedSlot,
+  onExpandedSlotChange,
 }) => {
   const selectionSignature = VISIBLE_INSIGHT_DECK_SLOTS.map(slot => (
     controller.state.slots[slot].selection?.viewId || "none"
@@ -60,7 +66,21 @@ const InsightDeck: React.FC<InsightDeckProps> = ({
     viewId: InsightViewId
   } | null>(null)
   const defaultExpansionApplied = useRef(false)
-  const [expandedSlot, setExpandedSlot] = useState<typeof VISIBLE_INSIGHT_DECK_SLOTS[number] | null>(null)
+  const [internalExpandedSlot, setInternalExpandedSlot] = useState<
+    typeof VISIBLE_INSIGHT_DECK_SLOTS[number] | null
+  >(null)
+  const expandedSlot = controlledExpandedSlot !== undefined
+    ? controlledExpandedSlot
+    : internalExpandedSlot
+  const setExpandedSlot = useCallback<React.Dispatch<React.SetStateAction<
+    typeof VISIBLE_INSIGHT_DECK_SLOTS[number] | null
+  >>>((nextValue) => {
+    const resolved = typeof nextValue === "function"
+      ? nextValue(expandedSlot)
+      : nextValue
+    if (controlledExpandedSlot === undefined) setInternalExpandedSlot(resolved)
+    onExpandedSlotChange?.(resolved)
+  }, [controlledExpandedSlot, expandedSlot, onExpandedSlotChange])
   useEffect(() => {
     if (previousSelectionSignature.current === selectionSignature) return
     previousSelectionSignature.current = selectionSignature
@@ -87,7 +107,7 @@ const InsightDeck: React.FC<InsightDeckProps> = ({
       controller.state.slots[slot].selection?.viewId,
     ) === 2)
     setExpandedSlot(wideSlot || null)
-  }, [controller.state.slots, defaultExpandedViewId, selectionSignature])
+  }, [controller.state.slots, defaultExpandedViewId, selectionSignature, setExpandedSlot])
   const renderedViewIds = new Set<InsightViewId>()
 
   return <section aria-label="Draft insight deck" className={styles.deck}>

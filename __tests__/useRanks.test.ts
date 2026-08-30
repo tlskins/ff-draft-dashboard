@@ -93,6 +93,30 @@ describe("useRanks live-draft fallbacks", () => {
     await waitFor(() => expect(restarted.result.current.playerTargets).toHaveLength(2))
   })
 
+  it("persists bounded target updates and removals through the canonical replacement path", async () => {
+    localStorage.setItem(PLAYER_TARGETS_STORAGE_KEY, JSON.stringify([
+      {playerId: "saved-player", targetAsEarlyAsRound: 4},
+    ]))
+    const first = renderHook(() => useRanks({settings, myPickNum: 2}))
+    await waitFor(() => expect(first.result.current.playerTargets).toHaveLength(1))
+
+    act(() => first.result.current.replacePlayerTargets([
+      {playerId: "saved-player", targetAsEarlyAsRound: 2},
+    ]))
+    await waitFor(() => expect(JSON.parse(
+      localStorage.getItem(PLAYER_TARGETS_STORAGE_KEY) || "[]",
+    )).toEqual([{playerId: "saved-player", targetAsEarlyAsRound: 2}]))
+
+    act(() => first.result.current.replacePlayerTargets([]))
+    await waitFor(() => expect(JSON.parse(
+      localStorage.getItem(PLAYER_TARGETS_STORAGE_KEY) || "[]",
+    )).toEqual([]))
+
+    first.unmount()
+    const restarted = renderHook(() => useRanks({settings, myPickNum: 2}))
+    await waitFor(() => expect(restarted.result.current.playerTargets).toEqual([]))
+  })
+
   it("does not overwrite malformed stored targets until the user makes a valid edit", async () => {
     localStorage.setItem(PLAYER_TARGETS_STORAGE_KEY, '{"unexpected":true}')
     const {result} = renderHook(() => useRanks({settings, myPickNum: 2}))

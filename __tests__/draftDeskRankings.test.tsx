@@ -95,6 +95,28 @@ describe("Phase 14A unified rankings pane", () => {
     expect(screen.getByText("ADP rounds 2–4")).toBeTruthy()
   })
 
+  it("accepts page-owned ADP navigation and below-ADP filter state", () => {
+    const onAdpRoundPageChange = jest.fn()
+    const onFilterRankedBelowAdpChange = jest.fn()
+    render(<RankingsBoard
+      {...props()}
+      adpRoundPage={2}
+      compact
+      draftView="Best By ADP Round"
+      filterRankedBelowAdp
+      onAdpRoundPageChange={onAdpRoundPageChange}
+      onFilterRankedBelowAdpChange={onFilterRankedBelowAdpChange}
+    />)
+
+    expect(screen.getByText("ADP rounds 3–5")).toBeTruthy()
+    expect((screen.getByLabelText("Rank ≥1 rd below ADP") as HTMLInputElement).checked)
+      .toBe(true)
+    fireEvent.click(screen.getByRole("button", {name: "Previous ADP rounds"}))
+    expect(onAdpRoundPageChange).toHaveBeenCalledWith(1)
+    fireEvent.click(screen.getByLabelText("Rank ≥1 rd below ADP"))
+    expect(onFilterRankedBelowAdpChange).toHaveBeenCalledWith(false)
+  })
+
   it("shares the below-ADP filter while targets override position muting", () => {
     const lower = rankedPlayer("Lower", 25, 1)
     const target = rankedPlayer("Target", 26, 2)

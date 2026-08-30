@@ -6709,6 +6709,11 @@ yaml-ast-parser@0.0.43:
   resolved "https://registry.yarnpkg.com/yaml-ast-parser/-/yaml-ast-parser-0.0.43.tgz#e8a23e6fb4c38076ab92995c5dca33f3d3d7c9bb"
   integrity sha512-2PTINUwsRqSd+s8XxKaJWQlUuEMHJQyEuh2edBbW8KNJz0SJPwUSD2zRWqezFEdN7IzAgeuYHFUCF7o8zRdZ0A==
 
+webmcp-types@^0.1.5:
+  version "0.1.5"
+  resolved "https://registry.npmjs.org/webmcp-types/-/webmcp-types-0.1.5.tgz"
+  integrity sha512-QAfuzNJ+hiY2JLpPbD/6xZruLQlsqtWUDqQCRruqD0dbtZHDg6IUZ2K0zctlRokwuscGlr47i6hKv8mQPSQLhw==
+
 yaml@^1.10.0, yaml@^1.10.2:
   version "1.10.2"
   resolved "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz"

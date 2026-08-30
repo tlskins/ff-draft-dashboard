@@ -56,6 +56,10 @@ interface DraftDeskProfilePaneProps {
   playerStatus: PlayerStatusCacheSnapshot
   fixtureDetails?: DraftDeskFixtureProfileDetails
   rankingsSeason?: number | null
+  pinnedModule?: ProfileModuleId | null
+  onPinnedModuleChange?: (module: ProfileModuleId | null) => void
+  advancedDetailsOpen?: boolean
+  onAdvancedDetailsOpenChange?: (open: boolean) => void
 }
 
 const profileHistory = (player: Player, settings: FantasySettings) =>
@@ -331,9 +335,19 @@ const DraftDeskProfilePane = ({
   playerStatus,
   fixtureDetails,
   rankingsSeason,
+  pinnedModule: controlledPinnedModule,
+  onPinnedModuleChange,
+  advancedDetailsOpen: controlledAdvancedDetailsOpen,
+  onAdvancedDetailsOpenChange,
 }: DraftDeskProfilePaneProps) => {
-  const [detailsOpen, setDetailsOpen] = useState(true)
-  const [pinnedModule, setPinnedModule] = useState<ProfileModuleId | null>("production")
+  const [internalDetailsOpen, setInternalDetailsOpen] = useState(true)
+  const [internalPinnedModule, setInternalPinnedModule] = useState<ProfileModuleId | null>("production")
+  const detailsOpen = controlledAdvancedDetailsOpen ?? internalDetailsOpen
+  const setDetailsOpen = onAdvancedDetailsOpenChange ?? setInternalDetailsOpen
+  const pinnedModule = controlledPinnedModule !== undefined
+    ? controlledPinnedModule
+    : internalPinnedModule
+  const setPinnedModule = onPinnedModuleChange ?? setInternalPinnedModule
   const profileHistorical = useProfileHistoricalAnalysis({
     playerId: player?.id || "",
     scoringProfile: scoringFormatFor(settings),

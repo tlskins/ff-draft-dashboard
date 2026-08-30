@@ -830,6 +830,53 @@ honest local fallbacks. The generic renderer now enforces type-specific
 density and heatmap semantics. See
 `docs/phase16-profile-history-hookup.md`.
 
+### Phase 17: WebMCP agent interface
+
+Status: Phases 17A and 17B are implemented. Phase 17C's deterministic corpus,
+evaluator, payload budgets, progressive fallback, and production token boundary
+are implemented; the production origin is enrolled and configured in Vercel,
+while native Chrome and deployed-origin acceptance remain open.
+Realtime GPT/voice remains deferred.
+
+Expose a bounded imperative WebMCP surface over Drafty's existing state and
+commands so compatible browser agents can configure the workspace, navigate
+rankings/profile/insight views, search players and licensed analyst notes, set
+targets, and edit positional ranks without DOM actuation. WebMCP remains a
+progressive enhancement; the human UI and canonical local/cloud profile remain
+authoritative. See `docs/phase17-webmcp-agent-interface.md` for the proposed
+tool catalog, security boundary, Codex compatibility caveat, and 17A-17C exit
+gates.
+
+Phase 17A registers five page-owned read/navigation/configuration tools and one
+insight-deck tool, with strict validation, bounded untrusted search output,
+cancellation/lifecycle cleanup, shared human/agent state, and unsupported-
+browser progressive enhancement. The full dashboard gate passes 133 suites and
+842 tests, lint, TypeScript, and the optimized build.
+
+Phase 17B adds four bounded page-owned write tools for one-player target
+add/update/remove, safe custom-rank editing start/resume, one-player positional
+rank moves, and canonical save/finish. The commands reuse the existing local
+target/profile stores and authenticated cloud reconciliation, preserve live-
+draft and purge locks, reject unavailable target additions and unsafe source
+switches, and expose no bulk-clear or draft-pick operation. The expanded full
+gate passes 133 suites and 844 tests plus lint, TypeScript, and the optimized
+build. Chrome inspector enumeration and live execution of the natural-language
+task corpus remain pending in Phase 17C.
+
+Phase 17C now has a six-journey natural-language corpus, reproducible trace
+evaluator, catalog/output-budget regressions, and optional validated first-party
+origin-trial meta injection. The local Chrome fallback probe correctly reports
+unsupported with zero tools while the testing flag is disabled. TypeScript,
+lint, the optimized build, and the expanded full gate of 135 suites and 850
+tests pass. The testing flag was subsequently enabled in Chrome 150, but the
+current Codex Chrome-control surface exposes neither WebMCP discovery nor tool
+invocation and its page-inspection channel timed out with the flag active. The
+native six-journey run therefore remains an inspector or future-agent gate, not
+a recorded Drafty failure. The exact Vercel origin was registered on August 30,
+2026, and its expiring token was added to the Vercel production environment;
+deployment and production acceptance remain. See
+`docs/phase17c-webmcp-acceptance.md`.
+
 ## Deferred product tracks
 
 ### Prediction-v2 promotion decision

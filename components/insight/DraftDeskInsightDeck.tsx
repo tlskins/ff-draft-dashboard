@@ -1,4 +1,4 @@
-import React, {useMemo} from "react"
+import React, {useCallback, useEffect, useMemo, useState} from "react"
 
 import type {PlayerStatusCacheSnapshot} from "../../behavior/api/playerStatusCache"
 import {
@@ -31,13 +31,28 @@ import {
   buildActiveBoardTierInputs,
   buildPlanConstraintsEvidenceSummary,
 } from "../../behavior/insights/liveInsightInputs"
-import type {MaterialInsightEvent} from "../../behavior/insights/insightDeck"
 import {
   buildHistoricalInsightModel,
   buildPlayerStatusInsightModel,
   buildRankTierDisagreementModel,
   buildSourceReadinessInsightModel,
 } from "../../behavior/insights/apiInsightModels"
+import {
+  INSIGHT_VIEW_REGISTRY,
+  MaterialInsightEvent,
+  selectInsightDeckView,
+  restoreInsightDeckSlotAuto,
+} from "../../behavior/insights/insightDeck"
+import {
+  useDraftyInsightWebMcp,
+  type DraftySetInsightViewInput,
+} from "../../behavior/hooks/useDraftyInsightWebMcp"
+import type {WebMcpRegistrationState} from "../../behavior/hooks/useDraftyWebMcp"
+import {
+  DraftyInsightAgentState,
+  toolFailure,
+  toolSuccess,
+} from "../../behavior/webmcp/draftyWebMcp"
 import type {
   BoardSettings,
   FantasySettings,
@@ -81,6 +96,8 @@ export interface DraftDeskInsightDeckProps {
   playerTargets?: readonly PlayerTarget[]
   visibleTierPositions?: readonly TierLandscapePosition[]
   onVisibleTierPositionsChange?: (positions: TierLandscapePosition[]) => void
+  onAgentStateChange?: (state: DraftyInsightAgentState) => void
+  onWebMcpRegistrationStateChange?: (state: WebMcpRegistrationState) => void
 }
 
 const DEFAULT_TIER_POSITIONS: readonly TierLandscapePosition[] = [
@@ -88,6 +105,34 @@ const DEFAULT_TIER_POSITIONS: readonly TierLandscapePosition[] = [
   FantasyPosition.WIDE_RECEIVER,
 ]
 const INITIAL_INSIGHT_VIEWS = {primary_decision: "current_tier_market"} as const
+
+const agentSlotId = (
+  slot: "decision" | "supporting",
+): "primary_decision" | "market_watch" => (
+  slot === "decision" ? "primary_decision" : "market_watch"
+)
+
+const insightAgentState = (
+  state: ReturnType<typeof useInsightDeckController>["state"],
+  expandedSlot: "primary_decision" | "market_watch" | null,
+): DraftyInsightAgentState => ({
+  available: true,
+  slots: ([
+    ["decision", "primary_decision"],
+    ["supporting", "market_watch"],
+  ] as const).map(([agentSlot, deckSlot]) => {
+    const selection = state.slots[deckSlot].selection
+    return {
+      slot: agentSlot,
+      view: selection?.viewId || null,
+      mode: selection?.pinned ? "pinned" : "auto",
+      evidence: selection?.evidence.state || null,
+    }
+  }),
+  expandedSlot: expandedSlot === "primary_decision"
+    ? "decision"
+    : expandedSlot === "market_watch" ? "supporting" : null,
+})
 
 /**
  * Bounded integration shell for Phase 14C.  It only adapts prepared live
@@ -112,6 +157,8 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
   playerTargets = [],
   visibleTierPositions = DEFAULT_TIER_POSITIONS,
   onVisibleTierPositionsChange,
+  onAgentStateChange,
+  onWebMcpRegistrationStateChange,
 }) => {
   const comparisonPlayers = useMemo(
     () => comparisonController.items.map(item => item.player),
@@ -280,11 +327,57 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
     candidates,
     initialViews: INITIAL_INSIGHT_VIEWS,
   })
+  const [expandedSlot, setExpandedSlot] = useState<
+    "primary_decision" | "market_watch" | null
+  >(null)
+  const agentState = useMemo(
+    () => insightAgentState(controller.state, expandedSlot),
+    [controller.state, expandedSlot],
+  )
+  useEffect(() => {
+    onAgentStateChange?.(agentState)
+  }, [agentState, onAgentStateChange])
+  const setInsightView = useCallback((input: DraftySetInsightViewInput) => {
+    const slot = agentSlotId(input.slot)
+    const transition = input.view === "auto"
+      ? restoreInsightDeckSlotAuto(controller.state, slot, candidates)
+      : selectInsightDeckView(controller.state, slot, input.view, candidates)
+    if (transition.blockedReason) {
+      const code = transition.blockedReason.includes("registered")
+        ? "not_found"
+        : "not_allowed"
+      return toolFailure(code, transition.blockedReason)
+    }
+    if (input.view === "auto") controller.restoreSlotAuto(slot)
+    else controller.selectView(slot, input.view)
+
+    let nextExpandedSlot = expandedSlot
+    if (input.expanded === true) nextExpandedSlot = slot
+    else if (input.expanded === false && expandedSlot === slot) nextExpandedSlot = null
+    if (nextExpandedSlot !== expandedSlot) setExpandedSlot(nextExpandedSlot)
+    const nextState = insightAgentState(transition.state, nextExpandedSlot)
+    const registration = input.view === "auto"
+      ? null
+      : INSIGHT_VIEW_REGISTRY.find(view => view.id === input.view)
+    return toolSuccess(
+      nextState,
+      input.view === "auto"
+        ? `${input.slot} insight restored to Auto.`
+        : `${registration?.label || input.view} selected and pinned in the ${input.slot} slot.`,
+      transition.changed || nextExpandedSlot !== expandedSlot ? "accepted" : "unchanged",
+    )
+  }, [candidates, controller, expandedSlot])
+  const webMcpRegistration = useDraftyInsightWebMcp({setInsightView})
+  useEffect(() => {
+    onWebMcpRegistrationStateChange?.(webMcpRegistration)
+  }, [onWebMcpRegistrationStateChange, webMcpRegistration])
 
   return (
     <InsightDeck
       controller={controller}
       defaultExpandedViewId="current_tier_market"
+      expandedSlot={expandedSlot}
+      onExpandedSlotChange={setExpandedSlot}
       renderView={viewId => {
         switch (viewId) {
           case "candidate_comparison":

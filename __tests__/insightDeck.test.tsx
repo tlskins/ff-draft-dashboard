@@ -184,6 +184,20 @@ describe("InsightDeck", () => {
     expect(screen.getByTestId("rendered-current_tier_market")).toBeTruthy()
   })
 
+  it("accepts a page-owned expanded slot and reports requested layout changes", () => {
+    const onExpandedSlotChange = jest.fn()
+    render(<InsightDeck
+      controller={controller()}
+      expandedSlot="primary_decision"
+      onExpandedSlotChange={onExpandedSlotChange}
+      renderView={renderer}
+    />)
+
+    expect(screen.queryByTestId("rendered-current_tier_market")).toBeNull()
+    fireEvent.click(screen.getByRole("region", {name: "Supporting view"}))
+    expect(onExpandedSlotChange).toHaveBeenLastCalledWith("market_watch")
+  })
+
   it("restores a collapsed view when its visible slot is clicked", () => {
     render(<InsightDeck controller={controller()} renderView={renderer} />)
 

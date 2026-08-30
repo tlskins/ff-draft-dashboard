@@ -51,9 +51,31 @@ import {
 } from "../behavior/hooks/useRealtimeConversation"
 import {useDraftyAuth} from "../behavior/hooks/useDraftyAuth"
 import {useCloudProfileSync} from "../behavior/hooks/useCloudProfileSync"
-import { FantasyPosition, Player, ThirdPartyRanker } from "types"
+import {useDraftyWebMcp, type WebMcpRegistrationState} from "../behavior/hooks/useDraftyWebMcp"
+import {
+  FantasyRanker,
+  FantasyPosition,
+  Player,
+  ThirdPartyADPRanker,
+  ThirdPartyRanker,
+} from "types"
 import {selectableExpertRankers} from "../behavior/rankingCatalog"
-import {scoringFormatFor} from "../behavior/scoringFormat"
+import {scoringFormatFor, settingsWithScoringFormat} from "../behavior/scoringFormat"
+import type {ProfileModuleId} from "../behavior/profile/profileModuleController"
+import {
+  DraftyConfigureWorkspaceInput,
+  DraftyInsightAgentState,
+  DraftyMovePlayerRankInput,
+  DraftyRankingsView,
+  DraftySetPlayerTargetInput,
+  DraftySetRankingsViewInput,
+  DraftyShowPlayerProfileInput,
+  DraftyStartRankEditingInput,
+  DraftyWorkspaceSnapshot,
+  searchDraftyPlayers,
+  toolFailure,
+  toolSuccess,
+} from "../behavior/webmcp/draftyWebMcp"
 import {
   createAdvisorSnapshotPersistenceCoordinator,
   createAdvisorInputFingerprint,
@@ -141,6 +163,40 @@ export enum SortOption {
   RANKS = "Sort By Ranks",
   ADP = "Sort By ADP",
 }
+
+const EMPTY_INSIGHT_AGENT_STATE: DraftyInsightAgentState = {
+  available: false,
+  slots: [
+    {slot: "decision", view: null, mode: "auto", evidence: null},
+    {slot: "supporting", view: null, mode: "auto", evidence: null},
+  ],
+  expandedSlot: null,
+}
+
+const UNSUPPORTED_WEBMCP_REGISTRATION: WebMcpRegistrationState = {
+  status: "unsupported",
+  registeredToolCount: 0,
+  errorName: null,
+}
+
+const draftViewForAgent = (view: DraftView): DraftyRankingsView => {
+  if (view === DraftView.ADP_ROUND) return "adp_round"
+  if (view === DraftView.TARGETS) return "targets"
+  return "position"
+}
+
+const agentDraftView = (view: DraftyRankingsView): DraftView => {
+  if (view === "adp_round") return DraftView.ADP_ROUND
+  if (view === "targets") return DraftView.TARGETS
+  return DraftView.RANKING
+}
+
+const WEBMCP_RANK_EDIT_POSITIONS = [
+  FantasyPosition.QUARTERBACK,
+  FantasyPosition.RUNNING_BACK,
+  FantasyPosition.WIDE_RECEIVER,
+  FantasyPosition.TIGHT_END,
+] as const
 
 
 
@@ -427,6 +483,8 @@ const Home: FC = () => {
   ), [activeDraftSessionId, materialDraftEventKey])
 
   const [draftView, setDraftView] = useState<DraftView>(DraftView.RANKING)
+  const [adpRoundPage, setAdpRoundPage] = useState(0)
+  const [filterRankedBelowAdp, setFilterRankedBelowAdp] = useState(false)
   const [rankingVisiblePositions, setRankingVisiblePositions] = useState<RankingLanePosition[]>([
     FantasyPosition.RUNNING_BACK,
     FantasyPosition.WIDE_RECEIVER,
@@ -434,6 +492,13 @@ const Home: FC = () => {
   const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
   const [pinnedProfilePlayerId, setPinnedProfilePlayerId] = useState<string | null>(null)
+  const [profileModule, setProfileModule] = useState<ProfileModuleId | null>("production")
+  const [profileAdvancedDetailsOpen, setProfileAdvancedDetailsOpen] = useState(true)
+  const [insightAgentState, setInsightAgentState] = useState<DraftyInsightAgentState>(
+    EMPTY_INSIGHT_AGENT_STATE,
+  )
+  const [insightWebMcpRegistration, setInsightWebMcpRegistration] =
+    useState<WebMcpRegistrationState>(UNSUPPORTED_WEBMCP_REGISTRATION)
   const focusBoardPlayer = useCallback((playerId: string | null) => {
     if (!pinnedProfilePlayerId) setViewPlayerId(playerId)
   }, [pinnedProfilePlayerId])
@@ -1029,6 +1094,495 @@ const Home: FC = () => {
     onFinishCustomRanking()
   }, [onFinishCustomRanking, rankingProfileControls])
 
+  const getWebMcpWorkspace = useCallback((): DraftyWorkspaceSnapshot => {
+    const scoringFormat = scoringFormatFor(settings)
+    const currentPlayer = viewPlayerId ? playerLib[viewPlayerId] : null
+    return {
+      draft: {
+        started: draftStarted,
+        currentPick: currPick,
+        teamCount: settings.numTeams,
+        userDraftSlot: myPickNum,
+      },
+      configuration: {
+        scoringFormat,
+        starters: {
+          qb: settings.numStartingQbs,
+          rb: settings.numStartingRbs,
+          wr: settings.numStartingWrs,
+          te: settings.numStartingTes,
+          flex: settings.numFlex,
+          bench: settings.numBenchPlayers,
+        },
+        rankingSource: String(boardSettings.ranker),
+        adpSource: String(boardSettings.adpRanker),
+        availableRankingSources: rankingSourceOptions.map(String),
+        availableAdpSources: Object.values(ThirdPartyADPRanker).map(String),
+      },
+      rankings: {
+        view: draftViewForAgent(draftView),
+        visiblePositions: [...rankingVisiblePositions],
+        sort: sortOption === SortOption.ADP ? "adp" : "rank",
+        adpRoundPage: adpRoundPage + 1,
+        adpRoundsVisible: [adpRoundPage + 1, adpRoundPage + 2, adpRoundPage + 3],
+        filterRankedBelowAdp,
+        editing: isEditingCustomRanking,
+        editable: canEditCustomRankings(),
+      },
+      profile: {
+        playerId: currentPlayer?.id || null,
+        playerName: currentPlayer?.fullName || null,
+        pinned: Boolean(
+          pinnedProfilePlayerId && pinnedProfilePlayerId === currentPlayer?.id,
+        ),
+        module: profileModule || "auto",
+        advancedDetailsOpen: profileAdvancedDetailsOpen,
+      },
+      insights: insightAgentState,
+      targets: {count: playerTargets.length},
+      persistence: {
+        rankingsHydrated,
+        targetsHydrated: playerTargetsHydrated,
+        localRankingProfileSaved: Boolean(startupProfile),
+        cloudSyncEnabled: apiFeatures.cloudProfileSyncEnabled,
+        authenticated: Boolean(draftyAuth.user),
+        cloudSyncState: cloudProfileSync.state,
+      },
+    }
+  }, [
+    adpRoundPage,
+    boardSettings,
+    canEditCustomRankings,
+    currPick,
+    draftStarted,
+    draftView,
+    filterRankedBelowAdp,
+    insightAgentState,
+    isEditingCustomRanking,
+    myPickNum,
+    pinnedProfilePlayerId,
+    playerLib,
+    playerTargetsHydrated,
+    playerTargets.length,
+    profileAdvancedDetailsOpen,
+    profileModule,
+    rankingSourceOptions,
+    rankingsHydrated,
+    rankingVisiblePositions,
+    settings,
+    sortOption,
+    startupProfile,
+    viewPlayerId,
+    apiFeatures.cloudProfileSyncEnabled,
+    cloudProfileSync.state,
+    draftyAuth.user,
+  ])
+
+  const configureWebMcpWorkspace = useCallback((input: DraftyConfigureWorkspaceInput) => {
+    if (draftStarted) {
+      return toolFailure("not_allowed", "Draft setup is locked after the first pick.")
+    }
+    if (
+      input.ranking_source
+      && !rankingSourceOptions.map(String).includes(input.ranking_source)
+    ) {
+      return toolFailure("not_found", `Ranking source ${input.ranking_source} is not loaded.`)
+    }
+    const availableAdpSources = Object.values(ThirdPartyADPRanker).map(String)
+    if (input.adp_source && !availableAdpSources.includes(input.adp_source)) {
+      return toolFailure("not_found", `ADP source ${input.adp_source} is unsupported.`)
+    }
+    const teamCount = input.team_count ?? settings.numTeams
+    const userDraftSlot = input.user_draft_slot ?? Math.min(myPickNum, teamCount)
+    if (userDraftSlot > teamCount) {
+      return toolFailure("invalid_input", "user_draft_slot cannot exceed team_count.")
+    }
+    const baseSettings = {
+      ...settings,
+      numTeams: teamCount,
+      numStartingQbs: input.starting_qbs ?? settings.numStartingQbs,
+      numStartingRbs: input.starting_rbs ?? settings.numStartingRbs,
+      numStartingWrs: input.starting_wrs ?? settings.numStartingWrs,
+      numStartingTes: input.starting_tes ?? settings.numStartingTes,
+      numFlex: input.flex ?? settings.numFlex,
+      numBenchPlayers: input.bench ?? settings.numBenchPlayers,
+    }
+    const nextSettings = input.scoring_format
+      ? settingsWithScoringFormat(baseSettings, input.scoring_format)
+      : baseSettings
+    replaceSettings(nextSettings)
+    setMyPickNum(userDraftSlot)
+    if (input.ranking_source) onSetRanker(input.ranking_source)
+    if (input.adp_source) {
+      onSetAdpRanker(input.adp_source as ThirdPartyADPRanker)
+    }
+    const current = getWebMcpWorkspace()
+    const result: DraftyWorkspaceSnapshot = {
+      ...current,
+      draft: {...current.draft, teamCount, userDraftSlot},
+      configuration: {
+        ...current.configuration,
+        scoringFormat: scoringFormatFor(nextSettings),
+        starters: {
+          qb: nextSettings.numStartingQbs,
+          rb: nextSettings.numStartingRbs,
+          wr: nextSettings.numStartingWrs,
+          te: nextSettings.numStartingTes,
+          flex: nextSettings.numFlex,
+          bench: nextSettings.numBenchPlayers,
+        },
+        rankingSource: input.ranking_source || current.configuration.rankingSource,
+        adpSource: input.adp_source || current.configuration.adpSource,
+      },
+    }
+    return toolSuccess(result, "Drafty workspace configuration was applied.", "accepted")
+  }, [
+    draftStarted,
+    getWebMcpWorkspace,
+    myPickNum,
+    onSetAdpRanker,
+    onSetRanker,
+    rankingSourceOptions,
+    replaceSettings,
+    setMyPickNum,
+    settings,
+  ])
+
+  const setWebMcpRankingsView = useCallback((input: DraftySetRankingsViewInput) => {
+    const current = getWebMcpWorkspace().rankings
+    const nextView = input.view || current.view
+    const nextPositions = input.positions || current.visiblePositions
+    const nextPage = input.adp_round === undefined
+      ? adpRoundPage
+      : input.adp_round - 1
+    const nextSort = input.sort || current.sort
+    const nextFilter = input.filter_ranked_below_adp ?? current.filterRankedBelowAdp
+    if (input.view) setDraftView(agentDraftView(input.view))
+    if (input.positions) {
+      setRankingVisiblePositions(input.positions as RankingLanePosition[])
+    }
+    if (input.adp_round !== undefined) setAdpRoundPage(nextPage)
+    if (input.sort) {
+      onApplyRankingSortBy(input.sort === "adp")
+      setSortOption(input.sort === "adp" ? SortOption.ADP : SortOption.RANKS)
+    }
+    if (input.filter_ranked_below_adp !== undefined) {
+      setFilterRankedBelowAdp(input.filter_ranked_below_adp)
+    }
+    const result: DraftyWorkspaceSnapshot["rankings"] = {
+      ...current,
+      view: nextView,
+      visiblePositions: [...nextPositions],
+      sort: nextSort,
+      adpRoundPage: nextPage + 1,
+      adpRoundsVisible: [nextPage + 1, nextPage + 2, nextPage + 3],
+      filterRankedBelowAdp: nextFilter,
+    }
+    return toolSuccess(
+      result,
+      "Drafty rankings view was applied.",
+      JSON.stringify(result) === JSON.stringify(current) ? "unchanged" : "accepted",
+    )
+  }, [adpRoundPage, getWebMcpWorkspace, onApplyRankingSortBy])
+
+  const showWebMcpPlayerProfile = useCallback((input: DraftyShowPlayerProfileInput) => {
+    const player = playerLib[input.player_id]
+    if (!player) {
+      return toolFailure("not_found", `Player ${input.player_id} is not in the current Drafty universe.`)
+    }
+    const pin = input.pin !== false
+    setViewPlayerId(player.id)
+    setPinnedProfilePlayerId(pin ? player.id : null)
+    const nextModule = input.module === undefined
+      ? profileModule
+      : input.module === "auto" ? null : input.module
+    if (input.module !== undefined) setProfileModule(nextModule)
+    const advancedDetailsOpen = input.advanced_details_open
+      ?? profileAdvancedDetailsOpen
+    if (input.advanced_details_open !== undefined) {
+      setProfileAdvancedDetailsOpen(input.advanced_details_open)
+    }
+    const result: DraftyWorkspaceSnapshot["profile"] = {
+      playerId: player.id,
+      playerName: player.fullName,
+      pinned: pin,
+      module: nextModule || "auto",
+      advancedDetailsOpen,
+    }
+    return toolSuccess(
+      result,
+      `${player.fullName} is shown in the player profile.`,
+      "accepted",
+    )
+  }, [playerLib, profileAdvancedDetailsOpen, profileModule])
+
+  const setWebMcpPlayerTarget = useCallback((input: DraftySetPlayerTargetInput) => {
+    const player = playerLib[input.player_id]
+    if (!player) {
+      return toolFailure("not_found", `Player ${input.player_id} is not in the current Drafty universe.`)
+    }
+    const prior = playerTargets.find(target => target.playerId === player.id)
+    const previousTargetRound = prior?.targetAsEarlyAsRound || null
+    if (previousTargetRound === input.target_round) {
+      return toolSuccess({
+        playerId: player.id,
+        playerName: player.fullName,
+        previousTargetRound,
+        targetRound: input.target_round,
+        targetCount: playerTargets.length,
+        persistence: {
+          local: "unchanged" as const,
+          cloudSyncEnabled: apiFeatures.cloudProfileSyncEnabled,
+          authenticated: Boolean(draftyAuth.user),
+          cloudSyncState: cloudProfileSync.state,
+        },
+      }, `${player.fullName}'s target is unchanged.`, "unchanged")
+    }
+    if (
+      input.target_round !== null
+      && !playerRanks.availPlayersByOverallRank.some(candidate => candidate.id === player.id)
+    ) {
+      return toolFailure(
+        "not_allowed",
+        `${player.fullName} is not currently available and cannot be targeted.`,
+      )
+    }
+    const nextTargets = input.target_round === null
+      ? playerTargets.filter(target => target.playerId !== player.id)
+      : [
+        ...playerTargets.filter(target => target.playerId !== player.id),
+        {playerId: player.id, targetAsEarlyAsRound: input.target_round},
+      ]
+    replacePlayerTargets(nextTargets)
+    return toolSuccess({
+      playerId: player.id,
+      playerName: player.fullName,
+      previousTargetRound,
+      targetRound: input.target_round,
+      targetCount: nextTargets.length,
+      persistence: {
+        local: "scheduled" as const,
+        cloudSyncEnabled: apiFeatures.cloudProfileSyncEnabled,
+        authenticated: Boolean(draftyAuth.user),
+        cloudSyncState: cloudProfileSync.state,
+      },
+    }, input.target_round === null
+      ? `${player.fullName}'s target was removed.`
+      : `${player.fullName} is targeted as early as round ${input.target_round}.`,
+    "accepted")
+  }, [
+    apiFeatures.cloudProfileSyncEnabled,
+    cloudProfileSync.state,
+    draftyAuth.user,
+    playerLib,
+    playerRanks.availPlayersByOverallRank,
+    playerTargets,
+    replacePlayerTargets,
+  ])
+
+  const startWebMcpRankEditing = useCallback((input: DraftyStartRankEditingInput) => {
+    if (noPlayers) {
+      return toolFailure("not_allowed", "Rankings are not loaded yet.")
+    }
+    if (!canEditCustomRankings()) {
+      return toolFailure(
+        "not_allowed",
+        "Custom rankings are locked after a player is drafted or purged.",
+      )
+    }
+    const source = input.source_ranker || String(boardSettings.ranker)
+    if (!rankingSourceOptions.map(String).includes(source)) {
+      return toolFailure("not_found", `Ranking source ${source} is not loaded.`)
+    }
+    const hasCustomBoard = Boolean(rankings.copiedRanker) && (
+      playerRanks.availPlayersByOverallRank.some(player => (
+        Boolean(player.ranks?.[ThirdPartyRanker.CUSTOM])
+      ))
+    )
+    if (source === String(ThirdPartyRanker.CUSTOM) && !hasCustomBoard) {
+      return toolFailure(
+        "not_allowed",
+        "No custom board exists yet; start from a loaded analyst ranking source.",
+      )
+    }
+    if (isEditingCustomRanking) {
+      const activeSource = rankings.copiedRanker
+        ? String(rankings.copiedRanker)
+        : String(boardSettings.ranker)
+      if (source !== String(ThirdPartyRanker.CUSTOM) && source !== activeSource) {
+        return toolFailure(
+          "not_allowed",
+          `Rank editing is already active from ${activeSource}; save it before choosing another source.`,
+        )
+      }
+      return toolSuccess({
+        editing: true,
+        rankingSource: String(ThirdPartyRanker.CUSTOM),
+        copiedFrom: rankings.copiedRanker ? String(rankings.copiedRanker) : null,
+        editable: true,
+      }, "Custom rank editing is already active.", "unchanged")
+    }
+    const started = onStartCustomRanking(source as FantasyRanker)
+    if (!started) {
+      return toolFailure("not_allowed", "Custom rank editing could not be started.")
+    }
+    setDraftView(DraftView.CUSTOM_RANKING)
+    return toolSuccess({
+      editing: true,
+      rankingSource: String(ThirdPartyRanker.CUSTOM),
+      copiedFrom: source === String(ThirdPartyRanker.CUSTOM)
+        ? rankings.copiedRanker ? String(rankings.copiedRanker) : null
+        : source,
+      editable: true,
+    }, "Custom positional-rank editing is active.", "accepted")
+  }, [
+    boardSettings.ranker,
+    canEditCustomRankings,
+    isEditingCustomRanking,
+    noPlayers,
+    onStartCustomRanking,
+    playerRanks.availPlayersByOverallRank,
+    rankingSourceOptions,
+    rankings.copiedRanker,
+  ])
+
+  const moveWebMcpPlayerRank = useCallback((input: DraftyMovePlayerRankInput) => {
+    if (!isEditingCustomRanking) {
+      return toolFailure("not_allowed", "Start custom rank editing before moving a player.")
+    }
+    if (!canEditCustomRankings()) {
+      return toolFailure(
+        "not_allowed",
+        "Custom rankings are locked after a player is drafted or purged.",
+      )
+    }
+    const player = playerLib[input.player_id]
+    if (!player) {
+      return toolFailure("not_found", `Player ${input.player_id} is not in the current Drafty universe.`)
+    }
+    if (!WEBMCP_RANK_EDIT_POSITIONS.some(position => position === player.position)) {
+      return toolFailure("not_allowed", `${player.position} rankings are not editable in Drafty.`)
+    }
+    const position = player.position as typeof WEBMCP_RANK_EDIT_POSITIONS[number]
+    const positionPlayers = playerRanks[position]
+    const previousIndex = positionPlayers.findIndex(candidate => candidate.id === player.id)
+    if (previousIndex < 0) {
+      return toolFailure("not_allowed", `${player.fullName} is not on the editable rankings board.`)
+    }
+    if (input.new_rank > positionPlayers.length) {
+      return toolFailure(
+        "invalid_input",
+        `new_rank must be from 1 to ${positionPlayers.length} for ${position}.`,
+      )
+    }
+    const previousRank = previousIndex + 1
+    if (previousRank === input.new_rank) {
+      return toolSuccess({
+        playerId: player.id,
+        playerName: player.fullName,
+        position,
+        previousRank,
+        rank: input.new_rank,
+        positionPlayerCount: positionPlayers.length,
+        persistence: "unsaved" as const,
+      }, `${player.fullName} is already ${position}${input.new_rank}.`, "unchanged")
+    }
+    onReorderPlayerInPosition(player.id, position, input.new_rank - 1)
+    return toolSuccess({
+      playerId: player.id,
+      playerName: player.fullName,
+      position,
+      previousRank,
+      rank: input.new_rank,
+      positionPlayerCount: positionPlayers.length,
+      persistence: "unsaved" as const,
+    }, `${player.fullName} moved from ${position}${previousRank} to ${position}${input.new_rank}.`, "accepted")
+  }, [
+    canEditCustomRankings,
+    isEditingCustomRanking,
+    onReorderPlayerInPosition,
+    playerLib,
+    playerRanks,
+  ])
+
+  const saveWebMcpRankEdits = useCallback(() => {
+    if (!isEditingCustomRanking) {
+      return toolFailure("not_allowed", "There are no active custom rank edits to save.")
+    }
+    if (!canEditCustomRankings()) {
+      return toolFailure(
+        "not_allowed",
+        "Custom rankings are locked after a player is drafted or purged.",
+      )
+    }
+    try {
+      rankingProfileControls.saveLocal()
+    } catch {
+      return toolFailure("internal_error", "Custom rankings could not be saved to the canonical browser profile.")
+    }
+    onFinishCustomRanking()
+    setDraftView(DraftView.RANKING)
+    return toolSuccess({
+      editing: false as const,
+      rankingSource: String(ThirdPartyRanker.CUSTOM),
+      localPersistence: "saved" as const,
+      cloudSync: {
+        enabled: apiFeatures.cloudProfileSyncEnabled,
+        authenticated: Boolean(draftyAuth.user),
+        state: cloudProfileSync.state,
+      },
+    }, apiFeatures.cloudProfileSyncEnabled && draftyAuth.user
+      ? "Custom rankings were saved locally; authenticated cloud sync will reconcile this profile."
+      : "Custom rankings were saved to this browser.",
+    "accepted")
+  }, [
+    apiFeatures.cloudProfileSyncEnabled,
+    canEditCustomRankings,
+    cloudProfileSync.state,
+    draftyAuth.user,
+    isEditingCustomRanking,
+    onFinishCustomRanking,
+    rankingProfileControls,
+  ])
+
+  const webMcpAdapter = useMemo(() => ({
+    getWorkspace: getWebMcpWorkspace,
+    searchPlayers: (input: Parameters<typeof searchDraftyPlayers>[0]["input"]) => (
+      searchDraftyPlayers({
+        players: Object.values(playerLib),
+        settings,
+        boardSettings,
+        playerTargets,
+        availablePlayerIds: new Set(
+          playerRanks.availPlayersByOverallRank.map(player => player.id),
+        ),
+        input,
+      })
+    ),
+    configureWorkspace: configureWebMcpWorkspace,
+    setRankingsView: setWebMcpRankingsView,
+    showPlayerProfile: showWebMcpPlayerProfile,
+    setPlayerTarget: setWebMcpPlayerTarget,
+    startRankEditing: startWebMcpRankEditing,
+    movePlayerRank: moveWebMcpPlayerRank,
+    saveRankEdits: saveWebMcpRankEdits,
+  }), [
+    boardSettings,
+    configureWebMcpWorkspace,
+    getWebMcpWorkspace,
+    playerLib,
+    playerRanks.availPlayersByOverallRank,
+    playerTargets,
+    moveWebMcpPlayerRank,
+    saveWebMcpRankEdits,
+    setWebMcpRankingsView,
+    setWebMcpPlayerTarget,
+    startWebMcpRankEditing,
+    settings,
+    showWebMcpPlayerProfile,
+  ])
+  const webMcpRegistration = useDraftyWebMcp(webMcpAdapter)
+
   const liveAdvisorPanelProps: LiveAdvisorPanelProps = {
     draftStarted,
     onSelectPlayer,
@@ -1063,9 +1617,27 @@ const Home: FC = () => {
       onSendRealtimeText: realtimeConversation.sendText,
     } : {}),
   }
+  const insightWebMcpExpected = draftDeskEnabled && phase14CInsightDeckEnabled
+  const expectedWebMcpStatuses = insightWebMcpExpected
+    ? [webMcpRegistration.status, insightWebMcpRegistration.status]
+    : [webMcpRegistration.status]
+  const combinedWebMcpStatus = expectedWebMcpStatuses.includes("error")
+    ? "error"
+    : webMcpRegistration.status === "ready"
+      && (!insightWebMcpExpected || insightWebMcpRegistration.status === "ready")
+      ? "ready"
+      : expectedWebMcpStatuses.includes("registering")
+        ? "registering"
+        : "unsupported"
+  const registeredWebMcpToolCount = webMcpRegistration.registeredToolCount
+    + insightWebMcpRegistration.registeredToolCount
 
   return (
-    <div className={`flex flex-col items-center justify-center min-h-screen relative ${draftDeskEnabled ? draftDeskStyles.deskViewport : ""}`}>
+    <div
+      className={`flex flex-col items-center justify-center min-h-screen relative ${draftDeskEnabled ? draftDeskStyles.deskViewport : ""}`}
+      data-webmcp-status={combinedWebMcpStatus}
+      data-webmcp-tool-count={registeredWebMcpToolCount}
+    >
       <PageHead />
       <main className={`flex flex-col items-center justify-center w-full flex-1 text-center bg-gray-50 ${draftDeskEnabled ? draftDeskStyles.deskMain : "md:px-20"}`}>
         {draftDeskEnabled && (
@@ -1175,13 +1747,17 @@ const Home: FC = () => {
                   <React.Fragment key={pane}>
                     {pane === "profile" && (
                       <DraftDeskProfilePane
+                        advancedDetailsOpen={profileAdvancedDetailsOpen}
                         boardSettings={boardSettings}
+                        onAdvancedDetailsOpenChange={setProfileAdvancedDetailsOpen}
+                        onPinnedModuleChange={setProfileModule}
                         player={viewPlayerId ? playerLib[viewPlayerId] : null}
                         players={Object.values(playerLib)}
                         playerStatus={playerStatus}
                         rankingSummaries={rankingSummaries}
                         rankingsSeason={rankings.season}
                         settings={settings}
+                        pinnedModule={profileModule}
                       />
                     )}
                     {pane === "rankings" && (
@@ -1207,7 +1783,9 @@ const Home: FC = () => {
                         />
                         <div className="min-h-0 flex-1">
                           <RankingsBoard
+                            adpRoundPage={adpRoundPage}
                             compact
+                            filterRankedBelowAdp={filterRankedBelowAdp}
                             hideCompactModeControl
                             playerRanks={playerRanks}
                             predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
@@ -1231,6 +1809,8 @@ const Home: FC = () => {
                             onPinPlayer={togglePinnedProfilePlayer}
                             visiblePositions={rankingVisiblePositions}
                             onVisiblePositionsChange={setRankingVisiblePositions}
+                            onAdpRoundPageChange={setAdpRoundPage}
+                            onFilterRankedBelowAdpChange={setFilterRankedBelowAdp}
                             isEditingCustomRanking={isEditingCustomRanking}
                             hasCustomRanking={usingCustomRanking}
                             canEditCustomRankings={canEditCustomRankings()}
@@ -1294,7 +1874,9 @@ const Home: FC = () => {
                               draftPlan={realtimeAdvisor.plan}
                               materialEvent={draftDeskInsightMaterialEvent}
                               myRosterIndex={myPickNum - 1}
+                              onAgentStateChange={setInsightAgentState}
                               onInspectPlayer={player => setViewPlayerId(player.id)}
+                              onWebMcpRegistrationStateChange={setInsightWebMcpRegistration}
                               opponentForecast={opponentForecast}
                               playerStatus={playerStatus}
                               rankingSummaries={rankingSummaries}
@@ -1412,6 +1994,8 @@ const Home: FC = () => {
             {/* Rankings Board Column */}
             <div className="col-span-5">
               <RankingsBoard
+                adpRoundPage={adpRoundPage}
+                filterRankedBelowAdp={filterRankedBelowAdp}
                 playerRanks={playerRanks}
                 predictedPicks={isEditingCustomRanking || usingCustomRanking ? {} : predictedPicks}
                 draftView={draftView}
@@ -1430,6 +2014,8 @@ const Home: FC = () => {
                 onSelectPlayer={onSelectPlayer}
                 onPurgePlayer={onPurgeAvailPlayer}
                 setViewPlayerId={setViewPlayerId}
+                onAdpRoundPageChange={setAdpRoundPage}
+                onFilterRankedBelowAdpChange={setFilterRankedBelowAdp}
                 isEditingCustomRanking={isEditingCustomRanking}
                 hasCustomRanking={usingCustomRanking}
                 canEditCustomRankings={canEditCustomRankings()}

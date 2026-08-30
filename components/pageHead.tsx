@@ -1,6 +1,8 @@
 import React from "react"
 import Head from "next/head"
 
+import {normalizeWebMcpOriginTrialToken} from "../behavior/webmcp/originTrial"
+
 const PAGE_URL = "ff-draft-dashboard.vercel.app"
 
 interface PageHeadProps {
@@ -12,13 +14,19 @@ const PageHead: React.FC<PageHeadProps> = ({
   title = "Drafty",
   desc = "Live drafting dashboard that predicts players taken and better view of available players",
 }) => {
+  const webMcpOriginTrialToken = normalizeWebMcpOriginTrialToken(
+    process.env.NEXT_PUBLIC_WEBMCP_ORIGIN_TRIAL_TOKEN,
+  )
   return (
     <Head>
       {/* Favicon */}
       <link rel="icon" type="image/png" href="/friedchickentechfavicon.png" />
       <link rel="shortcut icon" type="image/png" href="/friedchickentechfavicon.png" />
       <link rel="apple-touch-icon" href="/friedchickentechfavicon.png" />
-      
+      {webMcpOriginTrialToken && (
+        <meta httpEquiv="origin-trial" content={webMcpOriginTrialToken} />
+      )}
+
       {process.env.NEXT_PUBLIC_ENV !== "dev" && (
         <>
           <script
@@ -62,4 +70,4 @@ const PageHead: React.FC<PageHeadProps> = ({
   )
 }
 
-export default PageHead 
+export default PageHead

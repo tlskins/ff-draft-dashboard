@@ -91,6 +91,10 @@ interface RankingsBoardProps {
   onPinPlayer?: (playerId: string) => void
   visiblePositions?: readonly RankingLanePosition[]
   onVisiblePositionsChange?: (positions: RankingLanePosition[]) => void
+  adpRoundPage?: number
+  onAdpRoundPageChange?: (page: number) => void
+  filterRankedBelowAdp?: boolean
+  onFilterRankedBelowAdpChange?: (enabled: boolean) => void
 }
 
 const RankingsBoard = ({
@@ -152,12 +156,22 @@ const RankingsBoard = ({
   onPinPlayer,
   visiblePositions,
   onVisiblePositionsChange,
+  adpRoundPage: controlledAdpRoundPage,
+  onAdpRoundPageChange: controlledOnAdpRoundPageChange,
+  filterRankedBelowAdp: controlledFilterRankedBelowAdp,
+  onFilterRankedBelowAdpChange: controlledOnFilterRankedBelowAdpChange,
 }: RankingsBoardProps) => {
   const [showPurgedModal, setShowPurgedModal] = useState(false)
   const [showRostersModal, setShowRostersModal] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
-  const [adpRoundPage, setAdpRoundPage] = useState(0)
-  const [filterRankedBelowAdp, setFilterRankedBelowAdp] = useState(false)
+  const [internalAdpRoundPage, setInternalAdpRoundPage] = useState(0)
+  const [internalFilterRankedBelowAdp, setInternalFilterRankedBelowAdp] = useState(false)
+  const adpRoundPage = controlledAdpRoundPage ?? internalAdpRoundPage
+  const setAdpRoundPage = controlledOnAdpRoundPageChange ?? setInternalAdpRoundPage
+  const filterRankedBelowAdp = controlledFilterRankedBelowAdp
+    ?? internalFilterRankedBelowAdp
+  const setFilterRankedBelowAdp = controlledOnFilterRankedBelowAdpChange
+    ?? setInternalFilterRankedBelowAdp
 
   // Mobile state for EditRankingsView
   const [selectedPosition, setSelectedPosition] = useState<keyof PlayerRanks>(FantasyPosition.QUARTERBACK)

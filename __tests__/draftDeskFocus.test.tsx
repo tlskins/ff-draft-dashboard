@@ -130,6 +130,52 @@ describe("Phase 14A profile focus boundary", () => {
       .toBeTruthy()
   })
 
+  it("accepts page-owned profile module and advanced-details state", () => {
+    const onPinnedModuleChange = jest.fn()
+    const onAdvancedDetailsOpenChange = jest.fn()
+    const view = render(
+      <DraftDeskProfilePane
+        advancedDetailsOpen={false}
+        boardSettings={{ranker: ThirdPartyRanker.HARRIS, adpRanker: ThirdPartyADPRanker.ESPN}}
+        onAdvancedDetailsOpenChange={onAdvancedDetailsOpenChange}
+        onPinnedModuleChange={onPinnedModuleChange}
+        pinnedModule="outlook"
+        player={players[0]}
+        players={players}
+        playerStatus={{}}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+
+    expect(screen.getByRole("region", {name: "Outlook profile module"})).toBeTruthy()
+    expect(screen.getByText("Advanced rankings and historical comparison").parentElement?.hasAttribute("open"))
+      .toBe(false)
+    fireEvent.click(screen.getByRole("button", {name: "Production"}))
+    expect(onPinnedModuleChange).toHaveBeenCalledWith("production")
+    const details = screen.getByText("Advanced rankings and historical comparison").parentElement as HTMLDetailsElement
+    details.open = true
+    fireEvent(details, new Event("toggle", {bubbles: true}))
+    expect(onAdvancedDetailsOpenChange).toHaveBeenCalledWith(true)
+
+    view.rerender(
+      <DraftDeskProfilePane
+        advancedDetailsOpen
+        boardSettings={{ranker: ThirdPartyRanker.HARRIS, adpRanker: ThirdPartyADPRanker.ESPN}}
+        onAdvancedDetailsOpenChange={onAdvancedDetailsOpenChange}
+        onPinnedModuleChange={onPinnedModuleChange}
+        pinnedModule="production"
+        player={players[0]}
+        players={players}
+        playerStatus={{}}
+        rankingSummaries={[]}
+        settings={settings}
+      />,
+    )
+    expect(details).toBeTruthy()
+    expect(screen.getByRole("region", {name: "Production profile module"})).toBeTruthy()
+  })
+
   it("presents populated profile evidence and preserves unavailable status", () => {
     const detailedPlayer: Player = {
       ...players[0],

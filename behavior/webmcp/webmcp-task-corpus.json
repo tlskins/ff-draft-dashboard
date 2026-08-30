@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "corpus_id": "drafty-webmcp-v1",
+  "description": "Bounded natural-language journeys for Drafty's WebMCP tool surface.",
+  "aggregate_gates": {
+    "minimum_task_success_rate": 1,
+    "minimum_correct_tool_rate": 1,
+    "minimum_sequence_success_rate": 1,
+    "minimum_human_visible_agreement_rate": 1,
+    "maximum_retry_rate": 0
+  },
+  "journeys": [
+    {
+      "id": "configure_pre_draft_workspace",
+      "prompt": "Set Drafty to a 10-team half-PPR league where I draft seventh, start one quarterback, two running backs, three wide receivers, one tight end, one flex, and six bench players.",
+      "required_tool_sequence": ["drafty_configure_workspace"],
+      "allowed_tools": ["drafty_get_workspace", "drafty_configure_workspace"],
+      "max_tool_calls": 2,
+      "max_retries": 0,
+      "max_result_bytes": 6000,
+      "estimated_dom_actions": 11,
+      "state_assertions": [
+        {"path": "draft.teamCount", "op": "eq", "value": 10},
+        {"path": "draft.userDraftSlot", "op": "eq", "value": 7},
+        {"path": "configuration.scoringFormat", "op": "eq", "value": "half_ppr"},
+        {"path": "configuration.starters.wr", "op": "eq", "value": 3}
+      ]
+    },
+    {
+      "id": "navigate_adp_rounds",
+      "prompt": "Show the ADP-round board beginning with round five, sorted by ADP, and hide players ranked at least a round below ADP.",
+      "required_tool_sequence": ["drafty_set_rankings_view"],
+      "allowed_tools": ["drafty_get_workspace", "drafty_set_rankings_view"],
+      "max_tool_calls": 2,
+      "max_retries": 0,
+      "max_result_bytes": 5000,
+      "estimated_dom_actions": 6,
+      "state_assertions": [
+        {"path": "rankings.view", "op": "eq", "value": "adp_round"},
+        {"path": "rankings.adpRoundPage", "op": "eq", "value": 5},
+        {"path": "rankings.sort", "op": "eq", "value": "adp"},
+        {"path": "rankings.filterRankedBelowAdp", "op": "eq", "value": true}
+      ]
+    },
+    {
+      "id": "find_analyst_note_and_open_profile",
+      "prompt": "Find Tucker Kraft notes from Christopher Harris about blocking concerns, then pin his Outlook profile with advanced details open.",
+      "required_tool_sequence": ["drafty_search_players", "drafty_show_player_profile"],
+      "allowed_tools": ["drafty_search_players", "drafty_show_player_profile", "drafty_get_workspace"],
+      "max_tool_calls": 3,
+      "max_retries": 0,
+      "max_result_bytes": 12000,
+      "estimated_dom_actions": 12,
+      "state_assertions": [
+        {"path": "profile.playerName", "op": "eq", "value": "Tucker Kraft"},
+        {"path": "profile.pinned", "op": "eq", "value": true},
+        {"path": "profile.module", "op": "eq", "value": "outlook"},
+        {"path": "profile.advancedDetailsOpen", "op": "eq", "value": true}
+      ]
+    },
+    {
+      "id": "target_and_restore_player",
+      "prompt": "Find Tucker Kraft, target him as early as round six, show the Targets board, verify the change, then restore his prior target state.",
+      "required_tool_sequence": ["drafty_search_players", "drafty_set_player_target", "drafty_set_rankings_view", "drafty_set_player_target"],
+      "allowed_tools": ["drafty_search_players", "drafty_set_player_target", "drafty_set_rankings_view", "drafty_get_workspace"],
+      "max_tool_calls": 6,
+      "max_retries": 0,
+      "max_result_bytes": 16000,
+      "estimated_dom_actions": 15,
+      "state_assertions": [
+        {"path": "rankings.view", "op": "eq", "value": "targets"},
+        {"path": "persistence.targetsHydrated", "op": "eq", "value": true}
+      ]
+    },
+    {
+      "id": "move_and_restore_positional_rank",
+      "prompt": "Find Tucker Kraft, start custom rankings from the active analyst source, move him one tight-end spot, move him back to his original rank, save, and verify editing is closed.",
+      "required_tool_sequence": ["drafty_search_players", "drafty_start_rank_editing", "drafty_move_player_rank", "drafty_move_player_rank", "drafty_save_rank_edits"],
+      "allowed_tools": ["drafty_search_players", "drafty_start_rank_editing", "drafty_move_player_rank", "drafty_save_rank_edits", "drafty_get_workspace"],
+      "max_tool_calls": 7,
+      "max_retries": 0,
+      "max_result_bytes": 18000,
+      "estimated_dom_actions": 20,
+      "state_assertions": [
+        {"path": "rankings.editing", "op": "eq", "value": false},
+        {"path": "configuration.rankingSource", "op": "eq", "value": "Custom"},
+        {"path": "persistence.localRankingProfileSaved", "op": "eq", "value": true}
+      ]
+    },
+    {
+      "id": "pin_run_matrix_insight",
+      "prompt": "Pin the two-round run matrix in the Supporting insight slot and expand it.",
+      "required_tool_sequence": ["drafty_set_insight_view"],
+      "allowed_tools": ["drafty_get_workspace", "drafty_set_insight_view"],
+      "max_tool_calls": 2,
+      "max_retries": 0,
+      "max_result_bytes": 5000,
+      "estimated_dom_actions": 5,
+      "state_assertions": [
+        {"path": "insights.expandedSlot", "op": "eq", "value": "supporting"},
+        {"path": "insights.slots.1.view", "op": "eq", "value": "two_round_run_matrix"},
+        {"path": "insights.slots.1.mode", "op": "eq", "value": "pinned"}
+      ]
+    }
+  ]
+}
