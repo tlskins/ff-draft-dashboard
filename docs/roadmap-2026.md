@@ -507,7 +507,12 @@ ETag, so the file-backed API serves the new artifact without restart.
 Daily collection remains outside Flask. The production automation slice uses a
 private, versioned GCS last-good artifact, a daily Cloud Scheduler-triggered
 Cloud Run Job, and a 60-second API read-through cache with the packaged release
-artifact as fallback. See `docs/phase12c2-provider-ranking-refresh.md`.
+artifact as fallback. The same atomic job refreshes bounded ESPN outlook and
+current fantasy injury-designation evidence without giving ESPN authority over
+custom ranks or canonical identity. Production health requires that context to
+be newer than 30 hours. nflverse remains the completed-season injury-history
+source; its missing 2026 live artifact is a known upstream limitation rather
+than an API outage. See `docs/phase12c2-provider-ranking-refresh.md`.
 Scoring-aware
 source observations/profile rebase, provider freshness UI, and a Mongo-backed
 promotion adapter remain later bounded work; the legacy single-overall-rank

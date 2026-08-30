@@ -23,6 +23,7 @@ export type PlayerStatusLoader = (
 
 const PLAYER_STATUS_SOURCE_LABELS: Record<string, string> = {
   espn_profile_news: "ESPN player news",
+  espn_fantasy_status: "ESPN fantasy status",
   nflverse_injuries: "nflverse injury report",
   nflverse_weekly_rosters: "nflverse weekly roster",
   nflverse_trades: "nflverse trade ledger",

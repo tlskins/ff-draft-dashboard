@@ -24,6 +24,9 @@ const fixtures = overrides => async input => {
     status: "ok", rankings_source: "gcs", rankings_active_source: "gcs_cache",
     rankings_source_error: null, rankings_season: 2026, player_count: 455,
     rankings_cached_at: "2026-08-29T12:00:00Z",
+    espn_player_context_observed_at: "2026-08-30T08:00:00Z",
+    espn_player_context_match_count: 455,
+    espn_injury_status_count: 89,
   })
   if (url.pathname === "/v1/data-readiness") return json({
     current_fantasy_season: 2026,
@@ -50,18 +53,24 @@ const options = overrides => ({
 })
 
 describe("consolidated production health", () => {
-  it("passes the public release boundary while preserving status warnings", async () => {
+  it("passes while classifying unavailable nflverse injuries as a known limitation", async () => {
     const report = await runProductionHealth(options())
     expect(report.overall).toBe("passed")
     expect(report.gates).toHaveLength(6)
-    expect(report.warnings).toEqual([expect.objectContaining({dataset: "injuries"})])
+    expect(report.warnings).toEqual([])
+    expect(report.known_limitations).toEqual([
+      expect.objectContaining({
+        dataset: "injuries",
+        replacement_source: "espn_player_context",
+      }),
+    ])
     expect(JSON.stringify(report)).not.toContain(token)
   })
 
   it("fails stale rankings, missing source tiers, auth leakage, and duplicate trial tags", async () => {
     const report = await runProductionHealth(options({
       "https://drafty.example/": response(`<title>Drafty</title><meta http-equiv="origin-trial" content="${token}"><meta http-equiv="origin-trial" content="${token}">`),
-      "https://api.example/health": json({status: "ok", rankings_source: "gcs", rankings_active_source: "gcs", rankings_source_error: null, rankings_season: 2026, player_count: 455, rankings_cached_at: "2026-08-01T00:00:00Z"}),
+      "https://api.example/health": json({status: "ok", rankings_source: "gcs", rankings_active_source: "gcs", rankings_source_error: null, rankings_season: 2026, player_count: 455, rankings_cached_at: "2026-08-01T00:00:00Z", espn_player_context_observed_at: "2026-08-01T00:00:00Z", espn_player_context_match_count: 455, espn_injury_status_count: 89}),
       "https://api.example/v1/ranking-sources": json({sources: [
         {id: "harris", availability: "available", season: 2026, record_count: 246, is_stale: false, tier_method: null},
       ]}),
@@ -75,6 +84,26 @@ describe("consolidated production health", () => {
         "required-ranking-sources",
         "authenticated-boundaries-fail-closed",
       ]))
+  })
+
+  it("fails when ESPN player context is stale or absent", async () => {
+    const report = await runProductionHealth(options({
+      "https://api.example/health": json({
+        status: "ok",
+        rankings_source: "gcs",
+        rankings_active_source: "gcs",
+        rankings_source_error: null,
+        rankings_season: 2026,
+        player_count: 455,
+        rankings_cached_at: "2026-08-30T08:00:00Z",
+        espn_player_context_observed_at: "2026-08-27T08:00:00Z",
+        espn_player_context_match_count: 455,
+        espn_injury_status_count: 84,
+      }),
+    }))
+
+    expect(report.gates.find(item => item.name === "read-api-health-and-freshness"))
+      .toMatchObject({status: "failed"})
   })
 
   it("refuses non-HTTPS production origins", async () => {

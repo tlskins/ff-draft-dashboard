@@ -40,6 +40,7 @@ const runProductionHealth = async ({
   expectedCompletedSeasons = [2021, 2022, 2023, 2024, 2025],
   requiredSources = DEFAULT_REQUIRED_SOURCES,
   maximumRankingAgeHours = 72,
+  maximumPlayerContextAgeHours = 30,
   expectedRankingsSource = "gcs",
   originTrialExpiresAt = "2026-11-16T23:59:59Z",
   originTrialRenewalWarningDays = 30,
@@ -49,6 +50,7 @@ const runProductionHealth = async ({
   const apiOrigin = canonicalOrigin(apiBaseUrl, "API production origin")
   const gates = []
   const warnings = []
+  const knownLimitations = []
 
   const settleGate = async (name, work) => {
     try {
@@ -100,6 +102,10 @@ const runProductionHealth = async ({
       const health = await responseJson(fetchImpl, `${apiOrigin}/health`)
       const cachedAt = Date.parse(health.rankings_cached_at)
       const ageHours = Number.isFinite(cachedAt) ? (now - cachedAt) / 3_600_000 : null
+      const playerContextAt = Date.parse(health.espn_player_context_observed_at)
+      const playerContextAgeHours = Number.isFinite(playerContextAt)
+        ? (now - playerContextAt) / 3_600_000
+        : null
       const passed = health.status === "ok"
         && health.rankings_source === expectedRankingsSource
         && ["gcs", "gcs_cache"].includes(health.rankings_active_source)
@@ -110,6 +116,13 @@ const runProductionHealth = async ({
         && ageHours !== null
         && ageHours >= 0
         && ageHours <= maximumRankingAgeHours
+        && playerContextAgeHours !== null
+        && playerContextAgeHours >= 0
+        && playerContextAgeHours <= maximumPlayerContextAgeHours
+        && Number.isInteger(health.espn_player_context_match_count)
+        && health.espn_player_context_match_count > 0
+        && Number.isInteger(health.espn_injury_status_count)
+        && health.espn_injury_status_count >= 0
       return {passed, evidence: {
         status: health.status,
         rankings_source: health.rankings_source,
@@ -120,6 +133,12 @@ const runProductionHealth = async ({
         rankings_cached_at: health.rankings_cached_at,
         ranking_age_hours: ageHours === null ? null : Number(ageHours.toFixed(2)),
         maximum_ranking_age_hours: maximumRankingAgeHours,
+        espn_player_context_observed_at: health.espn_player_context_observed_at,
+        espn_player_context_age_hours: playerContextAgeHours === null
+          ? null : Number(playerContextAgeHours.toFixed(2)),
+        maximum_player_context_age_hours: maximumPlayerContextAgeHours,
+        espn_player_context_match_count: health.espn_player_context_match_count,
+        espn_injury_status_count: health.espn_injury_status_count,
       }}
     }),
     settleGate("readiness-and-historical-window", async () => {
@@ -131,6 +150,18 @@ const runProductionHealth = async ({
         .sort((left, right) => left - right)
       for (const source of readiness.status_sources || []) {
         if (source.availability !== "available" || source.freshness !== "fresh") {
+          if (source.provider === "nflverse" && source.dataset === "injuries"
+            && source.availability === "unavailable") {
+            knownLimitations.push({
+              kind: "upstream_live_injury_feed",
+              provider: source.provider,
+              dataset: source.dataset,
+              availability: source.availability,
+              reason: source.reason,
+              replacement_source: "espn_player_context",
+            })
+            continue
+          }
           warnings.push({
             kind: "status_source",
             provider: source.provider,
@@ -204,6 +235,7 @@ const runProductionHealth = async ({
     },
     gates,
     warnings,
+    known_limitations: knownLimitations,
     limitations: [
       "This report performs only unauthenticated reads and cannot validate signed-in cross-device state.",
       "Status-source warnings remain visible but do not fail the rankings/history release boundary.",

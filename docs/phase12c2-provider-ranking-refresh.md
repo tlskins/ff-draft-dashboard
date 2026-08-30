@@ -2,7 +2,9 @@
 
 Status: provider refresh implemented on 2026-08-16. The production automation
 slice adds a private versioned GCS last-good artifact, a scheduled Cloud Run
-Job, and a cached read-through API transport.
+Job, and a cached read-through API transport. The job also refreshes bounded
+ESPN outlook and current injury-designation context before its generation-
+guarded upload.
 
 ## Outcome
 
@@ -18,6 +20,10 @@ or the rest-of-season page: it parses the official server-rendered 2026
 standard and PPR draft payloads and validates season, ranking type, scoring,
 source update date, source counts, and page fingerprints.
 The two page requests honor FantasyPros' published five-second crawl delay.
+ESPN must cover the complete stable player universe, but this stage cannot
+alter ESPN ADP/ranks, canonical identities, teams, provider ranks, or user
+overrides. The structured player-status API overlays the resulting ESPN
+designation or explicit active clearance for the dashboard and WebMCP.
 
 The first promoted baseline contains:
 
@@ -68,3 +74,6 @@ this slice.
   not overloaded.
 - A UI freshness surface for each provider. Aggregate `cached_at` remains
   visible through the existing data-readiness path.
+- A restored nflverse current-season injury feed. Its 2026 release is absent;
+  nflverse remains the completed-season weekly availability source while ESPN
+  supplies current fantasy designations.

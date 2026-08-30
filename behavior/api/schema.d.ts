@@ -599,6 +599,10 @@ export interface components {
             rankings_cached_at: string | null;
             rankings_season: number | null;
             player_count: number;
+            /** Format: date-time */
+            espn_player_context_observed_at: string | null;
+            espn_player_context_match_count: number;
+            espn_injury_status_count: number;
         };
         /** @enum {string} */
         SourceAvailability: "available" | "unavailable";
@@ -830,6 +834,22 @@ export interface components {
             all_third_party_rankers: string[];
             season: number;
             ranking_sources: components["schemas"]["RankingArtifactSources"];
+            player_context?: components["schemas"]["PlayerContextEvidence"];
+        };
+        PlayerContextEvidence: {
+            espn: components["schemas"]["EspnPlayerContextEvidence"];
+        };
+        EspnPlayerContextEvidence: {
+            /** @constant */
+            source: "espn";
+            season: number;
+            /** Format: date-time */
+            observed_at: string;
+            snapshot_players: number;
+            espn_players: number;
+            matched_players: number;
+            published_outlooks: number;
+            published_injury_statuses: number;
         };
         RankingArtifactSource: {
             id: string;
