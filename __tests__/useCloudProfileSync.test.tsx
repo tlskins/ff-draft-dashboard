@@ -125,6 +125,37 @@ describe("useCloudProfileSync", () => {
     expect(getProfileMock).not.toHaveBeenCalled()
   })
 
+  it("pauses an established sync when a draft starts", async () => {
+    getProfileMock.mockResolvedValue(remoteRecord)
+    const {result, rerender} = renderHook(({
+      hydrated,
+      targetRound,
+    }: {
+      hydrated: boolean
+      targetRound: number
+    }) => useCloudProfileSync({
+      enabled: true,
+      user,
+      hydrated,
+      rankingProfile,
+      targets: [{playerId: "rb-one", targetAsEarlyAsRound: targetRound}],
+      sourceRanker: "Harris",
+      onApplyRemote: jest.fn(),
+    }), {initialProps: {hydrated: true, targetRound: 3}})
+
+    await waitFor(() => expect(result.current.state).toBe("synced"), {timeout: 2500})
+    expect(getProfileMock).toHaveBeenCalledTimes(1)
+
+    rerender({hydrated: false, targetRound: 4})
+    await waitFor(() => expect(result.current.state).toBe("waiting"))
+    await act(async () => {
+      await new Promise(resolve => window.setTimeout(resolve, 750))
+    })
+
+    expect(getProfileMock).toHaveBeenCalledTimes(1)
+    expect(putProfileMock).not.toHaveBeenCalled()
+  })
+
   it("requires an explicit choice for two first-use non-empty copies", async () => {
     getProfileMock.mockResolvedValue(remoteRecord)
     const {result} = renderHook(() => useCloudProfileSync({
