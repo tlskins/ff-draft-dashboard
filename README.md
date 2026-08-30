@@ -21,6 +21,18 @@ corepack yarn dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+For the production extension candidate, verify relay behavior in both the
+source tree and exact release ZIP, then smoke the live dashboard boundary:
+
+```bash
+npm run extension:test:relay
+npm run extension:smoke:production
+```
+
+Chrome Web Store listing copy, privacy declarations, asset paths, and the
+remaining human acceptance checklist are maintained in
+[docs/chrome-web-store-readiness.md](docs/chrome-web-store-readiness.md).
+
 To use the API rankings, copy `.env.example` to `.env.local` and run the API on
 port 5000. If the API is unavailable, the dashboard automatically falls back
 to `behavior/playerData.json`.

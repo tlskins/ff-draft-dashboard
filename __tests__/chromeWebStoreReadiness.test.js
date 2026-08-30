@@ -65,5 +65,18 @@ describe("Chrome Web Store production boundary", () => {
     expect(packet).toContain("## Host-access justifications")
     expect(packet).toContain("## Privacy-practices answers")
     expect(packet).toContain("ext_release_0_0_0_10.zip")
+    expect(packet).toContain("npm run extension:test:relay")
+    expect(packet).toContain("npm run extension:smoke:production")
+  })
+
+  it("ships correctly sized promotional graphics", () => {
+    const dimensions = file => {
+      const png = readFileSync(join(root, "docs", "chrome-web-store", "assets", file))
+      expect(png.subarray(1, 4).toString("ascii")).toBe("PNG")
+      return {width: png.readUInt32BE(16), height: png.readUInt32BE(20)}
+    }
+
+    expect(dimensions("drafty-small-promo-440x280.png")).toEqual({width: 440, height: 280})
+    expect(dimensions("drafty-marquee-1400x560.png")).toEqual({width: 1400, height: 560})
   })
 })

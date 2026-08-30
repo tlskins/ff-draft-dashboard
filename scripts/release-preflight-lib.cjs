@@ -19,6 +19,8 @@ const focusedTests = [
   "__tests__/espnMockAcceptance.test.ts",
   "__tests__/extensionSites.test.js",
   "__tests__/chromeWebStoreReadiness.test.js",
+  "__tests__/extensionRelay.integration.test.js",
+  "__tests__/extensionProductionSmoke.test.js",
   "__tests__/rankingProfileStorage.test.ts",
   "__tests__/rankingProfileUiAuthority.test.tsx",
   "__tests__/useRankingProfiles.test.tsx",

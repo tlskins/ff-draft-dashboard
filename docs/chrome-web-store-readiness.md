@@ -1,9 +1,10 @@
 # Drafty Draft Sync: Chrome Web Store submission packet
 
 Status: extension `0.0.0.10` is the production-package candidate. Automated
-packaging and policy-boundary checks are implemented. Store upload, listing
-entry, screenshots, distribution choices, reviewer submission, and installed-
-package browser acceptance remain human-owned.
+packaging, relay integration, production-origin smoke, policy-boundary, and
+promotional-asset checks are implemented. Store upload, listing entry,
+authentic product screenshots, distribution choices, reviewer submission, and
+installed-package browser acceptance remain human-owned.
 
 This packet follows Chrome's official extension preparation, listing, privacy,
 quality, and limited-use guidance:
@@ -96,18 +97,51 @@ privacy policy contains the Limited Use affirmation.
 ## Graphic assets and human inputs
 
 - Store icon: `public/pulse-icon-128.png` (128x128).
+- Small promo tile: `docs/chrome-web-store/assets/drafty-small-promo-440x280.png`.
+- Marquee tile: `docs/chrome-web-store/assets/drafty-marquee-1400x560.png`.
+- Reusable generated background:
+  `docs/chrome-web-store/assets/drafty-store-background-v1.png`.
 - Required: at least one current 1280x800 or 640x400 screenshot; up to five.
 - Recommended screenshot 1: ESPN draft room and connected Drafty dashboard.
 - Recommended screenshot 2: Drafty live rankings and recent-pick synchronization.
 - Recommended screenshot 3: Drafty player profile and tier-density insight after
   extension-fed picks.
-- Required by the current listing UI guidance: 440x280 small promo tile.
-- Optional: 1400x560 marquee tile and a YouTube demonstration.
+- The 440x280 small promo tile is ready for upload.
+- The optional 1400x560 marquee tile is ready for upload. A YouTube
+  demonstration remains optional and human-owned.
 
 Screenshots must come from the installed `0.0.0.10` ZIP, show current product
 behavior, omit private league/account details, and use consistent Drafty
 branding. They are intentionally not fabricated from fixture data in this
 automated slice.
+
+The promo background was generated with OpenAI image generation from the
+existing Drafty mascot and Phase 14 design reference, then deterministically
+composited with the original mascot and exact product copy. Generation prompt:
+"Create a text-free Chrome Web Store promotional background for Drafty: a
+dense but polished fantasy-draft trading-terminal workspace in charcoal/navy,
+steel-blue panes, orange highlights, and restrained green/violet signals; keep
+the left 30% quiet and leave clean center-right space for later exact text; no
+text, letters, numbers, logos, mascots, NFL/team marks, or watermark." The
+source background is retained so listing copy can be revised without
+regenerating the artwork.
+
+## Automated installed-boundary evidence
+
+Run these checks against the source extension, the exact release ZIP, and the
+live production dashboard:
+
+```bash
+npm run extension:test:relay
+npm run extension:smoke:production
+```
+
+The relay harness executes the packaged Manifest V3 background worker against
+simulated ESPN, NFL.com, both approved dashboard origins, rejected lookalike
+origins, disconnects, and failed ports. The production smoke verifies HTTPS,
+the deployed manifest boundary, public privacy/support pages, Limited Use
+copy, and cross-links. These checks reduce the manual acceptance surface but do
+not replace loading the ZIP in Chrome for final installed-package acceptance.
 
 ## Submission and acceptance checklist
 
@@ -116,7 +150,8 @@ automated slice.
    Dashboard.
 3. Enter the identity, listing, host justifications, and privacy declarations
    above; confirm distribution and mature-content choices.
-4. Capture and upload the required installed-package screenshots and promo tile.
+4. Capture and upload the required installed-package screenshots, then upload
+   the prepared promo assets.
 5. Load the exact ZIP unpacked and verify both Drafty origins, the extension
    popup, and one ESPN connection/pick flow.
 6. Verify ordinary Drafty behavior without the extension and confirm no remote
