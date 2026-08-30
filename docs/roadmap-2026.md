@@ -880,6 +880,35 @@ meta tag. Native tool discovery/invocation remains deferred to Chrome's Model
 Context Tool Inspector or a compatible agent surface. See
 `docs/phase17c-webmcp-acceptance.md`.
 
+### Phase 18: authenticated profile production closeout
+
+Status: Phase 18A is implemented and production-accepted on 2026-08-30 for
+desktop bootstrap, mobile adoption, mobile-to-desktop target propagation, and
+explicit conflict resolution. The real extension-fed first-pick sync-lock
+observation remains pending; its deterministic transition regression passes.
+See `docs/authenticated-profile-sync.md`.
+
+#### Phase 18A: desktop/mobile sync acceptance
+
+- Prove the first desktop upload, clean mobile adoption, and a mobile target
+  mutation against the production Firestore record.
+- Force a real two-device divergence and prove neither copy is overwritten
+  until the user selects **Use cloud copy** or **Keep this device**.
+- Keep an unresolved conflict visually stable. Dashboard commit `5d2db14`
+  removes apply-callback identity from synchronization authority and freezes
+  the conflict boundary until an explicit choice.
+- Pause every cloud read/write after a live draft begins. Automated coverage
+  proves the synced-to-draft-active transition; observe the same state during
+  the next extension-fed first pick rather than manufacturing a production
+  draft event.
+- Preserve independent feature-flag rollback for the dashboard sync client and
+  Cloud Run profile endpoint.
+
+Exit gate: one Google account can carry canonical ranks and targets between
+desktop and mobile, concurrent changes fail closed behind an explicit choice,
+and a live draft cannot accept or publish a cloud profile. All gates pass
+except the final live extension-fed lock observation.
+
 ## Deferred product tracks
 
 ### Prediction-v2 promotion decision

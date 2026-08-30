@@ -1,8 +1,11 @@
 # Authenticated profile sync release boundary
 
-Status: dashboard implementation and automated verification in progress on
-2026-08-29. The API contract and Google Cloud infrastructure are landed; the
-API and dashboard flags remain independently reversible.
+Status: implemented, deployed, and production-accepted for desktop bootstrap,
+mobile adoption, mobile-to-desktop propagation, and explicit two-device
+conflict resolution on 2026-08-30. The API contract and Google Cloud
+infrastructure are landed; the API and dashboard flags remain independently
+reversible. A real extension-fed first-pick observation remains pending, while
+the same sync-lock transition is covered deterministically.
 
 ## Scope
 
@@ -58,6 +61,26 @@ Before broadening Google OAuth beyond its test users:
    until an explicit choice is made.
 5. Begin a draft and confirm cloud application pauses while local drafting
    continues.
+
+Production acceptance evidence on 2026-08-30:
+
+- desktop Google sign-in created Firestore revision 1;
+- a phone adopted the profile and a Harold Fannin target propagated back to
+  desktop at revision 3;
+- an offline phone edit and a separate desktop Jahmyr Gibbs edit produced a
+  genuine optimistic conflict instead of overwriting either copy;
+- the initial conflict control flashed between conflict and syncing because
+  callback identity and unresolved local edits restarted the sync effect;
+- dashboard commit `5d2db14` freezes the conflict until an explicit choice and
+  prevents apply-callback identity from restarting synchronization;
+- the redeployed conflict remained stable, **Use cloud copy** preserved the
+  server record without a write, and cleanup restored the original two targets
+  at revision 6; and
+- 19 focused hook/decision/API tests pass, including synced-to-draft-active
+  transition coverage proving subsequent local target changes perform no API
+  read or write. The manual production draft button did not create a pick in
+  the extension-connected state, so an actual extension-fed first pick remains
+  the honest human observation for that final lock.
 
 The OAuth consent screen is still in Testing and VoiceOver verification is
 deferred. Those facts do not invalidate bounded single-user acceptance, but
