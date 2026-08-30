@@ -57,6 +57,11 @@ describe("completed mock WebMCP tools", () => {
     const signal = new AbortController().signal
     await expect(tools.get("drafty_list_mock_drafts")!.execute({}, {signal}))
       .resolves.toMatchObject({ok: true, result: {season: 2026, count: 1}})
+    const chromeExecute = tools.get("drafty_list_mock_drafts")!.execute as unknown as (
+      input: Record<string, unknown>,
+    ) => Promise<unknown>
+    await expect(chromeExecute({}))
+      .resolves.toMatchObject({ok: true, result: {season: 2026, count: 1}})
     await expect(tools.get("drafty_review_mock_draft")!.execute({
       mock_id: replay.id,
       position_sequence: ["RB", "WR"],

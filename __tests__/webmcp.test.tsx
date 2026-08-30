@@ -354,8 +354,15 @@ describe("Phase 17A WebMCP", () => {
       result: DraftyWorkspaceSnapshot
     }
     expect(response.result.draft.currentPick).toBe(8)
+    const chromeExecute = getWorkspaceTool.execute as unknown as (
+      input: Record<string, unknown>,
+    ) => Promise<{ok: boolean; result: DraftyWorkspaceSnapshot}>
+    await expect(chromeExecute({})).resolves.toMatchObject({
+      ok: true,
+      result: {draft: {currentPick: 8}},
+    })
     expect(firstGet).not.toHaveBeenCalled()
-    expect(secondGet).toHaveBeenCalledTimes(1)
+    expect(secondGet).toHaveBeenCalledTimes(2)
     view.unmount()
     expect(registrationSignals.every(signal => signal.aborted)).toBe(true)
   })
@@ -430,6 +437,14 @@ describe("Phase 17A WebMCP", () => {
         expanded: true,
       }, {signal: new AbortController().signal})
       expect(response).toMatchObject({ok: true, code: "accepted"})
+      const chromeExecute = tool.execute as unknown as (
+        input: Record<string, unknown>,
+      ) => Promise<unknown>
+      await expect(chromeExecute({
+        slot: "supporting",
+        view: "two_round_run_matrix",
+        expanded: true,
+      })).resolves.toMatchObject({ok: true, code: "accepted"})
     })
     expect(setInsightView).toHaveBeenCalledWith({
       slot: "supporting",

@@ -76,8 +76,8 @@ export const useDraftyInsightWebMcp = (
       required: ["slot", "view"],
       additionalProperties: false,
     },
-    execute: async (input, {signal}) => {
-      if (signal.aborted) return toolFailure("cancelled", "The tool call was cancelled.")
+    execute: async (input, options) => {
+      if (options?.signal.aborted) return toolFailure("cancelled", "The tool call was cancelled.")
       try {
         return adapterRef.current.setInsightView(parseInput(input))
       } catch (error) {

@@ -175,8 +175,8 @@ export const useDraftyMockReviewWebMcp = (
     description: "List compact owner-scoped completed mock drafts for Drafty's active fantasy season.",
     inputSchema: {type: "object", properties: {}, additionalProperties: false},
     annotations: {readOnlyHint: true},
-    execute: async (input, {signal}) => {
-      if (signal.aborted) return webMcpInputErrorResponse(new DOMException("Cancelled", "AbortError"))
+    execute: async (input, options) => {
+      if (options?.signal.aborted) return webMcpInputErrorResponse(new DOMException("Cancelled", "AbortError"))
       try {
         const parsed = inputRecord(input)
         if (Object.keys(parsed).length) throw new DraftyWebMcpInputError("drafty_list_mock_drafts accepts no fields.")
@@ -217,8 +217,8 @@ export const useDraftyMockReviewWebMcp = (
       additionalProperties: false,
     },
     annotations: {readOnlyHint: true},
-    execute: async (input, {signal}) => {
-      if (signal.aborted) return webMcpInputErrorResponse(new DOMException("Cancelled", "AbortError"))
+    execute: async (input, options) => {
+      if (options?.signal.aborted) return webMcpInputErrorResponse(new DOMException("Cancelled", "AbortError"))
       try {
         const parsed = parseReviewInput(input)
         const archive = await loadArchive(contextRef.current, parsed.mockId)

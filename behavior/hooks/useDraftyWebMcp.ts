@@ -32,10 +32,10 @@ const initialRegistrationState = (): WebMcpRegistrationState => ({
 })
 
 const checkedExecute = async <T>(
-  signal: AbortSignal,
+  options: WebMCP.ToolExecuteCallbackOptions | undefined,
   execute: () => T | Promise<T>,
 ) => {
-  if (signal.aborted) {
+  if (options?.signal.aborted) {
     return webMcpInputErrorResponse(new DOMException("Cancelled", "AbortError"))
   }
   try {
@@ -107,7 +107,7 @@ export const useDraftyWebMcp = (
       additionalProperties: false,
     },
     annotations: {readOnlyHint: true},
-    execute: async (input, {signal}) => checkedExecute(signal, () => {
+    execute: async (input, options) => checkedExecute(options, () => {
       emptyInput(input)
       return toolSuccess(
         adapterRef.current.getWorkspace(),
@@ -143,7 +143,7 @@ export const useDraftyWebMcp = (
       additionalProperties: false,
     },
     annotations: {readOnlyHint: true, untrustedContentHint: true},
-    execute: async (input, {signal}) => checkedExecute(signal, () => {
+    execute: async (input, options) => checkedExecute(options, () => {
       const parsed = parseSearchPlayersInput(input)
       const result = adapterRef.current.searchPlayers(parsed)
       return toolSuccess(result, `Found ${result.count} matching Drafty players.`)
@@ -170,7 +170,7 @@ export const useDraftyWebMcp = (
       additionalProperties: false,
       minProperties: 1,
     },
-    execute: async (input, {signal}) => checkedExecute(signal, () => (
+    execute: async (input, options) => checkedExecute(options, () => (
       adapterRef.current.configureWorkspace(parseConfigureWorkspaceInput(input))
     )),
   }, {
@@ -195,7 +195,7 @@ export const useDraftyWebMcp = (
       additionalProperties: false,
       minProperties: 1,
     },
-    execute: async (input, {signal}) => checkedExecute(signal, () => (
+    execute: async (input, options) => checkedExecute(options, () => (
       adapterRef.current.setRankingsView(parseSetRankingsViewInput(input))
     )),
   }, {
@@ -214,7 +214,7 @@ export const useDraftyWebMcp = (
       additionalProperties: false,
     },
     annotations: {untrustedContentHint: true},
-    execute: async (input, {signal}) => checkedExecute(signal, () => (
+    execute: async (input, options) => checkedExecute(options, () => (
       adapterRef.current.showPlayerProfile(parseShowPlayerProfileInput(input))
     )),
   }, {
@@ -236,7 +236,7 @@ export const useDraftyWebMcp = (
       additionalProperties: false,
     },
     annotations: {destructiveHint: false, idempotentHint: true},
-    execute: async (input, {signal}) => checkedExecute(signal, () => (
+    execute: async (input, options) => checkedExecute(options, () => (
       adapterRef.current.setPlayerTarget(parseSetPlayerTargetInput(input))
     )),
   }, {
@@ -251,7 +251,7 @@ export const useDraftyWebMcp = (
       additionalProperties: false,
     },
     annotations: {destructiveHint: false, idempotentHint: true},
-    execute: async (input, {signal}) => checkedExecute(signal, () => (
+    execute: async (input, options) => checkedExecute(options, () => (
       adapterRef.current.startRankEditing(parseStartRankEditingInput(input))
     )),
   }, {
@@ -268,7 +268,7 @@ export const useDraftyWebMcp = (
       additionalProperties: false,
     },
     annotations: {destructiveHint: false, idempotentHint: true},
-    execute: async (input, {signal}) => checkedExecute(signal, () => (
+    execute: async (input, options) => checkedExecute(options, () => (
       adapterRef.current.movePlayerRank(parseMovePlayerRankInput(input))
     )),
   }, {
@@ -281,7 +281,7 @@ export const useDraftyWebMcp = (
       additionalProperties: false,
     },
     annotations: {destructiveHint: false, idempotentHint: false},
-    execute: async (input, {signal}) => checkedExecute(signal, () => {
+    execute: async (input, options) => checkedExecute(options, () => {
       emptyInput(input)
       return adapterRef.current.saveRankEdits()
     }),
