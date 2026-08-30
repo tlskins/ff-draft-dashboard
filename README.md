@@ -26,12 +26,22 @@ source tree and exact release ZIP, then smoke the live dashboard boundary:
 
 ```bash
 npm run extension:test:relay
+npm run extension:test:clean-browser
 npm run extension:smoke:production
+npm run extension:bundle:store
+npm run release:health:production
 ```
 
 Chrome Web Store listing copy, privacy declarations, asset paths, and the
 remaining human acceptance checklist are maintained in
 [docs/chrome-web-store-readiness.md](docs/chrome-web-store-readiness.md).
+The generated upload directory is ignored by Git and written beneath
+`release/chrome-web-store/<version>/`. The clean-browser smoke downloads and
+caches the matching official Chrome for Testing milestone under
+`node_modules/.cache` when `CHROME_PATH` is not supplied.
+The consolidated command boundaries and current non-blocking production
+warnings are recorded in
+[docs/release-operations-closeout.md](docs/release-operations-closeout.md).
 
 To use the API rankings, copy `.env.example` to `.env.local` and run the API on
 port 5000. If the API is unavailable, the dashboard automatically falls back

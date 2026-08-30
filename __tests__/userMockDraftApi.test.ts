@@ -65,4 +65,25 @@ describe("authenticated completed mock API", () => {
       new UserMockDraftApiError("Different immutable mock", 409, "immutable_mock_conflict"),
     )
   })
+
+  it.each([
+    [{season: 1999}, "fantasy season"],
+    [{season: 2026.5}, "fantasy season"],
+    [{token: "   "}, "authentication token"],
+  ])("fails closed before fetching malformed options", async (override, message) => {
+    const fetcher = jest.fn()
+    await expect(listUserMockDrafts({...options(fetcher), ...override}))
+      .rejects.toThrow(message)
+    expect(fetcher).not.toHaveBeenCalled()
+  })
+
+  it.each(["", "has spaces", "-starts-with-dash", "x".repeat(129)])(
+    "fails closed before fetching malformed mock ID %p",
+    async mockId => {
+      const fetcher = jest.fn()
+      await expect(getUserMockDraft(mockId, options(fetcher)))
+        .rejects.toThrow("valid stable mock ID")
+      expect(fetcher).not.toHaveBeenCalled()
+    },
+  )
 })

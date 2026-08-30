@@ -734,9 +734,15 @@ and verification record.
 
 #### Phase 14D: responsive acceptance and migration
 
-Status: not begun. It owns the remaining browser/visual/human acceptance for
-the Phase 14C implementation and does not treat synthetic replay or focused
-tests as live-extension acceptance. Realtime GPT/voice remains deferred.
+Status: retired as a separate implementation phase. Its adaptive-deck browser,
+visual, scrolling, rollback, and production-read scope was consolidated into
+the completed Phase 16 closeout. Later mobile profile synchronization was
+accepted in Phase 18A. The remaining real extension-fed first-pick observation
+is tracked honestly in Phase 18A and Chrome Web Store acceptance; VoiceOver is
+still deferred. Realtime GPT/voice remains deferred.
+
+The bullets below retain the former scope for traceability; they are not an
+active standalone checklist.
 
 - Validate no-navigation drafting, automatic comparison churn, pin/unpin,
   keyboard flow, screen-reader table structure, and live announcements during
@@ -873,10 +879,11 @@ tests pass. The testing flag was subsequently enabled in Chrome 150, but the
 current Codex Chrome-control surface exposes neither WebMCP discovery nor tool
 invocation and its page-inspection channel timed out with the flag active. The
 Chrome inspector subsequently discovered all 12 tools. Native analyst-note and
-configuration journeys executed; the note/profile journey passed, while the
-configuration journey exposed and landed a Half-PPR analyst-board fallback fix
-whose native rerun remains pending. The remaining seven-journey acceptance is
-an inspector or future-agent gate, not a recorded Drafty failure. The exact
+configuration journeys executed. The note/profile journey passed; the
+configuration journey exposed and landed a Half-PPR analyst-board fallback fix,
+and the corrected native rerun then passed with Harris retained. Five corpus
+journeys remain an inspector or future-agent gate, not a recorded Drafty
+failure. The exact
 Vercel origin was registered on August 30,
 2026, and its expiring token was added to the Vercel production environment;
 the stable production alias now returns HTTP 200 with exactly one valid token
@@ -934,14 +941,25 @@ to the next undrafted configured-ADP player.
 
 See `docs/phase19-mock-review.md` for contracts, slices, and exit gates.
 
+Autonomous closeout hardening now aligns the dashboard client and local archive
+with the backend's explicit 2000–2100 season, stable mock-ID, bounded source,
+unique target, and roster-only replay contracts. Malformed local records are
+ignored, malformed writes and API requests fail before persistence/network
+access, and unauthenticated production profile/mock reads are continuously
+checked to return 401. Signed-in cross-device production acceptance remains
+human-owned.
+
 ### Chrome Web Store release readiness
 
 Status: automated production-package hardening is implemented for extension
 `0.0.0.10`. The store candidate uses production Drafty branding, limits content
 scripts to the two Drafty origins and two supported draft clients, moves
 localhost into an ignored generated development bundle, and adds a public
-privacy/support packet plus deterministic policy regressions. Store upload,
-listing screenshots, distribution choices, installed-package browser smoke,
+privacy/support packet plus deterministic policy regressions. The exact ZIP
+also passes an account-free clean Chrome-for-Testing service-worker, popup,
+production-heartbeat, and unmatched-origin smoke; a verified store-upload
+directory is generated with checksums. Store upload, authentic listing
+screenshots, distribution choices, logged-in provider/live-pick acceptance,
 and reviewer submission remain human-owned. See
 `docs/chrome-web-store-readiness.md`.
 

@@ -5,8 +5,8 @@ and production token injection are implemented. The production origin was
 enrolled on August 30, 2026, and its token is configured as a Vercel production
 build variable. The token-bearing build was deployed and verified at the stable
 production alias on August 30, 2026. Chrome's inspector now discovers all 12
-tools. Native profile-search and configuration journeys have executed; the
-remaining corpus and one corrected configuration rerun remain open.
+tools. Native profile-search and corrected configuration journeys passed; five
+corpus journeys remain open.
 
 ## Implemented acceptance infrastructure
 
@@ -170,4 +170,7 @@ Harris was removed when Half-PPR lacked dedicated source fields and the board
 fell through to empty Custom ranks. Commit `03e665c` preserves explicit Half-
 PPR ranks when published and otherwise uses the source's PPR, then Standard,
 board. The full 143-suite/878-test gate and production deployment passed. A
-native inspector rerun and independent UI confirmation remain human-owned.
+native inspector rerun then configured a 10-team Half-PPR league from slot 7
+with 1 QB, 2 RB, 3 WR, 1 TE, 1 flex, and 6 bench slots while retaining Harris;
+the returned workspace state matched those values. Five other corpus journeys
+and their independent UI confirmations remain human-owned.

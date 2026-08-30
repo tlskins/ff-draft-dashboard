@@ -64,9 +64,11 @@ describe("Chrome Web Store production boundary", () => {
     expect(packet).toContain("## Single purpose")
     expect(packet).toContain("## Host-access justifications")
     expect(packet).toContain("## Privacy-practices answers")
-    expect(packet).toContain("ext_release_0_0_0_10.zip")
+    expect(packet).toContain("drafty-draft-sync-0.0.0.10.zip")
     expect(packet).toContain("npm run extension:test:relay")
+    expect(packet).toContain("npm run extension:test:clean-browser")
     expect(packet).toContain("npm run extension:smoke:production")
+    expect(packet).toContain("npm run extension:bundle:store")
   })
 
   it("ships correctly sized promotional graphics", () => {

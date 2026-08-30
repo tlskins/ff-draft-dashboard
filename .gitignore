@@ -12,6 +12,7 @@
 /.next/
 /out/
 /.extension-dev/
+/release/chrome-web-store/
 release-preflight-report*.json
 *.tsbuildinfo
 

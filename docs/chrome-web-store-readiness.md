@@ -1,10 +1,11 @@
 # Drafty Draft Sync: Chrome Web Store submission packet
 
 Status: extension `0.0.0.10` is the production-package candidate. Automated
-packaging, relay integration, production-origin smoke, policy-boundary, and
-promotional-asset checks are implemented. Store upload, listing entry,
-authentic product screenshots, distribution choices, reviewer submission, and
-installed-package browser acceptance remain human-owned.
+packaging, relay integration, production-origin smoke, clean-profile
+Chrome-for-Testing installation/popup/heartbeat smoke, policy-boundary,
+promotional-asset, and upload-bundle checks are implemented. Store upload,
+listing entry, authentic product screenshots, distribution choices, reviewer
+submission, and logged-in live-draft acceptance remain human-owned.
 
 This packet follows Chrome's official extension preparation, listing, privacy,
 quality, and limited-use guidance:
@@ -133,7 +134,9 @@ live production dashboard:
 
 ```bash
 npm run extension:test:relay
+npm run extension:test:clean-browser
 npm run extension:smoke:production
+npm run extension:bundle:store
 ```
 
 The relay harness executes the packaged Manifest V3 background worker against
@@ -143,11 +146,28 @@ the deployed manifest boundary, public privacy/support pages, Limited Use
 copy, and cross-links. These checks reduce the manual acceptance surface but do
 not replace loading the ZIP in Chrome for final installed-package acceptance.
 
+The clean-browser smoke extracts the exact release ZIP into a temporary
+profile, starts the official Chrome for Testing milestone matching the locally
+installed Chrome, observes the MV3 service worker, verifies popup identity and
+version, receives a version-1 heartbeat on the production Drafty origin, and
+confirms an unmatched origin receives no Drafty events. Chrome for Testing is
+resolved through Google's official release metadata and cached only under
+`node_modules/.cache`; `CHROME_PATH` can supply an already installed compatible
+binary. It does not authenticate to ESPN/NFL.com, select a draft room, observe
+a live pick, or replace human visual judgment.
+
+`npm run extension:bundle:store` writes the verified upload directory to
+`release/chrome-web-store/0.0.0.10/`. It includes the exact extension ZIP,
+128px icon, both promotional images, this submission packet, an explicit
+screenshot reminder, a machine-readable manifest, and SHA-256 checksums. The
+directory is ignored because it duplicates tracked release inputs.
+
 ## Submission and acceptance checklist
 
 1. Deploy and verify the privacy and support URLs.
-2. Upload `ext_release_0_0_0_10.zip` to the Chrome Web Store Developer
-   Dashboard.
+2. Run `npm run extension:bundle:store`, verify `SHA256SUMS`, and upload
+   `release/chrome-web-store/0.0.0.10/drafty-draft-sync-0.0.0.10.zip` to the
+   Chrome Web Store Developer Dashboard.
 3. Enter the identity, listing, host justifications, and privacy declarations
    above; confirm distribution and mature-content choices.
 4. Capture and upload the required installed-package screenshots, then upload

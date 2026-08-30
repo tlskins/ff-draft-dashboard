@@ -1,6 +1,7 @@
 # Phase 19: season-scoped mock archive and deterministic review
 
-Status: implementation and automated validation complete; production
+Status: implementation and automated validation complete; autonomous
+production-boundary hardening is complete; signed-in cross-device production
 acceptance remains pending. Phase 18B custom-origin WebMCP activation remains
 deferred.
 
@@ -128,6 +129,14 @@ labels untrusted source copy, and identifies unavailable evidence explicitly.
   duplicate players, stable tie-breaking, and deterministic repeatability;
 - actual-versus-alternate UI accessibility and WebMCP schema/task-corpus
   regressions.
+
+The autonomous release-operations closeout adds client-side parity with the
+backend boundary: seasons outside 2000–2100, malformed stable mock IDs, missing
+authentication tokens, unbounded source labels, invalid/duplicate targets, and
+calibration-bearing local replay records fail closed before a network or
+persistence write. The read-only production health command also verifies that
+the profile and mock collection endpoints return 401 without credentials. It
+does not read or mutate a signed-in user's archive.
 
 Exit gate: a signed-in user completes a mock, reopens it on another device,
 sees the same frozen scorecard, generates the same three bounded alternatives,
