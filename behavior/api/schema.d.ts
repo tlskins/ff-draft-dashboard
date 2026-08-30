@@ -591,6 +591,10 @@ export interface components {
             /** @constant */
             status: "ok";
             rankings_source: string;
+            /** @description gcs, gcs_cache, gcs_stale_cache, file_fallback, or the active legacy transport. */
+            rankings_active_source: string;
+            /** @description Bounded exception class for the last remote refresh-read failure; never contains credentials or object contents. */
+            rankings_source_error: string | null;
             /** Format: date-time */
             rankings_cached_at: string | null;
             rankings_season: number | null;

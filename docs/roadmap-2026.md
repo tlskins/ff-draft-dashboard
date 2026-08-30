@@ -504,9 +504,11 @@ artifact. The dashboard remains API-first and its release fallback is synced to
 the promoted artifact. API responses now require revalidation with a content
 ETag, so the file-backed API serves the new artifact without restart.
 
-Daily collection is an external scheduler concern, not a Flask background
-thread. A repository wrapper and launchd example are landed but intentionally
-not installed. See `docs/phase12c2-provider-ranking-refresh.md`. Scoring-aware
+Daily collection remains outside Flask. The production automation slice uses a
+private, versioned GCS last-good artifact, a daily Cloud Scheduler-triggered
+Cloud Run Job, and a 60-second API read-through cache with the packaged release
+artifact as fallback. See `docs/phase12c2-provider-ranking-refresh.md`.
+Scoring-aware
 source observations/profile rebase, provider freshness UI, and a Mongo-backed
 promotion adapter remain later bounded work; the legacy single-overall-rank
 observation contract is not overloaded.

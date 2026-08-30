@@ -1,7 +1,8 @@
 # Phase 12C2: 2026 provider ranking refresh
 
-Status: implemented locally on 2026-08-16; scheduler installation and remote
-deployment remain explicit operator actions.
+Status: provider refresh implemented on 2026-08-16. The production automation
+slice adds a private versioned GCS last-good artifact, a scheduled Cloud Run
+Job, and a cached read-through API transport.
 
 ## Outcome
 
@@ -59,7 +60,8 @@ this slice.
 
 ## Deferred
 
-- Installing/enabling the launchd job on the operator machine.
+- Installing the optional launchd job on the operator machine; production uses
+  the Google Cloud schedule instead.
 - A Mongo-backed promotion adapter.
 - Persisting scoring-aware provider observations for automatic canonical
   profile rebase; the older single-rank observation contract is intentionally

@@ -21,7 +21,8 @@ const fixtures = overrides => async input => {
     if (url.pathname === "/extension-support") return response('<a href="/extension-privacy">Privacy</a>')
   }
   if (url.pathname === "/health") return json({
-    status: "ok", rankings_season: 2026, player_count: 455,
+    status: "ok", rankings_source: "gcs", rankings_active_source: "gcs_cache",
+    rankings_source_error: null, rankings_season: 2026, player_count: 455,
     rankings_cached_at: "2026-08-29T12:00:00Z",
   })
   if (url.pathname === "/v1/data-readiness") return json({
@@ -60,7 +61,7 @@ describe("consolidated production health", () => {
   it("fails stale rankings, missing source tiers, auth leakage, and duplicate trial tags", async () => {
     const report = await runProductionHealth(options({
       "https://drafty.example/": response(`<title>Drafty</title><meta http-equiv="origin-trial" content="${token}"><meta http-equiv="origin-trial" content="${token}">`),
-      "https://api.example/health": json({status: "ok", rankings_season: 2026, player_count: 455, rankings_cached_at: "2026-08-01T00:00:00Z"}),
+      "https://api.example/health": json({status: "ok", rankings_source: "gcs", rankings_active_source: "gcs", rankings_source_error: null, rankings_season: 2026, player_count: 455, rankings_cached_at: "2026-08-01T00:00:00Z"}),
       "https://api.example/v1/ranking-sources": json({sources: [
         {id: "harris", availability: "available", season: 2026, record_count: 246, is_stale: false, tier_method: null},
       ]}),

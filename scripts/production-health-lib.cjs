@@ -40,6 +40,7 @@ const runProductionHealth = async ({
   expectedCompletedSeasons = [2021, 2022, 2023, 2024, 2025],
   requiredSources = DEFAULT_REQUIRED_SOURCES,
   maximumRankingAgeHours = 72,
+  expectedRankingsSource = "gcs",
   originTrialExpiresAt = "2026-11-16T23:59:59Z",
   originTrialRenewalWarningDays = 30,
   now = Date.now(),
@@ -100,6 +101,9 @@ const runProductionHealth = async ({
       const cachedAt = Date.parse(health.rankings_cached_at)
       const ageHours = Number.isFinite(cachedAt) ? (now - cachedAt) / 3_600_000 : null
       const passed = health.status === "ok"
+        && health.rankings_source === expectedRankingsSource
+        && ["gcs", "gcs_cache"].includes(health.rankings_active_source)
+        && health.rankings_source_error === null
         && health.rankings_season === expectedSeason
         && Number.isInteger(health.player_count)
         && health.player_count > 0
@@ -108,6 +112,9 @@ const runProductionHealth = async ({
         && ageHours <= maximumRankingAgeHours
       return {passed, evidence: {
         status: health.status,
+        rankings_source: health.rankings_source,
+        rankings_active_source: health.rankings_active_source,
+        rankings_source_error: health.rankings_source_error,
         rankings_season: health.rankings_season,
         player_count: health.player_count,
         rankings_cached_at: health.rankings_cached_at,
@@ -193,6 +200,7 @@ const runProductionHealth = async ({
       expected_season: expectedSeason,
       expected_completed_seasons: expectedCompletedSeasons,
       required_ranking_sources: requiredSources,
+      expected_rankings_transport: expectedRankingsSource,
     },
     gates,
     warnings,
