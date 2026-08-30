@@ -219,7 +219,7 @@ describe("ESPN extension selector contract", () => {
 
   it("loads the extractor before the content script in the manifest", () => {
     const manifest = require("../public/manifest.json")
-    expect(manifest.version).toBe("0.0.0.8")
+    expect(manifest.version).toBe("0.0.0.9")
     expect(manifest.content_scripts[0].js).toEqual([
       "espnDraftExtractor.js",
       "contentScript.js",

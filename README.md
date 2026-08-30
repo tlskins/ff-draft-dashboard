@@ -116,8 +116,9 @@ The extension sends versioned, full draft snapshots and keys ESPN sessions by
 league ID so repeated mocks with the same title cannot merge. The dashboard
 also accepts the legacy incremental message shape so an installed older
 extension does not have to be upgraded in lockstep. Local extension version
-`0.0.0.8` adds scheduled-board completion checks to the versioned ESPN
-selector-health reports. The dashboard remains
+`0.0.0.9` packages the current half-PPR draft-setting capture together with
+the scheduled-board completion checks in the versioned ESPN selector-health
+reports. The dashboard remains
 quiet while capture is healthy and visibly warns when the ESPN draft layout is
 unavailable or only partially readable.
 

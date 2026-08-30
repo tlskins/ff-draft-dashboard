@@ -3,7 +3,7 @@
 
   "name": "FF Draft Pulse (Local Dev)",
   "description": "Local development build for the Drafty fantasy football dashboard",
-  "version": "0.0.0.8",
+  "version": "0.0.0.9",
   "icons": {
     "16": "pulse-icon-16.png",
     "32": "pulse-icon-32.png",
