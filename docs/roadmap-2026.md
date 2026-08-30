@@ -922,6 +922,23 @@ except the final live extension-fed lock observation.
 
 ## Deferred product tracks
 
+### Phase 20A: agent-efficient deterministic evidence
+
+Status: implementation complete; native production acceptance remains pending.
+The WebMCP catalog expands from 12 to 15 tools. Agents can now read a compact
+deterministic next-pick context, inspect bounded per-player rank/tier/ADP,
+status, outlook, analyst-note, history, and recommendation evidence, request
+completed mocks by explicit fantasy season, and open a selected mock in the
+human-visible review dialog. Workspace snapshots advertise mutation
+capabilities and reasons, and only current WebMCP annotation fields are emitted.
+
+The corpus now contains nine journeys. The two previously completed native
+journeys remain valid; the seven remaining journeys, 15-tool production
+discovery, and one visible mock-open confirmation require a compatible browser
+agent or Model Context Tool Inspector. Origin-trial production health warns in
+the 30-day renewal window and fails after the registered November 16, 2026
+expiry without exposing the token.
+
 ### Phase 19: season-scoped mock archive and deterministic review
 
 Status: implementation and automated validation complete; production
@@ -952,15 +969,15 @@ human-owned.
 ### Chrome Web Store release readiness
 
 Status: automated production-package hardening is implemented for extension
-`0.0.0.10`. The store candidate uses production Drafty branding, limits content
+`0.0.0.10`, which was submitted for review on August 30, 2026. The store
+candidate uses production Drafty branding, limits content
 scripts to the two Drafty origins and two supported draft clients, moves
 localhost into an ignored generated development bundle, and adds a public
 privacy/support packet plus deterministic policy regressions. The exact ZIP
 also passes an account-free clean Chrome-for-Testing service-worker, popup,
 production-heartbeat, and unmatched-origin smoke; a verified store-upload
-directory is generated with checksums. Store upload, authentic listing
-screenshots, distribution choices, logged-in provider/live-pick acceptance,
-and reviewer submission remain human-owned. See
+directory is generated with checksums. Reviewer approval and post-approval
+logged-in provider/live-pick acceptance remain human-owned. See
 `docs/chrome-web-store-readiness.md`.
 
 ### Prediction-v2 promotion decision

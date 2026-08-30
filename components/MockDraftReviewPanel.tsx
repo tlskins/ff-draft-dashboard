@@ -32,10 +32,12 @@ export const MockDraftReviewPanel = ({
   season,
   user,
   currentArchive,
+  requestedArchive,
 }: {
   season: number
   user: User | null
   currentArchive?: LocalMockDraftArchive | null
+  requestedArchive?: LocalMockDraftArchive | null
 }) => {
   const [open, setOpen] = useState(false)
   const [summaries, setSummaries] = useState<UserMockDraftSummary[]>([])
@@ -44,20 +46,29 @@ export const MockDraftReviewPanel = ({
   const [error, setError] = useState<string | null>(null)
   const [firstPosition, setFirstPosition] = useState<ReviewPosition | "">("")
   const [secondPosition, setSecondPosition] = useState<ReviewPosition | "">("")
+  const [reviewSeason, setReviewSeason] = useState(season)
   const closeRef = useRef<HTMLButtonElement>(null)
 
+  useEffect(() => {
+    if (!requestedArchive) return
+    setReviewSeason(requestedArchive.season)
+    setSelected(requestedArchive)
+    setOpen(true)
+  }, [requestedArchive])
+
   const local = useMemo(() => {
-    if (typeof localStorage === "undefined") return currentArchive ? [currentArchive] : []
-    const stored = readLocalCompletedMocks(localStorage, season)
-    return currentArchive && !stored.some(item => item.mock_id === currentArchive.mock_id)
-      ? [currentArchive, ...stored]
+    const current = currentArchive?.season === reviewSeason ? currentArchive : null
+    if (typeof localStorage === "undefined") return current ? [current] : []
+    const stored = readLocalCompletedMocks(localStorage, reviewSeason)
+    return current && !stored.some(item => item.mock_id === current.mock_id)
+      ? [current, ...stored]
       : stored
-  }, [currentArchive, season])
+  }, [currentArchive, reviewSeason])
 
   useEffect(() => {
     if (!open) return
     closeRef.current?.focus()
-    setSelected(current => current && current.season === season
+    setSelected(current => current && current.season === reviewSeason
       ? current
       : local[0] || null)
     if (!user) {
@@ -68,7 +79,7 @@ export const MockDraftReviewPanel = ({
     setLoading(true)
     setError(null)
     void user.getIdToken()
-      .then(token => listUserMockDrafts({token, season}))
+      .then(token => listUserMockDrafts({token, season: reviewSeason}))
       .then(result => {
         if (active) setSummaries(result.mocks)
       })
@@ -81,7 +92,7 @@ export const MockDraftReviewPanel = ({
     return () => {
       active = false
     }
-  }, [local, open, season, user])
+  }, [local, open, reviewSeason, user])
 
   const selectRemote = useCallback(async (summary: UserMockDraftSummary) => {
     const localMatch = local.find(item => item.mock_id === summary.mock_id)
@@ -94,7 +105,7 @@ export const MockDraftReviewPanel = ({
     setError(null)
     try {
       const token = await user.getIdToken()
-      const record = await getUserMockDraft(summary.mock_id, {token, season})
+      const record = await getUserMockDraft(summary.mock_id, {token, season: reviewSeason})
       setSelected({
         schema_version: 1,
         season: record.season,
@@ -110,7 +121,7 @@ export const MockDraftReviewPanel = ({
     } finally {
       setLoading(false)
     }
-  }, [local, season, user])
+  }, [local, reviewSeason, user])
 
   const review = useMemo(() => {
     if (!selected) return null
@@ -164,14 +175,14 @@ export const MockDraftReviewPanel = ({
           style={{zIndex: 1100}}
         >
           <section
-            aria-label={`Season ${season} mock draft review`}
+            aria-label={`Season ${reviewSeason} mock draft review`}
             aria-modal="true"
             className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded border border-slate-500 bg-slate-100 text-slate-900 shadow-2xl"
             role="dialog"
           >
             <header className="flex items-center justify-between border-b border-slate-400 bg-slate-800 px-4 py-2 text-slate-50">
               <div>
-                <p className="text-xs uppercase tracking-wider text-sky-300">Season {season}</p>
+                <p className="text-xs uppercase tracking-wider text-sky-300">Season {reviewSeason}</p>
                 <h2 className="text-lg font-bold">Completed mock scorecards</h2>
               </div>
               <button

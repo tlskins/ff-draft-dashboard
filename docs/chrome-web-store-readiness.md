@@ -1,11 +1,11 @@
 # Drafty Draft Sync: Chrome Web Store submission packet
 
-Status: extension `0.0.0.10` is the production-package candidate. Automated
+Status: extension `0.0.0.10` was submitted to the Chrome Web Store for review
+on August 30, 2026. Automated
 packaging, relay integration, production-origin smoke, clean-profile
 Chrome-for-Testing installation/popup/heartbeat smoke, policy-boundary,
-promotional-asset, and upload-bundle checks are implemented. Store upload,
-listing entry, authentic product screenshots, distribution choices, reviewer
-submission, and logged-in live-draft acceptance remain human-owned.
+promotional-asset, and upload-bundle checks are implemented. Store approval and
+the post-approval installed-package/live-draft acceptance remain human-owned.
 
 This packet follows Chrome's official extension preparation, listing, privacy,
 quality, and limited-use guidance:

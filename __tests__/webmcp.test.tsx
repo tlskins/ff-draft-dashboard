@@ -119,6 +119,7 @@ const insightState: DraftyInsightAgentState = {
 }
 
 const workspace: DraftyWorkspaceSnapshot = {
+  schemaVersion: 1,
   draft: {started: false, currentPick: 1, teamCount: 12, userDraftSlot: 6},
   configuration: {
     scoringFormat: "standard",
@@ -155,10 +156,18 @@ const workspace: DraftyWorkspaceSnapshot = {
     authenticated: true,
     cloudSyncState: "synced",
   },
+  capabilities: {
+    configureWorkspace: {available: true, reason: null},
+    setPlayerTarget: {available: true, reason: null},
+    editRanks: {available: true, reason: null},
+    saveRankEdits: {available: false, reason: "No custom rank editing session is active."},
+  },
 }
 
 const adapter = (getWorkspace = jest.fn(() => workspace)): DraftyHomeWebMcpAdapter => ({
   getWorkspace,
+  getDecisionContext: jest.fn(() => ({schema_version: 1, status: "ready"})),
+  getPlayerEvidence: jest.fn(() => toolSuccess({schema_version: 1}, "evidence")),
   searchPlayers: jest.fn(() => ({count: 0, players: []})),
   configureWorkspace: jest.fn(() => toolSuccess(workspace, "configured", "accepted")),
   setRankingsView: jest.fn(() => toolSuccess(workspace.rankings, "view", "accepted")),
@@ -335,7 +344,7 @@ describe("Phase 17A WebMCP", () => {
       {initialProps: {value: adapter(firstGet)}},
     )
     await waitFor(() => expect(view.result.current.status).toBe("ready"))
-    expect(registerTool).toHaveBeenCalledTimes(9)
+    expect(registerTool).toHaveBeenCalledTimes(11)
     expect(registerTool.mock.calls.map(call => call[0].name)).toEqual(
       DRAFTY_WEBMCP_HOME_TOOL_NAMES,
     )
@@ -345,6 +354,9 @@ describe("Phase 17A WebMCP", () => {
       expect(Object.keys(tool.inputSchema.properties || {}).every(
         parameter => parameter.length <= 30,
       )).toBe(true)
+      expect(Object.keys(tool.annotations || {}).every(annotation => (
+        ["readOnlyHint", "untrustedContentHint"].includes(annotation)
+      ))).toBe(true)
     })
     const registrationSignals = registerTool.mock.calls.map(call => call[1].signal)
     view.rerender({value: adapter(secondGet)})
@@ -363,6 +375,19 @@ describe("Phase 17A WebMCP", () => {
     })
     expect(firstGet).not.toHaveBeenCalled()
     expect(secondGet).toHaveBeenCalledTimes(2)
+    const tools = new Map(registerTool.mock.calls.map(call => [
+      call[0].name,
+      call[0] as WebMCP.ModelContextTool,
+    ]))
+    await expect(tools.get("drafty_get_decision_context")!.execute({}, {
+      signal: new AbortController().signal,
+    })).resolves.toMatchObject({ok: true, result: {status: "ready"}})
+    await expect(tools.get("drafty_get_player_evidence")!.execute({
+      player_id: "kraft",
+    }, {signal: new AbortController().signal})).resolves.toMatchObject({
+      ok: true,
+      result: {schema_version: 1},
+    })
     view.unmount()
     expect(registrationSignals.every(signal => signal.aborted)).toBe(true)
   })

@@ -42,13 +42,15 @@ describe("completed mock WebMCP tools", () => {
       targets: [],
       completedAt: "2026-08-30T18:00:00Z",
     })
+    const onOpenReview = jest.fn()
     const {result, unmount} = renderHook(() => useDraftyMockReviewWebMcp({
       season: 2026,
       user: null,
       currentArchive: archive,
+      onOpenReview,
     }))
     await waitFor(() => expect(result.current.status).toBe("ready"))
-    expect(result.current.registeredToolCount).toBe(2)
+    expect(result.current.registeredToolCount).toBe(3)
     const tools = new Map(registerTool.mock.calls.map(call => [
       call[0].name,
       call[0] as WebMCP.ModelContextTool,
@@ -74,6 +76,15 @@ describe("completed mock WebMCP tools", () => {
         actual: {schemaVersion: 1},
       },
     })
+    await expect(tools.get("drafty_open_mock_review")!.execute({
+      mock_id: replay.id,
+      season: 2026,
+    }, {signal})).resolves.toMatchObject({
+      ok: true,
+      code: "accepted",
+      result: {mock_id: replay.id, season: 2026, open: true},
+    })
+    expect(onOpenReview).toHaveBeenCalledWith(archive)
     unmount()
   })
 

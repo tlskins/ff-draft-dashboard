@@ -11,6 +11,34 @@
   },
   "journeys": [
     {
+      "id": "read_live_decision_evidence",
+      "prompt": "Summarize my next-pick decision using Drafty's deterministic shortlist, roster needs, recent picks, and the next two turn windows without changing the board.",
+      "required_tool_sequence": ["drafty_get_decision_context"],
+      "allowed_tools": ["drafty_get_workspace", "drafty_get_decision_context"],
+      "max_tool_calls": 2,
+      "max_retries": 0,
+      "max_result_bytes": 24000,
+      "estimated_dom_actions": 12,
+      "state_assertions": [
+        {"path": "decisionContext.schema_version", "op": "eq", "value": 1},
+        {"path": "decisionContext.status", "op": "eq", "value": "ready"}
+      ]
+    },
+    {
+      "id": "inspect_player_evidence",
+      "prompt": "Find Tucker Kraft, then summarize his current Drafty board rank, tier, ADP, injury/status evidence, outlook, analyst notes, and scoring-specific history.",
+      "required_tool_sequence": ["drafty_search_players", "drafty_get_player_evidence"],
+      "allowed_tools": ["drafty_search_players", "drafty_get_player_evidence", "drafty_get_workspace"],
+      "max_tool_calls": 3,
+      "max_retries": 0,
+      "max_result_bytes": 24000,
+      "estimated_dom_actions": 14,
+      "state_assertions": [
+        {"path": "playerEvidence.schema_version", "op": "eq", "value": 1},
+        {"path": "playerEvidence.player.name", "op": "eq", "value": "Tucker Kraft"}
+      ]
+    },
+    {
       "id": "configure_pre_draft_workspace",
       "prompt": "Set Drafty to a 10-team half-PPR league where I draft seventh, start one quarterback, two running backs, three wide receivers, one tight end, one flex, and six bench players.",
       "required_tool_sequence": ["drafty_configure_workspace"],

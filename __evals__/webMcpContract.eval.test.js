@@ -6,6 +6,8 @@ const {
 
 const knownTools = new Set([
   "drafty_get_workspace",
+  "drafty_get_decision_context",
+  "drafty_get_player_evidence",
   "drafty_search_players",
   "drafty_configure_workspace",
   "drafty_set_rankings_view",
@@ -17,6 +19,7 @@ const knownTools = new Set([
   "drafty_set_insight_view",
   "drafty_list_mock_drafts",
   "drafty_review_mock_draft",
+  "drafty_open_mock_review",
 ])
 
 const setPath = (target, path, value) => {
@@ -84,7 +87,7 @@ describe("Phase 17C WebMCP agent-eval contract", () => {
 
   it("fails wrong tools, retries, oversized output, and state disagreement", () => {
     const run = referenceRun()
-    const trace = run.journeys[0]
+    const trace = run.journeys.find(journey => journey.id === "configure_pre_draft_workspace")
     trace.calls.unshift({
       tool: "drafty_show_player_profile",
       input: {},
@@ -97,12 +100,13 @@ describe("Phase 17C WebMCP agent-eval contract", () => {
     expect(report.overall).toBe("failed")
     expect(report.metrics.correct_tool_rate).toBeLessThan(1)
     expect(report.metrics.retry_rate).toBeGreaterThan(0)
-    expect(report.journeys[0]).toMatchObject({
+    expect(report.journeys.find(journey => journey.id === "configure_pre_draft_workspace"))
+      .toMatchObject({
       task_success: false,
       human_visible_agreement: false,
       wrong_tool_calls: 1,
       retries: 1,
       within_budgets: false,
-    })
+      })
   })
 })

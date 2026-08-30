@@ -7,6 +7,7 @@ import {
   DraftyWebMcpStatus,
   parseConfigureWorkspaceInput,
   parseMovePlayerRankInput,
+  parsePlayerEvidenceInput,
   parseSearchPlayersInput,
   parseSetPlayerTargetInput,
   parseSetRankingsViewInput,
@@ -116,6 +117,30 @@ export const useDraftyWebMcp = (
     }),
   }, {
     name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[1],
+    title: "Get Drafty decision context",
+    description: "Read the compact deterministic draft decision context: roster, recent picks, opponent needs, shortlist evidence, and two-turn market pressure.",
+    inputSchema: {type: "object", properties: {}, additionalProperties: false},
+    annotations: {readOnlyHint: true},
+    execute: async (input, options) => checkedExecute(options, () => {
+      emptyInput(input)
+      return toolSuccess(adapterRef.current.getDecisionContext(), "Drafty decision evidence is current.")
+    }),
+  }, {
+    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[2],
+    title: "Get Drafty player evidence",
+    description: "Read bounded board, tier, ADP, projection, status, outlook, analyst-note, historical, and nearby-peer evidence for one stable player ID.",
+    inputSchema: {
+      type: "object",
+      properties: {player_id: {type: "string", maxLength: 120}},
+      required: ["player_id"],
+      additionalProperties: false,
+    },
+    annotations: {readOnlyHint: true, untrustedContentHint: true},
+    execute: async (input, options) => checkedExecute(options, () => (
+      adapterRef.current.getPlayerEvidence(parsePlayerEvidenceInput(input))
+    )),
+  }, {
+    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[3],
     title: "Search Drafty players",
     description: "Search the current Drafty player universe, ESPN outlook snippets, and licensed analyst notes. Returns stable player IDs for later actions.",
     inputSchema: {
@@ -149,7 +174,7 @@ export const useDraftyWebMcp = (
       return toolSuccess(result, `Found ${result.count} matching Drafty players.`)
     }),
   }, {
-    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[2],
+    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[4],
     title: "Configure Drafty workspace",
     description: "Apply a validated partial league, lineup, ranking-source, or ADP-source configuration before the draft starts.",
     inputSchema: {
@@ -174,7 +199,7 @@ export const useDraftyWebMcp = (
       adapterRef.current.configureWorkspace(parseConfigureWorkspaceInput(input))
     )),
   }, {
-    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[3],
+    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[5],
     title: "Set Drafty rankings view",
     description: "Select the position, ADP-round, or targets rankings view and optionally set positions, an ADP round, sorting, or the below-ADP filter.",
     inputSchema: {
@@ -199,7 +224,7 @@ export const useDraftyWebMcp = (
       adapterRef.current.setRankingsView(parseSetRankingsViewInput(input))
     )),
   }, {
-    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[4],
+    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[6],
     title: "Show Drafty player profile",
     description: "Focus a player by stable ID, optionally pin the focus, select Auto, Draft value, Outlook, or Production, and open or close advanced evidence.",
     inputSchema: {
@@ -218,7 +243,7 @@ export const useDraftyWebMcp = (
       adapterRef.current.showPlayerProfile(parseShowPlayerProfileInput(input))
     )),
   }, {
-    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[5],
+    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[7],
     title: "Set Drafty player target",
     description: "Add or update one player's earliest target round, or remove that player's target by passing null. Use a stable player ID from search.",
     inputSchema: {
@@ -235,12 +260,11 @@ export const useDraftyWebMcp = (
       required: ["player_id", "target_round"],
       additionalProperties: false,
     },
-    annotations: {destructiveHint: false, idempotentHint: true},
     execute: async (input, options) => checkedExecute(options, () => (
       adapterRef.current.setPlayerTarget(parseSetPlayerTargetInput(input))
     )),
   }, {
-    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[6],
+    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[8],
     title: "Start Drafty rank editing",
     description: "Start or resume bounded custom positional-rank editing before any player has been drafted or purged.",
     inputSchema: {
@@ -250,12 +274,11 @@ export const useDraftyWebMcp = (
       },
       additionalProperties: false,
     },
-    annotations: {destructiveHint: false, idempotentHint: true},
     execute: async (input, options) => checkedExecute(options, () => (
       adapterRef.current.startRankEditing(parseStartRankEditingInput(input))
     )),
   }, {
-    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[7],
+    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[9],
     title: "Move Drafty player rank",
     description: "Move one player to a validated one-based rank within that player's position while custom rank editing is active.",
     inputSchema: {
@@ -267,12 +290,11 @@ export const useDraftyWebMcp = (
       required: ["player_id", "new_rank"],
       additionalProperties: false,
     },
-    annotations: {destructiveHint: false, idempotentHint: true},
     execute: async (input, options) => checkedExecute(options, () => (
       adapterRef.current.movePlayerRank(parseMovePlayerRankInput(input))
     )),
   }, {
-    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[8],
+    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[10],
     title: "Save Drafty rank edits",
     description: "Save the active custom ranking board to Drafty's canonical browser profile, queue authenticated cloud sync when available, and finish editing.",
     inputSchema: {
@@ -280,7 +302,6 @@ export const useDraftyWebMcp = (
       properties: {},
       additionalProperties: false,
     },
-    annotations: {destructiveHint: false, idempotentHint: false},
     execute: async (input, options) => checkedExecute(options, () => {
       emptyInput(input)
       return adapterRef.current.saveRankEdits()

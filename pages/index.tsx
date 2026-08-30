@@ -53,7 +53,10 @@ import {
 import {useDraftyAuth} from "../behavior/hooks/useDraftyAuth"
 import {useCloudProfileSync} from "../behavior/hooks/useCloudProfileSync"
 import {useCompletedMockArchive} from "../behavior/hooks/useCompletedMockArchive"
-import {createCompletedMockArchive} from "../behavior/mockDraft/archive"
+import {
+  createCompletedMockArchive,
+  type LocalMockDraftArchive,
+} from "../behavior/mockDraft/archive"
 import {useDraftyWebMcp, type WebMcpRegistrationState} from "../behavior/hooks/useDraftyWebMcp"
 import {useDraftyMockReviewWebMcp} from "../behavior/hooks/useDraftyMockReviewWebMcp"
 import {
@@ -80,6 +83,13 @@ import {
   toolFailure,
   toolSuccess,
 } from "../behavior/webmcp/draftyWebMcp"
+import {
+  buildDraftyDecisionContext,
+  buildDraftyPlayerEvidence,
+} from "../behavior/webmcp/draftyDecisionEvidence"
+import {buildRoundMarketPresentationModel} from "../behavior/analysis/roundMarket"
+import {buildActiveBoardTierInputs} from "../behavior/insights/liveInsightInputs"
+import {loadPlayerStatus} from "../behavior/api/playerStatus"
 import {
   createAdvisorSnapshotPersistenceCoordinator,
   createAdvisorInputFingerprint,
@@ -506,6 +516,8 @@ const Home: FC = () => {
   const [pinnedProfilePlayerId, setPinnedProfilePlayerId] = useState<string | null>(null)
   const [profileModule, setProfileModule] = useState<ProfileModuleId | null>("production")
   const [profileAdvancedDetailsOpen, setProfileAdvancedDetailsOpen] = useState(true)
+  const [webMcpMockReviewArchive, setWebMcpMockReviewArchive] =
+    useState<LocalMockDraftArchive | null>(null)
   const [insightAgentState, setInsightAgentState] = useState<DraftyInsightAgentState>(
     EMPTY_INSIGHT_AGENT_STATE,
   )
@@ -1154,6 +1166,7 @@ const Home: FC = () => {
     const scoringFormat = scoringFormatFor(settings)
     const currentPlayer = viewPlayerId ? playerLib[viewPlayerId] : null
     return {
+      schemaVersion: 1,
       draft: {
         started: draftStarted,
         currentPick: currPick,
@@ -1204,6 +1217,30 @@ const Home: FC = () => {
         authenticated: Boolean(draftyAuth.user),
         cloudSyncState: cloudProfileSync.state,
       },
+      capabilities: {
+        configureWorkspace: {
+          available: !draftStarted,
+          reason: draftStarted ? "Draft setup is locked after the first pick." : null,
+        },
+        setPlayerTarget: {
+          available: rankingsHydrated && playerTargetsHydrated,
+          reason: rankingsHydrated && playerTargetsHydrated
+            ? null
+            : "Rankings or targets are still hydrating.",
+        },
+        editRanks: {
+          available: canEditCustomRankings(),
+          reason: canEditCustomRankings()
+            ? null
+            : "Custom rankings are locked after a player is drafted or purged.",
+        },
+        saveRankEdits: {
+          available: isEditingCustomRanking && canEditCustomRankings(),
+          reason: isEditingCustomRanking
+            ? canEditCustomRankings() ? null : "Custom rankings are locked."
+            : "No custom rank editing session is active.",
+        },
+      },
     }
   }, [
     adpRoundPage,
@@ -1232,6 +1269,82 @@ const Home: FC = () => {
     apiFeatures.cloudProfileSyncEnabled,
     cloudProfileSync.state,
     draftyAuth.user,
+  ])
+
+  const getWebMcpDecisionContext = useCallback(() => buildDraftyDecisionContext({
+    context: advisorContext,
+    recommendations,
+    opponentForecast,
+    roundMarket: advisorContext ? buildRoundMarketPresentationModel({
+      context: advisorContext,
+      opponentForecast,
+      targetRosterIndex: myPickNum - 1,
+      activeBoardTiers: buildActiveBoardTierInputs({
+        availablePlayers: analysisAvailablePlayers,
+        boardSettings,
+        settings,
+      }),
+    }) : null,
+    playerLib,
+    targetRosterIndex: myPickNum - 1,
+    sourceEventCount,
+  }), [
+    advisorContext,
+    analysisAvailablePlayers,
+    boardSettings,
+    myPickNum,
+    opponentForecast,
+    playerLib,
+    recommendations,
+    sourceEventCount,
+    settings,
+  ])
+
+  const getWebMcpPlayerEvidence = useCallback(async (input: {player_id: string}) => {
+    const player = playerLib[input.player_id]
+    if (!player) {
+      return toolFailure("not_found", `Player ${input.player_id} is not in the current Drafty universe.`)
+    }
+    let status = playerStatus[player.id]
+    if (!status || status.state === "loading") {
+      try {
+        const response = await loadPlayerStatus(player.id, {limit: 8})
+        status = {
+          playerId: player.id,
+          state: "ready",
+          response,
+          loadedAt: Date.now(),
+        }
+      } catch {
+        status = {
+          playerId: player.id,
+          state: "unavailable",
+          response: null,
+          loadedAt: Date.now(),
+        }
+      }
+    }
+    return toolSuccess(buildDraftyPlayerEvidence({
+      player,
+      settings,
+      boardSettings,
+      playerTargets,
+      availablePlayerIds: new Set(
+        playerRanks.availPlayersByOverallRank.map(candidate => candidate.id),
+      ),
+      recommendations,
+      status,
+      peers: analysisAvailablePlayers,
+    }), `${player.fullName}'s current Drafty evidence is ready.`)
+  }, [
+    analysisAvailablePlayers,
+    boardSettings,
+    playerLib,
+    playerRanks.availPlayersByOverallRank,
+    playerStatus,
+    playerTargets,
+    recommendations,
+    settings,
   ])
 
   const configureWebMcpWorkspace = useCallback((input: DraftyConfigureWorkspaceInput) => {
@@ -1603,6 +1716,8 @@ const Home: FC = () => {
 
   const webMcpAdapter = useMemo(() => ({
     getWorkspace: getWebMcpWorkspace,
+    getDecisionContext: getWebMcpDecisionContext,
+    getPlayerEvidence: getWebMcpPlayerEvidence,
     searchPlayers: (input: Parameters<typeof searchDraftyPlayers>[0]["input"]) => (
       searchDraftyPlayers({
         players: Object.values(playerLib),
@@ -1626,6 +1741,8 @@ const Home: FC = () => {
     boardSettings,
     configureWebMcpWorkspace,
     getWebMcpWorkspace,
+    getWebMcpDecisionContext,
+    getWebMcpPlayerEvidence,
     playerLib,
     playerRanks.availPlayersByOverallRank,
     playerTargets,
@@ -1642,6 +1759,7 @@ const Home: FC = () => {
     season: persistenceSeason,
     user: draftyAuth.user,
     currentArchive: completedMockArchive,
+    onOpenReview: setWebMcpMockReviewArchive,
   })
 
   const liveAdvisorPanelProps: LiveAdvisorPanelProps = {
@@ -1731,6 +1849,7 @@ const Home: FC = () => {
                   />
                   <MockDraftReviewPanel
                     currentArchive={completedMockArchive}
+                    requestedArchive={webMcpMockReviewArchive}
                     season={persistenceSeason}
                     user={draftyAuth.user}
                   />

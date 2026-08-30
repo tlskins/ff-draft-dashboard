@@ -40,6 +40,8 @@ const runProductionHealth = async ({
   expectedCompletedSeasons = [2021, 2022, 2023, 2024, 2025],
   requiredSources = DEFAULT_REQUIRED_SOURCES,
   maximumRankingAgeHours = 72,
+  originTrialExpiresAt = "2026-11-16T23:59:59Z",
+  originTrialRenewalWarningDays = 30,
   now = Date.now(),
 }) => {
   const dashboardOrigin = canonicalOrigin(dashboardBaseUrl, "Dashboard production origin")
@@ -68,7 +70,30 @@ const runProductionHealth = async ({
     settleGate("webmcp-origin-trial-boundary", async () => {
       const html = await responseText(fetchImpl, `${dashboardOrigin}/`)
       const evidence = originTrialEvidence(html)
-      return {passed: evidence.count === 1 && evidence.shape_valid, evidence}
+      const expiresAt = Date.parse(originTrialExpiresAt)
+      const remainingDays = Number.isFinite(expiresAt)
+        ? (expiresAt - now) / 86_400_000
+        : Number.NaN
+      if (Number.isFinite(remainingDays) && remainingDays >= 0
+        && remainingDays <= originTrialRenewalWarningDays) {
+        warnings.push({
+          kind: "webmcp_origin_trial_renewal",
+          expires_at: originTrialExpiresAt,
+          days_remaining: Number(remainingDays.toFixed(1)),
+        })
+      }
+      return {
+        passed: evidence.count === 1 && evidence.shape_valid
+          && Number.isFinite(remainingDays) && remainingDays >= 0,
+        evidence: {
+          ...evidence,
+          expires_at: originTrialExpiresAt,
+          days_remaining: Number.isFinite(remainingDays)
+            ? Number(remainingDays.toFixed(1))
+            : null,
+          renewal_warning_days: originTrialRenewalWarningDays,
+        },
+      }
     }),
     settleGate("read-api-health-and-freshness", async () => {
       const health = await responseJson(fetchImpl, `${apiOrigin}/health`)
@@ -175,6 +200,7 @@ const runProductionHealth = async ({
       "This report performs only unauthenticated reads and cannot validate signed-in cross-device state.",
       "Status-source warnings remain visible but do not fail the rankings/history release boundary.",
       "Origin-trial evidence verifies one bounded public token shape; Chrome remains the expiry and feature-activation authority.",
+      "The configured origin-trial expiry fails health after expiration and warns inside the renewal window without exposing the token.",
     ],
   }
 }

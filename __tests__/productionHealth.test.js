@@ -80,4 +80,22 @@ describe("consolidated production health", () => {
     await expect(runProductionHealth({...options(), apiBaseUrl: "http://api.example"}))
       .rejects.toThrow("must use HTTPS")
   })
+
+  it("warns before origin-trial expiry and fails after it", async () => {
+    const warning = await runProductionHealth({
+      ...options(),
+      now: Date.parse("2026-11-01T00:00:00Z"),
+    })
+    expect(warning.overall).toBe("failed")
+    expect(warning.warnings).toContainEqual(expect.objectContaining({
+      kind: "webmcp_origin_trial_renewal",
+    }))
+
+    const expired = await runProductionHealth({
+      ...options(),
+      now: Date.parse("2026-11-17T00:00:00Z"),
+    })
+    expect(expired.gates.find(item => item.name === "webmcp-origin-trial-boundary"))
+      .toMatchObject({status: "failed"})
+  })
 })

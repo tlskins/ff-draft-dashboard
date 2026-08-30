@@ -8,6 +8,7 @@ import type {RecordedCompletedDraftReplay} from "../draft-advisor/completedDraft
 import {FantasyPosition} from "../../types"
 import {
   DraftyWebMcpInputError,
+  toolFailure,
   toolSuccess,
   webMcpInputErrorResponse,
 } from "../webmcp/draftyWebMcp"
@@ -17,12 +18,14 @@ import {useWebMcpToolRegistration, type WebMcpRegistrationState} from "./useDraf
 export const DRAFTY_WEBMCP_MOCK_TOOL_NAMES = [
   "drafty_list_mock_drafts",
   "drafty_review_mock_draft",
+  "drafty_open_mock_review",
 ] as const
 
 interface MockReviewContext {
   season: number
   user: User | null
   currentArchive: LocalMockDraftArchive | null
+  onOpenReview?: (archive: LocalMockDraftArchive) => void
 }
 
 const inputRecord = (value: unknown): Record<string, unknown> => {
@@ -32,16 +35,25 @@ const inputRecord = (value: unknown): Record<string, unknown> => {
   return value as Record<string, unknown>
 }
 
-const localMocks = (context: MockReviewContext): LocalMockDraftArchive[] => {
-  if (typeof localStorage === "undefined") return context.currentArchive ? [context.currentArchive] : []
-  const stored = readLocalCompletedMocks(localStorage, context.season)
-  return context.currentArchive && !stored.some(item => item.mock_id === context.currentArchive?.mock_id)
-    ? [context.currentArchive, ...stored]
+const parseSeason = (value: unknown, fallback: number): number => {
+  if (value === undefined) return fallback
+  if (!Number.isInteger(value) || (value as number) < 2000 || (value as number) > 2100) {
+    throw new DraftyWebMcpInputError("season must be an integer from 2000 through 2100.")
+  }
+  return value as number
+}
+
+const localMocks = (context: MockReviewContext, season: number): LocalMockDraftArchive[] => {
+  const current = context.currentArchive?.season === season ? context.currentArchive : null
+  if (typeof localStorage === "undefined") return current ? [current] : []
+  const stored = readLocalCompletedMocks(localStorage, season)
+  return current && !stored.some(item => item.mock_id === current.mock_id)
+    ? [current, ...stored]
     : stored
 }
 
-const listMocks = async (context: MockReviewContext) => {
-  const local = localMocks(context)
+const listMocks = async (context: MockReviewContext, season: number) => {
+  const local = localMocks(context, season)
   let cloud: Awaited<ReturnType<typeof listUserMockDrafts>>["mocks"] = []
   let cloudState: "not_authenticated" | "ready" | "unavailable" = context.user
     ? "unavailable"
@@ -49,7 +61,7 @@ const listMocks = async (context: MockReviewContext) => {
   if (context.user) {
     try {
       const token = await context.user.getIdToken()
-      cloud = (await listUserMockDrafts({token, season: context.season})).mocks
+      cloud = (await listUserMockDrafts({token, season})).mocks
       cloudState = "ready"
     } catch {
       cloudState = "unavailable"
@@ -82,15 +94,15 @@ const listMocks = async (context: MockReviewContext) => {
       storage: "cloud" as const,
     })),
   ].sort((left, right) => right.completed_at.localeCompare(left.completed_at)).slice(0, 20)
-  return {schema_version: 1, season: context.season, cloud_state: cloudState, count: items.length, mocks: items}
+  return {schema_version: 1, season, cloud_state: cloudState, count: items.length, mocks: items}
 }
 
-const loadArchive = async (context: MockReviewContext, mockId: string) => {
-  const local = localMocks(context).find(item => item.mock_id === mockId)
+const loadArchive = async (context: MockReviewContext, mockId: string, season: number) => {
+  const local = localMocks(context, season).find(item => item.mock_id === mockId)
   if (local) return local
   if (!context.user) throw new DraftyWebMcpInputError("The requested mock is not stored in this browser and cloud access is not authenticated.")
   const token = await context.user.getIdToken()
-  const record = await getUserMockDraft(mockId, {token, season: context.season})
+  const record = await getUserMockDraft(mockId, {token, season})
   return {
     schema_version: 1 as const,
     season: record.season,
@@ -105,12 +117,14 @@ const loadArchive = async (context: MockReviewContext, mockId: string) => {
 
 const parseReviewInput = (value: unknown): {
   mockId: string
+  season: number | null
   positions: ReviewPosition[]
   exactPlayerOverrides: Record<number, string>
 } => {
   const input = inputRecord(value)
   const unknown = Object.keys(input).filter(key => ![
     "mock_id",
+    "season",
     "position_sequence",
     "player_overrides",
   ].includes(key))
@@ -159,9 +173,23 @@ const parseReviewInput = (value: unknown): {
   })
   return {
     mockId: input.mock_id,
+    season: input.season === undefined ? null : parseSeason(input.season, 0),
     positions: rawPositions as ReviewPosition[],
     exactPlayerOverrides,
   }
+}
+
+const parseMockReference = (
+  value: unknown,
+  defaultSeason: number,
+): {mockId: string; season: number} => {
+  const input = inputRecord(value)
+  const unknown = Object.keys(input).filter(key => !["mock_id", "season"].includes(key))
+  if (unknown.length) throw new DraftyWebMcpInputError(`Unknown input field: ${unknown[0]}.`)
+  if (typeof input.mock_id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(input.mock_id)) {
+    throw new DraftyWebMcpInputError("mock_id must be a stable Drafty mock identifier.")
+  }
+  return {mockId: input.mock_id, season: parseSeason(input.season, defaultSeason)}
 }
 
 export const useDraftyMockReviewWebMcp = (
@@ -172,15 +200,23 @@ export const useDraftyMockReviewWebMcp = (
   const tools = useMemo<WebMCP.ModelContextTool[]>(() => [{
     name: DRAFTY_WEBMCP_MOCK_TOOL_NAMES[0],
     title: "List Drafty completed mocks",
-    description: "List compact owner-scoped completed mock drafts for Drafty's active fantasy season.",
-    inputSchema: {type: "object", properties: {}, additionalProperties: false},
-    annotations: {readOnlyHint: true},
+    description: "List compact owner-scoped completed mock drafts for the active or requested fantasy season.",
+    inputSchema: {
+      type: "object",
+      properties: {season: {type: "integer", minimum: 2000, maximum: 2100}},
+      additionalProperties: false,
+    },
+    annotations: {readOnlyHint: true, untrustedContentHint: true},
     execute: async (input, options) => {
       if (options?.signal.aborted) return webMcpInputErrorResponse(new DOMException("Cancelled", "AbortError"))
       try {
         const parsed = inputRecord(input)
-        if (Object.keys(parsed).length) throw new DraftyWebMcpInputError("drafty_list_mock_drafts accepts no fields.")
-        const result = await listMocks(contextRef.current)
+        const unknown = Object.keys(parsed).filter(key => key !== "season")
+        if (unknown.length) throw new DraftyWebMcpInputError(`Unknown input field: ${unknown[0]}.`)
+        const result = await listMocks(
+          contextRef.current,
+          parseSeason(parsed.season, contextRef.current.season),
+        )
         return toolSuccess(result, `Found ${result.count} completed Drafty mocks for season ${result.season}.`)
       } catch (error) {
         return webMcpInputErrorResponse(error)
@@ -194,6 +230,7 @@ export const useDraftyMockReviewWebMcp = (
       type: "object",
       properties: {
         mock_id: {type: "string", maxLength: 128},
+        season: {type: "integer", minimum: 2000, maximum: 2100},
         position_sequence: {
           type: "array",
           items: {type: "string", enum: ["QB", "RB", "WR", "TE"]},
@@ -216,12 +253,16 @@ export const useDraftyMockReviewWebMcp = (
       required: ["mock_id"],
       additionalProperties: false,
     },
-    annotations: {readOnlyHint: true},
+    annotations: {readOnlyHint: true, untrustedContentHint: true},
     execute: async (input, options) => {
       if (options?.signal.aborted) return webMcpInputErrorResponse(new DOMException("Cancelled", "AbortError"))
       try {
         const parsed = parseReviewInput(input)
-        const archive = await loadArchive(contextRef.current, parsed.mockId)
+        const archive = await loadArchive(
+          contextRef.current,
+          parsed.mockId,
+          parsed.season || contextRef.current.season,
+        )
         const result = reviewCompletedMock({
           fixture: archive.replay as unknown as RecordedCompletedDraftReplay,
           targetPlayerIds: archive.targets.map(target => target.player_id),
@@ -237,6 +278,42 @@ export const useDraftyMockReviewWebMcp = (
           ranking_source: archive.ranking_source,
           adp_source: archive.adp_source,
         }, `Deterministic review completed for ${archive.mock_id}.`)
+      } catch (error) {
+        return webMcpInputErrorResponse(error)
+      }
+    },
+  }, {
+    name: DRAFTY_WEBMCP_MOCK_TOOL_NAMES[2],
+    title: "Open Drafty mock review",
+    description: "Open one completed mock in Drafty's visible scorecard dialog by stable mock ID and fantasy season.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        mock_id: {type: "string", maxLength: 128},
+        season: {type: "integer", minimum: 2000, maximum: 2100},
+      },
+      required: ["mock_id"],
+      additionalProperties: false,
+    },
+    annotations: {untrustedContentHint: true},
+    execute: async (input, options) => {
+      if (options?.signal.aborted) return webMcpInputErrorResponse(new DOMException("Cancelled", "AbortError"))
+      try {
+        const parsed = parseMockReference(input, contextRef.current.season)
+        const archive = await loadArchive(contextRef.current, parsed.mockId, parsed.season)
+        if (!contextRef.current.onOpenReview) {
+          return toolFailure(
+            "not_available_in_layout",
+            "The visible mock-review surface is not available in this layout.",
+          )
+        }
+        contextRef.current.onOpenReview(archive)
+        return toolSuccess({
+          schema_version: 1,
+          season: archive.season,
+          mock_id: archive.mock_id,
+          open: true,
+        }, `Opened Drafty mock review ${archive.mock_id}.`, "accepted")
       } catch (error) {
         return webMcpInputErrorResponse(error)
       }

@@ -13,6 +13,8 @@ import type {
 
 export const DRAFTY_WEBMCP_HOME_TOOL_NAMES = [
   "drafty_get_workspace",
+  "drafty_get_decision_context",
+  "drafty_get_player_evidence",
   "drafty_search_players",
   "drafty_configure_workspace",
   "drafty_set_rankings_view",
@@ -79,6 +81,7 @@ export interface DraftyInsightAgentState {
 }
 
 export interface DraftyWorkspaceSnapshot {
+  schemaVersion: 1
   draft: {
     started: boolean
     currentPick: number
@@ -127,7 +130,15 @@ export interface DraftyWorkspaceSnapshot {
     authenticated: boolean
     cloudSyncState: string
   }
+  capabilities: {
+    configureWorkspace: {available: boolean; reason: string | null}
+    setPlayerTarget: {available: boolean; reason: string | null}
+    editRanks: {available: boolean; reason: string | null}
+    saveRankEdits: {available: boolean; reason: string | null}
+  }
 }
+
+export interface DraftyPlayerEvidenceInput { player_id: string }
 
 export interface DraftyConfigureWorkspaceInput {
   team_count?: number
@@ -255,6 +266,10 @@ export interface DraftyPlayerSearchResult {
 
 export interface DraftyHomeWebMcpAdapter {
   getWorkspace: () => DraftyWorkspaceSnapshot
+  getDecisionContext: () => unknown
+  getPlayerEvidence: (
+    input: DraftyPlayerEvidenceInput,
+  ) => DraftyToolResponse<unknown> | Promise<DraftyToolResponse<unknown>>
   searchPlayers: (input: DraftySearchPlayersInput) => DraftyPlayerSearchResult
   configureWorkspace: (
     input: DraftyConfigureWorkspaceInput,
@@ -535,6 +550,16 @@ export const parseSearchPlayersInput = (
     available_only: optionalBoolean(input.available_only, "available_only"),
     limit: optionalInteger(input.limit, "limit", 1, INPUT_LIMITS.searchResults),
   }
+}
+
+export const parsePlayerEvidenceInput = (
+  value: unknown,
+): DraftyPlayerEvidenceInput => {
+  const input = ensureRecord(value)
+  ensureKnownKeys(input, ["player_id"])
+  const playerId = optionalString(input.player_id, "player_id", 120)
+  if (!playerId) throw new DraftyWebMcpInputError("player_id is required.")
+  return {player_id: playerId}
 }
 
 const normalizeSearchText = (value: string | null | undefined): string => (
