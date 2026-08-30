@@ -141,6 +141,67 @@ describe("useCloudProfileSync", () => {
     expect(putProfileMock).not.toHaveBeenCalled()
   })
 
+  it("keeps an unresolved conflict stable across callback and local-profile rerenders", async () => {
+    getProfileMock.mockResolvedValue(remoteRecord)
+    const firstApplyRemote = jest.fn()
+    const {result, rerender} = renderHook(({
+      applyRemote,
+      targetRound,
+    }: {
+      applyRemote: jest.Mock
+      targetRound: number
+    }) => useCloudProfileSync({
+      enabled: true,
+      user,
+      hydrated: true,
+      rankingProfile,
+      targets: [{playerId: "rb-one", targetAsEarlyAsRound: targetRound}],
+      sourceRanker: "Harris",
+      onApplyRemote: applyRemote,
+    }), {
+      initialProps: {applyRemote: firstApplyRemote, targetRound: 2},
+    })
+
+    await waitFor(() => expect(result.current.state).toBe("conflict"), {timeout: 2500})
+    expect(getProfileMock).toHaveBeenCalledTimes(1)
+
+    const replacementApplyRemote = jest.fn()
+    rerender({applyRemote: replacementApplyRemote, targetRound: 4})
+    await act(async () => undefined)
+
+    expect(result.current.state).toBe("conflict")
+    expect(result.current.conflict).toEqual(remoteRecord)
+    expect(getProfileMock).toHaveBeenCalledTimes(1)
+    expect(putProfileMock).not.toHaveBeenCalled()
+    expect(firstApplyRemote).not.toHaveBeenCalled()
+    expect(replacementApplyRemote).not.toHaveBeenCalled()
+  })
+
+  it("does not resynchronize when only the apply callback identity changes", async () => {
+    getProfileMock.mockResolvedValue(remoteRecord)
+    const {result, rerender} = renderHook(({applyRemote}: {applyRemote: jest.Mock}) => (
+      useCloudProfileSync({
+        enabled: true,
+        user,
+        hydrated: true,
+        rankingProfile,
+        targets: [{playerId: "rb-one", targetAsEarlyAsRound: 3}],
+        sourceRanker: "Harris",
+        onApplyRemote: applyRemote,
+      })
+    ), {initialProps: {applyRemote: jest.fn()}})
+
+    await waitFor(() => expect(result.current.state).toBe("synced"), {timeout: 2500})
+    expect(getProfileMock).toHaveBeenCalledTimes(1)
+
+    rerender({applyRemote: jest.fn()})
+    await act(async () => undefined)
+
+    expect(result.current.state).toBe("synced")
+    expect(getProfileMock).toHaveBeenCalledTimes(1)
+    expect(putProfileMock).not.toHaveBeenCalled()
+  })
+
   it("clears one account's conflict before another account can sync", async () => {
     getProfileMock.mockResolvedValue(remoteRecord)
     const {result, rerender} = renderHook(({activeUser}: {activeUser: User | null}) => (

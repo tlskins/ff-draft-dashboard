@@ -67,8 +67,13 @@ export const useCloudProfileSync = ({
     useState<UserDraftProfileRankingAuthority | null>(null)
   const [retryNonce, setRetryNonce] = useState(0)
   const requestSequence = useRef(0)
+  const onApplyRemoteRef = useRef(onApplyRemote)
   const activeUid = user?.uid || null
   const priorUid = useRef<string | null>(null)
+
+  useEffect(() => {
+    onApplyRemoteRef.current = onApplyRemote
+  }, [onApplyRemote])
 
   useEffect(() => {
     if (priorUid.current === activeUid) return
@@ -142,7 +147,7 @@ export const useCloudProfileSync = ({
         return
       }
       if (decision.action === "apply_remote") {
-        await onApplyRemote(decision.record.profile)
+        await onApplyRemoteRef.current(decision.record.profile)
         if (sequence !== requestSequence.current) return
         commitRecord(activeUser.uid, decision.record)
         return
@@ -186,7 +191,7 @@ export const useCloudProfileSync = ({
         : "error")
       setError(caught instanceof Error ? caught.message : "Cloud profile sync failed")
     }
-  }, [commitRecord, onApplyRemote, upload])
+  }, [commitRecord, upload])
 
   useEffect(() => {
     if (!enabled) {
@@ -197,18 +202,25 @@ export const useCloudProfileSync = ({
       setState("waiting")
       return
     }
+    // A conflict is an explicit user-decision boundary. Local rerenders or
+    // edits made while it is visible must not restart synchronization and
+    // flash the UI between conflict and syncing states.
+    if (conflict) {
+      setState("conflict")
+      return
+    }
     const sequence = ++requestSequence.current
     const timeout = window.setTimeout(() => {
       void synchronize(user, localPayload, sequence)
     }, 650)
     return () => window.clearTimeout(timeout)
-  }, [enabled, hydrated, localPayload, localPayloadKey, retryNonce, synchronize, user])
+  }, [conflict, enabled, hydrated, localPayload, localPayloadKey, retryNonce, synchronize, user])
 
   const useCloudCopy = useCallback(async () => {
     if (!user || !conflict) return
-    await onApplyRemote(conflict.profile)
+    await onApplyRemoteRef.current(conflict.profile)
     commitRecord(user.uid, conflict)
-  }, [commitRecord, conflict, onApplyRemote, user])
+  }, [commitRecord, conflict, user])
 
   const keepThisDevice = useCallback(async () => {
     if (!user || !conflict) return
