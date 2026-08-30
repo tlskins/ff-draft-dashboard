@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { useRanks } from "../behavior/hooks/useRanks"
 import {PLAYER_TARGETS_STORAGE_KEY} from "../behavior/playerTargetStorage"
+import {seasonStorageKey} from "../behavior/seasonScopedStorage"
 import {
   FantasyPosition,
   FantasySettings,
@@ -23,6 +24,8 @@ const settings: FantasySettings = {
 }
 
 describe("useRanks live-draft fallbacks", () => {
+  const scopedTargetsKey = seasonStorageKey(PLAYER_TARGETS_STORAGE_KEY, 2026)
+
   beforeEach(() => localStorage.clear())
 
   it("adds an unranked live player to the library, history, and roster", () => {
@@ -82,7 +85,7 @@ describe("useRanks live-draft fallbacks", () => {
     act(() => first.result.current.addPlayerTarget(nextPlayer, 6))
 
     await waitFor(() => expect(JSON.parse(
-      localStorage.getItem(PLAYER_TARGETS_STORAGE_KEY) || "[]",
+      localStorage.getItem(scopedTargetsKey) || "[]",
     )).toEqual([
       {playerId: "saved-player", targetAsEarlyAsRound: 4},
       {playerId: "new-player", targetAsEarlyAsRound: 6},
@@ -104,12 +107,12 @@ describe("useRanks live-draft fallbacks", () => {
       {playerId: "saved-player", targetAsEarlyAsRound: 2},
     ]))
     await waitFor(() => expect(JSON.parse(
-      localStorage.getItem(PLAYER_TARGETS_STORAGE_KEY) || "[]",
+      localStorage.getItem(scopedTargetsKey) || "[]",
     )).toEqual([{playerId: "saved-player", targetAsEarlyAsRound: 2}]))
 
     act(() => first.result.current.replacePlayerTargets([]))
     await waitFor(() => expect(JSON.parse(
-      localStorage.getItem(PLAYER_TARGETS_STORAGE_KEY) || "[]",
+      localStorage.getItem(scopedTargetsKey) || "[]",
     )).toEqual([]))
 
     first.unmount()
@@ -136,8 +139,9 @@ describe("useRanks live-draft fallbacks", () => {
     act(() => result.current.addPlayerTarget(player, 3))
 
     await waitFor(() => expect(JSON.parse(
-      localStorage.getItem(PLAYER_TARGETS_STORAGE_KEY) || "[]",
+      localStorage.getItem(scopedTargetsKey) || "[]",
     )).toEqual([{playerId: "recovery-player", targetAsEarlyAsRound: 3}]))
+    expect(localStorage.getItem(PLAYER_TARGETS_STORAGE_KEY)).toBe('{"unexpected":true}')
   })
 
   it("resumes an existing custom board without recopying its provider order", async () => {

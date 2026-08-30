@@ -21,6 +21,7 @@ import {
   validateRankingProfileV2,
 } from "../rankingProfileV2"
 import { commitCanonicalRankingProfile } from "../rankingProfileStorage"
+import { seasonScopedStorage } from "../seasonScopedStorage"
 import { PlayerRanks } from "../draft"
 import {
   BoardSettings,
@@ -57,6 +58,7 @@ interface UseRankingProfilesOptions {
   onSetRanker: (ranker: FantasyRanker) => void
   localProfile?: RankingProfileV2 | null
   onLocalProfileCommitted?: (profile: RankingProfileV2 | null) => void
+  persistenceSeason?: number
   /**
    * Server revision history is optional. Published API reads do not imply
    * permission to persist a browser user's custom rankings remotely.
@@ -263,6 +265,7 @@ export const useRankingProfiles = ({
   onSetRanker,
   localProfile = null,
   onLocalProfileCommitted,
+  persistenceSeason = 2026,
   serverPersistenceEnabled = getDashboardApiFeatures()
     .rankingProfilePersistenceEnabled,
 }: UseRankingProfilesOptions) => {
@@ -279,13 +282,16 @@ export const useRankingProfiles = ({
   const persistLocalProfile = useCallback((snapshotValue: RankingProfileV2) => {
     if (typeof localStorage === "undefined") throw new Error("Browser storage is unavailable")
     const snapshot = validateRankingProfileV2(snapshotValue)
-    const committed = commitCanonicalRankingProfile(localStorage, snapshot)
+    const committed = commitCanonicalRankingProfile(
+      seasonScopedStorage(localStorage, persistenceSeason),
+      snapshot,
+    )
     if (committed.status === "rejected") {
       throw new Error(`Browser canonical commit failed (${committed.code}): ${committed.message}`)
     }
     onLocalProfileCommitted?.(snapshot)
     return snapshot
-  }, [onLocalProfileCommitted])
+  }, [onLocalProfileCommitted, persistenceSeason])
 
   const refresh = useCallback(async () => {
     if (!apiConfigured) return
@@ -447,7 +453,10 @@ export const useRankingProfiles = ({
       setError(message)
       throw new Error(message)
     }
-    const committed = commitCanonicalRankingProfile(localStorage, null)
+    const committed = commitCanonicalRankingProfile(
+      seasonScopedStorage(localStorage, persistenceSeason),
+      null,
+    )
     if (committed.status === "rejected") {
       const message = `Browser canonical clear failed (${committed.code}): ${committed.message}`
       setError(message)
@@ -456,7 +465,7 @@ export const useRankingProfiles = ({
     onLocalProfileCommitted?.(null)
     setActiveProfile(null)
     setError(null)
-  }, [onLocalProfileCommitted])
+  }, [onLocalProfileCommitted, persistenceSeason])
 
   const move = useCallback(async (direction: "undo" | "redo") => {
     if (!serverPersistenceEnabled) {

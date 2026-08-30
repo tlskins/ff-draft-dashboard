@@ -175,6 +175,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/mock-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the signed-in user's completed mock drafts for one fantasy season. */
+        get: operations["listUserMockDrafts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/mock-drafts/{mock_id}": {
+        parameters: {
+            query?: {
+                /** @description Explicit fantasy season. Omitted legacy clients address 2026. */
+                season?: number;
+            };
+            header?: never;
+            path: {
+                mock_id: string;
+            };
+            cookie?: never;
+        };
+        /** Read one immutable completed mock draft. */
+        get: operations["getUserMockDraft"];
+        /**
+         * Idempotently archive one completed mock draft.
+         * @description The verified Firebase UID and explicit season own the immutable record. Calibration forecast and shadow evidence are rejected.
+         */
+        put: operations["putUserMockDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ranking-profiles-v2": {
         parameters: {
             query?: never;
@@ -1015,6 +1058,63 @@ export interface components {
             player_id: string;
             target_as_early_as_round: number;
         };
+        UserMockDraftPutRequest: {
+            /** @constant */
+            schema_version: 1;
+            /** Format: date-time */
+            completed_at: string;
+            ranking_source: string;
+            adp_source: string;
+            targets: components["schemas"]["UserDraftProfileTarget"][];
+            /** @description Bounded roster-only RecordedCompletedDraftReplay v1. Custom API validation enforces player/pick counts and excludes calibration evidence. */
+            replay: {
+                [key: string]: unknown;
+            };
+        };
+        UserMockDraftRecord: {
+            /** @constant */
+            schema_version: 1;
+            season: number;
+            mock_id: string;
+            /** Format: date-time */
+            completed_at: string;
+            ranking_source: string;
+            adp_source: string;
+            targets: components["schemas"]["UserDraftProfileTarget"][];
+            replay: {
+                [key: string]: unknown;
+            };
+            content_fingerprint: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        UserMockDraftSummary: {
+            /** @constant */
+            schema_version: 1;
+            season: number;
+            mock_id: string;
+            /** Format: date-time */
+            completed_at: string;
+            platform: string;
+            title: string;
+            team_count: number;
+            user_draft_slot: number;
+            pick_count: number;
+            ranking_source: string;
+            adp_source: string;
+            content_fingerprint: string;
+        };
+        UserMockDraftListResponse: {
+            /** @constant */
+            schema_version: 1;
+            season: number;
+            mocks: components["schemas"]["UserMockDraftSummary"][];
+        };
+        UserMockDraftErrorResponse: {
+            error: string;
+            /** @enum {string} */
+            code: "authentication_required" | "invalid_mock" | "mock_not_found" | "immutable_mock_conflict";
+        };
         UserDraftProfilePayload: {
             /** @constant */
             schema_version: 1;
@@ -1038,6 +1138,7 @@ export interface components {
         UserDraftProfileRecord: {
             /** @constant */
             schema_version: 1;
+            season: number;
             revision: number;
             profile: components["schemas"]["UserDraftProfilePayload"];
             content_fingerprint: string;
@@ -1051,7 +1152,7 @@ export interface components {
         UserDraftProfileErrorResponse: {
             error: string;
             /** @enum {string} */
-            code: "authentication_required" | "profile_not_found" | "invalid_profile" | "stale_revision" | "mutation_conflict";
+            code: "authentication_required" | "profile_not_found" | "invalid_profile" | "invalid_season" | "stale_revision" | "mutation_conflict";
             current_revision?: number | null;
         };
         /** @description Canonical profile v2. At most 500 unique player IDs may appear in total across all four active position arrays plus unresolved_players. */
@@ -2035,7 +2136,10 @@ export interface operations {
     };
     getUserDraftProfile: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Explicit fantasy season. Omitted legacy clients address 2026. */
+                season?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2049,6 +2153,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserDraftProfileRecord"];
+                };
+            };
+            /** @description The requested fantasy season is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDraftProfileErrorResponse"];
                 };
             };
             /** @description A valid Firebase ID token is required. */
@@ -2073,7 +2186,10 @@ export interface operations {
     };
     putUserDraftProfile: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Explicit fantasy season. Omitted legacy clients address 2026. */
+                season?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2127,6 +2243,164 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserDraftProfileErrorResponse"];
+                };
+            };
+        };
+    };
+    listUserMockDrafts: {
+        parameters: {
+            query?: {
+                /** @description Explicit fantasy season. Omitted legacy clients address 2026. */
+                season?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description At most 50 immutable completed-mock summaries. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftListResponse"];
+                };
+            };
+            /** @description The season is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftErrorResponse"];
+                };
+            };
+            /** @description A valid Firebase ID token is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftErrorResponse"];
+                };
+            };
+        };
+    };
+    getUserMockDraft: {
+        parameters: {
+            query?: {
+                /** @description Explicit fantasy season. Omitted legacy clients address 2026. */
+                season?: number;
+            };
+            header?: never;
+            path: {
+                mock_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The owner-scoped completed mock. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftRecord"];
+                };
+            };
+            /** @description The mock ID or season is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftErrorResponse"];
+                };
+            };
+            /** @description A valid Firebase ID token is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftErrorResponse"];
+                };
+            };
+            /** @description The completed mock does not exist for this owner and season. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftErrorResponse"];
+                };
+            };
+        };
+    };
+    putUserMockDraft: {
+        parameters: {
+            query?: {
+                /** @description Explicit fantasy season. Omitted legacy clients address 2026. */
+                season?: number;
+            };
+            header?: never;
+            path: {
+                mock_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserMockDraftPutRequest"];
+            };
+        };
+        responses: {
+            /** @description An identical immutable archive already exists. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftRecord"];
+                };
+            };
+            /** @description The completed mock was archived. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftRecord"];
+                };
+            };
+            /** @description The bounded completed-mock contract is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftErrorResponse"];
+                };
+            };
+            /** @description A valid Firebase ID token is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftErrorResponse"];
+                };
+            };
+            /** @description The mock ID already contains different immutable evidence. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftErrorResponse"];
                 };
             };
         };

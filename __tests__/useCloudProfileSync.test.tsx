@@ -52,6 +52,7 @@ const remotePayload = createCloudProfilePayload({
 })
 const remoteRecord: UserDraftProfileRecord = {
   schema_version: 1,
+  season: 2026,
   revision: 1,
   profile: remotePayload,
   content_fingerprint: "a".repeat(64),
@@ -88,7 +89,7 @@ describe("useCloudProfileSync", () => {
         expected_revision: 0,
         profile: remotePayload,
       }),
-      {token: "alice-token"},
+      {token: "alice-token", season: 2026},
     )
   })
 

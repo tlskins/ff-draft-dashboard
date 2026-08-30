@@ -14,6 +14,7 @@ const profile = createCloudProfilePayload({
 
 const record = {
   schema_version: 1 as const,
+  season: 2026,
   revision: 1,
   profile,
   content_fingerprint: "a".repeat(64),
@@ -36,7 +37,7 @@ describe("authenticated user draft profile API", () => {
       fetcher: fetcher as unknown as typeof fetch,
     })).resolves.toEqual(record)
     expect(fetcher).toHaveBeenCalledWith(
-      "https://drafty.example/v1/me/draft-profile",
+      "https://drafty.example/v1/me/draft-profile?season=2026",
       {headers: {Authorization: "Bearer firebase-token"}},
     )
   })
@@ -59,7 +60,7 @@ describe("authenticated user draft profile API", () => {
       fetcher: fetcher as unknown as typeof fetch,
     })
     expect(fetcher).toHaveBeenCalledWith(
-      "https://drafty.example/v1/me/draft-profile",
+      "https://drafty.example/v1/me/draft-profile?season=2026",
       {
         method: "PUT",
         headers: {

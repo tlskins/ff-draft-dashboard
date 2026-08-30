@@ -18,6 +18,7 @@ export interface CloudProfileSyncMarker {
   schema: "drafty.cloud-profile-sync-marker"
   version: 1
   uid: string
+  season: number
   revision: number
   content_fingerprint: string
   profile: UserDraftProfilePayload
@@ -186,6 +187,7 @@ export const markerForRecord = (
   schema: "drafty.cloud-profile-sync-marker",
   version: 1,
   uid,
+  season: record.season,
   revision: record.revision,
   content_fingerprint: record.content_fingerprint,
   profile: record.profile,
@@ -194,9 +196,13 @@ export const markerForRecord = (
 export const readCloudProfileSyncMarker = (
   storage: Pick<Storage, "getItem">,
   uid: string,
+  season = 2026,
 ): CloudProfileSyncMarker | null => {
   try {
-    const serialized = storage.getItem(`${CLOUD_PROFILE_SYNC_MARKER_PREFIX}${uid}`)
+    const serialized = storage.getItem(`${CLOUD_PROFILE_SYNC_MARKER_PREFIX}${uid}:${season}`)
+      || (season === 2026
+        ? storage.getItem(`${CLOUD_PROFILE_SYNC_MARKER_PREFIX}${uid}`)
+        : null)
     if (!serialized) return null
     const value = JSON.parse(serialized) as unknown
     if (!isRecord(value)) return null
@@ -204,12 +210,13 @@ export const readCloudProfileSyncMarker = (
       value.schema !== "drafty.cloud-profile-sync-marker"
       || value.version !== 1
       || value.uid !== uid
+      || (value.season !== undefined && value.season !== season)
       || !Number.isInteger(value.revision)
       || Number(value.revision) < 1
       || typeof value.content_fingerprint !== "string"
       || !isRecord(value.profile)
     ) return null
-    return value as unknown as CloudProfileSyncMarker
+    return {...value, season} as unknown as CloudProfileSyncMarker
   } catch {
     return null
   }
@@ -219,7 +226,7 @@ export const writeCloudProfileSyncMarker = (
   storage: Pick<Storage, "setItem">,
   marker: CloudProfileSyncMarker,
 ) => storage.setItem(
-  `${CLOUD_PROFILE_SYNC_MARKER_PREFIX}${marker.uid}`,
+  `${CLOUD_PROFILE_SYNC_MARKER_PREFIX}${marker.uid}:${marker.season}`,
   JSON.stringify(marker),
 )
 

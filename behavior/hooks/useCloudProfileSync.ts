@@ -38,6 +38,7 @@ interface UseCloudProfileSyncOptions {
   rankingProfile: RankingProfileV2 | null
   targets: PlayerTarget[]
   sourceRanker: string | null
+  season?: number
   onApplyRemote: (profile: UserDraftProfilePayload) => void | Promise<void>
 }
 
@@ -55,6 +56,7 @@ export const useCloudProfileSync = ({
   rankingProfile,
   targets,
   sourceRanker,
+  season = 2026,
   onApplyRemote,
 }: UseCloudProfileSyncOptions) => {
   const [state, setState] = useState<CloudProfileSyncState>(
@@ -69,22 +71,23 @@ export const useCloudProfileSync = ({
   const requestSequence = useRef(0)
   const onApplyRemoteRef = useRef(onApplyRemote)
   const activeUid = user?.uid || null
-  const priorUid = useRef<string | null>(null)
+  const priorProfileKey = useRef<string | null>(null)
 
   useEffect(() => {
     onApplyRemoteRef.current = onApplyRemote
   }, [onApplyRemote])
 
   useEffect(() => {
-    if (priorUid.current === activeUid) return
-    priorUid.current = activeUid
+    const profileKey = activeUid ? `${activeUid}:${season}` : null
+    if (priorProfileKey.current === profileKey) return
+    priorProfileKey.current = profileKey
     requestSequence.current += 1
     setRecord(null)
     setConflict(null)
     setPriorAuthority(null)
     setError(null)
     setState(enabled ? "waiting" : "disabled")
-  }, [activeUid, enabled])
+  }, [activeUid, enabled, season])
 
   const localPayload = useMemo(() => createCloudProfilePayload({
     rankingProfile,
@@ -117,10 +120,10 @@ export const useCloudProfileSync = ({
       mutation_id: mutationId(deviceId),
       device_id: deviceId,
       profile,
-    }, {token})
+    }, {token, season})
     commitRecord(uid, next)
     return next
-  }, [commitRecord])
+  }, [commitRecord, season])
 
   const synchronize = useCallback(async (
     activeUser: User,
@@ -133,14 +136,14 @@ export const useCloudProfileSync = ({
       const token = await activeUser.getIdToken()
       let remote: UserDraftProfileRecord | null = null
       try {
-        remote = await getUserDraftProfile({token})
+        remote = await getUserDraftProfile({token, season})
       } catch (caught) {
         if (!(caught instanceof UserDraftProfileApiError && caught.status === 404)) {
           throw caught
         }
       }
       if (sequence !== requestSequence.current) return
-      const marker = readCloudProfileSyncMarker(localStorage, activeUser.uid)
+      const marker = readCloudProfileSyncMarker(localStorage, activeUser.uid, season)
       const decision = decideCloudProfileSync({local: profile, remote, marker})
       if (decision.action === "ready") {
         commitRecord(activeUser.uid, decision.record)
@@ -175,7 +178,7 @@ export const useCloudProfileSync = ({
         setError("The cloud profile changed during this sync. Review the latest copy before replacing it.")
         try {
           const token = await activeUser.getIdToken(true)
-          const latest = await getUserDraftProfile({token})
+          const latest = await getUserDraftProfile({token, season})
           setRecord(latest)
           setConflict(latest)
           setPriorAuthority(current => stableJson(current) === stableJson(latest.profile.ranking_authority)
@@ -191,7 +194,7 @@ export const useCloudProfileSync = ({
         : "error")
       setError(caught instanceof Error ? caught.message : "Cloud profile sync failed")
     }
-  }, [commitRecord, upload])
+  }, [commitRecord, season, upload])
 
   useEffect(() => {
     if (!enabled) {

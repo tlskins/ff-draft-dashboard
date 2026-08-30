@@ -5,34 +5,38 @@ import {
   readStoredPlayerTargets,
   serializePlayerTargets,
 } from "../playerTargetStorage"
+import {seasonScopedStorage} from "../seasonScopedStorage"
 
-export const usePersistedPlayerTargets = (): [
+export const usePersistedPlayerTargets = (season = 2026): [
   PlayerTarget[],
   Dispatch<SetStateAction<PlayerTarget[]>>,
   boolean,
 ] => {
   const [playerTargets, setPlayerTargets] = useState<PlayerTarget[]>([])
-  const [hydrated, setHydrated] = useState(false)
+  const [hydratedSeason, setHydratedSeason] = useState<number | null>(null)
   const hydrationState = useRef<"pending" | "ready" | "rejected">("pending")
   const skipInitialPersist = useRef(false)
 
   useEffect(() => {
     if (typeof localStorage === "undefined") return
+    const storage = seasonScopedStorage(localStorage, season)
+    hydrationState.current = "pending"
     let stored: ReturnType<typeof readStoredPlayerTargets>
     try {
-      stored = readStoredPlayerTargets(localStorage.getItem(PLAYER_TARGETS_STORAGE_KEY))
+      stored = readStoredPlayerTargets(storage.getItem(PLAYER_TARGETS_STORAGE_KEY))
     } catch {
       hydrationState.current = "rejected"
       skipInitialPersist.current = true
-      setHydrated(true)
+      setPlayerTargets([])
+      setHydratedSeason(season)
       return
     }
 
     hydrationState.current = stored.status === "rejected" ? "rejected" : "ready"
     skipInitialPersist.current = true
-    if (stored.status === "ready") setPlayerTargets(stored.targets)
-    setHydrated(true)
-  }, [])
+    setPlayerTargets(stored.status === "ready" ? stored.targets : [])
+    setHydratedSeason(season)
+  }, [season])
 
   useEffect(() => {
     if (hydrationState.current === "pending" || typeof localStorage === "undefined") return
@@ -42,12 +46,15 @@ export const usePersistedPlayerTargets = (): [
     }
 
     try {
-      localStorage.setItem(PLAYER_TARGETS_STORAGE_KEY, serializePlayerTargets(playerTargets))
+      seasonScopedStorage(localStorage, season).setItem(
+        PLAYER_TARGETS_STORAGE_KEY,
+        serializePlayerTargets(playerTargets),
+      )
       hydrationState.current = "ready"
     } catch {
       // Keep the in-memory selection usable when browser storage is unavailable.
     }
-  }, [playerTargets])
+  }, [playerTargets, season])
 
-  return [playerTargets, setPlayerTargets, hydrated]
+  return [playerTargets, setPlayerTargets, hydratedSeason === season]
 }

@@ -32,6 +32,7 @@ import DeskSegmentedControl from "../components/draft-desk/DeskSegmentedControl"
 import DraftDeskAdvisorDisclosure from "../components/draft-desk/DraftDeskAdvisorDisclosure"
 import DraftDeskInsightDeck from "../components/insight/DraftDeskInsightDeck"
 import CloudProfileControl from "../components/CloudProfileControl"
+import {MockDraftReviewPanel} from "../components/MockDraftReviewPanel"
 import draftDeskStyles from "../components/DraftDesk.module.css"
 
 import { useRanks } from '../behavior/hooks/useRanks'
@@ -51,7 +52,10 @@ import {
 } from "../behavior/hooks/useRealtimeConversation"
 import {useDraftyAuth} from "../behavior/hooks/useDraftyAuth"
 import {useCloudProfileSync} from "../behavior/hooks/useCloudProfileSync"
+import {useCompletedMockArchive} from "../behavior/hooks/useCompletedMockArchive"
+import {createCompletedMockArchive} from "../behavior/mockDraft/archive"
 import {useDraftyWebMcp, type WebMcpRegistrationState} from "../behavior/hooks/useDraftyWebMcp"
+import {useDraftyMockReviewWebMcp} from "../behavior/hooks/useDraftyMockReviewWebMcp"
 import {
   FantasyRanker,
   FantasyPosition,
@@ -92,6 +96,7 @@ import {
   getAdvisorRosterCapacity,
 } from "@/behavior/draft-advisor/recommendations"
 import {
+  getEmbeddedPlayerData,
   rankingsAgeInDays,
   rankingsAreStale,
 } from "@/behavior/playerData"
@@ -120,6 +125,7 @@ import {
   PLAYER_TARGETS_STORAGE_KEY,
   serializePlayerTargets,
 } from "@/behavior/playerTargetStorage"
+import {seasonScopedStorage} from "@/behavior/seasonScopedStorage"
 import type {UserDraftProfilePayload} from "@/behavior/cloudProfileSync"
 import {
   getSnapshotObservedThroughOverallPick,
@@ -203,6 +209,9 @@ const WEBMCP_RANK_EDIT_POSITIONS = [
 const Home: FC = () => {
   const readApiCache = useReadApiCache()
   const apiFeatures = getDashboardApiFeatures()
+  const [persistenceSeason, setPersistenceSeason] = useState(
+    () => getEmbeddedPlayerData().season ?? 2026,
+  )
   const {
     // state
     settings, setNumTeams, setIsPpr, setScoringFormat, replaceSettings,
@@ -272,7 +281,7 @@ const Home: FC = () => {
     setCustomAndLatestRankingsDiffs,
     // helper funcs
     calculateRankingDiffs,
-  } = useRanks({ settings, myPickNum })
+  } = useRanks({ settings, myPickNum, persistenceSeason })
 
   const usingCustomRanking = boardSettings.ranker === ThirdPartyRanker.CUSTOM
   const rankingSourceOptions = useMemo(
@@ -293,6 +302,7 @@ const Home: FC = () => {
     onSetRanker,
     localProfile: startupProfile,
     onLocalProfileCommitted: setStartupProfile,
+    persistenceSeason,
     serverPersistenceEnabled: apiFeatures.rankingProfilePersistenceEnabled,
   })
   const draftyAuth = useDraftyAuth(apiFeatures.cloudProfileSyncEnabled)
@@ -309,7 +319,7 @@ const Home: FC = () => {
       targetAsEarlyAsRound: target.target_as_early_as_round,
     }))
     const committed = commitCanonicalRankingProfile(
-      localStorage,
+      seasonScopedStorage(localStorage, persistenceSeason),
       nextProfile,
       [{
         key: PLAYER_TARGETS_STORAGE_KEY,
@@ -343,6 +353,7 @@ const Home: FC = () => {
     onLoadPlayers,
     onSetRanker,
     rankings,
+    persistenceSeason,
     replacePlayerTargets,
     resetBoardSettings,
     settings,
@@ -358,6 +369,7 @@ const Home: FC = () => {
     rankingProfile: startupProfile,
     targets: playerTargets,
     sourceRanker: String(rankings.copiedRanker || boardSettings.ranker || "") || null,
+    season: persistenceSeason,
     onApplyRemote: applyCloudProfile,
   })
 
@@ -736,6 +748,47 @@ const Home: FC = () => {
     }
   }, [activeDraftSessionId, buildReplayFixture])
 
+  const completedMockTimestamps = useRef(new Map<string, string>())
+  const completedMockArchive = useMemo(() => {
+    if (!canExportReplay || !activeDraftSessionId) return null
+    try {
+      let completedAt = completedMockTimestamps.current.get(activeDraftSessionId)
+      if (!completedAt) {
+        completedAt = new Date(
+          activeDraftSnapshot?.capturedAt || Date.now(),
+        ).toISOString()
+        completedMockTimestamps.current.set(activeDraftSessionId, completedAt)
+      }
+      return createCompletedMockArchive({
+        fixture: buildReplayFixture(true),
+        season: persistenceSeason,
+        rankingSource: String(boardSettings.ranker),
+        adpSource: String(boardSettings.adpRanker),
+        targets: playerTargets,
+        completedAt,
+      })
+    } catch {
+      // The full authoritative board may arrive a snapshot after the dashboard
+      // first observes completion. The next source update retries naturally.
+      return null
+    }
+  }, [
+    activeDraftSessionId,
+    activeDraftSnapshot?.capturedAt,
+    boardSettings.adpRanker,
+    boardSettings.ranker,
+    buildReplayFixture,
+    canExportReplay,
+    persistenceSeason,
+    playerTargets,
+  ])
+  useCompletedMockArchive({
+    enabled: true,
+    archive: completedMockArchive,
+    season: persistenceSeason,
+    user: apiFeatures.cloudProfileSyncEnabled ? draftyAuth.user : null,
+  })
+
   useEffect(() => {
     if (!apiFeatures.advisorSnapshotPersistenceEnabled) return
     if (!activeDraftSessionId || !draftStarted) return
@@ -850,7 +903,7 @@ const Home: FC = () => {
       }] : []),
     ]
     const committed = commitCanonicalRankingProfile(
-      localStorage,
+      seasonScopedStorage(localStorage, persistenceSeason),
       importedProfile,
       additionalWrites,
     )
@@ -879,6 +932,7 @@ const Home: FC = () => {
     replaceSettings,
     setMyPickNum,
     portableValidationContext,
+    persistenceSeason,
     sourceEventCount,
   ])
 
@@ -886,6 +940,8 @@ const Home: FC = () => {
     const rankingsResource = await loadPlayerRankingsResource(readApiCache)
     const currentRankings = rankingsResource.data
     if (!currentRankings) return
+    const currentSeason = currentRankings.season ?? 2026
+    setPersistenceSeason(currentSeason)
     if (rankingsResource.state === "unavailable") {
       toast.warn(
         rankingsResource.unavailableReason
@@ -909,7 +965,7 @@ const Home: FC = () => {
     let migrationRejected = false
     if (browserLoaded) {
       const migration = runRankingProfileStartupMigration(
-        localStorage,
+        seasonScopedStorage(localStorage, currentSeason),
         currentRankings.players,
         scoringFormatFor(settings),
       )
@@ -1582,6 +1638,11 @@ const Home: FC = () => {
     showWebMcpPlayerProfile,
   ])
   const webMcpRegistration = useDraftyWebMcp(webMcpAdapter)
+  const mockReviewWebMcpRegistration = useDraftyMockReviewWebMcp({
+    season: persistenceSeason,
+    user: draftyAuth.user,
+    currentArchive: completedMockArchive,
+  })
 
   const liveAdvisorPanelProps: LiveAdvisorPanelProps = {
     draftStarted,
@@ -1619,11 +1680,12 @@ const Home: FC = () => {
   }
   const insightWebMcpExpected = draftDeskEnabled && phase14CInsightDeckEnabled
   const expectedWebMcpStatuses = insightWebMcpExpected
-    ? [webMcpRegistration.status, insightWebMcpRegistration.status]
-    : [webMcpRegistration.status]
+    ? [webMcpRegistration.status, insightWebMcpRegistration.status, mockReviewWebMcpRegistration.status]
+    : [webMcpRegistration.status, mockReviewWebMcpRegistration.status]
   const combinedWebMcpStatus = expectedWebMcpStatuses.includes("error")
     ? "error"
     : webMcpRegistration.status === "ready"
+      && mockReviewWebMcpRegistration.status === "ready"
       && (!insightWebMcpExpected || insightWebMcpRegistration.status === "ready")
       ? "ready"
       : expectedWebMcpStatuses.includes("registering")
@@ -1631,6 +1693,7 @@ const Home: FC = () => {
         : "unsupported"
   const registeredWebMcpToolCount = webMcpRegistration.registeredToolCount
     + insightWebMcpRegistration.registeredToolCount
+    + mockReviewWebMcpRegistration.registeredToolCount
 
   return (
     <div
@@ -1665,6 +1728,11 @@ const Home: FC = () => {
                   <CloudProfileControl
                     auth={draftyAuth}
                     sync={cloudProfileSync}
+                  />
+                  <MockDraftReviewPanel
+                    currentArchive={completedMockArchive}
+                    season={persistenceSeason}
+                    user={draftyAuth.user}
                   />
                   <button
                     className={`${draftDeskStyles.focusRing} rounded border border-slate-500 px-3 py-2 text-sm font-semibold hover:bg-slate-800`}

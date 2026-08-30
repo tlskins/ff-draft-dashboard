@@ -40,17 +40,20 @@ import {
 } from '../rankingCatalog'
 import {overallRankFor, positionRankFor, scoringFormatFor} from '../scoringFormat'
 import {usePersistedPlayerTargets} from './usePersistedPlayerTargets'
+import {seasonScopedStorage} from '../seasonScopedStorage'
 
 interface UseRanksProps {
   settings: FantasySettings
   defaultMyPickNum?: number,
   myPickNum?: number,
+  persistenceSeason?: number,
 }
 
 export const useRanks = ({
   settings,
   defaultMyPickNum = 6,
   myPickNum,
+  persistenceSeason = 2026,
 }: UseRanksProps) => {
   const [boardSettings, setBoardSettings] = useState<BoardSettings>({
     ranker: ThirdPartyRanker.HARRIS,
@@ -69,7 +72,7 @@ export const useRanks = ({
 
   const [playerLib, setPlayerLib] = useState<PlayerLibrary>({})
   const [playersByPosByTeam, setPlayersByPosByTeam] = useState<PlayersByPositionAndTeam>({})
-  const [playerTargets, setPlayerTargets, playerTargetsHydrated] = usePersistedPlayerTargets()
+  const [playerTargets, setPlayerTargets, playerTargetsHydrated] = usePersistedPlayerTargets(persistenceSeason)
   const [playerRanks, setPlayerRanks] = useState<PlayerRanks>({
     [FantasyPosition.QUARTERBACK]: [],
     [FantasyPosition.RUNNING_BACK]: [],
@@ -809,7 +812,8 @@ export const useRanks = ({
       return null
     }
     try {
-      const savedData = localStorage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)
+      const savedData = seasonScopedStorage(localStorage, persistenceSeason)
+        .getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)
       if (!savedData) {
         return null
       }
@@ -851,7 +855,7 @@ export const useRanks = ({
       console.error('Failed to load custom rankings:', error)
       return null
     }
-  }, [canEditCustomRankings, settings])
+  }, [canEditCustomRankings, persistenceSeason, settings])
 
   const resetBoardSettings = useCallback(() => {
     setBoardSettings({

@@ -17,6 +17,7 @@ import {
   runRankingProfileStartupMigration,
 } from "../behavior/rankingProfileStorage"
 import { validateRankingProfileV2 } from "../behavior/rankingProfileV2"
+import {seasonScopedStorage, seasonStorageKey} from "../behavior/seasonScopedStorage"
 import { FantasyPosition, ThirdPartyRanker } from "../types"
 
 
@@ -74,11 +75,13 @@ const options = (): any => ({
   onLoadPlayers: jest.fn(),
   onSetRanker: jest.fn(),
   onLocalProfileCommitted: jest.fn(),
+  persistenceSeason: 2026,
 })
 
+const scopedStorage = () => seasonScopedStorage(localStorage, 2026)
 const canonicalBytes = () => ({
-  profile: localStorage.getItem(RANKING_PROFILE_V2_STORAGE_KEY),
-  authority: localStorage.getItem(RANKING_PROFILE_V2_AUTHORITY_KEY),
+  profile: scopedStorage().getItem(RANKING_PROFILE_V2_STORAGE_KEY),
+  authority: scopedStorage().getItem(RANKING_PROFILE_V2_AUTHORITY_KEY),
 })
 
 describe("useRankingProfiles canonical browser commits", () => {
@@ -112,15 +115,15 @@ describe("useRankingProfiles canonical browser commits", () => {
     await waitFor(() => expect(result.current.profiles).toHaveLength(1))
 
     act(() => result.current.select("home"))
-    expect(runRankingProfileStartupMigration(localStorage, [], "ppr"))
+    expect(runRankingProfileStartupMigration(scopedStorage(), [], "ppr"))
       .toMatchObject({status: "already_current", profile: snapshot})
 
     await act(async () => { await result.current.undo() })
-    expect(runRankingProfileStartupMigration(localStorage, [], "ppr"))
+    expect(runRankingProfileStartupMigration(scopedStorage(), [], "ppr"))
       .toMatchObject({status: "already_current", profile: priorSnapshot})
 
     await act(async () => { await result.current.redo() })
-    expect(runRankingProfileStartupMigration(localStorage, [], "ppr"))
+    expect(runRankingProfileStartupMigration(scopedStorage(), [], "ppr"))
       .toMatchObject({status: "already_current", profile: snapshot})
     expect(callbacks.onLoadPlayers).toHaveBeenCalledTimes(3)
   })
@@ -144,7 +147,7 @@ describe("useRankingProfiles canonical browser commits", () => {
 
     await act(async () => { await result.current.save("Home") })
 
-    expect(runRankingProfileStartupMigration(localStorage, [], "ppr"))
+    expect(runRankingProfileStartupMigration(scopedStorage(), [], "ppr"))
       .toMatchObject({status: "already_current", profile: priorSnapshot})
     expect(result.current.activeProfile).toMatchObject({current_revision: 2, snapshot: priorSnapshot})
   })
@@ -158,7 +161,7 @@ describe("useRankingProfiles canonical browser commits", () => {
     const before = canonicalBytes()
     const originalSetItem = Storage.prototype.setItem
     const setItem = jest.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
-      if (key === RANKING_PROFILE_V2_AUTHORITY_KEY) throw new Error("quota denied")
+      if (key === seasonStorageKey(RANKING_PROFILE_V2_AUTHORITY_KEY, 2026)) throw new Error("quota denied")
       return originalSetItem.call(this, key, value)
     })
 
@@ -175,7 +178,7 @@ describe("useRankingProfiles canonical browser commits", () => {
       rankingsSummaries: [], cachedAt: "x", editedAt: "y", copiedRanker: "Harris", settings: {},
     })
     localStorage.setItem(LEGACY_RANKING_PROFILE_STORAGE_KEY, legacy)
-    const migrated = runRankingProfileStartupMigration(localStorage, [{id: "rb-1", position: "RB"}], "ppr")
+    const migrated = runRankingProfileStartupMigration(scopedStorage(), [{id: "rb-1", position: "RB"}], "ppr")
     if (migrated.status !== "migrated") throw new Error("expected migration")
     const callbacks = options() as any
     callbacks.localProfile = migrated.profile
@@ -183,7 +186,7 @@ describe("useRankingProfiles canonical browser commits", () => {
 
     await expect(act(async () => { await result.current.save("Local") })).rejects.toThrow("Saved in this browser")
     expect(localStorage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBe(legacy)
-    expect(runRankingProfileStartupMigration(localStorage, [], "ppr").status).toBe("already_current")
+    expect(runRankingProfileStartupMigration(scopedStorage(), [], "ppr").status).toBe("already_current")
   })
 
   it("keeps an API-hosted board local when profile persistence is disabled", async () => {
@@ -199,7 +202,7 @@ describe("useRankingProfiles canonical browser commits", () => {
     await expect(act(async () => {
       await result.current.save("Local only")
     })).rejects.toThrow("Saved in this browser; server profile sync is disabled")
-    expect(runRankingProfileStartupMigration(localStorage, [], "ppr"))
+    expect(runRankingProfileStartupMigration(scopedStorage(), [], "ppr"))
       .toMatchObject({status: "already_current"})
   })
 
@@ -211,7 +214,7 @@ describe("useRankingProfiles canonical browser commits", () => {
     act(() => { committed = result.current.saveLocal() })
 
     expect(committed).toMatchObject({schema_version: 2})
-    expect(runRankingProfileStartupMigration(localStorage, [], "ppr"))
+    expect(runRankingProfileStartupMigration(scopedStorage(), [], "ppr"))
       .toMatchObject({status: "already_current"})
     expect(callbacks.onLocalProfileCommitted).toHaveBeenCalledWith(committed)
     expect(result.current.error).toBeNull()
@@ -224,18 +227,18 @@ describe("useRankingProfiles canonical browser commits", () => {
       rankingsSummaries: [], cachedAt: "x", editedAt: "y", copiedRanker: "Harris", settings: {},
     })
     localStorage.setItem(LEGACY_RANKING_PROFILE_STORAGE_KEY, legacy)
-    const migrated = runRankingProfileStartupMigration(localStorage, [{id: "rb-1", position: "RB"}], "ppr")
+    const migrated = runRankingProfileStartupMigration(scopedStorage(), [{id: "rb-1", position: "RB"}], "ppr")
     if (migrated.status !== "migrated") throw new Error("expected migration")
-    const backup = localStorage.getItem(RANKING_PROFILE_V2_BACKUP_KEY)
+    const backup = scopedStorage().getItem(RANKING_PROFILE_V2_BACKUP_KEY)
     const callbacks = options()
     const {result} = renderHook(() => useRankingProfiles(callbacks))
 
     act(() => result.current.clearLocal())
 
-    expect(runRankingProfileStartupMigration(localStorage, [], "ppr"))
+    expect(runRankingProfileStartupMigration(scopedStorage(), [], "ppr"))
       .toMatchObject({status: "already_current", profile: null})
     expect(localStorage.getItem(LEGACY_RANKING_PROFILE_STORAGE_KEY)).toBe(legacy)
-    expect(localStorage.getItem(RANKING_PROFILE_V2_BACKUP_KEY)).toBe(backup)
+    expect(scopedStorage().getItem(RANKING_PROFILE_V2_BACKUP_KEY)).toBe(backup)
     expect(callbacks.onLocalProfileCommitted).toHaveBeenCalledWith(null)
   })
 
@@ -248,7 +251,7 @@ describe("useRankingProfiles canonical browser commits", () => {
     const callbackCount = callbacks.onLocalProfileCommitted.mock.calls.length
     const originalSetItem = Storage.prototype.setItem
     const setItem = jest.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
-      if (key === RANKING_PROFILE_V2_AUTHORITY_KEY) throw new Error("quota denied")
+      if (key === seasonStorageKey(RANKING_PROFILE_V2_AUTHORITY_KEY, 2026)) throw new Error("quota denied")
       return originalSetItem.call(this, key, value)
     })
 

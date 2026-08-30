@@ -911,6 +911,25 @@ except the final live extension-fed lock observation.
 
 ## Deferred product tracks
 
+### Phase 19: season-scoped mock archive and deterministic review
+
+Status: implementation and automated validation complete; production
+acceptance remains pending. This phase takes priority over the deferred Phase
+18B custom-origin WebMCP activation. It extends the existing immutable completed-draft
+fixture and counterfactual evaluation primitives into a signed-in user mock
+archive, transparent 0-100/category scorecard, bounded ADP-based alternate-
+roster replay, post-draft comparison UI, and read-only WebMCP review tools.
+
+Rankings, targets, and mock results are explicitly grouped by fantasy season.
+The current unscoped cloud profile migrates non-destructively to 2026; later
+seasons use independent namespaces and never inherit or rebase prior-season
+results implicitly. V1 handcuff scoring uses a visibly labeled configured-ADP
+same-team backfield-order proxy with the backup inside the first ten rounds; it
+is not official depth-chart data. Counterfactual opponent collisions resolve
+to the next undrafted configured-ADP player.
+
+See `docs/phase19-mock-review.md` for contracts, slices, and exit gates.
+
 ### Prediction-v2 promotion decision
 
 Phase 9 remains evidence-blocked pending eligible prospective position/run

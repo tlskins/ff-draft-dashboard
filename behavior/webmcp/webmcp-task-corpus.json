@@ -101,6 +101,20 @@
         {"path": "insights.slots.1.view", "op": "eq", "value": "two_round_run_matrix"},
         {"path": "insights.slots.1.mode", "op": "eq", "value": "pinned"}
       ]
+    },
+    {
+      "id": "review_latest_completed_mock",
+      "prompt": "List my completed mocks for the active season, review the latest one, and compare its actual scorecard with RB-WR alternatives.",
+      "required_tool_sequence": ["drafty_list_mock_drafts", "drafty_review_mock_draft"],
+      "allowed_tools": ["drafty_list_mock_drafts", "drafty_review_mock_draft"],
+      "max_tool_calls": 2,
+      "max_retries": 0,
+      "max_result_bytes": 60000,
+      "estimated_dom_actions": 18,
+      "state_assertions": [
+        {"path": "mockReview.schemaVersion", "op": "eq", "value": 1},
+        {"path": "mockReview.actual.schemaVersion", "op": "eq", "value": 1}
+      ]
     }
   ]
 }

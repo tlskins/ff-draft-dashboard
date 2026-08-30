@@ -15,6 +15,8 @@ const knownTools = new Set([
   "drafty_move_player_rank",
   "drafty_save_rank_edits",
   "drafty_set_insight_view",
+  "drafty_list_mock_drafts",
+  "drafty_review_mock_draft",
 ])
 
 const setPath = (target, path, value) => {

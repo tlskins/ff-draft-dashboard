@@ -66,6 +66,7 @@ const record = (
   fingerprint = "a".repeat(64),
 ): UserDraftProfileRecord => ({
   schema_version: 1,
+  season: 2026,
   revision,
   profile,
   content_fingerprint: fingerprint,
@@ -160,8 +161,14 @@ describe("cross-device cloud profile decisions", () => {
       revision: 1,
     })
     expect(readCloudProfileSyncMarker(localStorage, "bob")).toBeNull()
-    localStorage.setItem("drafty.cloud-profile-sync.v1:alice", "{")
+    localStorage.setItem("drafty.cloud-profile-sync.v1:alice:2026", "{")
     expect(readCloudProfileSyncMarker(localStorage, "alice")).toBeNull()
+  })
+
+  it("isolates markers by fantasy season", () => {
+    writeCloudProfileSyncMarker(localStorage, markerForRecord("alice", record(payload())))
+    expect(readCloudProfileSyncMarker(localStorage, "alice", 2026)).toMatchObject({season: 2026})
+    expect(readCloudProfileSyncMarker(localStorage, "alice", 2027)).toBeNull()
   })
 
   it("compares payloads independently of object key order", () => {

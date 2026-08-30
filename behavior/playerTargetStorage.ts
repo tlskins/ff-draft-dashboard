@@ -2,6 +2,9 @@ import {PlayerTarget} from "../types"
 
 export const PLAYER_TARGETS_STORAGE_KEY = "ff-draft-favorites"
 
+export const playerTargetsStorageKey = (season: number): string =>
+  `${PLAYER_TARGETS_STORAGE_KEY}:season:${season}`
+
 const MAX_PLAYER_TARGETS = 500
 const MAX_PLAYER_ID_LENGTH = 128
 const MAX_TARGET_ROUND = 100

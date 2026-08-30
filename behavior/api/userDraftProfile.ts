@@ -10,6 +10,7 @@ export interface UserDraftProfileApiOptions {
   apiHost?: string
   fetcher?: typeof fetch
   token: string
+  season?: number
 }
 
 export class UserDraftProfileApiError extends Error {
@@ -33,7 +34,7 @@ const request = async (
   let response: Response
   try {
     response = await (options.fetcher || fetch)(
-      `${apiHost.replace(/\/$/, "")}/v1/me/draft-profile`,
+      `${apiHost.replace(/\/$/, "")}/v1/me/draft-profile?season=${encodeURIComponent(String(options.season ?? 2026))}`,
       {
         ...init,
         headers: {
