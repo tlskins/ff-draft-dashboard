@@ -44,7 +44,7 @@
     },
     {
       "id": "find_analyst_note_and_open_profile",
-      "prompt": "Find Tucker Kraft notes from Christopher Harris about blocking concerns, then pin his Outlook profile with advanced details open.",
+      "prompt": "Find Tucker Kraft notes from Christopher Harris about playing-time concerns, then pin his Outlook profile with advanced details open.",
       "required_tool_sequence": ["drafty_search_players", "drafty_show_player_profile"],
       "allowed_tools": ["drafty_search_players", "drafty_show_player_profile", "drafty_get_workspace"],
       "max_tool_calls": 3,

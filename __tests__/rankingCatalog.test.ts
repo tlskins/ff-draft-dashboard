@@ -53,7 +53,7 @@ describe("ranking catalog authority", () => {
       ppr: true,
       scoringFormat: "half_ppr",
     })).toEqual([
-      "Matt Harmon", "Josh Norris", ThirdPartyRanker.CUSTOM,
+      "Harris", "Matt Harmon", "Josh Norris", ThirdPartyRanker.CUSTOM,
     ])
   })
 
@@ -65,6 +65,6 @@ describe("ranking catalog authority", () => {
     expect(fallbackExpertRanker({
       players: [player],
       allThirdPartyRankers: ["Harris"],
-    }, {ppr: true, scoringFormat: "half_ppr"})).toBe(ThirdPartyRanker.CUSTOM)
+    }, {ppr: true, scoringFormat: "half_ppr"})).toBe("Harris")
   })
 })

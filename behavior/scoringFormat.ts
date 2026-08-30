@@ -35,7 +35,11 @@ export const overallRankFor = (
   format: ScoringFormat,
 ): number | undefined => {
   if (!ranking) return undefined
-  if (format === "half_ppr") return ranking.halfPprOverallRank
+  if (format === "half_ppr") {
+    return ranking.halfPprOverallRank
+      ?? ranking.pprOverallRank
+      ?? ranking.standardOverallRank
+  }
   return format === "ppr" ? ranking.pprOverallRank : ranking.standardOverallRank
 }
 
@@ -44,7 +48,11 @@ export const positionRankFor = (
   format: ScoringFormat,
 ): number | undefined => {
   if (!ranking) return undefined
-  if (format === "half_ppr") return ranking.halfPprPositionRank
+  if (format === "half_ppr") {
+    return ranking.halfPprPositionRank
+      ?? ranking.pprPositionRank
+      ?? ranking.standardPositionRank
+  }
   return format === "ppr" ? ranking.pprPositionRank : ranking.standardPositionRank
 }
 
@@ -53,7 +61,11 @@ export const positionTierFor = (
   format: ScoringFormat,
 ): Tier | undefined => {
   if (!ranking) return undefined
-  if (format === "half_ppr") return ranking.halfPprPositionTier
+  if (format === "half_ppr") {
+    return ranking.halfPprPositionTier
+      ?? ranking.pprPositionTier
+      ?? ranking.standardPositionTier
+  }
   return format === "ppr" ? ranking.pprPositionTier : ranking.standardPositionTier
 }
 
@@ -62,6 +74,10 @@ export const metricValueFor = (
   format: ScoringFormat,
 ): number | undefined => {
   if (!ranking) return undefined
-  if (format === "half_ppr") return ranking.metricValueHalfPpr
+  if (format === "half_ppr") {
+    return ranking.metricValueHalfPpr
+      ?? ranking.metricValuePpr
+      ?? ranking.metricValueStd
+  }
   return format === "ppr" ? ranking.metricValuePpr : ranking.metricValueStd
 }
