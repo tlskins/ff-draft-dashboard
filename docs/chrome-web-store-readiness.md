@@ -23,9 +23,9 @@ quality, and limited-use guidance:
 - **Language:** English (United States)
 - **Homepage:** <https://drafty.friedchickentechnologies.com/>
 - **Privacy policy:**
-  <https://drafty.friedchickentechnologies.com/extension-privacy.html>
+  <https://drafty.friedchickentechnologies.com/extension-privacy>
 - **Support URL:**
-  <https://drafty.friedchickentechnologies.com/extension-support.html>
+  <https://drafty.friedchickentechnologies.com/extension-support>
 
 ## Single purpose
 
