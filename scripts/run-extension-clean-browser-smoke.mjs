@@ -150,12 +150,14 @@ const evaluate = async (client, expression) => {
 }
 
 const waitForValue = async (read, predicate, description, attempts = 60) => {
+  let lastValue
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const value = await read()
+    lastValue = value
     if (predicate(value)) return value
     await wait(250)
   }
-  throw new Error(`Timed out waiting for ${description}`)
+  throw new Error(`Timed out waiting for ${description}; last value: ${JSON.stringify(lastValue)}`)
 }
 
 const navigate = async (client, url) => {
@@ -219,20 +221,41 @@ try {
     "the packaged extension heartbeat on production",
     80,
   )
+  const inspectedWorkers = new Map()
   const serviceWorker = await waitForValue(
-    async () => (await targetList(port)).find(target => (
-      target.type === "service_worker"
-      && /^chrome-extension:\/\/[^/]+\/background\.js$/.test(target.url)
-    )),
+    async () => {
+      const candidates = (await targetList(port)).filter(target => (
+        target.type === "service_worker"
+        && /^chrome-extension:\/\/[^/]+\/background\.js$/.test(target.url)
+      ))
+      for (const candidate of candidates) {
+        if (!inspectedWorkers.has(candidate.url)) {
+          const worker = await connectTarget(candidate)
+          await worker.send("Runtime.enable")
+          inspectedWorkers.set(candidate.url, await evaluate(
+            worker,
+            "chrome.runtime.getManifest()",
+          ))
+        }
+        const candidateManifest = inspectedWorkers.get(candidate.url)
+        if (
+          candidateManifest?.name === manifest.name
+          && candidateManifest?.version === manifest.version
+        ) return candidate
+      }
+      return null
+    },
     Boolean,
     "the Manifest V3 service worker",
   )
   const extensionId = new URL(serviceWorker.url).host
 
-  const popupTarget = await createTarget(port, `chrome-extension://${extensionId}/popup.html`)
+  const popupUrl = `chrome-extension://${extensionId}/popup.html`
+  const popupTarget = await createTarget(port, "about:blank")
   const popup = await connectTarget(popupTarget)
   await popup.send("Page.enable")
   await popup.send("Runtime.enable")
+  await navigate(popup, popupUrl)
   const popupEvidence = await waitForValue(
     () => evaluate(popup, "({title: document.title, text: document.body?.innerText || '', ready: document.readyState})"),
     value => value.ready === "complete" && value.text.includes(`Version ${manifest.version}`),
