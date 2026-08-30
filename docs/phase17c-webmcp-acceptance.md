@@ -3,8 +3,9 @@
 Status: deterministic corpus, evaluator, output budgets, progressive fallback,
 and production token injection are implemented. The production origin was
 enrolled on August 30, 2026, and its token is configured as a Vercel production
-build variable. Native Chrome discovery/invocation and deployment verification
-remain open.
+build variable. The token-bearing build was deployed and verified at the stable
+production alias on August 30, 2026. Native compatible-agent discovery and
+invocation remain open.
 
 ## Implemented acceptance infrastructure
 
@@ -132,6 +133,17 @@ After deploying a token-bearing build:
 4. rerun the six-journey corpus against production; and
 5. run ordinary browser smoke in a browser without WebMCP to prove the human UI
    remains unchanged.
+
+Production deployment evidence from August 30, 2026:
+
+- `https://ff-draft-dashboard.vercel.app/` returned HTTP 200;
+- the rendered document contained exactly one origin-trial meta tag with the
+  expected bounded token shape;
+- the normal Drafty title and page loaded in Chrome; and
+- the current Codex Chrome-control page-inspection channel still timed out when
+  querying the WebMCP diagnostic, so native tool discovery/invocation remains a
+  compatible-agent or Model Context Tool Inspector gate rather than a recorded
+  Drafty failure.
 
 Chrome ignores invalid or expired tokens, so token renewal and repeat
 production acceptance remain release operations rather than permanent code

@@ -835,7 +835,8 @@ density and heatmap semantics. See
 Status: Phases 17A and 17B are implemented. Phase 17C's deterministic corpus,
 evaluator, payload budgets, progressive fallback, and production token boundary
 are implemented; the production origin is enrolled and configured in Vercel,
-while native Chrome and deployed-origin acceptance remain open.
+and the token-bearing production deployment is verified. Native compatible-
+agent discovery and invocation remain open.
 Realtime GPT/voice remains deferred.
 
 Expose a bounded imperative WebMCP surface over Drafty's existing state and
@@ -874,7 +875,9 @@ invocation and its page-inspection channel timed out with the flag active. The
 native six-journey run therefore remains an inspector or future-agent gate, not
 a recorded Drafty failure. The exact Vercel origin was registered on August 30,
 2026, and its expiring token was added to the Vercel production environment;
-deployment and production acceptance remain. See
+the stable production alias now returns HTTP 200 with exactly one valid token
+meta tag. Native tool discovery/invocation remains deferred to Chrome's Model
+Context Tool Inspector or a compatible agent surface. See
 `docs/phase17c-webmcp-acceptance.md`.
 
 ## Deferred product tracks

@@ -3,7 +3,8 @@
 Status: Phases 17A and 17B are implemented. Phase 17C's deterministic corpus,
 evaluator, output budgets, progressive fallback, and production token boundary
 are implemented; the production origin is enrolled and configured in Vercel,
-while native Chrome and deployed-origin acceptance remain open.
+and the token-bearing production deployment is verified. Native compatible-
+agent discovery and invocation remain open.
 
 ## Objective
 
