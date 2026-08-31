@@ -146,7 +146,7 @@ The extension sends versioned, full draft snapshots and keys ESPN sessions by
 league ID so repeated mocks with the same title cannot merge. The dashboard
 also accepts the legacy incremental message shape so an installed older
 extension does not have to be upgraded in lockstep. Production extension
-candidate `0.0.0.10` uses the Drafty Draft Sync identity, supports both Drafty
+candidate `0.0.0.11` uses the Drafty Draft Sync identity, supports both Drafty
 production origins, and excludes localhost from the store artifact. It packages
 the current half-PPR draft-setting capture together with
 the scheduled-board completion checks in the versioned ESPN selector-health

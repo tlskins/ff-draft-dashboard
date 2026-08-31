@@ -9,7 +9,7 @@ describe("Chrome Web Store production boundary", () => {
     expect(manifest).toMatchObject({
       manifest_version: 3,
       name: "Drafty Draft Sync",
-      version: "0.0.0.10",
+      version: "0.0.0.11",
     })
     expect(manifest.description.length).toBeLessThanOrEqual(132)
     expect(manifest.name).not.toMatch(/local dev/i)
@@ -64,7 +64,7 @@ describe("Chrome Web Store production boundary", () => {
     expect(packet).toContain("## Single purpose")
     expect(packet).toContain("## Host-access justifications")
     expect(packet).toContain("## Privacy-practices answers")
-    expect(packet).toContain("drafty-draft-sync-0.0.0.10.zip")
+    expect(packet).toContain("drafty-draft-sync-0.0.0.11.zip")
     expect(packet).toContain("npm run extension:test:relay")
     expect(packet).toContain("npm run extension:test:clean-browser")
     expect(packet).toContain("npm run extension:smoke:production")

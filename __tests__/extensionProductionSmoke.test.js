@@ -25,7 +25,7 @@ describe("production extension release smoke", () => {
       expectedManifest: manifest,
       fetchImpl: fixtureFetch(),
     })).resolves.toMatchObject({
-      version: "0.0.0.10",
+      version: "0.0.0.11",
       manifestMatches: true,
       limitedUseDisclosure: true,
       supportLinks: true,

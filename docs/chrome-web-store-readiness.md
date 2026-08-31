@@ -1,7 +1,7 @@
 # Drafty Draft Sync: Chrome Web Store submission packet
 
-Status: extension `0.0.0.10` was submitted to the Chrome Web Store for review
-on August 30, 2026. Automated
+Status: extension `0.0.0.11` supersedes the `0.0.0.10` submission with the
+accepted ESPN live-board and completed-mock hardening. Automated
 packaging, relay integration, production-origin smoke, clean-profile
 Chrome-for-Testing installation/popup/heartbeat smoke, policy-boundary,
 promotional-asset, and upload-bundle checks are implemented. Store approval and
@@ -111,7 +111,7 @@ privacy policy contains the Limited Use affirmation.
 - The optional 1400x560 marquee tile is ready for upload. A YouTube
   demonstration remains optional and human-owned.
 
-Screenshots must come from the installed `0.0.0.10` ZIP, show current product
+Screenshots must come from the installed `0.0.0.11` ZIP, show current product
 behavior, omit private league/account details, and use consistent Drafty
 branding. They are intentionally not fabricated from fixture data in this
 automated slice.
@@ -157,7 +157,7 @@ binary. It does not authenticate to ESPN/NFL.com, select a draft room, observe
 a live pick, or replace human visual judgment.
 
 `npm run extension:bundle:store` writes the verified upload directory to
-`release/chrome-web-store/0.0.0.10/`. It includes the exact extension ZIP,
+`release/chrome-web-store/0.0.0.11/`. It includes the exact extension ZIP,
 128px icon, both promotional images, this submission packet, an explicit
 screenshot reminder, a machine-readable manifest, and SHA-256 checksums. The
 directory is ignored because it duplicates tracked release inputs.
@@ -166,7 +166,7 @@ directory is ignored because it duplicates tracked release inputs.
 
 1. Deploy and verify the privacy and support URLs.
 2. Run `npm run extension:bundle:store`, verify `SHA256SUMS`, and upload
-   `release/chrome-web-store/0.0.0.10/drafty-draft-sync-0.0.0.10.zip` to the
+   `release/chrome-web-store/0.0.0.11/drafty-draft-sync-0.0.0.11.zip` to the
    Chrome Web Store Developer Dashboard.
 3. Enter the identity, listing, host justifications, and privacy declarations
    above; confirm distribution and mature-content choices.

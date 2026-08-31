@@ -976,7 +976,8 @@ human-owned.
 ### Chrome Web Store release readiness
 
 Status: automated production-package hardening is implemented for extension
-`0.0.0.10`, which was submitted for review on August 30, 2026. The store
+`0.0.0.11`, which supersedes the August 30 `0.0.0.10` submission with the
+live ESPN Board fallback and completion hardening. The store
 candidate uses production Drafty branding, limits content
 scripts to the two Drafty origins and two supported draft clients, moves
 localhost into an ignored generated development bundle, and adds a public

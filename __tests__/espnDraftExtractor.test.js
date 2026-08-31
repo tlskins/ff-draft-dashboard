@@ -252,7 +252,7 @@ describe("ESPN extension selector contract", () => {
 
   it("loads the extractor before the content script in the manifest", () => {
     const manifest = require("../public/manifest.json")
-    expect(manifest.version).toBe("0.0.0.10")
+    expect(manifest.version).toBe("0.0.0.11")
     const espnEntry = manifest.content_scripts.find(entry => (
       entry.matches.includes("https://fantasy.espn.com/football/draft*")
     ))
