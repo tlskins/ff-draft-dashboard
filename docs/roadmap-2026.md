@@ -942,7 +942,7 @@ expiry without exposing the token.
 
 ### Phase 20B: shared onboarding and agent help
 
-Status: implementation complete; deployment and one native journey remain.
+Status: implemented and deployed on August 31, 2026; one native journey remains.
 A shared structured catalog now powers both `/extension-support` and the
 read-only `drafty_get_help` WebMCP tool. Agents request one bounded topic at a
 time for getting started, extension setup, live drafts, ranks and targets,
