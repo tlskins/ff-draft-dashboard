@@ -1,5 +1,5 @@
 import React from "react"
-import {render, screen} from "@testing-library/react"
+import {fireEvent, render, screen} from "@testing-library/react"
 
 import fixture from "./fixtures/completed-draft-replay.json"
 import {
@@ -43,6 +43,10 @@ describe("completed draft workspace presentation", () => {
 
     expect(screen.getByText("Draft complete")).toBeTruthy()
     expect(screen.queryByText("Draft live")).toBeNull()
+    fireEvent.click(screen.getByRole("button", {name: "Settings"}))
+    expect(screen.getByText("Draft complete — final board captured."))
+      .toBeTruthy()
+    expect(screen.queryByText("Listening to: Completed ESPN mock")).toBeNull()
   })
 
   it("replaces the stale on-clock state with final-board evidence", () => {

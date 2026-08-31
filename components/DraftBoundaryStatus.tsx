@@ -6,16 +6,20 @@ import type {
 interface DraftCaptureStatusProps {
   state: DraftCaptureConnectionState
   activeDraftTitle: string | null
+  complete?: boolean
 }
 
 export const DraftCaptureStatus = ({
   state,
   activeDraftTitle,
+  complete = false,
 }: DraftCaptureStatusProps) => {
   const selectedDraft = activeDraftTitle
     ? ` Draft ${activeDraftTitle} remains selected; the local board is preserved.`
     : ""
-  const message = state === "live"
+  const message = complete
+    ? "Draft complete — final board captured."
+    : state === "live"
     ? activeDraftTitle
       ? `Listening to: ${activeDraftTitle}`
       : "Extension connected — choose a draft to begin listening."
@@ -27,7 +31,9 @@ export const DraftCaptureStatus = ({
     <p
       aria-live="polite"
       className={`font-semibold shadow rounded-md text-sm my-1 px-4 ${
-        state === "live" && activeDraftTitle
+        complete
+          ? "bg-green-300"
+          : state === "live" && activeDraftTitle
           ? "bg-green-300"
           : state === "live"
             ? "bg-yellow-300"

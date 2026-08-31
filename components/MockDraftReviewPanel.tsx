@@ -21,6 +21,7 @@ import type {RecordedCompletedDraftReplay} from "../behavior/draft-advisor/compl
 import {validateCompletedDraftReplay} from "../behavior/draft-advisor/replayFixtures"
 import {putUserMockDraft} from "../behavior/api/userMockDrafts"
 import {FantasyPosition} from "../types"
+import type {CompletedMockArchiveState} from "../behavior/hooks/useCompletedMockArchive"
 
 
 const POSITIONS: Array<{value: ReviewPosition; label: string}> = [
@@ -48,12 +49,20 @@ export const MockDraftReviewPanel = ({
   currentArchive,
   currentArchiveError,
   requestedArchive,
+  autoOpenCurrentArchive = false,
+  showTrigger = true,
+  archiveSyncState = "idle",
+  archiveSyncError,
 }: {
   season: number
   user: User | null
   currentArchive?: LocalMockDraftArchive | null
   currentArchiveError?: string | null
   requestedArchive?: LocalMockDraftArchive | null
+  autoOpenCurrentArchive?: boolean
+  showTrigger?: boolean
+  archiveSyncState?: CompletedMockArchiveState
+  archiveSyncError?: string | null
 }) => {
   const [open, setOpen] = useState(false)
   const [summaries, setSummaries] = useState<UserMockDraftSummary[]>([])
@@ -66,6 +75,7 @@ export const MockDraftReviewPanel = ({
   const [archiveRevision, setArchiveRevision] = useState(0)
   const [importStatus, setImportStatus] = useState<string | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const autoOpenedArchiveKey = useRef<string | null>(null)
 
   useEffect(() => {
     if (!requestedArchive) return
@@ -73,6 +83,30 @@ export const MockDraftReviewPanel = ({
     setSelected(requestedArchive)
     setOpen(true)
   }, [requestedArchive])
+
+  useEffect(() => {
+    if (!autoOpenCurrentArchive || !currentArchive) return
+    const key = `${currentArchive.season}:${currentArchive.mock_id}:${currentArchive.completed_at}`
+    if (autoOpenedArchiveKey.current === key) return
+    autoOpenedArchiveKey.current = key
+    setReviewSeason(currentArchive.season)
+    setSelected(currentArchive)
+    setOpen(true)
+  }, [autoOpenCurrentArchive, currentArchive])
+
+  const archiveSyncCopy = archiveSyncState === "saving_local"
+    ? "Saving completed mock locally…"
+    : archiveSyncState === "saved_local"
+      ? user ? "Saved locally; waiting to sync." : "Saved on this device."
+      : archiveSyncState === "syncing"
+        ? "Syncing completed mocks…"
+        : archiveSyncState === "synced"
+          ? "Completed mocks saved and synced."
+          : archiveSyncState === "offline"
+            ? "Saved locally; cloud sync will retry."
+            : archiveSyncState === "error"
+              ? "Completed mock sync needs attention."
+              : null
 
   const local = useMemo(() => {
     void archiveRevision
@@ -222,13 +256,15 @@ export const MockDraftReviewPanel = ({
 
   return (
     <>
-      <button
-        className="rounded border border-gray-500 px-3 py-2 text-sm font-semibold hover:bg-gray-800"
-        onClick={() => setOpen(true)}
-        type="button"
-      >
-        Mock review{allSummaries.length ? ` (${allSummaries.length})` : ""}
-      </button>
+      {showTrigger && (
+        <button
+          className="rounded border border-gray-500 px-3 py-2 text-sm font-semibold hover:bg-gray-800"
+          onClick={() => setOpen(true)}
+          type="button"
+        >
+          Mock review{allSummaries.length ? ` (${allSummaries.length})` : ""}
+        </button>
+      )}
       {open && (
         <div
           className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 p-5 text-left"
@@ -280,6 +316,15 @@ export const MockDraftReviewPanel = ({
                 {loading && <p className="px-2 py-2 text-sm">Loading…</p>}
                 {error && <p className="px-2 py-2 text-sm text-red-700">{error}</p>}
                 {importStatus && <p className="px-2 py-2 text-sm text-green-700" role="status">{importStatus}</p>}
+                {archiveSyncCopy && (
+                  <p
+                    className={`px-2 py-2 text-sm ${archiveSyncState === "offline" || archiveSyncState === "error" ? "text-amber-700" : "text-gray-700"}`}
+                    role="status"
+                    title={archiveSyncError || undefined}
+                  >
+                    {archiveSyncCopy}
+                  </p>
+                )}
                 {!loading && currentArchiveError && (
                   <p className="px-2 py-2 text-sm text-red-700" role="status">
                     Scorecard could not be created: {currentArchiveError}

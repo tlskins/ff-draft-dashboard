@@ -32,6 +32,35 @@ describe("completed mock review panel", () => {
     expect(screen.getByText(/opponent collision replacements/)).toBeTruthy()
   })
 
+  it("opens a newly completed current draft without routing through settings", () => {
+    const view = render(
+      <MockDraftReviewPanel
+        autoOpenCurrentArchive
+        currentArchive={null}
+        season={2026}
+        showTrigger={false}
+        user={null}
+      />,
+    )
+    expect(screen.queryByRole("dialog")).toBeNull()
+
+    view.rerender(
+      <MockDraftReviewPanel
+        archiveSyncState="synced"
+        autoOpenCurrentArchive
+        currentArchive={archive}
+        season={2026}
+        showTrigger={false}
+        user={null}
+      />,
+    )
+
+    expect(screen.getByRole("dialog", {name: "Season 2026 mock draft review"}))
+      .toBeTruthy()
+    expect(screen.getByRole("status").textContent)
+      .toBe("Completed mocks saved and synced.")
+  })
+
   it("renders an opaque, two-column review surface with supported palette utilities", () => {
     render(<MockDraftReviewPanel currentArchive={archive} season={2026} user={null} />)
     fireEvent.click(screen.getByRole("button", {name: /Mock review/}))

@@ -262,6 +262,7 @@ const DraftDeskAppBar = ({
               <div className="flex flex-wrap gap-1" style={{color: "#0f172a"}}>
                 <DraftCaptureStatus
                   activeDraftTitle={activeDraftListenerTitle}
+                  complete={draftComplete}
                   state={draftCaptureState}
                 />
                 <DraftSourceHealthBadge

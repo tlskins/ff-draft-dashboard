@@ -806,7 +806,7 @@ const Home: FC = () => {
   ])
   const completedMockArchive = completedMockArchiveResult.archive
   const completedMockArchiveError = completedMockArchiveResult.error
-  useCompletedMockArchive({
+  const completedMockArchiveSync = useCompletedMockArchive({
     enabled: true,
     archive: completedMockArchive,
     season: persistenceSeason,
@@ -1832,6 +1832,19 @@ const Home: FC = () => {
       data-webmcp-tool-count={registeredWebMcpToolCount}
     >
       <PageHead />
+      {draftDeskEnabled && (
+        <MockDraftReviewPanel
+          archiveSyncError={completedMockArchiveSync.error}
+          archiveSyncState={completedMockArchiveSync.state}
+          autoOpenCurrentArchive
+          currentArchive={completedMockArchive}
+          currentArchiveError={completedMockArchiveError}
+          requestedArchive={webMcpMockReviewArchive}
+          season={persistenceSeason}
+          showTrigger={false}
+          user={draftyAuth.user}
+        />
+      )}
       <main className={`flex flex-col items-center justify-center w-full flex-1 text-center bg-gray-50 ${draftDeskEnabled ? draftDeskStyles.deskMain : "md:px-20"}`}>
         {draftDeskEnabled && (
           <div className="hidden w-full xl:block">
@@ -1861,9 +1874,10 @@ const Home: FC = () => {
                     sync={cloudProfileSync}
                   />
                   <MockDraftReviewPanel
+                    archiveSyncError={completedMockArchiveSync.error}
+                    archiveSyncState={completedMockArchiveSync.state}
                     currentArchive={completedMockArchive}
                     currentArchiveError={completedMockArchiveError}
-                    requestedArchive={webMcpMockReviewArchive}
                     season={persistenceSeason}
                     user={draftyAuth.user}
                   />
