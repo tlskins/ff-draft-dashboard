@@ -2306,11 +2306,21 @@ const Home: FC = () => {
               playerRanks={playerRanks}
               playerTargets={playerTargets}
               profileControl={(
-                <CloudProfileControl
-                  auth={draftyAuth}
-                  compact
-                  sync={cloudProfileSync}
-                />
+                <>
+                  <CloudProfileControl
+                    auth={draftyAuth}
+                    compact
+                    sync={cloudProfileSync}
+                  />
+                  <MockDraftReviewPanel
+                    archiveSyncError={completedMockArchiveSync.error}
+                    archiveSyncState={completedMockArchiveSync.state}
+                    currentArchive={completedMockArchive}
+                    currentArchiveError={completedMockArchiveError}
+                    season={persistenceSeason}
+                    user={draftyAuth.user}
+                  />
+                </>
               )}
               removePlayerTarget={removePlayerTarget}
               replacePlayerTargets={replacePlayerTargets}

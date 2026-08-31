@@ -132,6 +132,7 @@ describe("mobile rankings editor", () => {
           playerLib={{alpha, beta, receiver}}
           playerRanks={ranks}
           playerTargets={targets}
+          profileControl={<button type="button">Mock reviews</button>}
           removePlayerTarget={playerId => setTargets(current => current.filter(target => target.playerId !== playerId))}
           replacePlayerTargets={setTargets}
           settings={settings}
@@ -142,6 +143,7 @@ describe("mobile rankings editor", () => {
 
     expect(screen.getByRole("navigation", {name: "Mobile rankings views"}))
       .toBeTruthy()
+    expect(screen.getByRole("button", {name: "Mock reviews"})).toBeTruthy()
     expect(screen.getAllByRole("button", {name: /Position|ADP round|Targets 1/})).toHaveLength(3)
     expect(screen.queryByText("Overview")).toBeNull()
     expect(screen.queryByText("Analysis")).toBeNull()

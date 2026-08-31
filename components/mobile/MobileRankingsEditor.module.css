@@ -44,6 +44,17 @@
 .sourceBadge small { color: var(--mobile-muted); font-size: 9px; text-transform: uppercase; }
 
 .profileControl > section { width: 100%; box-shadow: none; }
+.profileControl > button {
+  width: 100%;
+  min-height: 32px;
+  margin-top: 5px;
+  border: 1px solid #8e9a9f;
+  border-radius: 5px;
+  color: #35434b;
+  background: #f8f8f5;
+  font-size: 10px;
+  font-weight: 800;
+}
 
 .viewTabs { display: grid; grid-template-columns: repeat(3, 1fr); overflow: hidden; border: 1px solid #b8c0c3; border-radius: 6px; background: #dfe3e3; }
 .viewTabs button { min-height: 34px; border: 0; border-right: 1px solid #c2c9cb; color: #58656d; background: transparent; font-size: 11px; font-weight: 800; }
