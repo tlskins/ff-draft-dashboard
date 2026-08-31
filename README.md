@@ -127,6 +127,12 @@ seasons imported with `scripts/import_nflverse_weekly.py`.
 
 ## Chrome extension
 
+Install the approved production extension from the
+[Chrome Web Store](https://chromewebstore.google.com/detail/drafty-draft-sync/jminlnmnmhgnalnafammbefpllhlngni).
+The public [setup and support guide](https://drafty.friedchickentechnologies.com/extension-support)
+explains how to connect Drafty to a supported draft room. The unpacked workflow
+below is only for local dashboard and extension development.
+
 For local dashboard development, first generate the ignored development bundle:
 
 ```bash
@@ -146,7 +152,7 @@ The extension sends versioned, full draft snapshots and keys ESPN sessions by
 league ID so repeated mocks with the same title cannot merge. The dashboard
 also accepts the legacy incremental message shape so an installed older
 extension does not have to be upgraded in lockstep. Production extension
-candidate `0.0.0.11` uses the Drafty Draft Sync identity, supports both Drafty
+`0.0.0.11` uses the Drafty Draft Sync identity, supports both Drafty
 production origins, and excludes localhost from the store artifact. It packages
 the current half-PPR draft-setting capture together with
 the scheduled-board completion checks in the versioned ESPN selector-health

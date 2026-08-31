@@ -3,6 +3,10 @@ import Image from "next/image"
 import Dropdown from "./dropdown"
 import { ThirdPartyRanker, ThirdPartyADPRanker, FantasyRanker, ScoringFormat } from "../types"
 import {scoringFormatFor} from "../behavior/scoringFormat"
+import {
+  DRAFTY_EXTENSION_STORE_URL,
+  DRAFTY_EXTENSION_SUPPORT_PATH,
+} from "../behavior/extensionStore"
 
 interface HeaderProps {
   settings: {
@@ -186,9 +190,10 @@ const Header: React.FC<HeaderProps> = ({
           <div className="flex md:flex-row flex-col w-full justify-center items-center md:gap-0 gap-4">
             <div className="md:w-auto w-full">
               <Dropdown
-                title="Download Extension"
+                title="Draft Sync Extension"
                 options={[
-                  { title: "Download", callback: () => window.open('https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US') },
+                  { title: "Install from Chrome Web Store", callback: () => window.open(DRAFTY_EXTENSION_STORE_URL, "_blank", "noopener,noreferrer") },
+                  { title: "Setup guide", callback: () => window.open(DRAFTY_EXTENSION_SUPPORT_PATH, "_blank", "noopener,noreferrer") },
                 ]}
                 className="md:m-2 m-0 px-3 py-2 hover:text-white hover:bg-blue-800 cursor-pointer bg-gray-100 shadow-md md:w-auto w-full"
                 buttonClassName="font-semibold tracking-wide uppercase md:w-auto w-full"

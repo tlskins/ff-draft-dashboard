@@ -1,11 +1,13 @@
 # Drafty Draft Sync: Chrome Web Store submission packet
 
-Status: extension `0.0.0.11` supersedes the `0.0.0.10` submission with the
-accepted ESPN live-board and completed-mock hardening. Automated
+Status: extension `0.0.0.11` is approved and published at
+<https://chromewebstore.google.com/detail/drafty-draft-sync/jminlnmnmhgnalnafammbefpllhlngni>.
+It supersedes the `0.0.0.10` submission with the accepted ESPN live-board and
+completed-mock hardening. Automated
 packaging, relay integration, production-origin smoke, clean-profile
 Chrome-for-Testing installation/popup/heartbeat smoke, policy-boundary,
 promotional-asset, and upload-bundle checks are implemented. Store approval and
-the post-approval installed-package/live-draft acceptance remain human-owned.
+the post-approval installed-package/live-draft acceptance are complete.
 
 This packet follows Chrome's official extension preparation, listing, privacy,
 quality, and limited-use guidance:

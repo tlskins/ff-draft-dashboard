@@ -3,6 +3,7 @@ const {join} = require("node:path")
 
 const root = join(__dirname, "..")
 const manifest = require("../public/manifest.json")
+const storeUrl = "https://chromewebstore.google.com/detail/drafty-draft-sync/jminlnmnmhgnalnafammbefpllhlngni"
 
 describe("Chrome Web Store production boundary", () => {
   it("uses production branding, an eligible description, and exact minimum site access", () => {
@@ -60,7 +61,10 @@ describe("Chrome Web Store production boundary", () => {
     expect(privacy).toContain('href="/extension-support"')
     const support = readFileSync(join(root, "public", "extension-support.html"), "utf8")
     expect(support).toContain('href="/extension-privacy"')
+    expect(support).toContain(`href="${storeUrl}"`)
+    expect(support).toContain("Version 0.0.0.11 is approved")
     const packet = readFileSync(join(root, "docs", "chrome-web-store-readiness.md"), "utf8")
+    expect(packet).toContain(storeUrl)
     expect(packet).toContain("## Single purpose")
     expect(packet).toContain("## Host-access justifications")
     expect(packet).toContain("## Privacy-practices answers")

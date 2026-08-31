@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Drafty Draft Sync Support</title>
+    <title>Install and Use Drafty Draft Sync</title>
     <style>
       :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #172033; background: #eef1f4; }
       body { margin: 0; }
@@ -11,18 +11,31 @@
       h1 { margin-top: 0; }
       p, li { font-size: 15px; line-height: 1.55; }
       a { color: #155eef; }
+      code { padding: 1px 4px; background: #eef1f4; border-radius: 3px; }
+      .install { display: inline-block; margin: 4px 0 12px; padding: 10px 14px; color: #fff; background: #155eef; border-radius: 7px; font-weight: 700; text-decoration: none; }
+      .note { padding: 10px 12px; background: #eef5ff; border-left: 3px solid #155eef; }
     </style>
   </head>
   <body>
     <main>
-      <h1>Drafty Draft Sync Support</h1>
-      <p>Drafty Draft Sync relays picks from supported fantasy draft rooms to an open Drafty dashboard.</p>
-      <h2>Before reporting a capture problem</h2>
+      <h1>Install and use Drafty Draft Sync</h1>
+      <p>Drafty Draft Sync relays live ESPN and NFL.com fantasy-draft picks to an open Drafty dashboard. Version 0.0.0.11 is approved and available from the Chrome Web Store.</p>
+      <p><a class="install" href="https://chromewebstore.google.com/detail/drafty-draft-sync/jminlnmnmhgnalnafammbefpllhlngni">Install Drafty Draft Sync</a></p>
+      <h2>Get connected</h2>
       <ol>
-        <li>Open the Drafty dashboard and the supported draft room in the same Chrome profile.</li>
-        <li>Confirm Drafty reports that the draft source is connected.</li>
-        <li>Reload both tabs after installing or updating the extension.</li>
-        <li>Open the extension popup and confirm the installed version.</li>
+        <li>Install the extension in the same Chrome profile you use for fantasy drafts.</li>
+        <li>Open <a href="https://drafty.friedchickentechnologies.com/">Drafty</a> and your supported ESPN or NFL.com draft room in that Chrome profile.</li>
+        <li>If the draft was already open when you installed the extension, reload both tabs once.</li>
+        <li>When Drafty detects the room, choose <strong>Connect</strong> beside the draft in the bottom dock.</li>
+        <li>Keep both tabs open during the draft. Drafty will update as picks arrive.</li>
+      </ol>
+      <p class="note">Signing in to Drafty is optional for live pick capture. Sign in only if you want rankings, targets, and completed mock reviews synchronized across devices.</p>
+      <h2>If Drafty cannot see the draft</h2>
+      <ol>
+        <li>Open the extension popup and confirm it says <strong>Drafty Draft Sync</strong> version 0.0.0.11.</li>
+        <li>Confirm the extension is enabled at <code>chrome://extensions</code>.</li>
+        <li>Reload the Drafty and draft-room tabs; then return to Drafty and select the detected draft.</li>
+        <li>Remove or disable older local copies such as FF Draft Pulse so only one Drafty capture extension is active.</li>
       </ol>
       <p>For bugs or support, <a href="https://github.com/tlskins/ff-draft-dashboard/issues/new">open a Drafty support issue</a>. Do not include private account information, authentication tokens, full browser-storage exports, or league credentials.</p>
       <p>For a private account-data or deletion request, open an issue without personal details and ask for a private follow-up channel.</p>

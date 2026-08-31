@@ -8,6 +8,10 @@ import {
   ThirdPartyRanker,
 } from "../types"
 import {scoringFormatFor, scoringFormatLabel} from "../behavior/scoringFormat"
+import {
+  DRAFTY_EXTENSION_STORE_URL,
+  DRAFTY_EXTENSION_SUPPORT_PATH,
+} from "../behavior/extensionStore"
 import type { DraftSourceHealth } from "../behavior/draft-feed/types"
 import type {
   DraftCaptureConnectionState,
@@ -240,10 +244,17 @@ const DraftDeskAppBar = ({
               <div className="flex flex-wrap gap-2">
                 <button
                   className={`${styles.focusRing} rounded border border-slate-500 px-3 py-2 text-sm font-semibold hover:bg-slate-800`}
-                  onClick={() => window.open("https://chrome.google.com/webstore/detail/ff-draft-pulse/cjbbljpchmkblfjaglkcdejcloedpnkh?utm_source=ext_sidebar&hl=en-US")}
+                  onClick={() => window.open(DRAFTY_EXTENSION_STORE_URL, "_blank", "noopener,noreferrer")}
                   type="button"
                 >
-                  Download extension
+                  Install Draft Sync
+                </button>
+                <button
+                  className={`${styles.focusRing} rounded border border-slate-500 px-3 py-2 text-sm font-semibold hover:bg-slate-800`}
+                  onClick={() => window.open(DRAFTY_EXTENSION_SUPPORT_PATH, "_blank", "noopener,noreferrer")}
+                  type="button"
+                >
+                  Setup guide
                 </button>
                 <button
                   className={`${styles.focusRing} rounded border border-slate-500 px-3 py-2 text-sm font-semibold hover:bg-slate-800`}
