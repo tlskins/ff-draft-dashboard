@@ -237,10 +237,21 @@
       historyPicks.filter(isCompletePick).length
     const validCompletedCells =
       completedBoard?.picks.filter(isCompletePick).length || 0
+    // ESPN's current Board tab no longer renders the legacy live-history
+    // list. When that list is absent, a structurally complete scheduled grid
+    // is still an authoritative source for picks already marked completed.
+    // Its explicit false completion flag remains authoritative until every
+    // scheduled cell is filled.
+    const liveBoard =
+      !historyContainer && completedBoard?.picks.length
+        ? completedBoard
+        : null
     const mode = completedBoard?.completion.complete
       ? "completed-board"
       : historyContainer
         ? "live-history"
+        : liveBoard
+          ? "live-board"
         : draftRoot
           ? "waiting"
           : "unavailable"
@@ -301,12 +312,14 @@
         : "healthy"
     const preferredBoard =
       completedBoard?.completion.complete ? completedBoard : null
+    const preferredPicks =
+      preferredBoard?.picks || liveBoard?.picks || historyPicks
 
     return {
       title,
       historyPicks,
       completedBoard,
-      preferredPicks: preferredBoard?.picks || historyPicks,
+      preferredPicks,
       // An incomplete scheduled board still owns completion. Passing its
       // explicit false flag downstream prevents eligible-history fallbacks
       // from falsely completing at a round boundary.
@@ -317,7 +330,7 @@
         status,
         mode,
         checkedAt,
-        pickCount: preferredBoard?.picks.length || historyPicks.length,
+        pickCount: preferredPicks.length,
         checks,
         issues,
       },

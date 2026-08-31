@@ -149,6 +149,39 @@ describe("ESPN extension selector contract", () => {
     })
   })
 
+  it("uses completed Board-tab picks when live history is absent", () => {
+    renderScheduledBoard({
+      numTeams: 12,
+      numRounds: 16,
+      completedPicks: 26,
+    })
+    document.querySelector(
+      ".draft-columns .draft-column:nth-child(3) ul",
+    ).remove()
+
+    const result = inspectEspnDraft(document, 789)
+
+    expect(result.health).toMatchObject({
+      status: "healthy",
+      mode: "live-board",
+      checkedAt: 789,
+      pickCount: 26,
+      issues: [],
+    })
+    expect(result.historyPicks).toEqual([])
+    expect(result.preferredPicks).toHaveLength(26)
+    expect(result.preferredPicks.at(-1)).toMatchObject({
+      name: "Player 26",
+      pick: "R3, P2",
+    })
+    expect(result.completion).toMatchObject({
+      complete: false,
+      totalPicks: 192,
+      numRounds: 16,
+      numTeams: 12,
+    })
+  })
+
   it.each([10, 12])("preserves final authoritative metadata for a complete %i-team board", (
     numTeams,
   ) => {

@@ -232,6 +232,9 @@ const startDashboardListener = () => {
 
 const getPageRole = () => extensionSites?.roleForUrl(window.location.href) || null
 
+const hasExtensionContext = () =>
+  typeof chrome === "object" && Boolean(chrome.runtime?.id)
+
 const startRole = (role) => {
   if (role === "espn") {
     void startEspnReader()
@@ -244,17 +247,27 @@ const startRole = (role) => {
 
 const connect = () => {
   const role = getPageRole()
-  if (!role) {
+  if (!role || !hasExtensionContext()) {
     return
   }
 
-  state.port = chrome.runtime.connect({ name: CONNECTION_NAME })
+  try {
+    state.port = chrome.runtime.connect({ name: CONNECTION_NAME })
+  } catch (error) {
+    // Reloading an unpacked extension invalidates content scripts already
+    // running in open pages. Those scripts cannot reconnect; the next page
+    // refresh installs the new content script and establishes a fresh port.
+    if (!hasExtensionContext()) return
+    console.warn("Unable to connect to Drafty extension", error)
+    return
+  }
   state.lastEspnHealthFingerprint = null
   state.lastEspnHealthSentAt = 0
   state.port.onDisconnect.addListener(() => {
     state.port = null
     window.clearTimeout(state.workTimer)
     window.clearTimeout(state.reconnectTimer)
+    if (!hasExtensionContext()) return
     state.reconnectTimer = window.setTimeout(connect, 1_000)
   })
   startRole(role)

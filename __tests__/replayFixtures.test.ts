@@ -183,6 +183,13 @@ describe("completed replay fixtures", () => {
         }
       }),
     }
+    snapshot.picks[0] = {
+      imgUrl: "",
+      name: "Opponent Outside Universe",
+      team: "IND",
+      position: "WR",
+      pick: "R1, P1",
+    }
 
     const captured = captureCompletedDraftReplay({
       id: snapshot.id,
@@ -198,10 +205,38 @@ describe("completed replay fixtures", () => {
     expect(captured.targetRosterIndex).toBe(8)
     expect(captured.settings.numBenchPlayers).toBe(7)
     expect(captured.actualPicks).toHaveLength(160)
+    expect(captured.actualPicks[0]).toMatchObject({
+      name: "Opponent Outside Universe",
+      playerId: null,
+      advisorEligible: false,
+    })
     expect(captured.source?.sourceUrl).toBe(
       "https://fantasy.espn.com/football/draft?leagueId=36954084",
     )
     expect(validateCompletedDraftReplay(captured)).toEqual([])
+
+    const targetPickIndex = recordedReplay.actualPicks.findIndex(pick =>
+      pick.rosterIndex === 8 && pick.advisorEligible)
+    const targetPick = snapshot.picks[targetPickIndex]
+    snapshot.picks[targetPickIndex] = {
+      imgUrl: "",
+      name: "Target Outside Universe",
+      team: "IND",
+      position: "WR",
+      pick: targetPick.pick,
+    }
+    expect(() => captureCompletedDraftReplay({
+      id: snapshot.id,
+      settings: materialized.settings,
+      targetRosterIndex: 0,
+      boardSettings: materialized.boardSettings,
+      rankingSummaries: materialized.rankingSummaries,
+      playerLib: materialized.playerLib,
+      draftHistory: [],
+      sourceSnapshot: snapshot,
+    })).toThrow(
+      "Target roster player Target Outside Universe lacks matching ranking data",
+    )
   })
 
   it("captures an ESPN-only drafted rookie when the selected Harris rank is absent", () => {

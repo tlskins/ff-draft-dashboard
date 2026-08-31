@@ -62,10 +62,10 @@ describe("draft feed compatibility", () => {
         kind: "source-health",
         sentAt: 500,
         health: {
-          selectorVersion: 1,
+          selectorVersion: 2,
           platform: "ESPN",
           status: "degraded",
-          mode: "live-history",
+          mode: "live-board",
           checkedAt: 499,
           pickCount: 3,
           checks: [{

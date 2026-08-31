@@ -48,6 +48,7 @@ export type DraftSourceHealthStatus =
 
 export type DraftSourceHealthMode =
   | "live-history"
+  | "live-board"
   | "completed-board"
   | "waiting"
   | "unavailable"
@@ -203,6 +204,7 @@ const isSourceHealthMode = (
   value: unknown,
 ): value is DraftSourceHealthMode =>
   value === "live-history" ||
+  value === "live-board" ||
   value === "completed-board" ||
   value === "waiting" ||
   value === "unavailable"

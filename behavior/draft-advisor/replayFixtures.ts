@@ -266,18 +266,16 @@ const sourceReplayPicks = (
       const overallPick = (round - 1) * numTeams + pickInRound
       const position = rankablePosition(pick.position)
       const playerId = position ? espnPlayerId(pick, playerLib) : null
-      if (position && !playerId) {
-        throw new Error(
-          `Drafted player ${pick.name} lacks matching ranking data`,
-        )
-      }
       return {
         overallPick,
         rosterIndex: getRosterIndexForPick(overallPick, numTeams),
         playerId,
         name: pick.name,
         position: pick.position,
-        advisorEligible: position !== null,
+        // Preserve late opponent picks outside Drafty's bounded player
+        // universe as board evidence, but keep them out of scoring and
+        // alternatives because they have no projection record.
+        advisorEligible: position !== null && playerId !== null,
       }
     })
     .sort((left, right) => left.overallPick - right.overallPick)
@@ -322,6 +320,15 @@ export const captureCompletedDraftReplay = ({
         completion.numTeams,
       )
     : null
+  const unmatchedTargetPick = sourcePicks?.find(pick =>
+    pick.rosterIndex === targetRosterIndexFromSource
+    && rankablePosition(pick.position || "") !== null
+    && !pick.playerId)
+  if (unmatchedTargetPick) {
+    throw new Error(
+      `Target roster player ${unmatchedTargetPick.name || "Unknown"} lacks matching ranking data`,
+    )
+  }
   const targetAdvisorPickCount = sourcePicks?.filter(pick =>
     pick.rosterIndex === targetRosterIndexFromSource
     && pick.advisorEligible).length
