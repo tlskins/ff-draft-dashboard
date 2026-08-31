@@ -131,6 +131,31 @@ describe("deterministic completed mock counterfactual", () => {
     }])
   })
 
+  it("keeps positional representatives in the unconstrained Auto beam", () => {
+    const autoFixture = fixture()
+    autoFixture.players.push(
+      player("rb-decoy-1", FantasyPosition.RUNNING_BACK, 5, 1, "GGG"),
+      player("rb-decoy-2", FantasyPosition.RUNNING_BACK, 6, 1, "HHH"),
+      player("rb-decoy-3", FantasyPosition.RUNNING_BACK, 7, 1, "III"),
+      player("rb-decoy-4", FantasyPosition.RUNNING_BACK, 9, 1, "JJJ"),
+    )
+    autoFixture.players
+      .filter(candidate => candidate.position === FantasyPosition.WIDE_RECEIVER)
+      .forEach(candidate => { candidate.userTier = 9 })
+
+    const result = reviewCompletedMock({
+      fixture: autoFixture,
+      request: {maxAlternatives: 3},
+    })
+
+    expect(result.alternatives).not.toHaveLength(0)
+    expect(result.alternatives.every(alternative =>
+      alternative.scorecard.starterPlayerIds.some(id =>
+        autoFixture.players.find(candidate => candidate.id === id)?.position
+          === FantasyPosition.WIDE_RECEIVER),
+    )).toBe(true)
+  })
+
   it("uses the strict ADP future-availability boundary and is repeatable", () => {
     const request = {
       exactPlayerOverrides: {1: "rb-branch", 2: "wr-opponent"},

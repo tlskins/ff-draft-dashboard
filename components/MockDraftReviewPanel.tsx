@@ -360,7 +360,13 @@ export const MockDraftReviewPanel = ({
                             </ol>
                             <p className="mt-2 text-xs text-gray-600">{review.alternatives[0].opponentReplacements.length} opponent collision replacements</p>
                           </>
-                        ) : <p className="mt-2 text-sm">No complete roster satisfies this ADP path.</p>}
+                        ) : (
+                          <p className="mt-2 text-sm">
+                            {firstPosition || secondPosition
+                              ? "No complete roster satisfies the selected position path."
+                              : "Auto search found no legal complete alternative from the captured ADP board."}
+                          </p>
+                        )}
                       </section>
                     </div>
                   </>
