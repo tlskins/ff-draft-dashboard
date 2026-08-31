@@ -1,8 +1,9 @@
-import {fireEvent, render, screen} from "@testing-library/react"
+import {fireEvent, render, screen, waitFor} from "@testing-library/react"
 import fixture from "./fixtures/completed-draft-replay.json"
 
 import {MockDraftReviewPanel} from "../components/MockDraftReviewPanel"
 import {createCompletedMockArchive} from "../behavior/mockDraft/archive"
+import {readLocalCompletedMocks} from "../behavior/mockDraft/archive"
 import type {RecordedCompletedDraftReplay} from "../behavior/draft-advisor/completedDraftReplay"
 
 
@@ -54,5 +55,23 @@ describe("completed mock review panel", () => {
     )
     expect(screen.queryByText("Complete a mock to create the first scorecard."))
       .toBeNull()
+  })
+
+  it("imports a validated recovered archive into local mock history", async () => {
+    render(<MockDraftReviewPanel season={2026} user={null} />)
+    fireEvent.click(screen.getByRole("button", {name: /Mock review/}))
+    const file = new File(
+      [JSON.stringify(archive)],
+      "recovered-mock.json",
+      {type: "application/json"},
+    )
+    fireEvent.change(screen.getByLabelText("Import completed mock"), {
+      target: {files: [file]},
+    })
+
+    await waitFor(() => expect(screen.getByRole("status").textContent)
+      .toBe("Imported locally."))
+    expect(readLocalCompletedMocks(localStorage, 2026)).toEqual([archive])
+    expect(screen.getAllByText("Actual roster")).toHaveLength(2)
   })
 })

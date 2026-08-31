@@ -143,6 +143,25 @@ describe("deterministic completed mock counterfactual", () => {
     expect(first.alternatives).toEqual([])
   })
 
+  it("retains an authoritative recorded late pick when the ADP pool is exhausted", () => {
+    const lateRoundFixture = fixture()
+    lateRoundFixture.players = lateRoundFixture.players.filter(player =>
+      ["wr-actual", "rb-branch", "wr-opponent", "rb-actual"].includes(player.id))
+    lateRoundFixture.players.find(player => player.id === "rb-actual")!.adp = 3
+
+    const result = reviewCompletedMock({
+      fixture: lateRoundFixture,
+      request: {maxAlternatives: 1},
+    })
+
+    expect(result.alternatives).toHaveLength(1)
+    expect(result.alternatives[0].picks[1]).toEqual({
+      overallPick: 4,
+      playerId: "rb-actual",
+      reason: "recorded late-round pick retained when no ADP candidate remained",
+    })
+  })
+
   it("does not return a final branch that leaves a required starter position empty", () => {
     const result = reviewCompletedMock({
       fixture: fixture(),

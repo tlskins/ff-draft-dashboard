@@ -7,7 +7,10 @@ import {
   type UserMockDraftSummary,
 } from "../behavior/api/userMockDrafts"
 import {
+  completedMockPutRequest,
+  isLocalCompletedMockArchive,
   readLocalCompletedMocks,
+  storeLocalCompletedMock,
   type LocalMockDraftArchive,
 } from "../behavior/mockDraft/archive"
 import {
@@ -15,6 +18,8 @@ import {
   type ReviewPosition,
 } from "../behavior/mockDraft/review"
 import type {RecordedCompletedDraftReplay} from "../behavior/draft-advisor/completedDraftReplay"
+import {validateCompletedDraftReplay} from "../behavior/draft-advisor/replayFixtures"
+import {putUserMockDraft} from "../behavior/api/userMockDrafts"
 import {FantasyPosition} from "../types"
 
 
@@ -27,6 +32,15 @@ const POSITIONS: Array<{value: ReviewPosition; label: string}> = [
 
 const playerName = (fixture: RecordedCompletedDraftReplay, id: string): string =>
   fixture.players.find(player => player.id === id)?.name || id
+
+const readTextFile = (file: File): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onerror = () => reject(new Error("Completed mock file could not be read"))
+  reader.onload = () => typeof reader.result === "string"
+    ? resolve(reader.result)
+    : reject(new Error("Completed mock file is not text"))
+  reader.readAsText(file)
+})
 
 export const MockDraftReviewPanel = ({
   season,
@@ -49,6 +63,8 @@ export const MockDraftReviewPanel = ({
   const [firstPosition, setFirstPosition] = useState<ReviewPosition | "">("")
   const [secondPosition, setSecondPosition] = useState<ReviewPosition | "">("")
   const [reviewSeason, setReviewSeason] = useState(season)
+  const [archiveRevision, setArchiveRevision] = useState(0)
+  const [importStatus, setImportStatus] = useState<string | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -59,13 +75,58 @@ export const MockDraftReviewPanel = ({
   }, [requestedArchive])
 
   const local = useMemo(() => {
+    void archiveRevision
     const current = currentArchive?.season === reviewSeason ? currentArchive : null
     if (typeof localStorage === "undefined") return current ? [current] : []
     const stored = readLocalCompletedMocks(localStorage, reviewSeason)
     return current && !stored.some(item => item.mock_id === current.mock_id)
       ? [current, ...stored]
       : stored
-  }, [currentArchive, reviewSeason])
+  }, [archiveRevision, currentArchive, reviewSeason])
+
+  const importCompletedMock = useCallback(async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+    if (!file) return
+    setError(null)
+    setImportStatus(null)
+    try {
+      if (file.size > 5_000_000) throw new Error("Completed mock import exceeds 5 MB")
+      const value = JSON.parse(await readTextFile(file)) as unknown
+      if (!isLocalCompletedMockArchive(value)) {
+        throw new Error("Completed mock import does not satisfy the archive contract")
+      }
+      const replayErrors = validateCompletedDraftReplay(
+        value.replay as unknown as RecordedCompletedDraftReplay,
+      )
+      if (replayErrors.length) {
+        throw new Error(`Completed mock replay is invalid: ${replayErrors[0]}`)
+      }
+      storeLocalCompletedMock(localStorage, value)
+      setReviewSeason(value.season)
+      setSelected(value)
+      setArchiveRevision(revision => revision + 1)
+      if (!user) {
+        setImportStatus("Imported locally.")
+        return
+      }
+      try {
+        const token = await user.getIdToken()
+        await putUserMockDraft(
+          value.mock_id,
+          completedMockPutRequest(value),
+          {token, season: value.season},
+        )
+        setImportStatus("Imported locally and synced.")
+      } catch {
+        setImportStatus("Imported locally; cloud sync will retry automatically.")
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Completed mock import failed")
+    }
+  }, [user])
 
   useEffect(() => {
     if (!open) return
@@ -198,11 +259,24 @@ export const MockDraftReviewPanel = ({
             </header>
             <div className="grid min-h-0 flex-1 grid-cols-[250px_minmax(0,1fr)]">
               <aside className="overflow-y-auto border-r border-slate-300 bg-slate-200 p-2">
-                <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  Mock history
-                </p>
+                <div className="flex items-center justify-between gap-2 px-2 py-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Mock history
+                  </p>
+                  <label className="cursor-pointer rounded border border-slate-400 bg-white px-2 py-1 text-xs font-semibold">
+                    Import
+                    <input
+                      accept="application/json,.json"
+                      aria-label="Import completed mock"
+                      className="sr-only"
+                      onChange={event => void importCompletedMock(event)}
+                      type="file"
+                    />
+                  </label>
+                </div>
                 {loading && <p className="px-2 py-2 text-sm">Loading…</p>}
                 {error && <p className="px-2 py-2 text-sm text-red-700">{error}</p>}
+                {importStatus && <p className="px-2 py-2 text-sm text-emerald-700" role="status">{importStatus}</p>}
                 {!loading && currentArchiveError && (
                   <p className="px-2 py-2 text-sm text-red-700" role="status">
                     Scorecard could not be created: {currentArchiveError}

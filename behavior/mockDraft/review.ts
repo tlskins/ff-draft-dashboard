@@ -344,6 +344,7 @@ export const reviewCompletedMock = ({
   const maxAlternatives = Math.max(1, Math.min(3, request.maxAlternatives || 3))
   const beamWidth = Math.max(3, Math.min(40, request.beamWidth || 24))
   const targetSet = new Set(targetPlayerIds)
+  const playerById = new Map(fixture.players.map(player => [player.id, player]))
   let branches: ReplayBranch[] = [{selected: new Set(), userPlayerIds: [], picks: [], opponentReplacements: []}]
   let userPickNumber = 0
 
@@ -380,12 +381,21 @@ export const reviewCompletedMock = ({
       const exactId = request.exactPlayerOverrides?.[userPickNumber]
       const requiredPosition = request.positionSequence?.[userPickNumber - 1]
       const expanded = branches.flatMap(branch => {
-        const candidates = orderedAvailable(fixture, branch.selected)
+        let candidates = orderedAvailable(fixture, branch.selected)
           .filter(player => player.adp >= recordedPick.overallPick && player.adp < 999)
           .filter(player => !exactId || player.id === exactId)
           .filter(player => !requiredPosition || player.position === requiredPosition)
           .sort((left, right) => left.userTier - right.userTier || left.positionRank - right.positionRank || left.adp - right.adp || left.id.localeCompare(right.id))
           .slice(0, exactId ? 1 : 4)
+        const recordedPlayer = recordedPick.playerId
+          ? playerById.get(recordedPick.playerId)
+          : undefined
+        const retainRecordedPick = candidates.length === 0
+          && recordedPlayer !== undefined
+          && !branch.selected.has(recordedPlayer.id)
+          && (!exactId || exactId === recordedPlayer.id)
+          && (!requiredPosition || requiredPosition === recordedPlayer.position)
+        if (retainRecordedPick) candidates = [recordedPlayer]
         return candidates.map(player => ({
           selected: new Set(branch.selected).add(player.id),
           userPlayerIds: [...branch.userPlayerIds, player.id],
@@ -396,6 +406,8 @@ export const reviewCompletedMock = ({
               ? "exact player override"
               : requiredPosition
                 ? `${requiredPosition} position-sequence choice`
+                : retainRecordedPick
+                  ? "recorded late-round pick retained when no ADP candidate remained"
                 : "best bounded user-tier choice predicted available by ADP",
           }],
           opponentReplacements: branch.opponentReplacements,
