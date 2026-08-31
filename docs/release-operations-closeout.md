@@ -52,9 +52,10 @@ silently presented as fresh status evidence.
 
 ## Human-owned remainder
 
-- Chrome Web Store reviewer approval and post-approval installed-package
-  acceptance (`0.0.0.11` supersedes the August 30 `0.0.0.10` submission);
-- a logged-in provider draft and real extension-fed pick observation;
-- signed-in cross-device completed-mock reopening;
-- seven remaining native WebMCP corpus journeys after the Phase 20A expansion;
+- the Phase 20B `drafty_get_help` native onboarding journey after deployment;
+- the Phase 18 live extension-fed first-pick cloud sync-lock observation;
 - deferred VoiceOver/device validation.
+
+Chrome Web Store `0.0.0.11`, installed-package live draft capture and
+completion, signed-in cross-device completed-mock reopening, mobile review, and
+all nine Phase 20A WebMCP journeys passed on August 31, 2026.

@@ -344,7 +344,7 @@ describe("Phase 17A WebMCP", () => {
       {initialProps: {value: adapter(firstGet)}},
     )
     await waitFor(() => expect(view.result.current.status).toBe("ready"))
-    expect(registerTool).toHaveBeenCalledTimes(11)
+    expect(registerTool).toHaveBeenCalledTimes(12)
     expect(registerTool.mock.calls.map(call => call[0].name)).toEqual(
       DRAFTY_WEBMCP_HOME_TOOL_NAMES,
     )
@@ -387,6 +387,18 @@ describe("Phase 17A WebMCP", () => {
     }, {signal: new AbortController().signal})).resolves.toMatchObject({
       ok: true,
       result: {schema_version: 1},
+    })
+    await expect(tools.get("drafty_get_help")!.execute({
+      topic: "extension_setup",
+      platform: "mobile",
+    }, {signal: new AbortController().signal})).resolves.toMatchObject({
+      ok: true,
+      result: {
+        schema_version: 1,
+        topic: "extension_setup",
+        platform: "mobile",
+        extension: {version: "0.0.0.11"},
+      },
     })
     view.unmount()
     expect(registrationSignals.every(signal => signal.aborted)).toBe(true)

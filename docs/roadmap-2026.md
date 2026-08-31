@@ -845,11 +845,11 @@ density and heatmap semantics. See
 
 ### Phase 17: WebMCP agent interface
 
-Status: Phases 17A and 17B are implemented. Phase 17C's deterministic corpus,
-evaluator, payload budgets, progressive fallback, and production token boundary
-are implemented; the production origin is enrolled and configured in Vercel,
-and the token-bearing production deployment is verified. Native compatible-
-agent discovery and invocation remain open.
+Status: Phases 17A–17C are implemented and the nine Phase 20A native journeys
+are accepted. The deterministic corpus, evaluator, payload budgets, progressive
+fallback, and production token boundary are implemented; the production origin
+is enrolled and configured in Vercel, and the token-bearing production
+deployment is verified. Phase 20B adds one pending native help journey.
 Realtime GPT/voice remains deferred.
 
 Expose a bounded imperative WebMCP surface over Drafty's existing state and
@@ -877,20 +877,15 @@ gate passes 133 suites and 844 tests plus lint, TypeScript, and the optimized
 build. Chrome inspector enumeration and live execution of the natural-language
 task corpus remain pending in Phase 17C.
 
-Phase 17C now has a seven-journey natural-language corpus, reproducible trace
+Phase 17C now has a ten-journey natural-language corpus, reproducible trace
 evaluator, catalog/output-budget regressions, and optional validated first-party
 origin-trial meta injection. The local Chrome fallback probe correctly reports
-unsupported with zero tools while the testing flag is disabled. TypeScript,
-lint, the optimized build, and the expanded full gate of 135 suites and 850
-tests pass. The testing flag was subsequently enabled in Chrome 150, but the
-current Codex Chrome-control surface exposes neither WebMCP discovery nor tool
-invocation and its page-inspection channel timed out with the flag active. The
-Chrome inspector subsequently discovered all 12 tools. Native analyst-note and
-configuration journeys executed. The note/profile journey passed; the
-configuration journey exposed and landed a Half-PPR analyst-board fallback fix,
-and the corrected native rerun then passed with Harris retained. Five corpus
-journeys remain an inspector or future-agent gate, not a recorded Drafty
-failure. The exact
+unsupported with zero tools while the testing flag is disabled. The Chrome
+inspector later discovered the catalog and exposed a Half-PPR analyst-board
+fallback defect during native configuration; that fix landed and the corrected
+journey retained Harris. All nine Phase 20A journeys subsequently passed without
+retries and matched visible state. The new Phase 20B onboarding-help journey is
+the only remaining native corpus gate. The exact
 Vercel origin was registered on August 30,
 2026, and its expiring token was added to the Vercel production environment;
 the stable production alias now returns HTTP 200 with exactly one valid token
@@ -931,25 +926,36 @@ except the final live extension-fed lock observation.
 
 ### Phase 20A: agent-efficient deterministic evidence
 
-Status: implementation complete; native production acceptance remains pending.
-The WebMCP catalog expands from 12 to 15 tools. Agents can now read a compact
+Status: complete, including native production acceptance on August 31, 2026.
+The WebMCP catalog expanded from 12 to 15 tools. Agents can now read a compact
 deterministic next-pick context, inspect bounded per-player rank/tier/ADP,
 status, outlook, analyst-note, history, and recommendation evidence, request
 completed mocks by explicit fantasy season, and open a selected mock in the
 human-visible review dialog. Workspace snapshots advertise mutation
 capabilities and reasons, and only current WebMCP annotation fields are emitted.
 
-The corpus now contains nine journeys. The two previously completed native
-journeys remain valid; the seven remaining journeys, 15-tool production
-discovery, and one visible mock-open confirmation require a compatible browser
-agent or Model Context Tool Inspector. Origin-trial production health warns in
+All nine corpus journeys passed without retries and matched independently
+observed visible state, including the completed-mock review and visible-open
+confirmation. Origin-trial production health warns in
 the 30-day renewal window and fails after the registered November 16, 2026
 expiry without exposing the token.
 
+### Phase 20B: shared onboarding and agent help
+
+Status: implementation complete; deployment and one native journey remain.
+A shared structured catalog now powers both `/extension-support` and the
+read-only `drafty_get_help` WebMCP tool. Agents request one bounded topic at a
+time for getting started, extension setup, live drafts, ranks and targets,
+mobile synchronization, mock review, agent tools, or troubleshooting. The tool
+reports the current published extension version and links, does not mutate the
+workspace, and expands the WebMCP catalog to 16 tools and the corpus to ten
+journeys.
+
 ### Phase 19: season-scoped mock archive and deterministic review
 
-Status: implementation and automated validation complete; production
-acceptance remains pending. This phase takes priority over the deferred Phase
+Status: complete, including extension-fed mock completion, signed-in cross-
+device review synchronization, mobile rendering, and native WebMCP review
+acceptance on August 31, 2026. This phase took priority over the deferred Phase
 18B custom-origin WebMCP activation. It extends the existing immutable completed-draft
 fixture and counterfactual evaluation primitives into a signed-in user mock
 archive, transparent 0-100/category scorecard, bounded ADP-based alternate-
@@ -970,22 +976,21 @@ with the backend's explicit 2000–2100 season, stable mock-ID, bounded source,
 unique target, and roster-only replay contracts. Malformed local records are
 ignored, malformed writes and API requests fail before persistence/network
 access, and unauthenticated production profile/mock reads are continuously
-checked to return 401. Signed-in cross-device production acceptance remains
-human-owned.
+checked to return 401. Signed-in cross-device production acceptance passed.
 
 ### Chrome Web Store release readiness
 
-Status: automated production-package hardening is implemented for extension
-`0.0.0.11`, which supersedes the August 30 `0.0.0.10` submission with the
-live ESPN Board fallback and completion hardening. The store
-candidate uses production Drafty branding, limits content
+Status: complete. Extension `0.0.0.11` is published in the Chrome Web Store and
+passed installed-package ESPN mock capture and completion on August 31, 2026.
+It supersedes the August 30 `0.0.0.10` submission with the live ESPN Board
+fallback and completion hardening. The store package uses production Drafty
+branding, limits content
 scripts to the two Drafty origins and two supported draft clients, moves
 localhost into an ignored generated development bundle, and adds a public
 privacy/support packet plus deterministic policy regressions. The exact ZIP
 also passes an account-free clean Chrome-for-Testing service-worker, popup,
 production-heartbeat, and unmatched-origin smoke; a verified store-upload
-directory is generated with checksums. Reviewer approval and post-approval
-logged-in provider/live-pick acceptance remain human-owned. See
+directory is generated with checksums. See
 `docs/chrome-web-store-readiness.md`.
 
 ### Prediction-v2 promotion decision

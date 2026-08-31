@@ -1,6 +1,11 @@
 import {useEffect, useMemo, useRef, useState} from "react"
 
 import {
+  DRAFTY_HELP_TOPICS,
+  getDraftyHelp,
+  parseDraftyHelpInput,
+} from "../help/draftyHelp"
+import {
   DRAFTY_WEBMCP_HOME_TOOL_NAMES,
   DraftyHomeWebMcpAdapter,
   DraftyWebMcpInputError,
@@ -306,6 +311,29 @@ export const useDraftyWebMcp = (
       emptyInput(input)
       return adapterRef.current.saveRankEdits()
     }),
+  }, {
+    name: DRAFTY_WEBMCP_HOME_TOOL_NAMES[11],
+    title: "Get Drafty help",
+    description: "Read one bounded first-party Drafty setup, live-draft, rankings, sync, mock-review, agent-tool, or troubleshooting guide without changing the workspace.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        topic: {
+          type: "string",
+          enum: [...DRAFTY_HELP_TOPICS],
+          default: "getting_started",
+        },
+        platform: {type: "string", enum: ["desktop", "mobile"]},
+      },
+      additionalProperties: false,
+    },
+    annotations: {readOnlyHint: true},
+    execute: async (input, options) => checkedExecute(options, () => (
+      toolSuccess(
+        getDraftyHelp(parseDraftyHelpInput(input)),
+        "Drafty help is current.",
+      )
+    )),
   }], [])
 
   return useWebMcpToolRegistration(tools)

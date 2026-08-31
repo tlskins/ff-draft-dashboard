@@ -20,6 +20,7 @@ const knownTools = new Set([
   "drafty_list_mock_drafts",
   "drafty_review_mock_draft",
   "drafty_open_mock_review",
+  "drafty_get_help",
 ])
 
 const setPath = (target, path, value) => {

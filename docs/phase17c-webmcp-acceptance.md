@@ -1,21 +1,22 @@
 # Phase 17C: WebMCP acceptance and production trial
 
 Status: deterministic corpus, evaluator, output budgets, progressive fallback,
-production token injection, expiry monitoring, and Phase 20A evidence reads are
-implemented. The production origin was
+production token injection, expiry monitoring, Phase 20A evidence reads, and
+the Phase 20B shared help catalog are implemented. The production origin was
 enrolled on August 30, 2026, and its token is configured as a Vercel production
 build variable. The token-bearing build was deployed and verified at the stable
-production alias on August 30, 2026. The catalog now contains 15 tools and the
-corpus contains nine journeys. Native profile-search and corrected configuration
-journeys passed before the Phase 20A expansion; seven journeys remain open.
+production alias on August 30, 2026. The catalog now contains 16 tools and the
+corpus contains ten journeys. All nine pre-help native journeys passed with
+independent visible-state confirmation; the new onboarding-help journey remains
+the sole native acceptance item.
 
 ## Implemented acceptance infrastructure
 
-- `behavior/webmcp/webmcp-task-corpus.json` defines nine bounded natural-
+- `behavior/webmcp/webmcp-task-corpus.json` defines ten bounded natural-
   language journeys covering configuration, rankings navigation, analyst-note
   search/profile focus, reversible targets, reversible positional-rank edits,
   insight selection, completed-mock review, live deterministic decision context,
-  and bounded player evidence.
+  bounded player evidence, and first-party onboarding help.
 - `scripts/webmcp-eval-lib.cjs` scores task success, tool choice and ordering,
   retries, result bytes, state correctness, and agreement with separately
   observed human-visible state.
@@ -50,9 +51,9 @@ Chrome's WebMCP testing flag is browser-owned state and requires a relaunch:
 2. Set **WebMCP for testing** to **Enabled** and relaunch Chrome.
 3. Start Drafty with `npm run dev` and open `http://localhost:3000`.
 4. Confirm the root element reports `data-webmcp-status="ready"` and
-   `data-webmcp-tool-count="15"`.
+   `data-webmcp-tool-count="16"`.
 5. In Chrome DevTools' WebMCP tooling or Model Context Tool Inspector, enumerate
-   all fifteen stable tools and execute the nine corpus journeys.
+   all sixteen stable tools and execute the ten corpus journeys.
 6. Record each tool call/result plus the final agent state and independently
    observed UI state in the evaluator run format.
 7. Restore any temporary target or rank change as directed by the corpus.
@@ -132,9 +133,9 @@ After deploying a token-bearing build:
 
 1. inspect the rendered document head for exactly one origin-trial meta tag;
 2. confirm Chrome DevTools reports a valid WebMCP trial for the top frame;
-3. confirm `document.modelContext` exists and the root diagnostic reaches fifteen
+3. confirm `document.modelContext` exists and the root diagnostic reaches sixteen
    ready tools;
-4. rerun the nine-journey corpus against production; and
+4. rerun the ten-journey corpus against production; and
 5. run ordinary browser smoke in a browser without WebMCP to prove the human UI
    remains unchanged.
 
@@ -158,7 +159,8 @@ assumptions.
 ## August 30 native-agent checkpoint
 
 Chrome's Model Context Tool Inspector discovered all 12 tools that existed at
-that checkpoint. The Phase 20A catalog now requires a fresh 15-tool discovery.
+that checkpoint. Later checkpoints discovered and exercised the expanded
+15-tool Phase 20A catalog.
 The first native execution exposed a Chrome callback compatibility defect: Chrome
 omitted the optional execution-options object. Dashboard commit `c7bd102`
 accepts that valid callback shape across all executors, and focused Chrome-style
@@ -177,5 +179,7 @@ PPR ranks when published and otherwise uses the source's PPR, then Standard,
 board. The full 143-suite/878-test gate and production deployment passed. A
 native inspector rerun then configured a 10-team Half-PPR league from slot 7
 with 1 QB, 2 RB, 3 WR, 1 TE, 1 flex, and 6 bench slots while retaining Harris;
-the returned workspace state matched those values. Seven other corpus journeys
-and their independent UI confirmations remain human-owned.
+the returned workspace state matched those values. The remaining seven Phase
+20A journeys subsequently passed without retries and agreed with the visible
+Drafty state, including the completed-mock review. Phase 20B adds only the new
+read-only onboarding-help journey to the human acceptance queue.

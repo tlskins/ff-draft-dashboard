@@ -23,6 +23,7 @@ export const DRAFTY_WEBMCP_HOME_TOOL_NAMES = [
   "drafty_start_rank_editing",
   "drafty_move_player_rank",
   "drafty_save_rank_edits",
+  "drafty_get_help",
 ] as const
 
 export const DRAFTY_WEBMCP_INSIGHT_TOOL_NAME = "drafty_set_insight_view"

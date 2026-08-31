@@ -143,6 +143,21 @@
         {"path": "mockReview.schemaVersion", "op": "eq", "value": 1},
         {"path": "mockReview.actual.schemaVersion", "op": "eq", "value": 1}
       ]
+    },
+    {
+      "id": "answer_extension_onboarding",
+      "prompt": "Explain how to install Drafty Draft Sync and connect an ESPN mock draft from desktop Chrome. Include the current extension version and first troubleshooting checks without changing Drafty.",
+      "required_tool_sequence": ["drafty_get_help"],
+      "allowed_tools": ["drafty_get_help", "drafty_get_workspace"],
+      "max_tool_calls": 2,
+      "max_retries": 0,
+      "max_result_bytes": 12000,
+      "estimated_dom_actions": 14,
+      "state_assertions": [
+        {"path": "help.schema_version", "op": "eq", "value": 1},
+        {"path": "help.topic", "op": "eq", "value": "extension_setup"},
+        {"path": "help.extension.version", "op": "eq", "value": "0.0.0.11"}
+      ]
     }
   ]
 }
