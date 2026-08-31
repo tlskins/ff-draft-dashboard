@@ -223,7 +223,7 @@ export const MockDraftReviewPanel = ({
   return (
     <>
       <button
-        className="rounded border border-slate-500 px-3 py-2 text-sm font-semibold hover:bg-slate-800"
+        className="rounded border border-gray-500 px-3 py-2 text-sm font-semibold hover:bg-gray-800"
         onClick={() => setOpen(true)}
         type="button"
       >
@@ -231,7 +231,7 @@ export const MockDraftReviewPanel = ({
       </button>
       {open && (
         <div
-          className="fixed inset-0 flex items-center justify-center bg-slate-950/75 p-5 text-left"
+          className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 p-5 text-left"
           onMouseDown={event => {
             if (event.target === event.currentTarget) setOpen(false)
           }}
@@ -240,16 +240,16 @@ export const MockDraftReviewPanel = ({
           <section
             aria-label={`Season ${reviewSeason} mock draft review`}
             aria-modal="true"
-            className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded border border-slate-500 bg-slate-100 text-slate-900 shadow-2xl"
+            className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded border border-gray-500 bg-gray-100 text-gray-900 shadow-2xl"
             role="dialog"
           >
-            <header className="flex items-center justify-between border-b border-slate-400 bg-slate-800 px-4 py-2 text-slate-50">
+            <header className="flex items-center justify-between border-b border-gray-400 bg-gray-800 px-4 py-2 text-gray-50">
               <div>
-                <p className="text-xs uppercase tracking-wider text-sky-300">Season {reviewSeason}</p>
+                <p className="text-xs uppercase tracking-wider text-blue-300">Season {reviewSeason}</p>
                 <h2 className="text-lg font-bold">Completed mock scorecards</h2>
               </div>
               <button
-                className="rounded border border-slate-400 px-3 py-1 text-sm font-semibold"
+                className="rounded border border-gray-400 px-3 py-1 text-sm font-semibold"
                 onClick={() => setOpen(false)}
                 ref={closeRef}
                 type="button"
@@ -257,13 +257,16 @@ export const MockDraftReviewPanel = ({
                 Close
               </button>
             </header>
-            <div className="grid min-h-0 flex-1 grid-cols-[250px_minmax(0,1fr)]">
-              <aside className="overflow-y-auto border-r border-slate-300 bg-slate-200 p-2">
+            <div
+              className="grid min-h-0 flex-1"
+              style={{gridTemplateColumns: "250px minmax(0, 1fr)"}}
+            >
+              <aside className="overflow-y-auto border-r border-gray-300 bg-gray-200 p-2 text-gray-900">
                 <div className="flex items-center justify-between gap-2 px-2 py-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
                     Mock history
                   </p>
-                  <label className="cursor-pointer rounded border border-slate-400 bg-white px-2 py-1 text-xs font-semibold">
+                  <label className="cursor-pointer rounded border border-gray-400 bg-white px-2 py-1 text-xs font-semibold">
                     Import
                     <input
                       accept="application/json,.json"
@@ -276,47 +279,47 @@ export const MockDraftReviewPanel = ({
                 </div>
                 {loading && <p className="px-2 py-2 text-sm">Loading…</p>}
                 {error && <p className="px-2 py-2 text-sm text-red-700">{error}</p>}
-                {importStatus && <p className="px-2 py-2 text-sm text-emerald-700" role="status">{importStatus}</p>}
+                {importStatus && <p className="px-2 py-2 text-sm text-green-700" role="status">{importStatus}</p>}
                 {!loading && currentArchiveError && (
                   <p className="px-2 py-2 text-sm text-red-700" role="status">
                     Scorecard could not be created: {currentArchiveError}
                   </p>
                 )}
                 {!loading && !currentArchiveError && allSummaries.length === 0 && (
-                  <p className="px-2 py-2 text-sm text-slate-600">Complete a mock to create the first scorecard.</p>
+                  <p className="px-2 py-2 text-sm text-gray-600">Complete a mock to create the first scorecard.</p>
                 )}
                 <div className="space-y-1">
                   {allSummaries.map(summary => (
                     <button
                       aria-pressed={selected?.mock_id === summary.mock_id}
-                      className={`w-full rounded border px-2 py-2 text-left text-sm ${selected?.mock_id === summary.mock_id ? "border-sky-600 bg-white" : "border-slate-300 bg-slate-100"}`}
+                      className={`w-full rounded border px-2 py-2 text-left text-sm ${selected?.mock_id === summary.mock_id ? "border-blue-600 bg-white" : "border-gray-300 bg-gray-100"}`}
                       key={summary.mock_id}
                       onClick={() => void selectRemote(summary)}
                       type="button"
                     >
                       <strong className="block truncate">{summary.title}</strong>
-                      <span className="block text-xs text-slate-600">
+                      <span className="block text-xs text-gray-600">
                         {summary.team_count} teams · slot {summary.user_draft_slot} · {new Date(summary.completed_at).toLocaleDateString()}
                       </span>
                     </button>
                   ))}
                 </div>
               </aside>
-              <main className="min-h-0 overflow-y-auto p-3">
+              <main className="min-h-0 overflow-y-auto bg-gray-100 p-3 text-gray-900">
                 {review && selected ? (
                   <>
-                    <div className="mb-3 flex flex-wrap items-end justify-between gap-3 border-b border-slate-300 pb-3">
+                    <div className="mb-3 flex flex-wrap items-end justify-between gap-3 border-b border-gray-300 pb-3">
                       <div>
-                        <p className="text-xs uppercase tracking-wide text-slate-600">Actual roster</p>
-                        <p className="text-4xl font-bold tabular-nums">{review.actual.compositeScore}<span className="text-lg text-slate-500">/100</span></p>
-                        <p className="text-xs text-slate-600">{selected.ranking_source} ranks · {selected.adp_source} ADP</p>
+                        <p className="text-xs uppercase tracking-wide text-gray-600">Actual roster</p>
+                        <p className="text-4xl font-bold tabular-nums">{review.actual.compositeScore}<span className="text-lg text-gray-500">/100</span></p>
+                        <p className="text-xs text-gray-600">{selected.ranking_source} ranks · {selected.adp_source} ADP</p>
                       </div>
                       <div className="flex gap-2">
                         {[firstPosition, secondPosition].map((value, index) => (
                           <label className="text-xs font-semibold" key={index}>
                             Pick {index + 1} position
                             <select
-                              className="mt-1 block rounded border border-slate-400 bg-white px-2 py-1 text-sm"
+                              className="mt-1 block rounded border border-gray-400 bg-white px-2 py-1 text-sm"
                               onChange={event => (index === 0 ? setFirstPosition : setSecondPosition)(event.target.value as ReviewPosition | "")}
                               value={value}
                             >
@@ -329,15 +332,15 @@ export const MockDraftReviewPanel = ({
                     </div>
                     <div className="grid grid-cols-5 gap-2">
                       {review.actual.categories.map(category => (
-                        <article className="rounded border border-slate-300 bg-white p-2" key={category.key}>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">{category.label}</p>
+                        <article className="rounded border border-gray-300 bg-white p-2 text-gray-900" key={category.key}>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">{category.label}</p>
                           <p className="text-2xl font-bold tabular-nums">{category.score ?? "—"}</p>
-                          <p className="mt-1 text-xs text-slate-600">{category.evidence[0]}</p>
+                          <p className="mt-1 text-xs text-gray-600">{category.evidence[0]}</p>
                         </article>
                       ))}
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-3">
-                      <section className="rounded border border-slate-300 bg-white p-3">
+                      <section className="rounded border border-gray-300 bg-white p-3 text-gray-900">
                         <h3 className="text-sm font-bold">Actual roster</h3>
                         <ol className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                           {review.actual.selectedPlayerIds.map((id, index) => (
@@ -345,24 +348,24 @@ export const MockDraftReviewPanel = ({
                           ))}
                         </ol>
                       </section>
-                      <section className="rounded border border-sky-400 bg-sky-50 p-3">
+                      <section className="rounded border border-blue-400 bg-blue-50 p-3 text-gray-900">
                         <h3 className="text-sm font-bold">Best alternate</h3>
                         {review.alternatives[0] ? (
                           <>
-                            <p className="text-2xl font-bold tabular-nums">{review.alternatives[0].scorecard.compositeScore}<span className="ml-2 text-sm text-slate-600">{review.alternatives[0].compositeDelta >= 0 ? "+" : ""}{review.alternatives[0].compositeDelta} vs actual</span></p>
+                            <p className="text-2xl font-bold tabular-nums">{review.alternatives[0].scorecard.compositeScore}<span className="ml-2 text-sm text-gray-600">{review.alternatives[0].compositeDelta >= 0 ? "+" : ""}{review.alternatives[0].compositeDelta} vs actual</span></p>
                             <ol className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                               {review.alternatives[0].picks.map(pick => (
                                 <li key={pick.overallPick}>#{pick.overallPick} {playerName(selected.replay as unknown as RecordedCompletedDraftReplay, pick.playerId)}</li>
                               ))}
                             </ol>
-                            <p className="mt-2 text-xs text-slate-600">{review.alternatives[0].opponentReplacements.length} opponent collision replacements</p>
+                            <p className="mt-2 text-xs text-gray-600">{review.alternatives[0].opponentReplacements.length} opponent collision replacements</p>
                           </>
                         ) : <p className="mt-2 text-sm">No complete roster satisfies this ADP path.</p>}
                       </section>
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm text-slate-600">Select a completed mock to review it.</p>
+                  <p className="text-sm text-gray-600">Select a completed mock to review it.</p>
                 )}
               </main>
             </div>

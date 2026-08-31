@@ -32,6 +32,21 @@ describe("completed mock review panel", () => {
     expect(screen.getByText(/opponent collision replacements/)).toBeTruthy()
   })
 
+  it("renders an opaque, two-column review surface with supported palette utilities", () => {
+    render(<MockDraftReviewPanel currentArchive={archive} season={2026} user={null} />)
+    fireEvent.click(screen.getByRole("button", {name: /Mock review/}))
+
+    const dialog = screen.getByRole("dialog", {name: "Season 2026 mock draft review"})
+    expect(dialog.className).toContain("bg-gray-100")
+    expect(dialog.className).toContain("text-gray-900")
+    expect(dialog.className).not.toContain("slate")
+    expect(dialog.parentElement?.className).toContain("bg-gray-900")
+    expect(dialog.parentElement?.className).toContain("bg-opacity-75")
+
+    const reviewLayout = screen.getByText("Mock history").closest("aside")?.parentElement
+    expect(reviewLayout?.style.gridTemplateColumns).toBe("250px minmax(0, 1fr)")
+  })
+
   it("closes from the dialog control", () => {
     render(<MockDraftReviewPanel currentArchive={archive} season={2026} user={null} />)
     fireEvent.click(screen.getByRole("button", {name: /Mock review/}))
