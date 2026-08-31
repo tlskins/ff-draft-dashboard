@@ -1,6 +1,7 @@
 import {
   getUserMockDraft,
   listUserMockDrafts,
+  markUserMockDraftReviewed,
   putUserMockDraft,
   UserMockDraftApiError,
   type UserMockDraftPutRequest,
@@ -63,6 +64,25 @@ describe("authenticated completed mock API", () => {
     })
     await expect(putUserMockDraft("mock-one", body, options(fetcher))).rejects.toEqual(
       new UserMockDraftApiError("Different immutable mock", 409, "immutable_mock_conflict"),
+    )
+  })
+
+  it("marks a mock review with owner and season scope", async () => {
+    const receipt = {
+      schema_version: 1 as const,
+      season: 2026,
+      mock_id: "mock-one",
+      reviewed_at: "2026-08-31T12:00:00Z",
+    }
+    const fetcher = jest.fn().mockResolvedValue({ok: true, json: async () => receipt})
+    await expect(markUserMockDraftReviewed("mock-one", options(fetcher)))
+      .resolves.toEqual(receipt)
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://drafty.example/v1/me/mock-drafts/mock-one/reviewed?season=2026",
+      {
+        method: "PUT",
+        headers: {Authorization: "Bearer firebase-token"},
+      },
     )
   })
 

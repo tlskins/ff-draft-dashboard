@@ -58,7 +58,14 @@ describe("completed mock WebMCP tools", () => {
     expect(Array.from(tools.keys())).toEqual(DRAFTY_WEBMCP_MOCK_TOOL_NAMES)
     const signal = new AbortController().signal
     await expect(tools.get("drafty_list_mock_drafts")!.execute({}, {signal}))
-      .resolves.toMatchObject({ok: true, result: {season: 2026, count: 1}})
+      .resolves.toMatchObject({
+        ok: true,
+        result: {
+          season: 2026,
+          count: 1,
+          mocks: [{mock_id: replay.id, review_state: "unreviewed", reviewed_at: null}],
+        },
+      })
     const chromeExecute = tools.get("drafty_list_mock_drafts")!.execute as unknown as (
       input: Record<string, unknown>,
     ) => Promise<unknown>
@@ -66,14 +73,20 @@ describe("completed mock WebMCP tools", () => {
       .resolves.toMatchObject({ok: true, result: {season: 2026, count: 1}})
     await expect(tools.get("drafty_review_mock_draft")!.execute({
       mock_id: replay.id,
-      position_sequence: ["RB", "WR"],
-      player_overrides: [{pick_number: 1, player_id: replay.players[1].id}],
     }, {signal})).resolves.toMatchObject({
       ok: true,
       result: {
         schemaVersion: 1,
         fixtureId: replay.id,
-        actual: {schemaVersion: 1},
+        actual: {
+          schemaVersion: 1,
+          positionMetrics: expect.any(Object),
+          totals: expect.any(Object),
+        },
+        alternatives: expect.arrayContaining([expect.objectContaining({
+          decisionLedger: expect.any(Array),
+          replayFidelity: expect.any(Object),
+        })]),
       },
     })
     await expect(tools.get("drafty_open_mock_review")!.execute({

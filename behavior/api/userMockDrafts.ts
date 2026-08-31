@@ -5,6 +5,7 @@ export type UserMockDraftPutRequest = ApiComponents["schemas"]["UserMockDraftPut
 export type UserMockDraftRecord = ApiComponents["schemas"]["UserMockDraftRecord"]
 export type UserMockDraftListResponse = ApiComponents["schemas"]["UserMockDraftListResponse"]
 export type UserMockDraftSummary = ApiComponents["schemas"]["UserMockDraftSummary"]
+export type UserMockDraftReviewReceipt = ApiComponents["schemas"]["UserMockDraftReviewReceipt"]
 
 export interface UserMockDraftApiOptions {
   apiHost?: string
@@ -105,3 +106,27 @@ export const putUserMockDraft = (
   headers: {"Content-Type": "application/json"},
   body: JSON.stringify(body),
 })
+
+export const markUserMockDraftReviewed = (
+  mockId: string,
+  options: UserMockDraftApiOptions,
+): Promise<UserMockDraftReviewReceipt> => {
+  const token = validateOptions(options, mockId)
+  const apiHost = options.apiHost || process.env.NEXT_PUBLIC_API_HOST
+  if (!apiHost) throw new UserMockDraftApiError("Completed mock API is not configured")
+  const url = `${apiHost.replace(/\/$/, "")}/v1/me/mock-drafts/${encodeURIComponent(mockId)}/reviewed?season=${encodeURIComponent(String(options.season))}`
+  return (options.fetcher || fetch)(url, {
+    method: "PUT",
+    headers: {Authorization: `Bearer ${token}`},
+  }).then(async response => {
+    if (!response.ok) {
+      const body = await response.json().catch(() => null) as {error?: string; code?: string} | null
+      throw new UserMockDraftApiError(
+        body?.error || `Completed mock API returned ${response.status}`,
+        response.status,
+        body?.code,
+      )
+    }
+    return response.json() as Promise<UserMockDraftReviewReceipt>
+  })
+}

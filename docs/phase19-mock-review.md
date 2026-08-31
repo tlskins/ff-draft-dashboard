@@ -141,3 +141,24 @@ does not read or mutate a signed-in user's archive.
 Exit gate: a signed-in user completes a mock, reopens it on another device,
 sees the same frozen scorecard, generates the same three bounded alternatives,
 and lets a compatible WebMCP agent explain the result from structured evidence.
+
+## 19G: evidence-rich summary and durable review reminders
+
+Completed mocks do not interrupt the draft workspace with an automatic modal.
+Each immutable archive instead receives separate, mutable review metadata:
+
+- a persistent dock-level banner identifies the latest unreviewed result and
+  the total unread count;
+- dismissing the banner hides it only for the current session, while opening
+  the scorecard creates a season-scoped review receipt;
+- authenticated receipts synchronize across devices without changing the
+  archive fingerprint or frozen replay evidence;
+- mock history distinguishes reviewed and unreviewed records.
+
+The scorecard exposes the raw evidence behind its bounded composite: roster and
+starter tier counts by position, projected floor/median/ceiling sums, total and
+starter projected points above replacement, category deltas, a pick decision
+ledger, and three alternate paths. Each alternate carries a deterministic
+replay-fidelity label based on the number and share of captured opponent picks
+that required replacement. WebMCP returns the same fields so agent synthesis
+and the visible review surface share one calculation authority.

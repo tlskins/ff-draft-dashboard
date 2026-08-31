@@ -83,6 +83,21 @@ describe("mock draft scorecard", () => {
     expect(result.compositeScore).toBeGreaterThanOrEqual(0)
     expect(result.compositeScore).toBeLessThanOrEqual(100)
     expect(result.tierCounts.WR.T3).toBe(1)
+    expect(result.positionMetrics.WR).toMatchObject({
+      rosterCount: 1,
+      starterCount: 1,
+      tierCounts: {T3: 1},
+      starterTierCounts: {T3: 1},
+      projectedMedian: 9,
+      projectedPointsAboveReplacement: 4,
+    })
+    expect(result.totals).toMatchObject({
+      rosterCount: 2,
+      starterCount: 2,
+      requiredStarterSlots: 2,
+      starterProjectedMedian: 16,
+      starterProjectedPointsAboveReplacement: 6,
+    })
     expect(result.categories.find(category => category.key === "target_conversion")?.evidence)
       .toEqual(["1/2 total targets", "1/2 attainable targets"])
     expect(result.categories.find(category => category.key === "handcuff_value")?.score)
@@ -129,6 +144,23 @@ describe("deterministic completed mock counterfactual", () => {
       recordedPlayerId: "rb-branch",
       replacementPlayerId: "wr-actual",
     }])
+    expect(result.alternatives[0].replayFidelity).toMatchObject({
+      collisionCount: 1,
+      opponentPickCount: 2,
+      collisionRate: 50,
+      changedUserPickCount: 2,
+      level: "low",
+    })
+    expect(result.alternatives[0].decisionLedger[0]).toMatchObject({
+      userPickNumber: 1,
+      overallPick: 1,
+      changed: true,
+      directOpponentCollisionAt: 2,
+      actual: {playerId: "wr-actual", tier: 3},
+      alternate: {playerId: "rb-branch", tier: 1},
+    })
+    expect(result.alternatives[0].categoryDeltas.map(delta => delta.key))
+      .toEqual(["tier_capital", "starter_quality", "bench_upside", "target_conversion", "handcuff_value"])
   })
 
   it("keeps positional representatives in the unconstrained Auto beam", () => {

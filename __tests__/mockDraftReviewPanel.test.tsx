@@ -23,22 +23,31 @@ describe("completed mock review panel", () => {
     render(<MockDraftReviewPanel currentArchive={archive} season={2026} user={null} />)
     fireEvent.click(screen.getByRole("button", {name: /Mock review/}))
     expect(screen.getByRole("dialog", {name: "Season 2026 mock draft review"})).toBeTruthy()
-    expect(screen.getByText("Tier capital")).toBeTruthy()
-    expect(screen.getByText("Starter quality")).toBeTruthy()
-    expect(screen.getByText("Best alternate")).toBeTruthy()
+    expect(screen.getAllByText("Tier capital").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Starter quality").length).toBeGreaterThan(0)
+    expect(screen.getByText(/Best alternate/)).toBeTruthy()
     const selectors = screen.getAllByLabelText(/Pick \d position/)
     fireEvent.change(selectors[0], {target: {value: "RB"}})
     fireEvent.change(selectors[1], {target: {value: "WR"}})
-    expect(screen.getByText(/opponent collision replacements/)).toBeTruthy()
+    expect(screen.getByText(/replay fidelity/i)).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", {name: "Position capital"}))
+    expect(screen.getByText("Raw position capital")).toBeTruthy()
+    expect(screen.getByText(/PAR means projected median points above/)).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", {name: "Pick decisions"}))
+    expect(screen.getByText("Actual versus best-alternate decisions")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", {name: "Alternate paths"}))
+    expect(screen.getByText("Path 1")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", {name: "Method"}))
+    expect(screen.getByText("Deterministic replay method")).toBeTruthy()
   })
 
-  it("opens a newly completed current draft without routing through settings", () => {
+  it("offers a durable review reminder without interrupting the completed draft", async () => {
     const view = render(
       <MockDraftReviewPanel
-        autoOpenCurrentArchive
         currentArchive={null}
         season={2026}
         showTrigger={false}
+        showUnreviewedBanner
         user={null}
       />,
     )
@@ -47,16 +56,22 @@ describe("completed mock review panel", () => {
     view.rerender(
       <MockDraftReviewPanel
         archiveSyncState="synced"
-        autoOpenCurrentArchive
         currentArchive={archive}
         season={2026}
         showTrigger={false}
+        showUnreviewedBanner
         user={null}
       />,
     )
 
-    expect(screen.getByRole("dialog", {name: "Season 2026 mock draft review"}))
+    expect(screen.queryByRole("dialog")).toBeNull()
+    expect(screen.getByRole("complementary", {name: "Unreviewed mock draft results"}))
       .toBeTruthy()
+    fireEvent.click(screen.getByRole("button", {name: "Review"}))
+    expect(await screen.findByRole("dialog", {name: "Season 2026 mock draft review"})).toBeTruthy()
+    await waitFor(() => expect(screen.queryByRole("complementary", {
+      name: "Unreviewed mock draft results",
+    })).toBeNull())
     expect(screen.getByRole("status").textContent)
       .toBe("Completed mocks saved and synced.")
   })
@@ -116,6 +131,6 @@ describe("completed mock review panel", () => {
     await waitFor(() => expect(screen.getByRole("status").textContent)
       .toBe("Imported locally."))
     expect(readLocalCompletedMocks(localStorage, 2026)).toEqual([archive])
-    expect(screen.getAllByText("Actual roster")).toHaveLength(2)
+    expect(screen.getByText("Actual roster")).toBeTruthy()
   })
 })

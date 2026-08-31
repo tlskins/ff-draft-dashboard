@@ -218,6 +218,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/mock-drafts/{mock_id}/reviewed": {
+        parameters: {
+            query?: {
+                /** @description Explicit fantasy season. Omitted legacy clients address 2026. */
+                season?: number;
+            };
+            header?: never;
+            path: {
+                mock_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Record that the signed-in user opened one completed mock review.
+         * @description Stores mutable review metadata beside the immutable completed-mock evidence.
+         */
+        put: operations["markUserMockDraftReviewed"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ranking-profiles-v2": {
         parameters: {
             query?: never;
@@ -1111,6 +1136,8 @@ export interface components {
             content_fingerprint: string;
             /** Format: date-time */
             created_at: string;
+            /** Format: date-time */
+            reviewed_at: string | null;
         };
         UserMockDraftSummary: {
             /** @constant */
@@ -1127,6 +1154,16 @@ export interface components {
             ranking_source: string;
             adp_source: string;
             content_fingerprint: string;
+            /** Format: date-time */
+            reviewed_at: string | null;
+        };
+        UserMockDraftReviewReceipt: {
+            /** @constant */
+            schema_version: 1;
+            season: number;
+            mock_id: string;
+            /** Format: date-time */
+            reviewed_at: string;
         };
         UserMockDraftListResponse: {
             /** @constant */
@@ -2420,6 +2457,58 @@ export interface operations {
             };
             /** @description The mock ID already contains different immutable evidence. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftErrorResponse"];
+                };
+            };
+        };
+    };
+    markUserMockDraftReviewed: {
+        parameters: {
+            query?: {
+                /** @description Explicit fantasy season. Omitted legacy clients address 2026. */
+                season?: number;
+            };
+            header?: never;
+            path: {
+                mock_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The idempotent review receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftReviewReceipt"];
+                };
+            };
+            /** @description The mock ID or season is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftErrorResponse"];
+                };
+            };
+            /** @description A valid Firebase ID token is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMockDraftErrorResponse"];
+                };
+            };
+            /** @description The completed mock does not exist for this owner and season. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

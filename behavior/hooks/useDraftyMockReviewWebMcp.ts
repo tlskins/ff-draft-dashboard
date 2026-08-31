@@ -3,6 +3,7 @@ import type {User} from "firebase/auth"
 
 import {getUserMockDraft, listUserMockDrafts} from "../api/userMockDrafts"
 import {readLocalCompletedMocks, type LocalMockDraftArchive} from "../mockDraft/archive"
+import {readLocalMockReviewReceipts} from "../mockDraft/reviewReceipts"
 import {reviewCompletedMock, type ReviewPosition} from "../mockDraft/review"
 import type {RecordedCompletedDraftReplay} from "../draft-advisor/completedDraftReplay"
 import {FantasyPosition} from "../../types"
@@ -54,6 +55,9 @@ const localMocks = (context: MockReviewContext, season: number): LocalMockDraftA
 
 const listMocks = async (context: MockReviewContext, season: number) => {
   const local = localMocks(context, season)
+  const localReceipts = typeof localStorage === "undefined"
+    ? {}
+    : readLocalMockReviewReceipts(localStorage, season)
   let cloud: Awaited<ReturnType<typeof listUserMockDrafts>>["mocks"] = []
   let cloudState: "not_authenticated" | "ready" | "unavailable" = context.user
     ? "unavailable"
@@ -80,6 +84,8 @@ const listMocks = async (context: MockReviewContext, season: number) => {
         ranking_source: item.ranking_source,
         adp_source: item.adp_source,
         storage: "local" as const,
+        reviewed_at: localReceipts[item.mock_id] || null,
+        review_state: localReceipts[item.mock_id] ? "reviewed" as const : "unreviewed" as const,
       }
     }),
     ...cloud.filter(summary => !local.some(item => item.mock_id === summary.mock_id)).map(summary => ({
@@ -92,6 +98,8 @@ const listMocks = async (context: MockReviewContext, season: number) => {
       ranking_source: summary.ranking_source,
       adp_source: summary.adp_source,
       storage: "cloud" as const,
+      reviewed_at: summary.reviewed_at,
+      review_state: summary.reviewed_at ? "reviewed" as const : "unreviewed" as const,
     })),
   ].sort((left, right) => right.completed_at.localeCompare(left.completed_at)).slice(0, 20)
   return {schema_version: 1, season, cloud_state: cloudState, count: items.length, mocks: items}
@@ -225,7 +233,7 @@ export const useDraftyMockReviewWebMcp = (
   }, {
     name: DRAFTY_WEBMCP_MOCK_TOOL_NAMES[1],
     title: "Review Drafty completed mock",
-    description: "Return a deterministic actual-roster scorecard and up to three ADP-based counterfactual rosters, optionally constrained by an early position sequence.",
+    description: "Return a deterministic actual-roster scorecard, raw position/tier/projection metrics, pick-level evidence, replay-fidelity qualifiers, and up to three ADP-based counterfactual rosters.",
     inputSchema: {
       type: "object",
       properties: {

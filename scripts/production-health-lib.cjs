@@ -209,13 +209,14 @@ const runProductionHealth = async ({
       )), evidence}
     }),
     settleGate("authenticated-boundaries-fail-closed", async () => {
-      const paths = [
-        `/v1/me/draft-profile?season=${expectedSeason}`,
-        `/v1/me/mock-drafts?season=${expectedSeason}`,
+      const requests = [
+        {path: `/v1/me/draft-profile?season=${expectedSeason}`, method: "GET"},
+        {path: `/v1/me/mock-drafts?season=${expectedSeason}`, method: "GET"},
+        {path: `/v1/me/mock-drafts/health-check/reviewed?season=${expectedSeason}`, method: "PUT"},
       ]
-      const evidence = await Promise.all(paths.map(async path => {
-        const response = await fetchImpl(`${apiOrigin}${path}`)
-        return {path, status: response.status}
+      const evidence = await Promise.all(requests.map(async ({path, method}) => {
+        const response = await fetchImpl(`${apiOrigin}${path}`, {method})
+        return {path, method, status: response.status}
       }))
       return {passed: evidence.every(item => item.status === 401), evidence}
     }),

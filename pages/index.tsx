@@ -1836,12 +1836,12 @@ const Home: FC = () => {
         <MockDraftReviewPanel
           archiveSyncError={completedMockArchiveSync.error}
           archiveSyncState={completedMockArchiveSync.state}
-          autoOpenCurrentArchive
           currentArchive={completedMockArchive}
           currentArchiveError={completedMockArchiveError}
           requestedArchive={webMcpMockReviewArchive}
           season={persistenceSeason}
           showTrigger={false}
+          showUnreviewedBanner
           user={draftyAuth.user}
         />
       )}

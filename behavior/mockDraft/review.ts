@@ -62,7 +62,38 @@ export interface MockRosterScorecard {
   starterPlayerIds: string[]
   benchPlayerIds: string[]
   tierCounts: Record<ReviewPosition, Record<string, number>>
+  positionMetrics: Record<ReviewPosition, MockPositionMetrics>
+  totals: MockRosterTotals
   categories: MockRosterScoreCategory[]
+}
+
+export interface MockPositionMetrics {
+  position: ReviewPosition
+  rosterCount: number
+  starterCount: number
+  benchCount: number
+  tierCounts: Record<string, number>
+  starterTierCounts: Record<string, number>
+  benchTierCounts: Record<string, number>
+  projectedFloor: number
+  projectedMedian: number
+  projectedCeiling: number
+  starterProjectedMedian: number
+  projectedPointsAboveReplacement: number
+  starterProjectedPointsAboveReplacement: number
+}
+
+export interface MockRosterTotals {
+  rosterCount: number
+  starterCount: number
+  benchCount: number
+  requiredStarterSlots: number
+  projectedFloor: number
+  projectedMedian: number
+  projectedCeiling: number
+  starterProjectedMedian: number
+  projectedPointsAboveReplacement: number
+  starterProjectedPointsAboveReplacement: number
 }
 
 export interface MockCounterfactualRequest {
@@ -83,6 +114,45 @@ export interface MockCounterfactualAlternative {
   }>
   scorecard: MockRosterScorecard
   compositeDelta: number
+  categoryDeltas: Array<{
+    key: MockRosterScoreCategory["key"]
+    label: string
+    actual: number | null
+    alternate: number | null
+    delta: number | null
+  }>
+  decisionLedger: MockDecisionLedgerEntry[]
+  replayFidelity: MockReplayFidelity
+}
+
+export interface MockDecisionPlayerEvidence {
+  playerId: string
+  name: string
+  position: ReviewPosition
+  positionRank: number
+  tier: number
+  adp: number
+  projectedMedian: number
+  projectedPointsAboveReplacement: number
+}
+
+export interface MockDecisionLedgerEntry {
+  userPickNumber: number
+  overallPick: number
+  actual: MockDecisionPlayerEvidence | null
+  alternate: MockDecisionPlayerEvidence
+  changed: boolean
+  reason: string
+  directOpponentCollisionAt: number | null
+}
+
+export interface MockReplayFidelity {
+  level: "high" | "moderate" | "low"
+  opponentPickCount: number
+  collisionCount: number
+  collisionRate: number
+  changedUserPickCount: number
+  explanation: string
 }
 
 export interface MockDraftReview {
@@ -133,6 +203,83 @@ const lineup = (
     benchPlayerIds: selectedPlayerIds.filter(id => !starterSet.has(id)),
     requiredStarterSlots: Object.values(required).reduce((sum, value) => sum + value, 0)
       + fixture.settings.numFlex,
+  }
+}
+
+const rounded = (value: number): number => Math.round(value * 10) / 10
+
+const tiersFor = (
+  players: RecordedReplayPlayer[],
+): Record<string, number> => players.reduce<Record<string, number>>((counts, player) => {
+  const key = `T${player.userTier}`
+  counts[key] = (counts[key] || 0) + 1
+  return counts
+}, {})
+
+const sum = (
+  players: RecordedReplayPlayer[],
+  value: (player: RecordedReplayPlayer) => number,
+): number => rounded(players.reduce((total, player) => total + value(player), 0))
+
+const buildRosterMetrics = (
+  fixture: RecordedCompletedDraftReplay,
+  selectedPlayerIds: string[],
+  starterPlayerIds: string[],
+  requiredStarterSlots: number,
+): {
+  positionMetrics: MockRosterScorecard["positionMetrics"]
+  totals: MockRosterScorecard["totals"]
+} => {
+  const byId = new Map(fixture.players.map(player => [player.id, player]))
+  const selected = selectedPlayerIds
+    .map(id => byId.get(id))
+    .filter((player): player is RecordedReplayPlayer => Boolean(player))
+  const starterIds = new Set(starterPlayerIds)
+  const positionMetrics = Object.fromEntries(POSITIONS.map(position => {
+    const roster = selected.filter(player => player.position === position)
+    const starters = roster.filter(player => starterIds.has(player.id))
+    const bench = roster.filter(player => !starterIds.has(player.id))
+    const replacement = replacementFor(fixture, position)
+    return [position, {
+      position,
+      rosterCount: roster.length,
+      starterCount: starters.length,
+      benchCount: bench.length,
+      tierCounts: tiersFor(roster),
+      starterTierCounts: tiersFor(starters),
+      benchTierCounts: tiersFor(bench),
+      projectedFloor: sum(roster, player => player.projectedFloor),
+      projectedMedian: sum(roster, player => player.projectedMedian),
+      projectedCeiling: sum(roster, player => player.projectedCeiling),
+      starterProjectedMedian: sum(starters, player => player.projectedMedian),
+      projectedPointsAboveReplacement: sum(
+        roster,
+        player => player.projectedMedian - replacement,
+      ),
+      starterProjectedPointsAboveReplacement: sum(
+        starters,
+        player => player.projectedMedian - replacement,
+      ),
+    } satisfies MockPositionMetrics]
+  })) as MockRosterScorecard["positionMetrics"]
+  const total = (field: keyof Omit<MockPositionMetrics,
+  "position" | "tierCounts" | "starterTierCounts" | "benchTierCounts">): number => rounded(
+    POSITIONS.reduce((value, position) => value + Number(positionMetrics[position][field]), 0),
+  )
+  return {
+    positionMetrics,
+    totals: {
+      rosterCount: selected.length,
+      starterCount: starterPlayerIds.length,
+      benchCount: selected.length - starterPlayerIds.length,
+      requiredStarterSlots,
+      projectedFloor: total("projectedFloor"),
+      projectedMedian: total("projectedMedian"),
+      projectedCeiling: total("projectedCeiling"),
+      starterProjectedMedian: total("starterProjectedMedian"),
+      projectedPointsAboveReplacement: total("projectedPointsAboveReplacement"),
+      starterProjectedPointsAboveReplacement: total("starterProjectedPointsAboveReplacement"),
+    },
   }
 }
 
@@ -272,6 +419,12 @@ export const scoreMockRoster = ({
     categories.reduce((sum, category) =>
       sum + (category.score === null ? 0 : category.score * category.weight), 0) / availableWeight,
   )
+  const metrics = buildRosterMetrics(
+    fixture,
+    validIds,
+    optimized.starterPlayerIds,
+    optimized.requiredStarterSlots,
+  )
   return {
     schemaVersion: 1,
     compositeScore,
@@ -279,6 +432,7 @@ export const scoreMockRoster = ({
     starterPlayerIds: optimized.starterPlayerIds,
     benchPlayerIds: optimized.benchPlayerIds,
     tierCounts,
+    ...metrics,
     categories,
   }
 }
@@ -393,6 +547,98 @@ const retainEarlyPositionPaths = (
     ...orderedBranches.filter(branch =>
       !representativeIds.has(branch.userPlayerIds.join(":"))),
   ].slice(0, beamWidth)
+}
+
+const decisionEvidence = (
+  fixture: RecordedCompletedDraftReplay,
+  playerId: string | null | undefined,
+): MockDecisionPlayerEvidence | null => {
+  if (!playerId) return null
+  const player = fixture.players.find(candidate => candidate.id === playerId)
+  if (!player) return null
+  return {
+    playerId: player.id,
+    name: player.name,
+    position: player.position,
+    positionRank: player.positionRank,
+    tier: player.userTier,
+    adp: player.adp,
+    projectedMedian: rounded(player.projectedMedian),
+    projectedPointsAboveReplacement: rounded(
+      player.projectedMedian - replacementFor(fixture, player.position),
+    ),
+  }
+}
+
+const categoryDeltas = (
+  actual: MockRosterScorecard,
+  alternate: MockRosterScorecard,
+): MockCounterfactualAlternative["categoryDeltas"] => actual.categories.map(category => {
+  const candidate = alternate.categories.find(item => item.key === category.key)
+  const alternateScore = candidate?.score ?? null
+  return {
+    key: category.key,
+    label: category.label,
+    actual: category.score,
+    alternate: alternateScore,
+    delta: category.score === null || alternateScore === null
+      ? null
+      : alternateScore - category.score,
+  }
+})
+
+const decisionLedger = (
+  fixture: RecordedCompletedDraftReplay,
+  branch: ReplayBranch,
+): MockDecisionLedgerEntry[] => {
+  const actualPicks = fixture.actualPicks
+    .filter(pick => pick.rosterIndex === fixture.targetRosterIndex
+      && (pick.advisorEligible ?? pick.playerId !== null))
+    .sort((left, right) => left.overallPick - right.overallPick)
+  return branch.picks.map((pick, index) => {
+    const actual = decisionEvidence(fixture, actualPicks[index]?.playerId)
+    const alternate = decisionEvidence(fixture, pick.playerId)
+    if (!alternate) throw new Error(`Alternate replay player ${pick.playerId} is unavailable`)
+    return {
+      userPickNumber: index + 1,
+      overallPick: pick.overallPick,
+      actual,
+      alternate,
+      changed: actual?.playerId !== alternate.playerId,
+      reason: pick.reason,
+      directOpponentCollisionAt: branch.opponentReplacements.find(replacement =>
+        replacement.recordedPlayerId === alternate.playerId)?.overallPick ?? null,
+    }
+  })
+}
+
+const replayFidelity = (
+  fixture: RecordedCompletedDraftReplay,
+  branch: ReplayBranch,
+  ledger: MockDecisionLedgerEntry[],
+): MockReplayFidelity => {
+  const opponentPickCount = fixture.actualPicks.filter(pick =>
+    pick.rosterIndex !== fixture.targetRosterIndex && pick.playerId).length
+  const collisionCount = branch.opponentReplacements.length
+  const collisionRate = opponentPickCount ? rounded(collisionCount / opponentPickCount * 100) : 0
+  const level: MockReplayFidelity["level"] = collisionCount <= 3 && collisionRate <= 5
+    ? "high"
+    : collisionRate <= 15
+      ? "moderate"
+      : "low"
+  const explanation = level === "high"
+    ? "The alternate stays close to the captured opponent board."
+    : level === "moderate"
+      ? "Some opponent picks required deterministic ADP replacements."
+      : "Many opponent picks changed after alternate selections; treat this as a directional scenario."
+  return {
+    level,
+    opponentPickCount,
+    collisionCount,
+    collisionRate,
+    changedUserPickCount: ledger.filter(entry => entry.changed).length,
+    explanation,
+  }
 }
 
 export const reviewCompletedMock = ({
@@ -526,14 +772,20 @@ export const reviewCompletedMock = ({
   }).sort((left, right) => right.scorecard.compositeScore - left.scorecard.compositeScore
     || left.branch.userPlayerIds.join(":").localeCompare(right.branch.userPlayerIds.join(":")))
     .slice(0, maxAlternatives)
-    .map(({branch, scorecard}, index) => ({
-      rank: index + 1,
-      selectedPlayerIds: branch.userPlayerIds,
-      picks: branch.picks,
-      opponentReplacements: branch.opponentReplacements,
-      scorecard,
-      compositeDelta: scorecard.compositeScore - actual.compositeScore,
-    }))
+    .map(({branch, scorecard}, index) => {
+      const ledger = decisionLedger(fixture, branch)
+      return {
+        rank: index + 1,
+        selectedPlayerIds: branch.userPlayerIds,
+        picks: branch.picks,
+        opponentReplacements: branch.opponentReplacements,
+        scorecard,
+        compositeDelta: scorecard.compositeScore - actual.compositeScore,
+        categoryDeltas: categoryDeltas(actual, scorecard),
+        decisionLedger: ledger,
+        replayFidelity: replayFidelity(fixture, branch, ledger),
+      }
+    })
 
   return {
     schemaVersion: 1,
