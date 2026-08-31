@@ -761,8 +761,10 @@ const Home: FC = () => {
   }, [activeDraftSessionId, buildReplayFixture])
 
   const completedMockTimestamps = useRef(new Map<string, string>())
-  const completedMockArchive = useMemo(() => {
-    if (!canExportReplay || !activeDraftSessionId) return null
+  const completedMockArchiveResult = useMemo(() => {
+    if (!canExportReplay || !activeDraftSessionId) {
+      return {archive: null, error: null}
+    }
     try {
       let completedAt = completedMockTimestamps.current.get(activeDraftSessionId)
       if (!completedAt) {
@@ -771,18 +773,26 @@ const Home: FC = () => {
         ).toISOString()
         completedMockTimestamps.current.set(activeDraftSessionId, completedAt)
       }
-      return createCompletedMockArchive({
-        fixture: buildReplayFixture(true),
-        season: persistenceSeason,
-        rankingSource: String(boardSettings.ranker),
-        adpSource: String(boardSettings.adpRanker),
-        targets: playerTargets,
-        completedAt,
-      })
-    } catch {
+      return {
+        archive: createCompletedMockArchive({
+          fixture: buildReplayFixture(true),
+          season: persistenceSeason,
+          rankingSource: String(boardSettings.ranker),
+          adpSource: String(boardSettings.adpRanker),
+          targets: playerTargets,
+          completedAt,
+        }),
+        error: null,
+      }
+    } catch (caught) {
       // The full authoritative board may arrive a snapshot after the dashboard
       // first observes completion. The next source update retries naturally.
-      return null
+      return {
+        archive: null,
+        error: caught instanceof Error
+          ? caught.message
+          : "Completed mock scorecard could not be created",
+      }
     }
   }, [
     activeDraftSessionId,
@@ -794,6 +804,8 @@ const Home: FC = () => {
     persistenceSeason,
     playerTargets,
   ])
+  const completedMockArchive = completedMockArchiveResult.archive
+  const completedMockArchiveError = completedMockArchiveResult.error
   useCompletedMockArchive({
     enabled: true,
     archive: completedMockArchive,
@@ -1827,6 +1839,7 @@ const Home: FC = () => {
               activeDraftListenerTitle={activeDraftListenerTitle}
               boardSettings={boardSettings}
               draftCaptureState={draftCaptureState}
+              draftComplete={dashboardDraftComplete}
               draftPersistence={draftPersistence}
               draftSourceHealth={draftSourceHealth}
               draftSourceHealthFreshness={draftSourceHealthFreshness}
@@ -1849,6 +1862,7 @@ const Home: FC = () => {
                   />
                   <MockDraftReviewPanel
                     currentArchive={completedMockArchive}
+                    currentArchiveError={completedMockArchiveError}
                     requestedArchive={webMcpMockReviewArchive}
                     season={persistenceSeason}
                     user={draftyAuth.user}
@@ -2304,9 +2318,11 @@ const Home: FC = () => {
           settings={settings}
           boardSettings={boardSettings}
           connected={draftCaptureState === "live"}
+          draftComplete={dashboardDraftComplete}
+          totalPicks={activeDraftSnapshot?.completion?.totalPicks}
           activity={draftTickerActivity}
-          connectionDetail={draftCaptureState === "live" ? "Pick feed current" : "Local board current"}
-          connectionLabel={draftCaptureState === "live" ? "ESPN connected" : "Draft feed ready"}
+          connectionDetail={dashboardDraftComplete ? "Final board captured" : draftCaptureState === "live" ? "Pick feed current" : "Local board current"}
+          connectionLabel={dashboardDraftComplete ? "ESPN draft complete" : draftCaptureState === "live" ? "ESPN connected" : "Draft feed ready"}
           draftHistory={draftHistory}
           myPickNum={myPickNum}
           myPicks={myPicks}

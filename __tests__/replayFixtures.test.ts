@@ -215,6 +215,39 @@ describe("completed replay fixtures", () => {
     )
     expect(validateCompletedDraftReplay(captured)).toEqual([])
 
+    const unprojectedOpponentIndex = recordedReplay.actualPicks.findIndex(pick =>
+      pick.rosterIndex !== 8 && Boolean(pick.playerId))
+    const unprojectedOpponentPick = recordedReplay.actualPicks[
+      unprojectedOpponentIndex
+    ]
+    const unprojectedOpponentId = unprojectedOpponentPick.playerId!
+    const unprojectedOpponent = materialized.playerLib[unprojectedOpponentId]
+    const opponentRanks = unprojectedOpponent.ranks
+    unprojectedOpponent.ranks = {}
+
+    const capturedWithUnprojectedOpponent = captureCompletedDraftReplay({
+      id: snapshot.id,
+      settings: materialized.settings,
+      targetRosterIndex: 0,
+      boardSettings: materialized.boardSettings,
+      rankingSummaries: materialized.rankingSummaries,
+      playerLib: materialized.playerLib,
+      draftHistory: [],
+      sourceSnapshot: snapshot,
+    })
+
+    expect(capturedWithUnprojectedOpponent.actualPicks[
+      unprojectedOpponentIndex
+    ]).toMatchObject({
+      name: snapshot.picks[unprojectedOpponentIndex].name,
+      playerId: null,
+      advisorEligible: false,
+    })
+    expect(validateCompletedDraftReplay(
+      capturedWithUnprojectedOpponent,
+    )).toEqual([])
+    unprojectedOpponent.ranks = opponentRanks
+
     const targetPickIndex = recordedReplay.actualPicks.findIndex(pick =>
       pick.rosterIndex === 8 && pick.advisorEligible)
     const targetPick = snapshot.picks[targetPickIndex]

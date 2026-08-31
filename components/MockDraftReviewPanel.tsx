@@ -32,11 +32,13 @@ export const MockDraftReviewPanel = ({
   season,
   user,
   currentArchive,
+  currentArchiveError,
   requestedArchive,
 }: {
   season: number
   user: User | null
   currentArchive?: LocalMockDraftArchive | null
+  currentArchiveError?: string | null
   requestedArchive?: LocalMockDraftArchive | null
 }) => {
   const [open, setOpen] = useState(false)
@@ -201,7 +203,12 @@ export const MockDraftReviewPanel = ({
                 </p>
                 {loading && <p className="px-2 py-2 text-sm">Loading…</p>}
                 {error && <p className="px-2 py-2 text-sm text-red-700">{error}</p>}
-                {!loading && allSummaries.length === 0 && (
+                {!loading && currentArchiveError && (
+                  <p className="px-2 py-2 text-sm text-red-700" role="status">
+                    Scorecard could not be created: {currentArchiveError}
+                  </p>
+                )}
+                {!loading && !currentArchiveError && allSummaries.length === 0 && (
                   <p className="px-2 py-2 text-sm text-slate-600">Complete a mock to create the first scorecard.</p>
                 )}
                 <div className="space-y-1">

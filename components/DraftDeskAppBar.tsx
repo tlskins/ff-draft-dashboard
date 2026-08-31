@@ -26,6 +26,7 @@ interface DraftDeskAppBarProps {
   settings: {numTeams: number, ppr: boolean, scoringFormat?: ScoringFormat, numStartingQbs: number}
   boardSettings: {ranker: FantasyRanker, adpRanker: ThirdPartyADPRanker}
   draftStarted: boolean
+  draftComplete?: boolean
   myPickNum: number
   setNumTeams: (numTeams: number) => void
   setIsPpr: (isPpr: boolean) => void
@@ -48,6 +49,7 @@ const DraftDeskAppBar = ({
   settings,
   boardSettings,
   draftStarted,
+  draftComplete = false,
   myPickNum,
   setNumTeams,
   setIsPpr,
@@ -103,7 +105,7 @@ const DraftDeskAppBar = ({
       </div>
       <div className={styles.appBarStatus}>
         <span className={draftCaptureState === "live" ? styles.liveDot : styles.idleDot} aria-hidden="true" />
-        <span>{draftCaptureState === "live" ? "Draft live" : draftStarted ? "Draft active" : "Draft ready"}</span>
+        <span>{draftComplete ? "Draft complete" : draftCaptureState === "live" ? "Draft live" : draftStarted ? "Draft active" : "Draft ready"}</span>
         <button
           aria-expanded={drawerOpen}
           aria-haspopup="dialog"

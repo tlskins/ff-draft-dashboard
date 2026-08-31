@@ -37,4 +37,22 @@ describe("completed mock review panel", () => {
     fireEvent.click(screen.getByRole("button", {name: "Close"}))
     expect(screen.queryByRole("dialog")).toBeNull()
   })
+
+  it("surfaces a completed-scorecard build failure instead of an empty history", () => {
+    render(
+      <MockDraftReviewPanel
+        currentArchive={null}
+        currentArchiveError="Opponent projection is unavailable"
+        season={2026}
+        user={null}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", {name: /Mock review/}))
+
+    expect(screen.getByRole("status").textContent).toContain(
+      "Scorecard could not be created: Opponent projection is unavailable",
+    )
+    expect(screen.queryByText("Complete a mock to create the first scorecard."))
+      .toBeNull()
+  })
 })

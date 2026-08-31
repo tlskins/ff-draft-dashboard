@@ -32,6 +32,8 @@ interface DraftDockProps {
   setViewPlayerId: (playerId: string | null) => void
   onHeightChange?: (height: number) => void
   connected?: boolean
+  draftComplete?: boolean
+  totalPicks?: number
   connectionLabel?: string
   connectionDetail?: string
   activity?: DraftActivityItem[]
@@ -64,6 +66,8 @@ const DraftDock = ({
   setViewPlayerId,
   onHeightChange,
   connected = false,
+  draftComplete = false,
+  totalPicks,
   connectionLabel = "Draft feed ready",
   connectionDetail = "Local board current",
   activity = [],
@@ -107,15 +111,19 @@ const DraftDock = ({
       <div className={styles.dockLayout} data-testid="draft-dock-tape">
           <section className={styles.dockPickStack} aria-label="Draft pick status">
             <div className={styles.dockPickClock}>
-              <p className={styles.dockLabel}>On the clock · Round {roundIdx + 1}</p>
-              <p className={styles.dockMetric}>Pick {formatPick(currPick)} <small>#{currPick}</small></p>
+              <p className={styles.dockLabel}>{draftComplete ? "Draft complete" : `On the clock · Round ${roundIdx + 1}`}</p>
+              <p className={styles.dockMetric}>{draftComplete
+                ? totalPicks
+                  ? `${totalPicks} picks captured`
+                  : "Final board captured"
+                : <>Pick {formatPick(currPick)} <small>#{currPick}</small></>}</p>
             </div>
             <div className={styles.dockNextPick}>
               <p className={styles.dockLabel}>Your next pick</p>
               <p className={styles.dockMetric}>
-                {nextMyPick === null ? "Not scheduled" : formatPick(nextMyPick)}
-                {nextMyPick !== null && <small>{picksAway === 0 ? "On the clock" : `${picksAway} away`}</small>}
-                {nextMyPick !== null && picksAway !== null && <span className="sr-only">#{nextMyPick} · {picksAway} away</span>}
+                {draftComplete ? "No remaining picks" : nextMyPick === null ? "Not scheduled" : formatPick(nextMyPick)}
+                {!draftComplete && nextMyPick !== null && <small>{picksAway === 0 ? "On the clock" : `${picksAway} away`}</small>}
+                {!draftComplete && nextMyPick !== null && picksAway !== null && <span className="sr-only">#{nextMyPick} · {picksAway} away</span>}
               </p>
             </div>
           </section>

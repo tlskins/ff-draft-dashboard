@@ -320,15 +320,6 @@ export const captureCompletedDraftReplay = ({
         completion.numTeams,
       )
     : null
-  const unmatchedTargetPick = sourcePicks?.find(pick =>
-    pick.rosterIndex === targetRosterIndexFromSource
-    && rankablePosition(pick.position || "") !== null
-    && !pick.playerId)
-  if (unmatchedTargetPick) {
-    throw new Error(
-      `Target roster player ${unmatchedTargetPick.name || "Unknown"} lacks matching ranking data`,
-    )
-  }
   const targetAdvisorPickCount = sourcePicks?.filter(pick =>
     pick.rosterIndex === targetRosterIndexFromSource
     && pick.advisorEligible).length
@@ -364,17 +355,36 @@ export const captureCompletedDraftReplay = ({
     ))
     .filter((player): player is RecordedReplayPlayer => player !== null)
   const capturedIds = new Set(players.map(player => player.id))
-  const actualPicks = sourcePicks || draftHistory.flatMap((playerId, index) => {
-    if (!playerId) return []
-    return [{
-      overallPick: index + 1,
-      rosterIndex: getRosterIndexForPick(
-        index + 1,
-        settings.numTeams,
-      ),
-      playerId,
-    }]
-  })
+  const sourceOrHistoryPicks: RecordedCompletedDraftReplay["actualPicks"] =
+    sourcePicks || draftHistory.flatMap((playerId, index) => {
+      if (!playerId) return []
+      return [{
+        overallPick: index + 1,
+        rosterIndex: getRosterIndexForPick(
+          index + 1,
+          settings.numTeams,
+        ),
+        playerId,
+      }]
+    })
+  const unmatchedTargetPick = sourceOrHistoryPicks.find(pick =>
+    pick.rosterIndex === targetRosterIndexFromSource
+    && rankablePosition(pick.position || "") !== null
+    && (!pick.playerId || !capturedIds.has(pick.playerId)))
+  if (unmatchedTargetPick) {
+    throw new Error(
+      `Target roster player ${unmatchedTargetPick.name || "Unknown"} lacks matching ranking data`,
+    )
+  }
+  // A live provider can identify a rankable opponent player that is present in
+  // Drafty's broad player universe but lacks the selected rank/projection
+  // inputs required for deterministic scoring. Preserve that pick as
+  // authoritative board evidence while excluding it from roster scoring and
+  // alternatives, just like a provider player outside the local universe.
+  const actualPicks = sourceOrHistoryPicks.map(pick =>
+    pick.playerId && !capturedIds.has(pick.playerId)
+      ? {...pick, playerId: null, advisorEligible: false}
+      : pick)
   const missingPlayerId = actualPicks.find(pick =>
     pick.playerId && !capturedIds.has(pick.playerId))?.playerId
   if (missingPlayerId) {
