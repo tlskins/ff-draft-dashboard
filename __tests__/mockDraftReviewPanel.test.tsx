@@ -1,3 +1,5 @@
+import {readFileSync} from "fs"
+import {join} from "path"
 import {fireEvent, render, screen, waitFor} from "@testing-library/react"
 import fixture from "./fixtures/completed-draft-replay.json"
 
@@ -96,9 +98,31 @@ describe("completed mock review panel", () => {
     expect(dialog.className).not.toContain("slate")
     expect(dialog.parentElement?.className).toContain("bg-gray-900")
     expect(dialog.parentElement?.className).toContain("bg-opacity-75")
+    expect(dialog.className).toContain("reviewDialog")
+    expect(dialog.parentElement?.className).toContain("reviewOverlay")
 
     const reviewLayout = screen.getByText("Mock history").closest("aside")?.parentElement
-    expect(reviewLayout?.style.gridTemplateColumns).toBe("250px minmax(0, 1fr)")
+    expect(reviewLayout?.className).toContain("reviewLayout")
+    expect(reviewLayout?.style.gridTemplateColumns).toBe("")
+    expect(screen.getByText("Actual scorecard").closest("main")?.className)
+      .toContain("reviewContent")
+    expect(screen.getByRole("navigation", {name: "Mock review views"}).className)
+      .toContain("reviewTabs")
+  })
+
+  it("keeps the mobile review within the viewport with independently scrollable content", () => {
+    const stylesheet = readFileSync(
+      join(process.cwd(), "components", "MockDraftReviewPanel.module.css"),
+      "utf8",
+    )
+
+    expect(stylesheet).toContain("@media (max-width: 767px)")
+    expect(stylesheet).toMatch(/\.reviewDialog\s*\{[\s\S]*?height:\s*100dvh;/)
+    expect(stylesheet).toMatch(/\.reviewLayout\s*\{[\s\S]*?flex-direction:\s*column;/)
+    expect(stylesheet).toMatch(/\.reviewContent\s*\{[\s\S]*?overflow-y:\s*auto;/)
+    expect(stylesheet).toMatch(/\.reviewTabs\s*\{[\s\S]*?overflow-x:\s*auto;/)
+    expect(stylesheet).toContain("env(safe-area-inset-bottom)")
+    expect(stylesheet).toMatch(/\.wideTable\s*\{[\s\S]*?min-width:\s*760px;/)
   })
 
   it("closes from the dialog control", () => {

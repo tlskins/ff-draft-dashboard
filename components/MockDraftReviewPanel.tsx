@@ -28,6 +28,7 @@ import {
   MOCK_REVIEW_RECEIPTS_CHANGED_EVENT,
   readLocalMockReviewReceipts,
 } from "../behavior/mockDraft/reviewReceipts"
+import reviewStyles from "./MockDraftReviewPanel.module.css"
 
 
 const POSITIONS: Array<{value: ReviewPosition; label: string}> = [
@@ -417,7 +418,7 @@ export const MockDraftReviewPanel = ({
       )}
       {open && (
         <div
-          className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 p-5 text-left"
+          className={`${reviewStyles.reviewOverlay} fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 text-left`}
           onMouseDown={event => {
             if (event.target === event.currentTarget) setOpen(false)
           }}
@@ -426,10 +427,10 @@ export const MockDraftReviewPanel = ({
           <section
             aria-label={`Season ${reviewSeason} mock draft review`}
             aria-modal="true"
-            className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded border border-gray-500 bg-gray-100 text-gray-900 shadow-2xl"
+            className={`${reviewStyles.reviewDialog} flex flex-col overflow-hidden rounded border border-gray-500 bg-gray-100 text-gray-900 shadow-2xl`}
             role="dialog"
           >
-            <header className="flex items-center justify-between border-b border-gray-400 bg-gray-800 px-4 py-2 text-gray-50">
+            <header className={`${reviewStyles.reviewHeader} flex items-center justify-between border-b border-gray-400 bg-gray-800 px-4 py-2 text-gray-50`}>
               <div>
                 <p className="text-xs uppercase tracking-wider text-blue-300">Season {reviewSeason}</p>
                 <h2 className="text-lg font-bold">Completed mock scorecards</h2>
@@ -443,11 +444,8 @@ export const MockDraftReviewPanel = ({
                 Close
               </button>
             </header>
-            <div
-              className="grid min-h-0 flex-1"
-              style={{gridTemplateColumns: "250px minmax(0, 1fr)"}}
-            >
-              <aside className="overflow-y-auto border-r border-gray-300 bg-gray-200 p-2 text-gray-900">
+            <div className={reviewStyles.reviewLayout}>
+              <aside className={`${reviewStyles.reviewHistory} border-r border-gray-300 bg-gray-200 p-2 text-gray-900`}>
                 <div className="flex items-center justify-between gap-2 px-2 py-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
                     Mock history
@@ -483,7 +481,7 @@ export const MockDraftReviewPanel = ({
                 {!loading && !currentArchiveError && allSummaries.length === 0 && (
                   <p className="px-2 py-2 text-sm text-gray-600">Complete a mock to create the first scorecard.</p>
                 )}
-                <div className="space-y-1">
+                <div className={reviewStyles.historyList}>
                   {allSummaries.map(summary => (
                     <button
                       aria-pressed={selected?.mock_id === summary.mock_id}
@@ -505,10 +503,10 @@ export const MockDraftReviewPanel = ({
                   ))}
                 </div>
               </aside>
-              <main className="min-h-0 overflow-y-auto bg-gray-100 p-3 text-gray-900">
+              <main className={`${reviewStyles.reviewContent} bg-gray-100 p-3 text-gray-900`}>
                 {review && selected ? (
                   <>
-                    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-gray-300 pb-3">
+                    <div className={`${reviewStyles.reviewScoreHeader} flex flex-wrap items-end justify-between gap-3 border-b border-gray-300 pb-3`}>
                       <div>
                         <p className="text-xs uppercase tracking-wide text-gray-600">Actual scorecard</p>
                         <div className="flex items-baseline gap-3">
@@ -521,7 +519,7 @@ export const MockDraftReviewPanel = ({
                         </div>
                         <p className="text-xs text-gray-600">{selected.ranking_source} ranks · {selected.adp_source} ADP</p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className={`${reviewStyles.positionSelectors} flex gap-2`}>
                         {[firstPosition, secondPosition].map((value, index) => (
                           <label className="text-xs font-semibold" key={index}>
                             Pick {index + 1} position
@@ -537,7 +535,7 @@ export const MockDraftReviewPanel = ({
                         ))}
                       </div>
                     </div>
-                    <nav aria-label="Mock review views" className="my-3 flex flex-wrap gap-1 border-b border-gray-300 pb-2">
+                    <nav aria-label="Mock review views" className={`${reviewStyles.reviewTabs} my-3 border-b border-gray-300 pb-2`}>
                       {([
                         ["overview", "Overview"],
                         ["position", "Position capital"],
@@ -559,7 +557,7 @@ export const MockDraftReviewPanel = ({
 
                     {reviewView === "overview" && (
                       <div className="space-y-3">
-                        <div className="grid grid-cols-5 gap-2">
+                        <div className={reviewStyles.categoryGrid}>
                           {review.actual.categories.map(category => (
                             <article className="rounded border border-gray-300 bg-white p-2 text-gray-900" key={category.key}>
                               <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">{category.label}</p>
@@ -571,13 +569,13 @@ export const MockDraftReviewPanel = ({
                             </article>
                           ))}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className={reviewStyles.overviewGrid}>
                           <section className="rounded border border-gray-300 bg-white p-3">
                             <h3 className="text-sm font-bold">Actual roster</h3>
                             <p className="mt-1 text-xs text-gray-600">
                               {review.actual.totals.starterCount}/{review.actual.totals.requiredStarterSlots} starters · {signed(review.actual.totals.starterProjectedPointsAboveReplacement)} starter projected points above replacement
                             </p>
-                            <ol className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                            <ol className={`${reviewStyles.rosterList} mt-2 text-sm`}>
                               {review.actual.selectedPlayerIds.map((id, index) => (
                                 <li key={id}>{index + 1}. {playerName(selected.replay as unknown as RecordedCompletedDraftReplay, id)}</li>
                               ))}
@@ -594,7 +592,7 @@ export const MockDraftReviewPanel = ({
                                   </span>
                                 </div>
                                 <p className="mt-1 text-xs text-gray-700">{review.alternatives[0].replayFidelity.explanation}</p>
-                                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                                <div className={`${reviewStyles.deltaGrid} mt-2 text-xs`}>
                                   {review.alternatives[0].categoryDeltas.map(delta => (
                                     <div className="flex justify-between border-b border-blue-200 py-1" key={delta.key}>
                                       <span>{delta.label}</span>
@@ -619,7 +617,7 @@ export const MockDraftReviewPanel = ({
                           <p className="text-xs text-gray-600">Projection sums are descriptive, not additional score components. PAR means projected median points above the captured positional replacement baseline.</p>
                         </div>
                         <div className="overflow-x-auto">
-                          <table className="w-full border-collapse text-left text-xs">
+                          <table className={`${reviewStyles.wideTable} w-full border-collapse text-left text-xs`}>
                             <thead className="bg-gray-200">
                               <tr>
                                 <th className="px-2 py-2">Pos</th>
@@ -674,7 +672,7 @@ export const MockDraftReviewPanel = ({
                         </div>
                         {review.alternatives[0] ? (
                           <div className="overflow-x-auto">
-                            <table className="w-full border-collapse text-left text-xs">
+                            <table className={`${reviewStyles.wideTable} w-full border-collapse text-left text-xs`}>
                               <thead className="bg-gray-200"><tr><th className="px-2 py-2">Pick</th><th className="px-2 py-2">Actual</th><th className="px-2 py-2">Alternate</th><th className="px-2 py-2">Evidence</th><th className="px-2 py-2">Replay effect</th></tr></thead>
                               <tbody>
                                 {review.alternatives[0].decisionLedger.map(entry => (

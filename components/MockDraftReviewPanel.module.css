@@ -1,0 +1,166 @@
+.reviewOverlay {
+  padding: 20px;
+}
+
+.reviewDialog {
+  width: 100%;
+  max-width: 72rem;
+  max-height: 100%;
+}
+
+.reviewHeader {
+  flex: 0 0 auto;
+}
+
+.reviewLayout {
+  display: grid;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns: 250px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.reviewHistory {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.historyList {
+  display: grid;
+  gap: 4px;
+}
+
+.reviewContent {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.reviewTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.categoryGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.overviewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rosterList,
+.deltaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rosterList {
+  column-gap: 16px;
+  row-gap: 4px;
+}
+
+.deltaGrid {
+  gap: 8px;
+}
+
+.wideTable {
+  min-width: 760px;
+}
+
+@media (max-width: 767px) {
+  .reviewOverlay {
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+  }
+
+  .reviewDialog {
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .reviewHeader {
+    min-height: 58px;
+    padding-top: max(8px, env(safe-area-inset-top));
+  }
+
+  .reviewLayout {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .reviewHistory {
+    max-height: 170px;
+    flex: 0 0 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-right: 0;
+    border-bottom: 1px solid #d1d5db;
+  }
+
+  .historyList {
+    display: flex;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .historyList > button {
+    min-width: min(270px, calc(100vw - 32px));
+    flex: 0 0 auto;
+  }
+
+  .reviewContent {
+    flex: 1 1 auto;
+    padding: 10px;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
+  .reviewTabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .reviewTabs > button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .categoryGrid,
+  .overviewGrid,
+  .rosterList,
+  .deltaGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reviewScoreHeader {
+    align-items: stretch;
+  }
+
+  .positionSelectors {
+    width: 100%;
+  }
+
+  .positionSelectors label {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
+  .positionSelectors select {
+    width: 100%;
+  }
+}
