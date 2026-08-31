@@ -368,14 +368,20 @@ export const MockDraftReviewPanel = ({
         && dismissedBannerId !== latestUnreviewed.mock_id && (
         <aside
           aria-label="Unreviewed mock draft results"
-          className="fixed bottom-24 left-1/2 z-[1050] flex w-[min(680px,calc(100vw-32px))] -translate-x-1/2 items-center justify-between gap-4 rounded border border-blue-400 bg-slate-900 px-4 py-3 text-left text-slate-50 shadow-2xl"
+          className="fixed bottom-24 left-1/2 flex -translate-x-1/2 items-center justify-between gap-4 rounded border border-blue-400 bg-gray-900 px-4 py-3 text-left text-white shadow-2xl"
+          style={{
+            backgroundColor: "#111827",
+            maxWidth: 680,
+            width: "calc(100vw - 32px)",
+            zIndex: 1050,
+          }}
         >
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wider text-blue-300">
               Mock results ready{unreviewedSummaries.length > 1 ? ` · ${unreviewedSummaries.length} unreviewed` : ""}
             </p>
             <p className="truncate text-sm font-bold">{latestUnreviewed.title}</p>
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-gray-300">
               {latestUnreviewed.team_count} teams · slot {latestUnreviewed.user_draft_slot} · Review the scorecard and legal alternate paths.
             </p>
           </div>
@@ -389,7 +395,7 @@ export const MockDraftReviewPanel = ({
             </button>
             <button
               aria-label="Dismiss mock review reminder for this session"
-              className="rounded border border-slate-500 px-3 py-2 text-sm font-semibold hover:bg-slate-800"
+              className="rounded border border-gray-500 px-3 py-2 text-sm font-semibold hover:bg-gray-800"
               onClick={() => setDismissedBannerId(latestUnreviewed.mock_id)}
               type="button"
             >

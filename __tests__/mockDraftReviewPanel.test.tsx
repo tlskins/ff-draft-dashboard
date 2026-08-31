@@ -67,6 +67,16 @@ describe("completed mock review panel", () => {
     expect(screen.queryByRole("dialog")).toBeNull()
     expect(screen.getByRole("complementary", {name: "Unreviewed mock draft results"}))
       .toBeTruthy()
+    const reminder = screen.getByRole("complementary", {
+      name: "Unreviewed mock draft results",
+    }) as HTMLElement
+    expect(reminder.className).toContain("bg-gray-900")
+    expect(reminder.className).toContain("text-white")
+    expect(reminder.className).not.toMatch(/\b(?:bg|text|border)-slate-/)
+    expect(reminder.style.backgroundColor).toBe("rgb(17, 24, 39)")
+    expect(reminder.style.maxWidth).toBe("680px")
+    expect(reminder.style.width).toBe("calc(100vw - 32px)")
+    expect(reminder.style.zIndex).toBe("1050")
     fireEvent.click(screen.getByRole("button", {name: "Review"}))
     expect(await screen.findByRole("dialog", {name: "Season 2026 mock draft review"})).toBeTruthy()
     await waitFor(() => expect(screen.queryByRole("complementary", {
