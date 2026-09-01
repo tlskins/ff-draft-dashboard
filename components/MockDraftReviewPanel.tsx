@@ -541,7 +541,7 @@ export const MockDraftReviewPanel = ({
                           <p className="text-4xl font-bold tabular-nums">{review.actual.compositeScore}<span className="text-lg text-gray-500">/100</span></p>
                           {review.alternatives[0] && (
                             <p className="text-sm font-semibold text-blue-700">
-                              Best alternate {review.alternatives[0].scorecard.compositeScore}/100 · {review.alternatives[0].compositeDelta >= 0 ? "+" : ""}{review.alternatives[0].compositeDelta}
+                              Best PAR alternate · {signed(review.alternatives[0].objective.starterProjectedPointsAboveReplacement)} starter PAR
                             </p>
                           )}
                         </div>
@@ -601,31 +601,37 @@ export const MockDraftReviewPanel = ({
                           <section className="rounded border border-gray-300 bg-white p-3">
                             <h3 className="text-sm font-bold">Actual roster</h3>
                             <p className="mt-1 text-xs text-gray-600">
-                              {review.actual.totals.starterCount}/{review.actual.totals.requiredStarterSlots} starters · {signed(review.actual.totals.starterProjectedPointsAboveReplacement)} starter projected points above replacement
+                              {review.actual.totals.starterCount}/{review.actual.totals.requiredStarterSlots} starters · {signed(review.actual.totals.starterProjectedPointsAboveReplacement)} starter PAR · {signed(review.actual.totals.benchProjectedPointsAboveReplacement)} bench PAR
                             </p>
                             <ol className={`${reviewStyles.rosterList} mt-2 text-sm`}>
                               {review.actual.selectedPlayerIds.map((id, index) => {
                                 const fixture = selected.replay as unknown as RecordedCompletedDraftReplay
                                 const tier = playerTier(fixture, id)
                                 const position = fixture.players.find(player => player.id === id)?.position
+                                const metric = review.actual.playerMetrics.find(player => player.playerId === id)
                                 return <li key={id}>
                                   <span>{index + 1}. {playerName(fixture, id)}</span>
-                                  <small>{position || "—"}{tier ? ` · Tier ${tier}` : " · Tier —"}</small>
+                                  <small>{metric?.lineupRole || position || "—"}{tier ? ` · Tier ${tier}` : " · Tier —"}{metric ? ` · ${signed(metric.projectedPointsAboveReplacement)} PAR` : ""}</small>
                                 </li>
                               })}
                             </ol>
                           </section>
                           <section className="rounded border border-blue-400 bg-blue-50 p-3">
-                            <h3 className="text-sm font-bold">Why the best alternate won</h3>
+                            <h3 className="text-sm font-bold">Why the best PAR alternate won</h3>
                             {review.alternatives[0] ? (
                               <>
                                 <div className="mt-1 flex items-baseline justify-between gap-3">
-                                  <p className="text-2xl font-bold tabular-nums">{review.alternatives[0].scorecard.compositeScore}<span className="ml-2 text-sm text-gray-600">{review.alternatives[0].compositeDelta >= 0 ? "+" : ""}{review.alternatives[0].compositeDelta} vs actual</span></p>
+                                  <p className="text-2xl font-bold tabular-nums">{signed(review.alternatives[0].objective.starterProjectedPointsAboveReplacement)}<span className="ml-2 text-sm text-gray-600">starter PAR</span></p>
                                   <span className={`rounded px-2 py-1 text-xs font-bold uppercase ${review.alternatives[0].replayFidelity.level === "high" ? "bg-green-100 text-green-800" : review.alternatives[0].replayFidelity.level === "moderate" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"}`}>
                                     {review.alternatives[0].replayFidelity.level} replay fidelity
                                   </span>
                                 </div>
                                 <p className="mt-1 text-xs text-gray-700">{review.alternatives[0].replayFidelity.explanation}</p>
+                                <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                                  <div><span className="block text-gray-600">Starter PAR</span><strong>{signed(review.alternatives[0].objective.starterProjectedPointsAboveReplacement)}</strong></div>
+                                  <div><span className="block text-gray-600">Bench PAR</span><strong>{signed(review.alternatives[0].objective.benchProjectedPointsAboveReplacement)}</strong></div>
+                                  <div><span className="block text-gray-600">Total PAR</span><strong>{signed(review.alternatives[0].objective.totalProjectedPointsAboveReplacement)}</strong></div>
+                                </div>
                                 <div className={`${reviewStyles.deltaGrid} mt-2 text-xs`}>
                                   {review.alternatives[0].categoryDeltas.map(delta => (
                                     <div className="flex justify-between border-b border-blue-200 py-1" key={delta.key}>
@@ -635,7 +641,7 @@ export const MockDraftReviewPanel = ({
                                   ))}
                                 </div>
                                 <p className="mt-2 text-xs text-gray-600">
-                                  {review.alternatives[0].replayFidelity.changedUserPickCount} user picks changed · {review.alternatives[0].replayFidelity.collisionCount}/{review.alternatives[0].replayFidelity.opponentPickCount} opponent picks replaced ({review.alternatives[0].replayFidelity.collisionRate.toFixed(1)}%)
+                                  {review.alternatives[0].replayFidelity.changedUserPickCount} user picks changed · {review.alternatives[0].objective.earlySelectionCount} picks made before their latest safe turn · {review.alternatives[0].replayFidelity.collisionCount}/{review.alternatives[0].replayFidelity.opponentPickCount} opponent picks replaced ({review.alternatives[0].replayFidelity.collisionRate.toFixed(1)}%)
                                 </p>
                               </>
                             ) : <p className="mt-2 text-sm">No legal complete alternate was found.</p>}
@@ -695,6 +701,25 @@ export const MockDraftReviewPanel = ({
                             </tfoot>
                           </table>
                         </div>
+                        <div className="border-t border-gray-300 px-3 py-2">
+                          <h4 className="text-sm font-bold">Per-player PAR</h4>
+                          <p className="text-xs text-gray-600">Each player is measured against the captured replacement baseline for his position; starter and bench totals are the sums of these rows.</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className={`${reviewStyles.wideTable} w-full border-collapse text-left text-xs`}>
+                            <thead className="bg-gray-200"><tr><th className="px-2 py-2">Roster</th><th className="px-2 py-2">Player</th><th className="px-2 py-2">Role</th><th className="px-2 py-2 text-right">Median</th><th className="px-2 py-2 text-right">Replacement</th><th className="px-2 py-2 text-right">PAR</th></tr></thead>
+                            <tbody>
+                              {[
+                                ...review.actual.playerMetrics.map(metric => ({roster: "Actual", metric})),
+                                ...(review.alternatives[0]?.scorecard.playerMetrics || []).map(metric => ({roster: "Alternate", metric})),
+                              ].map(({roster, metric}) => (
+                                <tr className="border-t border-gray-200" key={`${roster}:${metric.playerId}`}>
+                                  <td className="px-2 py-2">{roster}</td><th className="px-2 py-2">{metric.name} <span className="font-normal text-gray-600">{metric.position}{metric.positionRank} · T{metric.tier}</span></th><td className="px-2 py-2">{metric.lineupRole}</td><td className="px-2 py-2 text-right">{metric.projectedMedian.toFixed(1)}</td><td className="px-2 py-2 text-right">{metric.replacementPoints.toFixed(1)}</td><td className="px-2 py-2 text-right font-semibold">{signed(metric.projectedPointsAboveReplacement)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </section>
                     )}
 
@@ -702,7 +727,7 @@ export const MockDraftReviewPanel = ({
                       <section className="rounded border border-gray-300 bg-white">
                         <div className="border-b border-gray-300 px-3 py-2">
                           <h3 className="text-sm font-bold">Actual versus best-alternate decisions</h3>
-                          <p className="text-xs text-gray-600">Rank, tier, ADP, projection, and direct opponent-board consequences at every user pick.</p>
+                          <p className="text-xs text-gray-600">PAR, observed selection deadlines, and direct opponent-board consequences at every user pick.</p>
                         </div>
                         {review.alternatives[0] ? (
                           <div className="overflow-x-auto">
@@ -714,7 +739,7 @@ export const MockDraftReviewPanel = ({
                                     <th className="px-2 py-2">#{entry.overallPick}</th>
                                     <td className="px-2 py-2">{entry.actual ? <><strong>{entry.actual.name}</strong><br />{entry.actual.position}{entry.actual.positionRank} · T{entry.actual.tier} · ADP {entry.actual.adp.toFixed(1)}</> : "Unavailable"}</td>
                                     <td className="px-2 py-2"><strong>{entry.alternate.name}</strong><br />{entry.alternate.position}{entry.alternate.positionRank} · T{entry.alternate.tier} · ADP {entry.alternate.adp.toFixed(1)}</td>
-                                    <td className="px-2 py-2">{entry.alternate.projectedMedian.toFixed(1)} median · {signed(entry.alternate.projectedPointsAboveReplacement)} PAR<br /><span className="text-gray-600">{entry.reason}</span></td>
+                                    <td className="px-2 py-2">{entry.alternate.projectedMedian.toFixed(1)} median · {signed(entry.alternate.projectedPointsAboveReplacement)} PAR<br /><span className="text-gray-600">{entry.reason}</span><br /><span className="font-semibold">Latest safe: {entry.latestSafeOverallPick ? `#${entry.latestSafeOverallPick}` : "undrafted"}{entry.turnsEarly ? ` · ${entry.turnsEarly} turn${entry.turnsEarly === 1 ? "" : "s"} early` : " · on deadline"}</span></td>
                                     <td className="px-2 py-2">{entry.directOpponentCollisionAt ? `Direct collision at #${entry.directOpponentCollisionAt}` : entry.changed ? "No direct collision" : "Recorded pick retained"}</td>
                                   </tr>
                                 ))}
@@ -730,12 +755,13 @@ export const MockDraftReviewPanel = ({
                         {review.alternatives.map(alternative => (
                           <article className={`rounded border p-3 ${alternative.rank === 1 ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-white"}`} key={alternative.rank}>
                             <div className="flex items-start justify-between gap-2">
-                              <div><p className="text-xs font-semibold uppercase text-gray-600">Path {alternative.rank}</p><p className="text-2xl font-bold">{alternative.scorecard.compositeScore}<span className="ml-1 text-sm text-gray-600">{alternative.compositeDelta >= 0 ? "+" : ""}{alternative.compositeDelta}</span></p></div>
+                              <div><p className="text-xs font-semibold uppercase text-gray-600">PAR path {alternative.rank}</p><p className="text-2xl font-bold">{signed(alternative.objective.starterProjectedPointsAboveReplacement)}<span className="ml-1 text-sm text-gray-600">starter</span></p></div>
                               <span className="rounded bg-gray-200 px-2 py-1 text-xs font-bold uppercase">{alternative.replayFidelity.level} fidelity</span>
                             </div>
                             <p className="mt-1 text-xs text-gray-600">{alternative.replayFidelity.explanation}</p>
+                            <p className="mt-1 text-xs font-semibold">Bench {signed(alternative.objective.benchProjectedPointsAboveReplacement)} · Total {signed(alternative.objective.totalProjectedPointsAboveReplacement)} · {alternative.objective.totalTurnsEarly} total turns early</p>
                             <ol className="mt-2 space-y-1 text-xs">
-                              {alternative.picks.map(pick => <li key={pick.overallPick}>#{pick.overallPick} <strong>{playerName(selected.replay as unknown as RecordedCompletedDraftReplay, pick.playerId)}</strong></li>)}
+                              {alternative.picks.map(pick => <li key={pick.overallPick}>#{pick.overallPick} <strong>{playerName(selected.replay as unknown as RecordedCompletedDraftReplay, pick.playerId)}</strong>{pick.turnsEarly ? ` · ${pick.turnsEarly} early` : " · latest safe turn"}</li>)}
                             </ol>
                             <p className="mt-2 border-t border-gray-300 pt-2 text-xs">{alternative.replayFidelity.collisionCount} collisions · {alternative.replayFidelity.collisionRate.toFixed(1)}% of opponent picks</p>
                           </article>
@@ -747,7 +773,7 @@ export const MockDraftReviewPanel = ({
                     {reviewView === "method" && (
                       <section className="rounded border border-gray-300 bg-white p-3">
                         <h3 className="text-sm font-bold">Deterministic replay method</h3>
-                        <p className="mt-1 text-sm">The score compares bounded roster qualities; it is not a projection of wins or a claim that the alternate would certainly have occurred.</p>
+                        <p className="mt-1 text-sm">Alternate paths use the captured league format, maximize starter projected points above replacement first, then total roster PAR, and use the recorded selection order as the availability deadline for each player. This is deterministic roster analysis, not a projection of wins.</p>
                         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm">
                           {review.assumptions.map(assumption => <li key={assumption}>{assumption}</li>)}
                         </ul>
@@ -755,7 +781,7 @@ export const MockDraftReviewPanel = ({
                     )}
                   </>
                 ) : (
-                  <p className="text-sm text-gray-600">Select a completed mock to review it.</p>
+                  <p className="text-sm text-gray-600">Select a completed draft to review it.</p>
                 )}
               </main>
             </div>

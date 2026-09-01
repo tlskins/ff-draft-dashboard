@@ -1,4 +1,5 @@
 import {
+  observedDraftAvailability,
   reviewCompletedMock,
   scoreMockRoster,
   type HandcuffRelationship,
@@ -8,6 +9,7 @@ import type {
   RecordedReplayPlayer,
 } from "../behavior/draft-advisor/completedDraftReplay"
 import {FantasyPosition} from "../types"
+import recordedDraft from "./fixtures/recorded-espn-2026-slot-6-10-team-standard.json"
 
 
 const player = (
@@ -97,7 +99,16 @@ describe("mock draft scorecard", () => {
       requiredStarterSlots: 2,
       starterProjectedMedian: 16,
       starterProjectedPointsAboveReplacement: 6,
+      benchProjectedPointsAboveReplacement: 0,
     })
+    expect(result.playerMetrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        playerId: "wr-actual",
+        lineupRole: FantasyPosition.WIDE_RECEIVER,
+        replacementPoints: 5,
+        projectedPointsAboveReplacement: 4,
+      }),
+    ]))
     expect(result.categories.find(category => category.key === "target_conversion")?.evidence)
       .toEqual(["1/2 total targets", "1/2 attainable targets"])
     expect(result.categories.find(category => category.key === "handcuff_value")?.score)
@@ -188,7 +199,7 @@ describe("deterministic completed mock counterfactual", () => {
     )).toBe(true)
   })
 
-  it("uses the strict ADP future-availability boundary and is repeatable", () => {
+  it("uses the observed selection deadline and is repeatable", () => {
     const request = {
       exactPlayerOverrides: {1: "rb-branch", 2: "wr-opponent"},
       maxAlternatives: 3,
@@ -196,11 +207,11 @@ describe("deterministic completed mock counterfactual", () => {
     const first = reviewCompletedMock({fixture: fixture(), request})
     const second = reviewCompletedMock({fixture: fixture(), request})
     expect(first).toEqual(second)
-    // wr-opponent has ADP 3 and therefore is not forecast available at pick 4.
+    // wr-opponent was selected at #3, before the user's second pick at #4.
     expect(first.alternatives).toEqual([])
   })
 
-  it("retains an authoritative recorded late pick when the ADP pool is exhausted", () => {
+  it("retains a recorded late pick through its observed deadline even when ADP is earlier", () => {
     const lateRoundFixture = fixture()
     lateRoundFixture.players = lateRoundFixture.players.filter(player =>
       ["wr-actual", "rb-branch", "wr-opponent", "rb-actual"].includes(player.id))
@@ -212,11 +223,111 @@ describe("deterministic completed mock counterfactual", () => {
     })
 
     expect(result.alternatives).toHaveLength(1)
-    expect(result.alternatives[0].picks[1]).toEqual({
+    expect(result.alternatives[0].picks[1]).toEqual(expect.objectContaining({
       overallPick: 4,
       playerId: "rb-actual",
-      reason: "recorded late-round pick retained when no ADP candidate remained",
+      latestSafeOverallPick: 4,
+      latestSafeUserPickNumber: 2,
+      turnsEarly: 0,
+    }))
+    expect(observedDraftAvailability(lateRoundFixture)).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        playerId: "rb-actual",
+        observedOverallPick: 4,
+        latestSafeOverallPick: 4,
+        latestSafeUserPickNumber: 2,
+        observedSelection: "user",
+      }),
+    ]))
+  })
+
+  it("orders alternate rosters by starter PAR before the legacy composite", () => {
+    const parFixture = fixture()
+    const lowParTierOne = parFixture.players.find(candidate => candidate.id === "rb-branch")!
+    lowParTierOne.userTier = 1
+    lowParTierOne.projectedMedian = 6
+    const highParTierFive = parFixture.players.find(candidate => candidate.id === "rb-replacement")!
+    highParTierFive.userTier = 5
+    highParTierFive.projectedMedian = 16
+    parFixture.actualPicks.push({overallPick: 5, rosterIndex: 1, playerId: "rb-replacement"})
+
+    const result = reviewCompletedMock({fixture: parFixture, request: {maxAlternatives: 5}})
+
+    expect(result.alternatives[0].selectedPlayerIds).toContain("rb-replacement")
+    expect(result.alternatives[0].objective).toMatchObject({
+      name: "starter_par_then_total_par_v1",
+      starterProjectedPointsAboveReplacement: expect.any(Number),
+      totalProjectedPointsAboveReplacement: expect.any(Number),
     })
+    expect(result.alternatives[0].scorecard.playerMetrics.find(metric =>
+      metric.playerId === "rb-replacement"),
+    ).toMatchObject({replacementPoints: 5, projectedPointsAboveReplacement: 11})
+  })
+
+  it("can preserve early recorded picks while optimizing the remaining roster", () => {
+    const result = reviewCompletedMock({
+      fixture: fixture(),
+      request: {preservePicksThrough: 1, maxAlternatives: 3},
+    })
+
+    expect(result.alternatives.length).toBeGreaterThan(0)
+    expect(result.alternatives.every(alternative =>
+      alternative.selectedPlayerIds[0] === "wr-actual"),
+    ).toBe(true)
+  })
+
+  it("honors a bounded changed-pick request", () => {
+    const result = reviewCompletedMock({
+      fixture: fixture(),
+      request: {maxChangedPicks: 1, maxAlternatives: 3},
+    })
+
+    expect(result.alternatives.length).toBeGreaterThan(0)
+    expect(result.alternatives.every(alternative =>
+      alternative.replayFidelity.changedUserPickCount <= 1),
+    ).toBe(true)
+  })
+
+  it("waits on a late observed quarterback instead of spending an earlier pick", () => {
+    const timingFixture = fixture()
+    timingFixture.settings = {
+      ...timingFixture.settings,
+      numTeams: 3,
+      numStartingQbs: 1,
+      numStartingRbs: 1,
+      numStartingWrs: 1,
+    }
+    timingFixture.source!.totalPicks = 7
+    timingFixture.source!.numRounds = 3
+    timingFixture.source!.platformRosterSize = 3
+    timingFixture.players = [
+      player("actual-rb", FantasyPosition.RUNNING_BACK, 1, 5, "A"),
+      player("top-rb", FantasyPosition.RUNNING_BACK, 2, 1, "B"),
+      player("dummy-rb", FantasyPosition.RUNNING_BACK, 3, 8, "C"),
+      player("actual-wr", FantasyPosition.WIDE_RECEIVER, 4, 5, "D"),
+      player("top-wr", FantasyPosition.WIDE_RECEIVER, 5, 1, "E"),
+      player("dummy-wr", FantasyPosition.WIDE_RECEIVER, 6, 8, "F"),
+      player("late-qb", FantasyPosition.QUARTERBACK, 100, 2, "G"),
+      player("other-qb", FantasyPosition.QUARTERBACK, 7, 9, "H"),
+    ]
+    timingFixture.players.find(candidate => candidate.id === "top-rb")!.projectedMedian = 18
+    timingFixture.players.find(candidate => candidate.id === "top-wr")!.projectedMedian = 18
+    timingFixture.players.find(candidate => candidate.id === "late-qb")!.projectedMedian = 16
+    timingFixture.actualPicks = [
+      {overallPick: 1, rosterIndex: 0, playerId: "actual-rb"},
+      {overallPick: 2, rosterIndex: 1, playerId: "top-rb"},
+      {overallPick: 3, rosterIndex: 2, playerId: "dummy-rb"},
+      {overallPick: 4, rosterIndex: 0, playerId: "actual-wr"},
+      {overallPick: 5, rosterIndex: 1, playerId: "top-wr"},
+      {overallPick: 6, rosterIndex: 2, playerId: "dummy-wr"},
+      {overallPick: 7, rosterIndex: 0, playerId: "late-qb"},
+    ]
+
+    const result = reviewCompletedMock({fixture: timingFixture, request: {maxAlternatives: 1}})
+
+    expect(result.alternatives[0].selectedPlayerIds).toEqual(["top-rb", "top-wr", "late-qb"])
+    expect(result.alternatives[0].picks.find(pick => pick.playerId === "late-qb"))
+      .toMatchObject({overallPick: 7, latestSafeOverallPick: 7, turnsEarly: 0})
   })
 
   it("does not return a final branch that leaves a required starter position empty", () => {
@@ -230,5 +341,23 @@ describe("deterministic completed mock counterfactual", () => {
       },
     })
     expect(result.alternatives).toEqual([])
+  })
+
+  it("produces bounded PAR alternatives for a full recorded draft", () => {
+    const result = reviewCompletedMock({
+      fixture: recordedDraft as unknown as RecordedCompletedDraftReplay,
+      request: {maxAlternatives: 5, preservePicksThrough: 8, maxChangedPicks: 8},
+    })
+
+    expect(result.alternatives.length).toBeGreaterThan(0)
+    expect(result.alternatives.length).toBeLessThanOrEqual(5)
+    expect(result.alternatives.every(alternative =>
+      alternative.scorecard.totals.starterCount
+        === alternative.scorecard.totals.requiredStarterSlots),
+    ).toBe(true)
+    expect(result.alternatives.map(alternative =>
+      alternative.objective.starterProjectedPointsAboveReplacement),
+    ).toEqual([...result.alternatives].map(alternative =>
+      alternative.objective.starterProjectedPointsAboveReplacement).sort((left, right) => right - left))
   })
 })

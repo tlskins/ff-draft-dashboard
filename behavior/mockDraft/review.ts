@@ -64,7 +64,23 @@ export interface MockRosterScorecard {
   tierCounts: Record<ReviewPosition, Record<string, number>>
   positionMetrics: Record<ReviewPosition, MockPositionMetrics>
   totals: MockRosterTotals
+  playerMetrics: MockPlayerParMetric[]
   categories: MockRosterScoreCategory[]
+}
+
+export interface MockPlayerParMetric {
+  playerId: string
+  name: string
+  position: ReviewPosition
+  positionRank: number
+  tier: number
+  adp: number
+  lineupRole: ReviewPosition | "FLEX" | "BENCH"
+  projectedFloor: number
+  projectedMedian: number
+  projectedCeiling: number
+  replacementPoints: number
+  projectedPointsAboveReplacement: number
 }
 
 export interface MockPositionMetrics {
@@ -81,6 +97,7 @@ export interface MockPositionMetrics {
   starterProjectedMedian: number
   projectedPointsAboveReplacement: number
   starterProjectedPointsAboveReplacement: number
+  benchProjectedPointsAboveReplacement: number
 }
 
 export interface MockRosterTotals {
@@ -94,6 +111,7 @@ export interface MockRosterTotals {
   starterProjectedMedian: number
   projectedPointsAboveReplacement: number
   starterProjectedPointsAboveReplacement: number
+  benchProjectedPointsAboveReplacement: number
 }
 
 export interface MockCounterfactualRequest {
@@ -101,18 +119,37 @@ export interface MockCounterfactualRequest {
   exactPlayerOverrides?: Record<number, string>
   maxAlternatives?: number
   beamWidth?: number
+  preservePicksThrough?: number
+  maxChangedPicks?: number
+}
+
+export interface MockPathObjective {
+  name: "starter_par_then_total_par_v1"
+  starterProjectedPointsAboveReplacement: number
+  benchProjectedPointsAboveReplacement: number
+  totalProjectedPointsAboveReplacement: number
+  totalTurnsEarly: number
+  earlySelectionCount: number
 }
 
 export interface MockCounterfactualAlternative {
   rank: number
   selectedPlayerIds: string[]
-  picks: Array<{overallPick: number; playerId: string; reason: string}>
+  picks: Array<{
+    overallPick: number
+    playerId: string
+    reason: string
+    latestSafeOverallPick: number | null
+    latestSafeUserPickNumber: number | null
+    turnsEarly: number
+  }>
   opponentReplacements: Array<{
     overallPick: number
     recordedPlayerId: string
     replacementPlayerId: string
   }>
   scorecard: MockRosterScorecard
+  objective: MockPathObjective
   compositeDelta: number
   categoryDeltas: Array<{
     key: MockRosterScoreCategory["key"]
@@ -133,7 +170,16 @@ export interface MockDecisionPlayerEvidence {
   tier: number
   adp: number
   projectedMedian: number
+  replacementPoints: number
   projectedPointsAboveReplacement: number
+}
+
+export interface MockObservedAvailability {
+  playerId: string
+  observedOverallPick: number | null
+  latestSafeOverallPick: number | null
+  latestSafeUserPickNumber: number | null
+  observedSelection: "user" | "opponent" | "undrafted"
 }
 
 export interface MockDecisionLedgerEntry {
@@ -144,6 +190,10 @@ export interface MockDecisionLedgerEntry {
   changed: boolean
   reason: string
   directOpponentCollisionAt: number | null
+  observedOverallPick: number | null
+  latestSafeOverallPick: number | null
+  latestSafeUserPickNumber: number | null
+  turnsEarly: number
 }
 
 export interface MockReplayFidelity {
@@ -160,6 +210,7 @@ export interface MockDraftReview {
   fixtureId: string
   actual: MockRosterScorecard
   alternatives: MockCounterfactualAlternative[]
+  observedAvailability: MockObservedAvailability[]
   assumptions: string[]
 }
 
@@ -175,8 +226,9 @@ const replacementFor = (
 const lineup = (
   fixture: RecordedCompletedDraftReplay,
   selectedPlayerIds: string[],
+  suppliedById?: Map<string, RecordedReplayPlayer>,
 ) => {
-  const byId = new Map(fixture.players.map(player => [player.id, player]))
+  const byId = suppliedById ?? new Map(fixture.players.map(player => [player.id, player]))
   const byPosition = Object.fromEntries(POSITIONS.map(position => [
     position,
     selectedPlayerIds
@@ -194,13 +246,21 @@ const lineup = (
   const directStarterIds = new Set(starters.map(player => player.id))
   const flex = ([...byPosition.RB, ...byPosition.WR, ...byPosition.TE])
     .filter(player => !directStarterIds.has(player.id))
-    .sort((left, right) => right.projectedMedian - left.projectedMedian || left.id.localeCompare(right.id))
+    .sort((left, right) =>
+      (right.projectedMedian - replacementFor(fixture, right.position))
+        - (left.projectedMedian - replacementFor(fixture, left.position))
+      || left.id.localeCompare(right.id))
     .slice(0, fixture.settings.numFlex)
   const starterPlayerIds = [...starters, ...flex].map(player => player.id)
   const starterSet = new Set(starterPlayerIds)
+  const lineupRoles = Object.fromEntries([
+    ...starters.map(player => [player.id, player.position] as const),
+    ...flex.map(player => [player.id, "FLEX"] as const),
+  ]) as Record<string, ReviewPosition | "FLEX">
   return {
     starterPlayerIds,
     benchPlayerIds: selectedPlayerIds.filter(id => !starterSet.has(id)),
+    lineupRoles,
     requiredStarterSlots: Object.values(required).reduce((sum, value) => sum + value, 0)
       + fixture.settings.numFlex,
   }
@@ -229,6 +289,7 @@ const buildRosterMetrics = (
 ): {
   positionMetrics: MockRosterScorecard["positionMetrics"]
   totals: MockRosterScorecard["totals"]
+  playerMetrics: MockRosterScorecard["playerMetrics"]
 } => {
   const byId = new Map(fixture.players.map(player => [player.id, player]))
   const selected = selectedPlayerIds
@@ -260,14 +321,38 @@ const buildRosterMetrics = (
         starters,
         player => player.projectedMedian - replacement,
       ),
+      benchProjectedPointsAboveReplacement: sum(
+        bench,
+        player => player.projectedMedian - replacement,
+      ),
     } satisfies MockPositionMetrics]
   })) as MockRosterScorecard["positionMetrics"]
   const total = (field: keyof Omit<MockPositionMetrics,
   "position" | "tierCounts" | "starterTierCounts" | "benchTierCounts">): number => rounded(
     POSITIONS.reduce((value, position) => value + Number(positionMetrics[position][field]), 0),
   )
+  const projectedPointsAboveReplacement = total("projectedPointsAboveReplacement")
+  const starterProjectedPointsAboveReplacement = total("starterProjectedPointsAboveReplacement")
+  const optimized = lineup(fixture, selectedPlayerIds)
+  const playerMetrics = selected.map(player => ({
+    playerId: player.id,
+    name: player.name,
+    position: player.position,
+    positionRank: player.positionRank,
+    tier: player.userTier,
+    adp: player.adp,
+    lineupRole: optimized.lineupRoles[player.id] || "BENCH",
+    projectedFloor: rounded(player.projectedFloor),
+    projectedMedian: rounded(player.projectedMedian),
+    projectedCeiling: rounded(player.projectedCeiling),
+    replacementPoints: rounded(replacementFor(fixture, player.position)),
+    projectedPointsAboveReplacement: rounded(
+      player.projectedMedian - replacementFor(fixture, player.position),
+    ),
+  } satisfies MockPlayerParMetric))
   return {
     positionMetrics,
+    playerMetrics,
     totals: {
       rosterCount: selected.length,
       starterCount: starterPlayerIds.length,
@@ -277,10 +362,48 @@ const buildRosterMetrics = (
       projectedMedian: total("projectedMedian"),
       projectedCeiling: total("projectedCeiling"),
       starterProjectedMedian: total("starterProjectedMedian"),
-      projectedPointsAboveReplacement: total("projectedPointsAboveReplacement"),
-      starterProjectedPointsAboveReplacement: total("starterProjectedPointsAboveReplacement"),
+      projectedPointsAboveReplacement,
+      starterProjectedPointsAboveReplacement,
+      benchProjectedPointsAboveReplacement: rounded(
+        projectedPointsAboveReplacement - starterProjectedPointsAboveReplacement,
+      ),
     },
   }
+}
+
+const eligibleUserPicks = (
+  fixture: RecordedCompletedDraftReplay,
+): RecordedCompletedDraftReplay["actualPicks"] => fixture.actualPicks
+  .filter(pick => pick.rosterIndex === fixture.targetRosterIndex
+    && (pick.advisorEligible ?? pick.playerId !== null))
+  .sort((left, right) => left.overallPick - right.overallPick)
+
+export const observedDraftAvailability = (
+  fixture: RecordedCompletedDraftReplay,
+): MockObservedAvailability[] => {
+  const userPicks = eligibleUserPicks(fixture)
+  const observed = new Map(fixture.actualPicks.flatMap(pick =>
+    pick.playerId ? [[pick.playerId, pick] as const] : []))
+  return fixture.players.map(player => {
+    const recorded = observed.get(player.id)
+    let latestSafeIndex = userPicks.length - 1
+    if (recorded) {
+      latestSafeIndex = -1
+      userPicks.forEach((pick, index) => {
+        if (pick.overallPick <= recorded.overallPick) latestSafeIndex = index
+      })
+    }
+    const latestSafe = latestSafeIndex >= 0 ? userPicks[latestSafeIndex] : null
+    return {
+      playerId: player.id,
+      observedOverallPick: recorded?.overallPick ?? null,
+      latestSafeOverallPick: latestSafe?.overallPick ?? null,
+      latestSafeUserPickNumber: latestSafe ? latestSafeIndex + 1 : null,
+      observedSelection: recorded
+        ? recorded.rosterIndex === fixture.targetRosterIndex ? "user" : "opponent"
+        : "undrafted",
+    } satisfies MockObservedAvailability
+  }).sort((left, right) => left.playerId.localeCompare(right.playerId))
 }
 
 const actualUserPlayerIds = (fixture: RecordedCompletedDraftReplay): string[] => (
@@ -448,43 +571,26 @@ const branchHeuristic = (
   fixture: RecordedCompletedDraftReplay,
   branch: ReplayBranch,
   targets: Set<string>,
+  byId: Map<string, RecordedReplayPlayer>,
 ): number => {
-  const byId = new Map(fixture.players.map(player => [player.id, player]))
-  const counts = Object.fromEntries(POSITIONS.map(position => [position, 0])) as Record<ReviewPosition, number>
-  const required: Record<ReviewPosition, number> = {
-    QB: fixture.settings.numStartingQbs,
-    RB: fixture.settings.numStartingRbs,
-    WR: fixture.settings.numStartingWrs,
-    TE: fixture.settings.numStartingTes,
-  }
-  let value = 0
+  const optimized = lineup(fixture, branch.userPlayerIds, byId)
+  const starterIds = new Set(optimized.starterPlayerIds)
+  let starterPar = 0
+  let totalPar = 0
+  let targetCount = 0
   branch.userPlayerIds.forEach(id => {
     const player = byId.get(id)!
-    const depth = counts[player.position]
-    counts[player.position] += 1
-    const tierUtility = Math.max(0, 20 - player.userTier * 3)
-    const roleMultiplier = depth < required[player.position]
-      ? 1
-      : player.position === FantasyPosition.RUNNING_BACK
-        || player.position === FantasyPosition.WIDE_RECEIVER
-        ? Math.max(0.35, 0.85 - (depth - required[player.position]) * 0.15)
-        : player.position === FantasyPosition.TIGHT_END
-          ? depth === required[player.position] ? 0.55 : 0.1
-          : depth === required[player.position] ? 0.35 : 0.05
-    value += tierUtility * roleMultiplier + (targets.has(id) ? 5 : 0)
+    const par = player.projectedMedian - replacementFor(fixture, player.position)
+    totalPar += par
+    if (starterIds.has(id)) starterPar += par
+    if (targets.has(id)) targetCount += 1
   })
-  POSITIONS.forEach(position => {
-    value += Math.min(counts[position], required[position]) * 12
-  })
-  const flexEligibleDepth = Math.max(0,
-    counts.RB - required.RB
-      + counts.WR - required.WR
-      + counts.TE - required.TE,
-  )
-  value += Math.min(flexEligibleDepth, fixture.settings.numFlex) * 10
-  value -= Math.max(0, counts.QB - required.QB - 1) * 18
-  value -= Math.max(0, counts.TE - required.TE - fixture.settings.numFlex - 1) * 12
-  return value
+  const turnsEarly = branch.picks.reduce((total, pick) => total + pick.turnsEarly, 0)
+  return optimized.starterPlayerIds.length * 1_000
+    + starterPar * 100
+    + totalPar * 10
+    + targetCount * 3
+    - turnsEarly * 0.5
 }
 
 const orderedAvailable = (
@@ -493,9 +599,12 @@ const orderedAvailable = (
 ): RecordedReplayPlayer[] => orderedPlayers.filter(player => !selected.has(player.id))
 
 const candidateOrder = (
+  fixture: RecordedCompletedDraftReplay,
   left: RecordedReplayPlayer,
   right: RecordedReplayPlayer,
-): number => left.userTier - right.userTier
+): number => (right.projectedMedian - replacementFor(fixture, right.position))
+  - (left.projectedMedian - replacementFor(fixture, left.position))
+  || left.userTier - right.userTier
   || left.positionRank - right.positionRank
   || left.adp - right.adp
   || left.id.localeCompare(right.id)
@@ -506,47 +615,27 @@ const candidateOrder = (
  * the best bounded overall choices plus four representatives per position.
  */
 const boundedCandidatePool = (
+  fixture: RecordedCompletedDraftReplay,
   candidates: RecordedReplayPlayer[],
+  availability: Map<string, MockObservedAvailability>,
+  userPickNumber: number,
   exactId?: string,
   requiredPosition?: ReviewPosition,
 ): RecordedReplayPlayer[] => {
-  const ordered = candidates.sort(candidateOrder)
+  const ordered = candidates.sort((left, right) => candidateOrder(fixture, left, right))
   if (exactId) return ordered.slice(0, 1)
-  if (requiredPosition) return ordered.slice(0, 4)
+  if (requiredPosition) return ordered.slice(0, 10)
+  const expiring = ordered.filter(player =>
+    availability.get(player.id)?.latestSafeUserPickNumber === userPickNumber)
   const diverse = [
-    ...ordered.slice(0, 4),
+    ...ordered.slice(0, 12),
+    ...expiring.slice(0, 8),
     ...POSITIONS.flatMap(position => ordered
       .filter(player => player.position === position)
-      .slice(0, 4)),
+      .slice(0, 6)),
   ]
   return Array.from(new Map(diverse.map(player => [player.id, player])).values())
-    .sort(candidateOrder)
-}
-
-const retainEarlyPositionPaths = (
-  fixture: RecordedCompletedDraftReplay,
-  orderedBranches: ReplayBranch[],
-  beamWidth: number,
-): ReplayBranch[] => {
-  const byId = new Map(fixture.players.map(player => [player.id, player]))
-  const retainedPerPath = new Map<string, number>()
-  const representatives = orderedBranches.filter(branch => {
-    const path = branch.userPlayerIds
-      .slice(0, 2)
-      .map(id => byId.get(id)?.position || "unknown")
-      .join("-")
-    const retained = retainedPerPath.get(path) || 0
-    if (retained >= 2) return false
-    retainedPerPath.set(path, retained + 1)
-    return true
-  })
-  const representativeIds = new Set(representatives.map(branch =>
-    branch.userPlayerIds.join(":")))
-  return [
-    ...representatives,
-    ...orderedBranches.filter(branch =>
-      !representativeIds.has(branch.userPlayerIds.join(":"))),
-  ].slice(0, beamWidth)
+    .sort((left, right) => candidateOrder(fixture, left, right))
 }
 
 const decisionEvidence = (
@@ -564,6 +653,7 @@ const decisionEvidence = (
     tier: player.userTier,
     adp: player.adp,
     projectedMedian: rounded(player.projectedMedian),
+    replacementPoints: rounded(replacementFor(fixture, player.position)),
     projectedPointsAboveReplacement: rounded(
       player.projectedMedian - replacementFor(fixture, player.position),
     ),
@@ -608,6 +698,12 @@ const decisionLedger = (
       reason: pick.reason,
       directOpponentCollisionAt: branch.opponentReplacements.find(replacement =>
         replacement.recordedPlayerId === alternate.playerId)?.overallPick ?? null,
+      observedOverallPick: pick.latestSafeOverallPick === null
+        ? null
+        : fixture.actualPicks.find(candidate => candidate.playerId === pick.playerId)?.overallPick ?? null,
+      latestSafeOverallPick: pick.latestSafeOverallPick,
+      latestSafeUserPickNumber: pick.latestSafeUserPickNumber,
+      turnsEarly: pick.turnsEarly,
     }
   })
 }
@@ -659,10 +755,13 @@ export const reviewCompletedMock = ({
     targetPlayerIds,
     handcuffs,
   })
-  const maxAlternatives = Math.max(1, Math.min(3, request.maxAlternatives || 3))
-  const beamWidth = Math.max(3, Math.min(40, request.beamWidth || 24))
+  const maxAlternatives = Math.max(1, Math.min(5, request.maxAlternatives || 5))
+  const beamWidth = Math.max(20, Math.min(250, request.beamWidth || 120))
   const targetSet = new Set(targetPlayerIds)
   const playerById = new Map(fixture.players.map(player => [player.id, player]))
+  const actualIds = actualUserPlayerIds(fixture)
+  const observedAvailability = observedDraftAvailability(fixture)
+  const availabilityById = new Map(observedAvailability.map(item => [item.playerId, item]))
   const playersByAdp = [...fixture.players]
     .sort((left, right) => left.adp - right.adp
       || left.positionRank - right.positionRank
@@ -704,14 +803,27 @@ export const reviewCompletedMock = ({
       if (!advisorEligible) return
 
       userPickNumber += 1
-      const exactId = request.exactPlayerOverrides?.[userPickNumber]
+      const preservedId = userPickNumber <= (request.preservePicksThrough || 0)
+        ? recordedPick.playerId || undefined
+        : undefined
+      const exactId = request.exactPlayerOverrides?.[userPickNumber] || preservedId
       const requiredPosition = request.positionSequence?.[userPickNumber - 1]
       const expanded = branches.flatMap(branch => {
         const available = orderedAvailable(playersByAdp, branch.selected)
-          .filter(player => player.adp >= recordedPick.overallPick && player.adp < 999)
+          .filter(player => {
+            const deadline = availabilityById.get(player.id)?.latestSafeUserPickNumber
+            return deadline !== null && deadline !== undefined && deadline >= userPickNumber
+          })
           .filter(player => !exactId || player.id === exactId)
           .filter(player => !requiredPosition || player.position === requiredPosition)
-        let candidates = boundedCandidatePool(available, exactId, requiredPosition)
+        let candidates = boundedCandidatePool(
+          fixture,
+          available,
+          availabilityById,
+          userPickNumber,
+          exactId,
+          requiredPosition,
+        )
         const recordedPlayer = recordedPick.playerId
           ? playerById.get(recordedPick.playerId)
           : undefined
@@ -721,27 +833,48 @@ export const reviewCompletedMock = ({
           && (!exactId || exactId === recordedPlayer.id)
           && (!requiredPosition || requiredPosition === recordedPlayer.position)
         if (retainRecordedPick) candidates = [recordedPlayer]
-        return candidates.map(player => ({
-          selected: new Set(branch.selected).add(player.id),
-          userPlayerIds: [...branch.userPlayerIds, player.id],
-          picks: [...branch.picks, {
-            overallPick: recordedPick.overallPick,
-            playerId: player.id,
-            reason: exactId
-              ? "exact player override"
-              : requiredPosition
-                ? `${requiredPosition} position-sequence choice`
-                : retainRecordedPick
-                  ? "recorded late-round pick retained when no ADP candidate remained"
-                : "best bounded user-tier choice predicted available by ADP",
-          }],
-          opponentReplacements: branch.opponentReplacements,
-        }))
+        const recordedMatchesConstraints = recordedPlayer
+          && !branch.selected.has(recordedPlayer.id)
+          && (!exactId || exactId === recordedPlayer.id)
+          && (!requiredPosition || requiredPosition === recordedPlayer.position)
+          && (availabilityById.get(recordedPlayer.id)?.latestSafeUserPickNumber || 0)
+            >= userPickNumber
+        if (request.maxChangedPicks && recordedMatchesConstraints
+          && !candidates.some(candidate => candidate.id === recordedPlayer.id)) {
+          candidates = [...candidates, recordedPlayer]
+        }
+        return candidates.map(player => {
+          const deadline = availabilityById.get(player.id)
+          const latestSafeUserPickNumber = deadline?.latestSafeUserPickNumber ?? userPickNumber
+          return {
+            selected: new Set(branch.selected).add(player.id),
+            userPlayerIds: [...branch.userPlayerIds, player.id],
+            picks: [...branch.picks, {
+              overallPick: recordedPick.overallPick,
+              playerId: player.id,
+              reason: request.exactPlayerOverrides?.[userPickNumber]
+                ? "exact player override"
+                : preservedId
+                  ? "recorded pick preserved"
+                  : requiredPosition
+                    ? `${requiredPosition} position-sequence choice ranked by projected PAR`
+                    : retainRecordedPick
+                      ? "recorded pick retained when no eligible candidate remained"
+                      : "PAR candidate available through its observed-draft deadline",
+              latestSafeOverallPick: deadline?.latestSafeOverallPick ?? recordedPick.overallPick,
+              latestSafeUserPickNumber,
+              turnsEarly: Math.max(0, latestSafeUserPickNumber - userPickNumber),
+            }],
+            opponentReplacements: branch.opponentReplacements,
+          }
+        }).filter(branch => !request.maxChangedPicks
+          || branch.userPlayerIds.reduce((count, id, index) =>
+            count + (id === actualIds[index] ? 0 : 1), 0) <= request.maxChangedPicks)
       })
       const remainingUserPicks = eligibleUserPickCount - userPickNumber
       const feasibleBranches = expanded
         .filter(branch => {
-          const optimized = lineup(fixture, branch.userPlayerIds)
+          const optimized = lineup(fixture, branch.userPlayerIds, playerById)
           const missingStarterSlots = optimized.requiredStarterSlots
             - optimized.starterPlayerIds.length
           return missingStarterSlots <= remainingUserPicks
@@ -749,18 +882,22 @@ export const reviewCompletedMock = ({
       const orderedBranches = feasibleBranches
         .map(branch => ({
           branch,
-          heuristic: branchHeuristic(fixture, branch, targetSet),
+          heuristic: branchHeuristic(fixture, branch, targetSet, playerById),
           stableKey: branch.userPlayerIds.join(":"),
         }))
         .sort((left, right) => right.heuristic - left.heuristic
           || left.stableKey.localeCompare(right.stableKey))
         .map(candidate => candidate.branch)
-      branches = retainEarlyPositionPaths(fixture, orderedBranches, beamWidth)
+      branches = orderedBranches.slice(0, beamWidth)
     })
 
   const alternatives = branches.filter(branch => {
-    const optimized = lineup(fixture, branch.userPlayerIds)
+    const optimized = lineup(fixture, branch.userPlayerIds, playerById)
+    const changedPickCount = branch.userPlayerIds.reduce((count, id, index) =>
+      count + (id === actualIds[index] ? 0 : 1), 0)
     return optimized.starterPlayerIds.length === optimized.requiredStarterSlots
+      && branch.userPlayerIds.join(":") !== actualIds.join(":")
+      && (!request.maxChangedPicks || changedPickCount <= request.maxChangedPicks)
   }).map(branch => {
     const scorecard = scoreMockRoster({
       fixture,
@@ -768,11 +905,30 @@ export const reviewCompletedMock = ({
       targetPlayerIds,
       handcuffs,
     })
-    return {branch, scorecard}
-  }).sort((left, right) => right.scorecard.compositeScore - left.scorecard.compositeScore
+    const objective: MockPathObjective = {
+      name: "starter_par_then_total_par_v1",
+      starterProjectedPointsAboveReplacement:
+        scorecard.totals.starterProjectedPointsAboveReplacement,
+      benchProjectedPointsAboveReplacement:
+        scorecard.totals.benchProjectedPointsAboveReplacement,
+      totalProjectedPointsAboveReplacement:
+        scorecard.totals.projectedPointsAboveReplacement,
+      totalTurnsEarly: branch.picks.reduce((total, pick) => total + pick.turnsEarly, 0),
+      earlySelectionCount: branch.picks.filter(pick => pick.turnsEarly > 0).length,
+    }
+    return {branch, scorecard, objective}
+  }).sort((left, right) =>
+    right.objective.starterProjectedPointsAboveReplacement
+      - left.objective.starterProjectedPointsAboveReplacement
+    || right.objective.totalProjectedPointsAboveReplacement
+      - left.objective.totalProjectedPointsAboveReplacement
+    || right.objective.benchProjectedPointsAboveReplacement
+      - left.objective.benchProjectedPointsAboveReplacement
+    || left.objective.totalTurnsEarly - right.objective.totalTurnsEarly
+    || right.scorecard.compositeScore - left.scorecard.compositeScore
     || left.branch.userPlayerIds.join(":").localeCompare(right.branch.userPlayerIds.join(":")))
     .slice(0, maxAlternatives)
-    .map(({branch, scorecard}, index) => {
+    .map(({branch, scorecard, objective}, index) => {
       const ledger = decisionLedger(fixture, branch)
       return {
         rank: index + 1,
@@ -780,6 +936,7 @@ export const reviewCompletedMock = ({
         picks: branch.picks,
         opponentReplacements: branch.opponentReplacements,
         scorecard,
+        objective,
         compositeDelta: scorecard.compositeScore - actual.compositeScore,
         categoryDeltas: categoryDeltas(actual, scorecard),
         decisionLedger: ledger,
@@ -792,12 +949,14 @@ export const reviewCompletedMock = ({
     fixtureId: fixture.id,
     actual,
     alternatives,
+    observedAvailability,
     assumptions: [
-      "Future availability requires configured overall-pick ADP greater than or equal to the user pick.",
+      "The captured league format and scoring settings remain authoritative; alternate formats are not inferred.",
+      "A player remains available only through the last recorded user pick at or before his observed selection; undrafted players remain available through the final user pick.",
       "Recorded opponent picks remain fixed unless their player was already selected in the branch.",
       "Opponent collisions use the next undrafted configured-ADP player with stable tie-breaking.",
-      "User tiers drive bounded candidate ordering while each unconstrained pick retains positional representatives.",
-      "The bounded beam retains up to two representatives per first-two-position path before filling remaining capacity.",
+      "Candidate pruning and final ordering optimize captured-projection starter PAR first and total roster PAR second.",
+      "Observed availability deadlines are used to defer valuable players to their latest safe recorded user pick when possible.",
       "Branches that cannot fill every remaining starter slot with their remaining picks are pruned.",
       "Roster uniqueness and final starter completeness remain mandatory.",
       "V1 handcuffs use the labeled configured-ADP backfield-order proxy, not an official depth chart.",

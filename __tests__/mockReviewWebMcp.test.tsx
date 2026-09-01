@@ -73,18 +73,34 @@ describe("completed mock WebMCP tools", () => {
       .resolves.toMatchObject({ok: true, result: {season: 2026, count: 1}})
     await expect(tools.get("drafty_review_mock_draft")!.execute({
       mock_id: replay.id,
+      max_alternatives: 5,
+      preserve_picks_through: 1,
+      max_changed_picks: 10,
     }, {signal})).resolves.toMatchObject({
       ok: true,
       result: {
+        analysis_schema_version: 2,
         schemaVersion: 1,
         fixtureId: replay.id,
+        captured_league_settings: replay.settings,
+        observedAvailability: expect.any(Array),
         actual: {
           schemaVersion: 1,
           positionMetrics: expect.any(Object),
           totals: expect.any(Object),
+          playerMetrics: expect.arrayContaining([expect.objectContaining({
+            replacementPoints: expect.any(Number),
+            projectedPointsAboveReplacement: expect.any(Number),
+            lineupRole: expect.any(String),
+          })]),
         },
         alternatives: expect.arrayContaining([expect.objectContaining({
-          decisionLedger: expect.any(Array),
+          objective: expect.objectContaining({name: "starter_par_then_total_par_v1"}),
+          decisionLedger: expect.arrayContaining([expect.objectContaining({
+            latestSafeOverallPick: expect.any(Number),
+            latestSafeUserPickNumber: expect.any(Number),
+            turnsEarly: expect.any(Number),
+          })]),
           replayFidelity: expect.any(Object),
         })]),
       },
@@ -112,6 +128,18 @@ describe("completed mock WebMCP tools", () => {
     const reviewTool = registerTool.mock.calls.find(call =>
       call[0].name === "drafty_review_mock_draft")![0] as WebMCP.ModelContextTool
     await expect(reviewTool.execute({mock_id: "mock", position_sequence: ["K"]}, {
+      signal: new AbortController().signal,
+    })).resolves.toMatchObject({ok: false, code: "invalid_input"})
+    await expect(reviewTool.execute({
+      mock_id: "mock",
+      scoring_format: "ppr",
+    }, {
+      signal: new AbortController().signal,
+    })).resolves.toMatchObject({ok: false, code: "invalid_input"})
+    await expect(reviewTool.execute({
+      mock_id: "mock",
+      max_alternatives: 6,
+    }, {
       signal: new AbortController().signal,
     })).resolves.toMatchObject({ok: false, code: "invalid_input"})
     await expect(reviewTool.execute({

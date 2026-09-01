@@ -128,6 +128,9 @@ const parseReviewInput = (value: unknown): {
   season: number | null
   positions: ReviewPosition[]
   exactPlayerOverrides: Record<number, string>
+  maxAlternatives: number
+  preservePicksThrough?: number
+  maxChangedPicks?: number
 } => {
   const input = inputRecord(value)
   const unknown = Object.keys(input).filter(key => ![
@@ -135,14 +138,17 @@ const parseReviewInput = (value: unknown): {
     "season",
     "position_sequence",
     "player_overrides",
+    "max_alternatives",
+    "preserve_picks_through",
+    "max_changed_picks",
   ].includes(key))
   if (unknown.length) throw new DraftyWebMcpInputError(`Unknown input field: ${unknown[0]}.`)
   if (typeof input.mock_id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(input.mock_id)) {
     throw new DraftyWebMcpInputError("mock_id must be a stable Drafty mock identifier.")
   }
   const rawPositions = input.position_sequence ?? []
-  if (!Array.isArray(rawPositions) || rawPositions.length > 4) {
-    throw new DraftyWebMcpInputError("position_sequence must contain at most four positions.")
+  if (!Array.isArray(rawPositions) || rawPositions.length > 15) {
+    throw new DraftyWebMcpInputError("position_sequence must contain at most 15 positions.")
   }
   const allowed = new Set<unknown>([
     FantasyPosition.QUARTERBACK,
@@ -154,8 +160,8 @@ const parseReviewInput = (value: unknown): {
     throw new DraftyWebMcpInputError("position_sequence supports QB, RB, WR, and TE.")
   }
   const rawOverrides = input.player_overrides ?? []
-  if (!Array.isArray(rawOverrides) || rawOverrides.length > 4) {
-    throw new DraftyWebMcpInputError("player_overrides must contain at most four user-pick overrides.")
+  if (!Array.isArray(rawOverrides) || rawOverrides.length > 15) {
+    throw new DraftyWebMcpInputError("player_overrides must contain at most 15 user-pick overrides.")
   }
   const exactPlayerOverrides: Record<number, string> = {}
   rawOverrides.forEach(value => {
@@ -179,11 +185,29 @@ const parseReviewInput = (value: unknown): {
     }
     exactPlayerOverrides[pickNumber] = override.player_id
   })
+  const optionalInteger = (
+    field: "preserve_picks_through" | "max_changed_picks",
+    minimum: number,
+  ): number | undefined => {
+    const candidate = input[field]
+    if (candidate === undefined) return undefined
+    if (!Number.isInteger(candidate) || (candidate as number) < minimum || (candidate as number) > 30) {
+      throw new DraftyWebMcpInputError(`${field} must be an integer from ${minimum} through 30.`)
+    }
+    return candidate as number
+  }
+  const maxAlternatives = input.max_alternatives ?? 5
+  if (!Number.isInteger(maxAlternatives) || (maxAlternatives as number) < 1 || (maxAlternatives as number) > 5) {
+    throw new DraftyWebMcpInputError("max_alternatives must be an integer from 1 through 5.")
+  }
   return {
     mockId: input.mock_id,
     season: input.season === undefined ? null : parseSeason(input.season, 0),
     positions: rawPositions as ReviewPosition[],
     exactPlayerOverrides,
+    maxAlternatives: maxAlternatives as number,
+    preservePicksThrough: optionalInteger("preserve_picks_through", 0),
+    maxChangedPicks: optionalInteger("max_changed_picks", 1),
   }
 }
 
@@ -208,7 +232,7 @@ export const useDraftyMockReviewWebMcp = (
   const tools = useMemo<WebMCP.ModelContextTool[]>(() => [{
     name: DRAFTY_WEBMCP_MOCK_TOOL_NAMES[0],
     title: "List Drafty completed drafts",
-    description: "List compact owner-scoped completed mock drafts for the active or requested fantasy season.",
+    description: "List compact owner-scoped completed fantasy drafts for the active or requested season, including both mocks and real drafts.",
     inputSchema: {
       type: "object",
       properties: {season: {type: "integer", minimum: 2000, maximum: 2100}},
@@ -225,15 +249,15 @@ export const useDraftyMockReviewWebMcp = (
           contextRef.current,
           parseSeason(parsed.season, contextRef.current.season),
         )
-        return toolSuccess(result, `Found ${result.count} completed Drafty mocks for season ${result.season}.`)
+        return toolSuccess(result, `Found ${result.count} completed Drafty drafts for season ${result.season}.`)
       } catch (error) {
         return webMcpInputErrorResponse(error)
       }
     },
   }, {
     name: DRAFTY_WEBMCP_MOCK_TOOL_NAMES[1],
-    title: "Review Drafty completed mock",
-    description: "Return a deterministic actual-roster scorecard, raw position/tier/projection metrics, pick-level evidence, replay-fidelity qualifiers, and up to three ADP-based counterfactual rosters.",
+    title: "Analyze Drafty completed draft",
+    description: "Analyze a completed draft using its captured format and observed pick deadlines. Returns per-player and lineup PAR, latest-safe pick timing, pick-level evidence, replay fidelity, and up to five starter-PAR-first alternate rosters. No hypothetical league-format reinterpretation is performed.",
     inputSchema: {
       type: "object",
       properties: {
@@ -242,11 +266,11 @@ export const useDraftyMockReviewWebMcp = (
         position_sequence: {
           type: "array",
           items: {type: "string", enum: ["QB", "RB", "WR", "TE"]},
-          maxItems: 4,
+          maxItems: 15,
         },
         player_overrides: {
           type: "array",
-          maxItems: 4,
+          maxItems: 15,
           items: {
             type: "object",
             properties: {
@@ -256,6 +280,19 @@ export const useDraftyMockReviewWebMcp = (
             required: ["pick_number", "player_id"],
             additionalProperties: false,
           },
+        },
+        max_alternatives: {type: "integer", minimum: 1, maximum: 5},
+        preserve_picks_through: {
+          type: "integer",
+          minimum: 0,
+          maximum: 30,
+          description: "Keep the user's recorded selections through this user-pick number, then optimize later picks.",
+        },
+        max_changed_picks: {
+          type: "integer",
+          minimum: 1,
+          maximum: 30,
+          description: "Limit each returned alternate to this many selections that differ from the recorded roster.",
         },
       },
       required: ["mock_id"],
@@ -277,14 +314,18 @@ export const useDraftyMockReviewWebMcp = (
           request: {
             positionSequence: parsed.positions,
             exactPlayerOverrides: parsed.exactPlayerOverrides,
-            maxAlternatives: 3,
+            maxAlternatives: parsed.maxAlternatives,
+            preservePicksThrough: parsed.preservePicksThrough,
+            maxChangedPicks: parsed.maxChangedPicks,
           },
         })
         return toolSuccess({
           ...result,
+          analysis_schema_version: 2,
           season: archive.season,
           ranking_source: archive.ranking_source,
           adp_source: archive.adp_source,
+          captured_league_settings: (archive.replay as unknown as RecordedCompletedDraftReplay).settings,
         }, `Deterministic review completed for ${archive.mock_id}.`)
       } catch (error) {
         return webMcpInputErrorResponse(error)
@@ -293,7 +334,7 @@ export const useDraftyMockReviewWebMcp = (
   }, {
     name: DRAFTY_WEBMCP_MOCK_TOOL_NAMES[2],
     title: "Open Drafty draft scorecard",
-    description: "Open one completed mock in Drafty's visible scorecard dialog by stable mock ID and fantasy season.",
+    description: "Open one completed fantasy draft in Drafty's visible scorecard dialog by stable draft ID and season.",
     inputSchema: {
       type: "object",
       properties: {
