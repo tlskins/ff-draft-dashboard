@@ -253,7 +253,8 @@ export const DRAFTY_HELP_CATALOG: Record<DraftyHelpTopic, DraftyHelpArticle> = {
     notes: [
       "Drafty exposes no tool that selects or drafts a player in the external fantasy provider.",
       "Tool availability and mutation reasons are reported in the workspace snapshot.",
-      "The Chrome bridge mirrors the completed-draft WebMCP tool names, inputs, and deterministic results at window.draftyAgentBridge; it does not grant broader browser or provider access.",
+      "The Chrome bridge mirrors Drafty's registered WebMCP tool names, inputs, and structured results; it does not grant broader browser or provider access.",
+      "Codex Chrome can open Drafty with ?agent-tools=1 to invoke the same registered tool catalog through the structured contract console.",
     ],
     troubleshooting: [
       "If native tools are not discovered in Chrome, verify that window.draftyAgentBridge is ready or use Codex's built-in browser for native WebMCP.",

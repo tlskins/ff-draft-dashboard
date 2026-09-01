@@ -2,6 +2,7 @@ import {toolFailure} from "./draftyWebMcp"
 
 
 const toolsByOwner = new Map<symbol, WebMCP.ModelContextTool[]>()
+export const DRAFTY_CHROME_AGENT_TOOLS_CHANGED = "drafty:chrome-agent-tools-changed"
 
 const allTools = (): WebMCP.ModelContextTool[] => {
   const byName = new Map<string, WebMCP.ModelContextTool>()
@@ -12,6 +13,7 @@ const allTools = (): WebMCP.ModelContextTool[] => {
 const publishToolCount = () => {
   if (typeof document === "undefined") return
   document.documentElement.dataset.draftyChromeAgentToolCount = String(allTools().length)
+  window.dispatchEvent(new Event(DRAFTY_CHROME_AGENT_TOOLS_CHANGED))
 }
 
 export const registerChromeAgentTools = (

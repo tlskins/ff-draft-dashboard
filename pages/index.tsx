@@ -33,6 +33,7 @@ import DraftDeskAdvisorDisclosure from "../components/draft-desk/DraftDeskAdviso
 import DraftDeskInsightDeck from "../components/insight/DraftDeskInsightDeck"
 import CloudProfileControl from "../components/CloudProfileControl"
 import {MockDraftReviewPanel} from "../components/MockDraftReviewPanel"
+import {DraftyChromeAgentConsole} from "../components/DraftyChromeAgentConsole"
 import draftDeskStyles from "../components/DraftDesk.module.css"
 
 import { useRanks } from '../behavior/hooks/useRanks'
@@ -1854,6 +1855,7 @@ const Home: FC = () => {
       data-webmcp-tool-count={registeredWebMcpToolCount}
     >
       <PageHead />
+      <DraftyChromeAgentConsole />
       {draftDeskEnabled && (
         <MockDraftReviewPanel
           archiveSyncError={completedMockArchiveSync.error}
