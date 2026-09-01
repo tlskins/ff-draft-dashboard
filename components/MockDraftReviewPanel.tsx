@@ -70,6 +70,15 @@ const tierSummary = (tiers: Record<string, number>): string => Object.entries(ti
   .map(([tier, count]) => `${count} ${tier}`)
   .join(" · ") || "—"
 
+const capturedFormat = (fixture: RecordedCompletedDraftReplay): string => [
+  `QB ${fixture.settings.numStartingQbs}`,
+  `RB ${fixture.settings.numStartingRbs}`,
+  `WR ${fixture.settings.numStartingWrs}`,
+  `TE ${fixture.settings.numStartingTes}`,
+  `FLEX ${fixture.settings.numFlex}`,
+  `Bench ${fixture.settings.numBenchPlayers}`,
+].join(" · ")
+
 type ReviewView = "overview" | "position" | "picks" | "alternatives" | "method"
 
 const readTextFile = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -109,6 +118,8 @@ export const MockDraftReviewPanel = ({
   const [error, setError] = useState<string | null>(null)
   const [firstPosition, setFirstPosition] = useState<ReviewPosition | "">("")
   const [secondPosition, setSecondPosition] = useState<ReviewPosition | "">("")
+  const [preservePicksThrough, setPreservePicksThrough] = useState(0)
+  const [maxChangedPicks, setMaxChangedPicks] = useState(4)
   const [reviewSeason, setReviewSeason] = useState(season)
   const [archiveRevision, setArchiveRevision] = useState(0)
   const [importStatus, setImportStatus] = useState<string | null>(null)
@@ -281,9 +292,13 @@ export const MockDraftReviewPanel = ({
     return reviewCompletedMock({
       fixture: selected.replay as unknown as RecordedCompletedDraftReplay,
       targetPlayerIds: selected.targets.map(target => target.player_id),
-      request: {positionSequence},
+      request: {
+        positionSequence,
+        preservePicksThrough,
+        maxChangedPicks,
+      },
     })
-  }, [firstPosition, secondPosition, selected])
+  }, [firstPosition, maxChangedPicks, preservePicksThrough, secondPosition, selected])
 
   const allSummaries = useMemo(() => {
     const localSummaries = local.map(item => {
@@ -541,11 +556,15 @@ export const MockDraftReviewPanel = ({
                           <p className="text-4xl font-bold tabular-nums">{review.actual.compositeScore}<span className="text-lg text-gray-500">/100</span></p>
                           {review.alternatives[0] && (
                             <p className="text-sm font-semibold text-blue-700">
-                              Best PAR alternate · {signed(review.alternatives[0].objective.starterProjectedPointsAboveReplacement)} starter PAR
+                              Best PAR alternate · {signed(review.alternatives[0].objective.starterProjectedPointsAboveReplacement)} absolute starter PAR ({signed(review.alternatives[0].objective.starterProjectedPointsAboveReplacement - review.actual.totals.starterProjectedPointsAboveReplacement)} vs actual)
                             </p>
                           )}
                         </div>
                         <p className="text-xs text-gray-600">{selected.ranking_source} ranks · {selected.adp_source} ADP</p>
+                        <p className="text-xs font-medium text-gray-700">
+                          Captured format · {review.actual.totals.requiredStarterSlots} starters: {capturedFormat(selected.replay as unknown as RecordedCompletedDraftReplay)}
+                          {((selected.replay as unknown as RecordedCompletedDraftReplay).source?.rosterSettingsSource === "espn_league_settings") ? " · ESPN verified" : " · dashboard configured"}
+                        </p>
                       </div>
                       <div className={`${reviewStyles.positionSelectors} flex gap-2`}>
                         {[firstPosition, secondPosition].map((value, index) => (
@@ -561,6 +580,36 @@ export const MockDraftReviewPanel = ({
                             </select>
                           </label>
                         ))}
+                        <label className="text-xs font-semibold">
+                          Keep first picks
+                          <input
+                            aria-label="Preserve user picks through"
+                            className="mt-1 block w-20 rounded border border-gray-400 bg-white px-2 py-1 text-sm"
+                            max={30}
+                            min={0}
+                            onChange={event => setPreservePicksThrough(Math.max(
+                              0,
+                              Math.min(30, Number(event.target.value) || 0),
+                            ))}
+                            type="number"
+                            value={preservePicksThrough}
+                          />
+                        </label>
+                        <label className="text-xs font-semibold">
+                          Max changes
+                          <input
+                            aria-label="Maximum changed picks"
+                            className="mt-1 block w-20 rounded border border-gray-400 bg-white px-2 py-1 text-sm"
+                            max={30}
+                            min={1}
+                            onChange={event => setMaxChangedPicks(Math.max(
+                              1,
+                              Math.min(30, Number(event.target.value) || 1),
+                            ))}
+                            type="number"
+                            value={maxChangedPicks}
+                          />
+                        </label>
                       </div>
                     </div>
                     <nav aria-label="Draft scorecard views" className={`${reviewStyles.reviewTabs} my-3 border-b border-gray-300 pb-2`}>
@@ -621,7 +670,7 @@ export const MockDraftReviewPanel = ({
                             {review.alternatives[0] ? (
                               <>
                                 <div className="mt-1 flex items-baseline justify-between gap-3">
-                                  <p className="text-2xl font-bold tabular-nums">{signed(review.alternatives[0].objective.starterProjectedPointsAboveReplacement)}<span className="ml-2 text-sm text-gray-600">starter PAR</span></p>
+                                  <p className="text-2xl font-bold tabular-nums">{signed(review.alternatives[0].objective.starterProjectedPointsAboveReplacement)}<span className="ml-2 text-sm text-gray-600">absolute starter PAR</span></p>
                                   <span className={`rounded px-2 py-1 text-xs font-bold uppercase ${review.alternatives[0].replayFidelity.level === "high" ? "bg-green-100 text-green-800" : review.alternatives[0].replayFidelity.level === "moderate" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"}`}>
                                     {review.alternatives[0].replayFidelity.level} replay fidelity
                                   </span>
@@ -632,6 +681,9 @@ export const MockDraftReviewPanel = ({
                                   <div><span className="block text-gray-600">Bench PAR</span><strong>{signed(review.alternatives[0].objective.benchProjectedPointsAboveReplacement)}</strong></div>
                                   <div><span className="block text-gray-600">Total PAR</span><strong>{signed(review.alternatives[0].objective.totalProjectedPointsAboveReplacement)}</strong></div>
                                 </div>
+                                <p className="mt-2 text-xs font-semibold text-blue-800">
+                                  Versus actual: {signed(review.alternatives[0].objective.starterProjectedPointsAboveReplacement - review.actual.totals.starterProjectedPointsAboveReplacement)} starter PAR · {signed(review.alternatives[0].objective.totalProjectedPointsAboveReplacement - review.actual.totals.projectedPointsAboveReplacement)} total PAR
+                                </p>
                                 <div className={`${reviewStyles.deltaGrid} mt-2 text-xs`}>
                                   {review.alternatives[0].categoryDeltas.map(delta => (
                                     <div className="flex justify-between border-b border-blue-200 py-1" key={delta.key}>
@@ -759,7 +811,7 @@ export const MockDraftReviewPanel = ({
                               <span className="rounded bg-gray-200 px-2 py-1 text-xs font-bold uppercase">{alternative.replayFidelity.level} fidelity</span>
                             </div>
                             <p className="mt-1 text-xs text-gray-600">{alternative.replayFidelity.explanation}</p>
-                            <p className="mt-1 text-xs font-semibold">Bench {signed(alternative.objective.benchProjectedPointsAboveReplacement)} · Total {signed(alternative.objective.totalProjectedPointsAboveReplacement)} · {alternative.objective.totalTurnsEarly} total turns early</p>
+                            <p className="mt-1 text-xs font-semibold">Bench {signed(alternative.objective.benchProjectedPointsAboveReplacement)} · Total {signed(alternative.objective.totalProjectedPointsAboveReplacement)} · Delta {signed(alternative.objective.starterProjectedPointsAboveReplacement - review.actual.totals.starterProjectedPointsAboveReplacement)} starter / {signed(alternative.objective.totalProjectedPointsAboveReplacement - review.actual.totals.projectedPointsAboveReplacement)} total · {alternative.objective.totalTurnsEarly} total turns early</p>
                             <ol className="mt-2 space-y-1 text-xs">
                               {alternative.picks.map(pick => <li key={pick.overallPick}>#{pick.overallPick} <strong>{playerName(selected.replay as unknown as RecordedCompletedDraftReplay, pick.playerId)}</strong>{pick.turnsEarly ? ` · ${pick.turnsEarly} early` : " · latest safe turn"}</li>)}
                             </ol>

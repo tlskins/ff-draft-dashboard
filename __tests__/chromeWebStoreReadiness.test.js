@@ -10,7 +10,7 @@ describe("Chrome Web Store production boundary", () => {
     expect(manifest).toMatchObject({
       manifest_version: 3,
       name: "Drafty Draft Sync",
-      version: "0.0.0.11",
+      version: "0.0.0.12",
     })
     expect(manifest.description.length).toBeLessThanOrEqual(132)
     expect(manifest.name).not.toMatch(/local dev/i)
@@ -41,11 +41,13 @@ describe("Chrome Web Store production boundary", () => {
     ])
   })
 
-  it("packages only local code and keeps the popup version aligned", () => {
+  it("packages only local code and limits data fetches to ESPN league settings", () => {
     const scripts = ["background.js", "extensionSites.js", "espnDraftExtractor.js", "contentScript.js"]
       .map(file => readFileSync(join(root, "public", file), "utf8"))
       .join("\n")
-    expect(scripts).not.toMatch(/\bfetch\s*\(/)
+    expect(scripts.match(/\bfetch\s*\(/g)).toHaveLength(1)
+    expect(scripts).toContain("https://fantasy.espn.com/apis/v3/games/ffl/seasons/")
+    expect(scripts).toContain("?view=mSettings")
     expect(scripts).not.toMatch(/XMLHttpRequest|WebSocket|\beval\s*\(|new Function|import\s*\(\s*["']https?:/)
     const popup = readFileSync(join(root, "public", manifest.action.default_popup), "utf8")
     expect(popup).toContain(`Version ${manifest.version}`)
@@ -55,7 +57,7 @@ describe("Chrome Web Store production boundary", () => {
   it("ships a complete, consistent privacy and listing packet", () => {
     const privacy = readFileSync(join(root, "public", "extension-privacy.html"), "utf8")
     expect(privacy).toContain("website content and narrowly scoped browsing activity")
-    expect(privacy).toContain("makes no external network requests")
+    expect(privacy).toContain("one narrowly scoped HTTPS request")
     expect(privacy).toContain("Chrome Web Store User Data Policy")
     expect(privacy).toContain("Limited Use requirements")
     expect(privacy).toContain('href="/extension-support"')
@@ -69,7 +71,7 @@ describe("Chrome Web Store production boundary", () => {
     expect(packet).toContain("## Single purpose")
     expect(packet).toContain("## Host-access justifications")
     expect(packet).toContain("## Privacy-practices answers")
-    expect(packet).toContain("drafty-draft-sync-0.0.0.11.zip")
+    expect(packet).toContain("drafty-draft-sync-0.0.0.12.zip")
     expect(packet).toContain("npm run extension:test:relay")
     expect(packet).toContain("npm run extension:test:clean-browser")
     expect(packet).toContain("npm run extension:smoke:production")

@@ -21,11 +21,11 @@ describe("Chrome Web Store submission bundle", () => {
     const result = buildChromeWebStoreBundle({root, outputDir})
     expect(result).toMatchObject({
       kind: BUNDLE_KIND,
-      extension_version: "0.0.0.11",
+      extension_version: "0.0.0.12",
       extension_name: "Drafty Draft Sync",
     })
     expect(result.files.map(item => item.file)).toEqual(expect.arrayContaining([
-      "drafty-draft-sync-0.0.0.11.zip",
+      "drafty-draft-sync-0.0.0.12.zip",
       "drafty-icon-128.png",
       "drafty-small-promo-440x280.png",
       "drafty-marquee-1400x560.png",

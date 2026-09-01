@@ -12,6 +12,8 @@ const state = {
   workTimer: null,
   lastEspnHealthFingerprint: null,
   lastEspnHealthSentAt: 0,
+  espnRosterSettings: null,
+  espnRosterSettingsKey: null,
 }
 
 const sleep = (milliseconds) =>
@@ -123,6 +125,39 @@ const readEspnDraftMetadata = (title) => {
       : /\bStandard\b/i.test(title)
         ? "STANDARD"
         : null,
+    rosterSettings: state.espnRosterSettings,
+  }
+}
+
+const readEspnRosterSettings = async () => {
+  const pageUrl = new URL(window.location.href)
+  const leagueId = pageUrl.searchParams.get("leagueId")
+  if (!leagueId || !/^\d+$/.test(leagueId)) return
+  const seasonIdText = pageUrl.searchParams.get("seasonId")
+  const seasonId = seasonIdText && /^20\d{2}$/.test(seasonIdText)
+    ? Number(seasonIdText)
+    : new Date().getFullYear()
+  const key = `${seasonId}:${leagueId}`
+  if (state.espnRosterSettingsKey === key) return
+  state.espnRosterSettingsKey = key
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), 5_000)
+  try {
+    const response = await fetch(
+      `https://fantasy.espn.com/apis/v3/games/ffl/seasons/${seasonId}/segments/0/leagues/${leagueId}?view=mSettings`,
+      {credentials: "include", signal: controller.signal},
+    )
+    if (!response.ok) throw new Error(`ESPN settings returned ${response.status}`)
+    const settings = espnExtractor?.parseEspnRosterSettings(await response.json())
+    if (!settings) throw new Error("ESPN roster settings were unavailable")
+    state.espnRosterSettings = settings
+  } catch (error) {
+    // Mock rooms and some private league states do not expose mSettings. The
+    // dashboard keeps the explicitly configured roster shape in that case.
+    state.espnRosterSettings = null
+    console.warn("Unable to read ESPN roster settings", error)
+  } finally {
+    window.clearTimeout(timeout)
   }
 }
 
@@ -200,9 +235,8 @@ const scheduleWork = (work, delay) => {
 }
 
 const startEspnReader = async () => {
-  await waitForElement(
-    espnExtractor?.selectors.draftRoot || ".draft-columns",
-  )
+  void readEspnRosterSettings()
+  await waitForElement(espnExtractor?.selectors.draftRoot || ".draft-columns")
   readEspnDraft()
   scheduleWork(readEspnDraft, READ_INTERVAL_MS)
 }

@@ -20,7 +20,7 @@
   <body>
     <main>
       <h1>Drafty Draft Sync Privacy Policy</h1>
-      <p class="meta">Effective August 30, 2026</p>
+      <p class="meta">Effective September 1, 2026</p>
 
       <p>Drafty Draft Sync has one purpose: relay live fantasy-football draft information from supported ESPN and NFL.com draft rooms to an open Drafty dashboard tab.</p>
 
@@ -28,14 +28,15 @@
       <p>On the supported draft-room pages listed in the extension manifest, the extension reads only information needed to synchronize the draft:</p>
       <ul>
         <li>drafted player name, team, position, pick coordinate, and pick order;</li>
-        <li>draft title, platform, league identifier present in the page URL, team count, user roster position, scoring format, and completion state when available;</li>
+        <li>draft title, platform, league identifier present in the page URL, team count, user roster position, scoring format, roster-slot counts, and completion state when available;</li>
         <li>the supported draft page URL and bounded selector-health diagnostics needed to identify the session and report whether capture is working.</li>
       </ul>
       <p>This is website content and narrowly scoped browsing activity. The extension does not read passwords, authentication cookies, private messages, payment information, general browsing history, or pages outside its declared Drafty, ESPN draft, and NFL.com draft matches.</p>
 
       <h2>How the information is used</h2>
       <p>The extension uses Chrome runtime ports to relay the draft snapshot to an open Drafty dashboard tab. It does not sell data, use it for advertising or credit decisions, or transfer it to data brokers.</p>
-      <p>The extension itself makes no external network requests, uses no analytics service, executes no remote code, and writes no draft data to Chrome extension storage. Its in-memory relay state is discarded when the relevant tabs or extension worker close.</p>
+      <p>For an ESPN league draft, the extension makes one narrowly scoped HTTPS request to ESPN's league-settings endpoint on <code>fantasy.espn.com</code> so Drafty can preserve common QB, RB, WR, TE, flex, and bench counts. The browser may send the user's existing ESPN session credentials to ESPN as part of that same-origin request, but the extension does not read or relay those credential values. The response is used only for roster-slot counts.</p>
+      <p>The extension uses no analytics service, executes no remote code, and writes no draft data to Chrome extension storage. Its in-memory relay state is discarded when the relevant tabs or extension worker close.</p>
 
       <h2>Drafty account persistence</h2>
       <p>The Drafty web application can be used locally without signing in. If a user signs into Drafty and enables its account-backed features, the web application—not the extension—may transmit season-scoped rankings, targets, and completed mock-draft results over HTTPS to Drafty's Google Cloud services. The extension does not receive Google credentials or authentication tokens.</p>

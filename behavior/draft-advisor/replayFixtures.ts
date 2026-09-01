@@ -323,23 +323,37 @@ export const captureCompletedDraftReplay = ({
   const targetAdvisorPickCount = sourcePicks?.filter(pick =>
     pick.rosterIndex === targetRosterIndexFromSource
     && pick.advisorEligible).length
+  const sourceRosterSettings = sourceSnapshot?.rosterSettings
+  const rosterShape = sourceRosterSettings
+    ? {
+        numStartingQbs: sourceRosterSettings.numStartingQbs,
+        numStartingRbs: sourceRosterSettings.numStartingRbs,
+        numStartingWrs: sourceRosterSettings.numStartingWrs,
+        numStartingTes: sourceRosterSettings.numStartingTes,
+        numFlex: sourceRosterSettings.numFlex,
+        numBenchPlayers: sourceRosterSettings.numBenchPlayers,
+      }
+    : settings
   const startingRosterSize =
-    settings.numStartingQbs
-    + settings.numStartingRbs
-    + settings.numStartingWrs
-    + settings.numStartingTes
-    + settings.numFlex
+    rosterShape.numStartingQbs
+    + rosterShape.numStartingRbs
+    + rosterShape.numStartingWrs
+    + rosterShape.numStartingTes
+    + rosterShape.numFlex
   const capturedSettings = completion?.complete
     ? {
         ...settings,
-        ppr: completion.scoringFormat === "PPR"
-          ? true
+        ...rosterShape,
+        ppr: completion.scoringFormat
+          ? completion.scoringFormat !== "STANDARD"
           : settings.ppr,
+        scoringFormat: completion.scoringFormat
+          ? completion.scoringFormat.toLocaleLowerCase() as "standard" | "half_ppr" | "ppr"
+          : settings.scoringFormat,
         numTeams: completion.numTeams,
-        numBenchPlayers: Math.max(
-          0,
-          (targetAdvisorPickCount || 0) - startingRosterSize,
-        ),
+        numBenchPlayers: sourceRosterSettings
+          ? sourceRosterSettings.numBenchPlayers
+          : Math.max(0, (targetAdvisorPickCount || 0) - startingRosterSize),
       }
     : settings
   const summary = projectionSummary(rankingSummaries, capturedSettings)
@@ -406,6 +420,10 @@ export const captureCompletedDraftReplay = ({
           numRounds: completion.numRounds,
           platformRosterSize: completion.platformRosterSize,
           excludedPositions: completion.excludedPositions,
+          rosterSettingsSource: sourceSnapshot.rosterSettings?.source
+            || "dashboard_configuration",
+          unsupportedLineupSlots:
+            sourceSnapshot.rosterSettings?.unsupportedLineupSlots || [],
         }
       : undefined,
     settings: capturedSettings,

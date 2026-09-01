@@ -156,6 +156,16 @@ describe("completed replay fixtures", () => {
       sourceUrl:
         "https://fantasy.espn.com/football/draft"
         + "?leagueId=36954084&teamId=9&memberId=private",
+      rosterSettings: {
+        numStartingQbs: 1,
+        numStartingRbs: 2,
+        numStartingWrs: 2,
+        numStartingTes: 1,
+        numFlex: 3,
+        numBenchPlayers: 5,
+        unsupportedLineupSlots: [],
+        source: "espn_league_settings" as const,
+      },
       completion: {
         complete: true,
         totalPicks: 160,
@@ -203,7 +213,14 @@ describe("completed replay fixtures", () => {
     })
 
     expect(captured.targetRosterIndex).toBe(8)
-    expect(captured.settings.numBenchPlayers).toBe(7)
+    expect(captured.settings).toMatchObject({
+      numStartingQbs: 1,
+      numStartingRbs: 2,
+      numStartingWrs: 2,
+      numStartingTes: 1,
+      numFlex: 3,
+      numBenchPlayers: 5,
+    })
     expect(captured.actualPicks).toHaveLength(160)
     expect(captured.actualPicks[0]).toMatchObject({
       name: "Opponent Outside Universe",
@@ -213,6 +230,10 @@ describe("completed replay fixtures", () => {
     expect(captured.source?.sourceUrl).toBe(
       "https://fantasy.espn.com/football/draft?leagueId=36954084",
     )
+    expect(captured.source).toMatchObject({
+      rosterSettingsSource: "espn_league_settings",
+      unsupportedLineupSlots: [],
+    })
     expect(validateCompletedDraftReplay(captured)).toEqual([])
 
     const unprojectedOpponentIndex = recordedReplay.actualPicks.findIndex(pick =>

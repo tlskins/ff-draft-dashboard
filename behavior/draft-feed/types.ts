@@ -29,6 +29,7 @@ export interface DraftSnapshot {
   numTeams?: number
   targetRosterIndex?: number | null
   scoringFormat?: "STANDARD" | "HALF_PPR" | "PPR" | null
+  rosterSettings?: DraftRosterSettings | null
   completion?: {
     complete: boolean
     totalPicks: number
@@ -39,6 +40,17 @@ export interface DraftSnapshot {
     excludedPositions: string[]
     scoringFormat: "STANDARD" | "HALF_PPR" | "PPR" | null
   }
+}
+
+export interface DraftRosterSettings {
+  numStartingQbs: number
+  numStartingRbs: number
+  numStartingWrs: number
+  numStartingTes: number
+  numFlex: number
+  numBenchPlayers: number
+  unsupportedLineupSlots: string[]
+  source: "espn_league_settings"
 }
 
 export type DraftSourceHealthStatus =
@@ -190,7 +202,36 @@ const normalizeDraftSnapshot = (
   return {
     ...draft,
     targetRosterIndex: espnTargetRosterIndex(draft),
+    rosterSettings: normalizeRosterSettings(draft.rosterSettings),
   } as unknown as DraftSnapshot
+}
+
+const normalizeRosterSettings = (value: unknown): DraftRosterSettings | null => {
+  if (!isRecord(value) || value.source !== "espn_league_settings") return null
+  const countFields = [
+    "numStartingQbs",
+    "numStartingRbs",
+    "numStartingWrs",
+    "numStartingTes",
+    "numFlex",
+    "numBenchPlayers",
+  ] as const
+  if (countFields.some(field => !Number.isSafeInteger(value[field])
+    || Number(value[field]) < 0 || Number(value[field]) > 30)) return null
+  if (!Array.isArray(value.unsupportedLineupSlots)
+    || value.unsupportedLineupSlots.some(slot => typeof slot !== "string" || !/^\d{1,2}$/.test(slot))) {
+    return null
+  }
+  return {
+    numStartingQbs: Number(value.numStartingQbs),
+    numStartingRbs: Number(value.numStartingRbs),
+    numStartingWrs: Number(value.numStartingWrs),
+    numStartingTes: Number(value.numStartingTes),
+    numFlex: Number(value.numFlex),
+    numBenchPlayers: Number(value.numBenchPlayers),
+    unsupportedLineupSlots: value.unsupportedLineupSlots,
+    source: "espn_league_settings",
+  }
 }
 
 const isSourceHealthStatus = (

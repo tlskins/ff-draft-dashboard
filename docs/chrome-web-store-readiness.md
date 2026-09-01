@@ -9,6 +9,11 @@ Chrome-for-Testing installation/popup/heartbeat smoke, policy-boundary,
 promotional-asset, and upload-bundle checks are implemented. Store approval and
 the post-approval installed-package/live-draft acceptance are complete.
 
+Candidate `0.0.0.12` adds a bounded ESPN league-settings read so Drafty can
+capture the authoritative common starter, flex, and bench counts used by draft
+scorecards. Its upload packet is prepared below; store review and installed-
+package acceptance for this candidate remain human-owned.
+
 This packet follows Chrome's official extension preparation, listing, privacy,
 quality, and limited-use guidance:
 
@@ -48,6 +53,7 @@ Main features:
 
 - synchronizes drafted player, team, position, and pick order;
 - identifies the active draft and supported format metadata when available;
+- reads common roster-slot counts from ESPN league settings for a league draft;
 - reports bounded selector health so Drafty can show capture failures clearly;
 - communicates only with approved Drafty dashboard origins through Chrome's
   extension runtime;
@@ -76,8 +82,10 @@ an ignored `.extension-dev` bundle with localhost access for development.
 ## Remote code declaration
 
 Select **No, I am not using remote code**. Every executed JavaScript file is
-packaged in the extension ZIP. The extension performs no `fetch`, XHR,
-WebSocket, dynamic remote import, `eval`, or `new Function` execution.
+packaged in the extension ZIP. The extension makes one data-only `fetch` to
+ESPN's same-site `mSettings` endpoint for common roster-slot counts; it never
+executes the response as code. It performs no XHR, WebSocket, dynamic remote
+import, `eval`, or `new Function` execution.
 
 ## Privacy-practices answers
 
@@ -85,11 +93,11 @@ Conservative disclosure for the Developer Dashboard:
 
 | Data category | Answer | Explanation |
 |---|---|---|
-| Website content | Yes | The extension reads draft picks and league metadata rendered on supported draft pages. |
+| Website content | Yes | The extension reads draft picks and bounded league metadata, including common roster-slot counts, from supported ESPN draft pages and ESPN's league-settings response. |
 | Web history | Yes, narrowly scoped | It handles the supported draft page URL to identify the draft session; it does not collect general browsing history. |
 | User-generated content | Yes, conservatively | Draft selections can reflect user actions and are relayed as part of the draft snapshot. |
 | Personally identifiable information | No | The extension does not read names, email addresses, account IDs, or Google credentials. A league ID in a supported URL is used only as a draft-session identifier. |
-| Authentication information | No | Cookies, passwords, OAuth tokens, and session credentials are not read. |
+| Authentication information | No | The browser may send existing ESPN session credentials to ESPN for the same-site settings request, but credential values are never read, stored, or relayed by the extension. |
 | Personal communications, financial, health, location | No | These categories are outside the extension's single purpose and code paths. |
 
 Certify that data is used only for the disclosed purpose, is not sold or used
@@ -113,7 +121,7 @@ privacy policy contains the Limited Use affirmation.
 - The optional 1400x560 marquee tile is ready for upload. A YouTube
   demonstration remains optional and human-owned.
 
-Screenshots must come from the installed `0.0.0.11` ZIP, show current product
+Candidate screenshots must come from the installed `0.0.0.12` ZIP, show current product
 behavior, omit private league/account details, and use consistent Drafty
 branding. They are intentionally not fabricated from fixture data in this
 automated slice.
@@ -159,7 +167,7 @@ binary. It does not authenticate to ESPN/NFL.com, select a draft room, observe
 a live pick, or replace human visual judgment.
 
 `npm run extension:bundle:store` writes the verified upload directory to
-`release/chrome-web-store/0.0.0.11/`. It includes the exact extension ZIP,
+`release/chrome-web-store/0.0.0.12/`. It includes the exact extension ZIP,
 128px icon, both promotional images, this submission packet, an explicit
 screenshot reminder, a machine-readable manifest, and SHA-256 checksums. The
 directory is ignored because it duplicates tracked release inputs.
@@ -168,7 +176,7 @@ directory is ignored because it duplicates tracked release inputs.
 
 1. Deploy and verify the privacy and support URLs.
 2. Run `npm run extension:bundle:store`, verify `SHA256SUMS`, and upload
-   `release/chrome-web-store/0.0.0.11/drafty-draft-sync-0.0.0.11.zip` to the
+   `release/chrome-web-store/0.0.0.12/drafty-draft-sync-0.0.0.12.zip` to the
    Chrome Web Store Developer Dashboard.
 3. Enter the identity, listing, host justifications, and privacy declarations
    above; confirm distribution and mature-content choices.

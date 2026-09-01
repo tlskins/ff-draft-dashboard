@@ -59,6 +59,7 @@ import {
 } from "../behavior/mockDraft/archive"
 import {useDraftyWebMcp, type WebMcpRegistrationState} from "../behavior/hooks/useDraftyWebMcp"
 import {useDraftyMockReviewWebMcp} from "../behavior/hooks/useDraftyMockReviewWebMcp"
+import {useDraftyChromeAgentBridge} from "../behavior/hooks/useDraftyChromeAgentBridge"
 import {
   FantasyRanker,
   FantasyPosition,
@@ -409,6 +410,14 @@ const Home: FC = () => {
         ...(snapshot.scoringFormat
           ? { scoringFormat: snapshot.scoringFormat.toLocaleLowerCase() as "standard" | "half_ppr" | "ppr" }
           : {}),
+        ...(snapshot.rosterSettings ? {
+          numStartingQbs: snapshot.rosterSettings.numStartingQbs,
+          numStartingRbs: snapshot.rosterSettings.numStartingRbs,
+          numStartingWrs: snapshot.rosterSettings.numStartingWrs,
+          numStartingTes: snapshot.rosterSettings.numStartingTes,
+          numFlex: snapshot.rosterSettings.numFlex,
+          numBenchPlayers: snapshot.rosterSettings.numBenchPlayers,
+        } : {}),
       })
       if (snapshot.targetRosterIndex !== null
         && snapshot.targetRosterIndex !== undefined) {
@@ -1785,6 +1794,7 @@ const Home: FC = () => {
     currentArchive: completedMockArchive,
     onOpenReview: setWebMcpMockReviewArchive,
   })
+  useDraftyChromeAgentBridge()
 
   const liveAdvisorPanelProps: LiveAdvisorPanelProps = {
     draftStarted,

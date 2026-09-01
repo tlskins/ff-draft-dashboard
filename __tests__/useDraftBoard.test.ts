@@ -36,4 +36,26 @@ describe("useDraftBoard authoritative draft metadata", () => {
     }))
     expect(result.current.settings.scoringFormat).toBe("half_ppr")
   })
+
+  it("applies authoritative platform starter and bench counts together", () => {
+    const {result} = renderHook(() => useDraftBoard())
+    act(() => result.current.applyAuthoritativeDraftSettings({
+      numTeams: 10,
+      numStartingQbs: 1,
+      numStartingRbs: 2,
+      numStartingWrs: 3,
+      numStartingTes: 1,
+      numFlex: 3,
+      numBenchPlayers: 5,
+    }))
+    expect(result.current.settings).toMatchObject({
+      numTeams: 10,
+      numStartingQbs: 1,
+      numStartingRbs: 2,
+      numStartingWrs: 3,
+      numStartingTes: 1,
+      numFlex: 3,
+      numBenchPlayers: 5,
+    })
+  })
 })

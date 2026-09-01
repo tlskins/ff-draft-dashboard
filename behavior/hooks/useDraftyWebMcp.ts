@@ -21,6 +21,7 @@ import {
   toolSuccess,
   webMcpInputErrorResponse,
 } from "../webmcp/draftyWebMcp"
+import {registerChromeAgentTools} from "../webmcp/chromeAgentRegistry"
 
 
 export interface WebMcpRegistrationState {
@@ -64,12 +65,14 @@ export const useWebMcpToolRegistration = (
   tools: WebMCP.ModelContextTool[],
 ): WebMcpRegistrationState => {
   const [state, setState] = useState<WebMcpRegistrationState>(initialRegistrationState)
+  const chromeOwner = useRef(Symbol("drafty-chrome-agent-tools"))
 
   useEffect(() => {
+    const unregisterChromeTools = registerChromeAgentTools(chromeOwner.current, tools)
     const modelContext = document.modelContext
     if (!modelContext) {
       setState({status: "unsupported", registeredToolCount: 0, errorName: null})
-      return
+      return unregisterChromeTools
     }
     const controller = new AbortController()
     let active = true
@@ -91,6 +94,7 @@ export const useWebMcpToolRegistration = (
     return () => {
       active = false
       controller.abort()
+      unregisterChromeTools()
     }
   }, [tools])
 

@@ -20,6 +20,7 @@ import {
   searchDraftyPlayers,
   toolSuccess,
 } from "../behavior/webmcp/draftyWebMcp"
+import {executeChromeAgentTool} from "../behavior/webmcp/chromeAgentRegistry"
 import {
   FantasyPosition,
   NFLTeam,
@@ -345,6 +346,7 @@ describe("Phase 17A WebMCP", () => {
     )
     await waitFor(() => expect(view.result.current.status).toBe("ready"))
     expect(registerTool).toHaveBeenCalledTimes(12)
+    expect(document.documentElement.dataset.draftyChromeAgentToolCount).toBe("12")
     expect(registerTool.mock.calls.map(call => call[0].name)).toEqual(
       DRAFTY_WEBMCP_HOME_TOOL_NAMES,
     )
@@ -373,8 +375,13 @@ describe("Phase 17A WebMCP", () => {
       ok: true,
       result: {draft: {currentPick: 8}},
     })
+    await expect(executeChromeAgentTool("drafty_get_workspace", {}))
+      .resolves.toMatchObject({
+        ok: true,
+        result: {draft: {currentPick: 8}},
+      })
     expect(firstGet).not.toHaveBeenCalled()
-    expect(secondGet).toHaveBeenCalledTimes(2)
+    expect(secondGet).toHaveBeenCalledTimes(3)
     const tools = new Map(registerTool.mock.calls.map(call => [
       call[0].name,
       call[0] as WebMCP.ModelContextTool,

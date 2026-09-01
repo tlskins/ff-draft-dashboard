@@ -4,6 +4,7 @@ const { join } = require("node:path")
 const {
   SELECTOR_VERSION,
   inspectEspnDraft,
+  parseEspnRosterSettings,
 } = require("../public/espnDraftExtractor")
 
 
@@ -96,6 +97,47 @@ describe("ESPN extension selector contract", () => {
       excludedPositions: [],
       scoringFormat: "PPR",
     })
+  })
+
+  it("maps ESPN league settings into Drafty's supported roster shape", () => {
+    expect(parseEspnRosterSettings({
+      settings: {
+        rosterSettings: {
+          lineupSlotCounts: {
+            0: 1,
+            2: 2,
+            4: 3,
+            6: 1,
+            16: 1,
+            17: 1,
+            20: 5,
+            21: 2,
+            23: 3,
+          },
+        },
+      },
+    })).toEqual({
+      numStartingQbs: 1,
+      numStartingRbs: 2,
+      numStartingWrs: 3,
+      numStartingTes: 1,
+      numFlex: 3,
+      numBenchPlayers: 5,
+      unsupportedLineupSlots: [],
+      source: "espn_league_settings",
+    })
+  })
+
+  it("flags unsupported ESPN starter slots instead of coercing them to flex", () => {
+    expect(parseEspnRosterSettings({
+      settings: {rosterSettings: {lineupSlotCounts: {0: 1, 7: 1, 20: 6}}},
+    })).toMatchObject({
+      numStartingQbs: 1,
+      numFlex: 0,
+      numBenchPlayers: 6,
+      unsupportedLineupSlots: ["7"],
+    })
+    expect(parseEspnRosterSettings({settings: {}})).toBeNull()
   })
 
   it("uses live history while the completed board is absent", () => {
@@ -252,7 +294,7 @@ describe("ESPN extension selector contract", () => {
 
   it("loads the extractor before the content script in the manifest", () => {
     const manifest = require("../public/manifest.json")
-    expect(manifest.version).toBe("0.0.0.11")
+    expect(manifest.version).toBe("0.0.0.12")
     const espnEntry = manifest.content_scripts.find(entry => (
       entry.matches.includes("https://fantasy.espn.com/football/draft*")
     ))

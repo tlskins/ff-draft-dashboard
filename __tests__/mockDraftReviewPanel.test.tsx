@@ -28,9 +28,19 @@ describe("completed draft scorecard panel", () => {
     expect(screen.getAllByText("Tier capital").length).toBeGreaterThan(0)
     expect(screen.getAllByText("Starter quality").length).toBeGreaterThan(0)
     expect(screen.getByText(/Best PAR alternate/)).toBeTruthy()
+    expect(screen.getAllByText(/absolute starter PAR/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Captured format/)).toBeTruthy()
+    expect(screen.getByLabelText("Preserve user picks through")).toBeTruthy()
+    expect(screen.getByLabelText("Maximum changed picks")).toBeTruthy()
     const selectors = screen.getAllByLabelText(/Pick \d position/)
     fireEvent.change(selectors[0], {target: {value: "RB"}})
     fireEvent.change(selectors[1], {target: {value: "WR"}})
+    fireEvent.change(screen.getByLabelText("Preserve user picks through"), {
+      target: {value: "1"},
+    })
+    fireEvent.change(screen.getByLabelText("Maximum changed picks"), {
+      target: {value: "2"},
+    })
     expect(screen.getByText(/replay fidelity/i)).toBeTruthy()
     fireEvent.click(screen.getByRole("button", {name: "Position capital"}))
     expect(screen.getByText("Raw position capital")).toBeTruthy()

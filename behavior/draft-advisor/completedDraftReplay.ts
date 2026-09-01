@@ -153,6 +153,8 @@ export interface RecordedCompletedDraftReplay {
     platformRosterSize: number
     excludedPositions: string[]
     rankingProfile?: string
+    rosterSettingsSource?: "espn_league_settings" | "dashboard_configuration"
+    unsupportedLineupSlots?: string[]
   }
   settings: FantasySettings
   targetRosterIndex: number

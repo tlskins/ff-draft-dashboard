@@ -31,6 +31,44 @@
   const text = (element, selector) =>
     element.querySelector(selector)?.textContent?.trim() || ""
 
+  const positiveSlotCount = (value) => {
+    const count = Number(value)
+    return Number.isSafeInteger(count) && count >= 0 ? count : 0
+  }
+  const SUPPORTED_LINEUP_SLOT_IDS = new Set([
+    "0", "2", "3", "4", "5", "6", "16", "17", "20", "21", "23",
+  ])
+
+  /**
+   * ESPN's authenticated league-settings response represents roster slots by
+   * stable numeric IDs. Drafty only maps the common redraft slots it can model
+   * faithfully; unusual offensive-player or IDP slots remain explicit instead
+   * of being silently treated as ordinary flexes.
+   */
+  const parseEspnRosterSettings = (payload) => {
+    const counts = payload?.settings?.rosterSettings?.lineupSlotCounts
+    if (!counts || typeof counts !== "object" || Array.isArray(counts)) {
+      return null
+    }
+    const count = (slot) => positiveSlotCount(counts[String(slot)])
+    const unsupportedLineupSlots = Object.entries(counts)
+      .filter(([slot, value]) => positiveSlotCount(value) > 0
+        && !SUPPORTED_LINEUP_SLOT_IDS.has(slot))
+      .map(([slot]) => slot)
+      .sort((left, right) => Number(left) - Number(right))
+    return {
+      numStartingQbs: count(0),
+      numStartingRbs: count(2),
+      numStartingWrs: count(4),
+      numStartingTes: count(6),
+      // ESPN uses 3 for RB/WR, 5 for WR/TE, and 23 for RB/WR/TE.
+      numFlex: count(3) + count(5) + count(23),
+      numBenchPlayers: count(20),
+      unsupportedLineupSlots,
+      source: "espn_league_settings",
+    }
+  }
+
   const espnPickCoordinate = (pick) => {
     const match = pick.pick.match(/^R(\d+), P(\d+)\b/)
     return match ? `${match[1]}:${match[2]}` : null
@@ -342,5 +380,6 @@
     selectors,
     espnPickCoordinate,
     inspectEspnDraft,
+    parseEspnRosterSettings,
   })
 }))

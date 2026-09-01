@@ -129,6 +129,73 @@ describe("draft feed compatibility", () => {
     })
   })
 
+  it("accepts bounded authoritative ESPN roster settings", () => {
+    const event = normalizeDraftFeedMessage({
+      type: "FF_DRAFT_DASHBOARD",
+      payload: {
+        version: 1,
+        kind: "draft-snapshot",
+        sentAt: 500,
+        draft: {
+          id: "ESPN:236942237",
+          title: "10-Team PPR Draft",
+          platform: "ESPN",
+          capturedAt: 500,
+          sourceUrl: "https://fantasy.espn.com/football/draft?leagueId=236942237&teamId=3",
+          numTeams: 10,
+          rosterSettings: {
+            numStartingQbs: 1,
+            numStartingRbs: 2,
+            numStartingWrs: 3,
+            numStartingTes: 1,
+            numFlex: 3,
+            numBenchPlayers: 5,
+            unsupportedLineupSlots: [],
+            source: "espn_league_settings",
+          },
+          picks: [],
+        },
+      },
+    })
+
+    expect(event).toMatchObject({
+      kind: "draft-snapshot",
+      draft: {rosterSettings: {numStartingWrs: 3, numFlex: 3, numBenchPlayers: 5}},
+    })
+  })
+
+  it("drops malformed ESPN roster settings at the message boundary", () => {
+    const event = normalizeDraftFeedMessage({
+      type: "FF_DRAFT_DASHBOARD",
+      payload: {
+        version: 1,
+        kind: "draft-snapshot",
+        sentAt: 500,
+        draft: {
+          id: "ESPN:236942237",
+          title: "10-Team PPR Draft",
+          platform: "ESPN",
+          capturedAt: 500,
+          sourceUrl: "https://fantasy.espn.com/football/draft?leagueId=236942237&teamId=3",
+          numTeams: 10,
+          rosterSettings: {
+            numStartingQbs: 1,
+            numStartingRbs: 2,
+            numStartingWrs: 3,
+            numStartingTes: 1,
+            numFlex: 99,
+            numBenchPlayers: 5,
+            unsupportedLineupSlots: [],
+            source: "espn_league_settings",
+          },
+          picks: [],
+        },
+      },
+    })
+
+    expect(event).toMatchObject({kind: "draft-snapshot", draft: {rosterSettings: null}})
+  })
+
   it.each([
     ["missing", "https://fantasy.espn.com/football/draft?leagueId=1"],
     ["non-numeric", "https://fantasy.espn.com/football/draft?teamId=3oops"],

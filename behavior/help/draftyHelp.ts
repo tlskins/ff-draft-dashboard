@@ -241,7 +241,7 @@ export const DRAFTY_HELP_CATALOG: Record<DraftyHelpTopic, DraftyHelpArticle> = {
     title: "Use Drafty with a compatible browser agent",
     summary: "Drafty's WebMCP tools expose compact first-party state and bounded actions so compatible agents do not need to scrape or click through the dashboard.",
     prerequisites: [
-      "Use a Chrome or agent environment with WebMCP enabled for the Drafty production origin.",
+      "Use Codex's built-in browser for native WebMCP discovery, or the Drafty Chrome agent bridge when Codex is controlling your signed-in Chrome session.",
       "Keep Drafty open while the agent is reading or changing workspace state.",
     ],
     steps: [
@@ -253,9 +253,10 @@ export const DRAFTY_HELP_CATALOG: Record<DraftyHelpTopic, DraftyHelpArticle> = {
     notes: [
       "Drafty exposes no tool that selects or drafts a player in the external fantasy provider.",
       "Tool availability and mutation reasons are reported in the workspace snapshot.",
+      "The Chrome bridge mirrors the completed-draft WebMCP tool names, inputs, and deterministic results at window.draftyAgentBridge; it does not grant broader browser or provider access.",
     ],
     troubleshooting: [
-      "If no tools are discovered, use the normal human interface and verify the browser's WebMCP feature/origin-trial state.",
+      "If native tools are not discovered in Chrome, verify that window.draftyAgentBridge is ready or use Codex's built-in browser for native WebMCP.",
       "If a mutation is rejected, inspect the returned code and workspace capability reason instead of retrying blindly.",
     ],
     relatedTools: ["drafty_get_workspace", "drafty_search_players", "drafty_get_decision_context"],

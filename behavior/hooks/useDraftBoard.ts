@@ -13,7 +13,7 @@ interface UseDraftBoardReturn {
   replaceSettings: (settings: FantasySettings) => void;
   /** Applies metadata from an accepted, authoritative live draft source. */
   applyAuthoritativeDraftSettings: (
-    metadata: Partial<Pick<FantasySettings, "numTeams" | "ppr" | "scoringFormat">>,
+    metadata: Partial<FantasySettings>,
   ) => void;
   setIsPpr: (isPpr: boolean) => void;
   setScoringFormat: (scoringFormat: ScoringFormat) => void;
@@ -86,7 +86,7 @@ export const useDraftBoard = ({
   // the user is different: ESPN is the authority for its league format, and
   // this functional update keeps its related fields in one state transition.
   const applyAuthoritativeDraftSettings = (
-    metadata: Partial<Pick<FantasySettings, "numTeams" | "ppr" | "scoringFormat">>,
+    metadata: Partial<FantasySettings>,
   ) => {
     setSettings(current => {
       const next = { ...current, ...metadata }

@@ -160,6 +160,11 @@ reports. The dashboard remains
 quiet while capture is healthy and visibly warns when the ESPN draft layout is
 unavailable or only partially readable.
 
+Candidate `0.0.0.12` adds authenticated ESPN league roster-setting capture so
+future completed-draft scorecards can preserve common QB/RB/WR/TE/FLEX/bench
+formats instead of inheriting a stale dashboard default. Version `0.0.0.11`
+remains the published store build until the candidate completes review.
+
 Chrome Web Store listing, privacy, and human acceptance guidance is recorded in
 [docs/chrome-web-store-readiness.md](docs/chrome-web-store-readiness.md).
 
