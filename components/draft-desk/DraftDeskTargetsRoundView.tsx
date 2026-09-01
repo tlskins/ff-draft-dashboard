@@ -22,8 +22,8 @@ interface DraftDeskTargetsRoundViewProps {
   setViewPlayerId: (id: string) => void
   removePlayerTarget: (playerId: string) => void
   currPick: number
-  pinnedPlayerId?: string | null
-  onPinPlayer?: (playerId: string) => void
+  queuedPlayerIds?: readonly string[]
+  onQueuePlayer?: (playerId: string) => void
 }
 
 interface TargetRange {
@@ -49,8 +49,8 @@ const DraftDeskTargetsRoundView = ({
   setViewPlayerId,
   removePlayerTarget,
   currPick,
-  pinnedPlayerId,
-  onPinPlayer,
+  queuedPlayerIds,
+  onQueuePlayer,
 }: DraftDeskTargetsRoundViewProps) => {
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("All")
   const [currentPage, setCurrentPage] = useState(0)
@@ -147,8 +147,8 @@ const DraftDeskTargetsRoundView = ({
                   focused={viewPlayerId === range.player.id}
                   leadingRank={range.rankPick}
                   onFocusPlayer={setViewPlayerId}
-                  onPinPlayer={onPinPlayer}
-                  pinned={pinnedPlayerId === range.player.id}
+                  onQueuePlayer={onQueuePlayer}
+                  queued={queuedPlayerIds?.includes(range.player.id)}
                   player={range.player}
                   rankContext={`Rank R${range.rankRound} → ADP R${range.adpRound}`}
                   rootProps={{

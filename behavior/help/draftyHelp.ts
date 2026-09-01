@@ -83,9 +83,9 @@ export const DRAFTY_HELP_CATALOG: Record<DraftyHelpTopic, DraftyHelpArticle> = {
     steps: [
       "Open Drafty and set the team count, draft slot, scoring format, starters, ranking source, and ADP source before the draft starts.",
       "Choose Position, ADP round, or Targets on the rankings board; save targets or custom positional ranks as needed.",
-      "Sign in with Google only if rankings, targets, and completed mock reviews should synchronize across devices.",
+      "Sign in with Google only if rankings, targets, and completed draft scorecards should synchronize across devices.",
       "For a live draft, open ESPN or NFL.com in the same Chrome profile and connect the detected room from Drafty's bottom dock.",
-      "After a mock completes, open Mock review to inspect the scorecard and deterministic alternate paths.",
+      "After any draft completes, open Draft scorecards to inspect the result and deterministic alternate paths.",
     ],
     notes: [
       "Signing in is optional for live pick capture.",
@@ -139,7 +139,7 @@ export const DRAFTY_HELP_CATALOG: Record<DraftyHelpTopic, DraftyHelpArticle> = {
       "Choose Connect beside the correct detected room.",
       "Keep both tabs open; Drafty will apply picks and update deterministic decision evidence.",
       "Use the rankings board, player profile, and insight deck while the draft is active.",
-      "When the final snapshot completes, use the Mock results ready banner or Mock review control to inspect the saved result.",
+      "When the final snapshot completes, use the Draft results ready banner or Draft scorecards control to inspect the saved result.",
     ],
     notes: [
       "Cloud ranking and target synchronization pauses after live drafting begins so remote profile changes cannot alter the active board.",
@@ -187,7 +187,7 @@ export const DRAFTY_HELP_CATALOG: Record<DraftyHelpTopic, DraftyHelpArticle> = {
   mobile_sync: {
     topic: "mobile_sync",
     title: "Edit on mobile and synchronize devices",
-    summary: "The mobile Drafty surface is optimized for positional ranks, ADP rounds, targets, and completed mock reviews rather than live-draft capture.",
+    summary: "The mobile Drafty surface is optimized for positional ranks, ADP rounds, targets, and completed draft scorecards rather than live-draft capture.",
     prerequisites: [
       "Sign in with the same Google account on each device.",
       "Allow the first device to finish synchronizing before making changes on another device.",
@@ -200,7 +200,7 @@ export const DRAFTY_HELP_CATALOG: Record<DraftyHelpTopic, DraftyHelpArticle> = {
       "If both devices changed independently, explicitly choose the cloud copy or this device when Drafty presents a conflict.",
     ],
     notes: [
-      "Ranks, targets, and mock results are separated by fantasy season.",
+      "Ranks, targets, and draft results are separated by fantasy season.",
       "Mobile does not replace desktop Chrome for connecting the Drafty Draft Sync extension to a live draft.",
     ],
     troubleshooting: [
@@ -219,7 +219,7 @@ export const DRAFTY_HELP_CATALOG: Record<DraftyHelpTopic, DraftyHelpArticle> = {
       "Sign in if the completed mock should synchronize across devices; otherwise Drafty retains a browser-local copy.",
     ],
     steps: [
-      "Open the Mock results ready banner or the Mock review control.",
+      "Open the Draft results ready banner or the Draft scorecards control.",
       "Choose a completed mock from the history strip.",
       "Inspect Overview, Position capital, Pick decisions, Alternate paths, and Method.",
       "Optionally choose the first two positions for a deterministic alternate roster path.",
@@ -315,7 +315,7 @@ export const parseDraftyHelpInput = (value: unknown): DraftyHelpInput => {
 export const getDraftyHelp = ({topic, platform}: DraftyHelpInput): DraftyHelpResult => {
   const article = DRAFTY_HELP_CATALOG[topic]
   const platformNote = platform === "mobile"
-    ? "Mobile supports rankings, targets, synchronized profiles, and mock reviews; connect live drafts from desktop Chrome."
+    ? "Mobile supports rankings, targets, synchronized profiles, and draft scorecards; connect live drafts from desktop Chrome."
     : platform === "desktop"
       ? "Desktop Chrome supports the full Drafty workspace and the Drafty Draft Sync live-draft connection."
       : null

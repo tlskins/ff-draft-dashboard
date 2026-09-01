@@ -38,8 +38,8 @@ interface ADPViewProps {
   compact?: boolean
   adpRoundPage?: number
   onAdpRoundPageChange?: (page: number) => void
-  pinnedPlayerId?: string | null
-  onPinPlayer?: (playerId: string) => void
+  queuedPlayerIds?: readonly string[]
+  onQueuePlayer?: (playerId: string) => void
   filterRankedBelowAdp?: boolean
   onFilterRankedBelowAdpChange?: (enabled: boolean) => void
 }
@@ -63,8 +63,8 @@ const ADPView: React.FC<ADPViewProps> = ({
   compact = false,
   adpRoundPage,
   onAdpRoundPageChange,
-  pinnedPlayerId,
-  onPinPlayer,
+  queuedPlayerIds,
+  onQueuePlayer,
   filterRankedBelowAdp = false,
   onFilterRankedBelowAdpChange,
 }) => {
@@ -229,7 +229,7 @@ const ADPView: React.FC<ADPViewProps> = ({
             myPicks={myPicks}
             onSwitchToTargetsView={handleSwitchToTargetsView}
             onCurrentPageChange={onAdpRoundPageChange}
-            onPinPlayer={onPinPlayer}
+            onQueuePlayer={onQueuePlayer}
             playerLib={playerLib}
             playerRanks={playerRanks}
             playerTargets={playerTargets}
@@ -238,7 +238,7 @@ const ADPView: React.FC<ADPViewProps> = ({
             replacePlayerTargets={replacePlayerTargets}
             setViewPlayerId={setViewPlayerId}
             viewPlayerId={viewPlayerId}
-            pinnedPlayerId={pinnedPlayerId}
+            queuedPlayerIds={queuedPlayerIds}
             filterRankedBelowAdp={filterRankedBelowAdp}
             onFilterRankedBelowAdpChange={onFilterRankedBelowAdpChange}
           />

@@ -18,6 +18,8 @@ export interface Roster {
     [FantasyPosition.RUNNING_BACK]: string[]
     [FantasyPosition.WIDE_RECEIVER]: string[]
     [FantasyPosition.TIGHT_END]: string[]
+    [FantasyPosition.DEFENSE]?: string[]
+    [FantasyPosition.KICKER]?: string[]
 }
 
 export type PositionCounts = {
@@ -200,7 +202,7 @@ export const createPlayerRanks = (players: Player[], settings: FantasySettings, 
         availPlayersByOverallRank: [],
         availPlayersByAdp: [],
     }
-    players.forEach( player => {
+    players.filter(player => rankablePositions.includes(player.position)).forEach( player => {
         playerRanks = addAvailPlayer( playerRanks, player, settings, boardSettings )
     })
     playerRanks = sortPlayerRanksByRank( playerRanks, settings, boardSettings, SortPlayersByMetric.PosRank )
@@ -213,13 +215,19 @@ export const removePlayerFromBoard = ( playerRanks: PlayerRanks, player: Player 
     playerRanks.availPlayersByAdp = playerRanks.availPlayersByAdp.filter( p => p.id !== player.id )
     playerRanks.Purge = playerRanks.Purge.filter( p => p.id !== player.id )
     const playerPos = player.position as keyof PlayerRanks
-    const nextPlayerPosRanks = playerRanks[playerPos].filter( p => p.id !== player.id )
-    playerRanks[playerPos] = nextPlayerPosRanks
+    const positionRanks = playerRanks[playerPos]
+    if (Array.isArray(positionRanks)) {
+        playerRanks[playerPos] = positionRanks.filter( p => p.id !== player.id )
+    }
 
     return { ...playerRanks }
 }
 
 export const addAvailPlayer = (playerRanks: PlayerRanks, player: Player, settings: FantasySettings, boardSettings: BoardSettings): PlayerRanks => {
+    if (!rankablePositions.includes(player.position)) return {...playerRanks}
+    if (playerRanks.availPlayersByOverallRank.some(candidate => candidate.id === player.id)) {
+        return {...playerRanks}
+    }
     playerRanks.availPlayersByOverallRank.push( player )
     playerRanks.availPlayersByAdp.push( player )
     playerRanks.availPlayersByOverallRank = playerRanks.availPlayersByOverallRank.sort((a, b) => {
@@ -308,7 +316,9 @@ export const createRosters = (numTeams: number): Roster[] => {
         QB: [],
         RB: [],
         WR: [],
-        TE: []
+        TE: [],
+        DST: [],
+        K: [],
     }))
 
     return rosters
@@ -329,7 +339,7 @@ export const addToRoster = ( rosters: Roster[], player: Player, rosterIdx: numbe
         {
             ...roster,
             picks: [...roster.picks, player.id],
-            [player.position]: [...roster[player.position as 'QB' | 'RB' | 'WR' | 'TE'], player.id],
+            [player.position]: [...(roster[player.position as keyof Roster] as string[] || []), player.id],
         },
         ...rosters.slice(rosterIdx+1, rosters.length),
     ]
@@ -346,7 +356,7 @@ export const removeFromRoster = ( rosters: Roster[], player: Player, rosterIdx: 
         {
             ...roster,
             picks: roster.picks.filter( id => id !== player.id ),
-            [player.position]: roster[player.position as 'QB' | 'RB' | 'WR' | 'TE'].filter( id => id !== player.id ),
+            [player.position]: ((roster[player.position as keyof Roster] as string[] || [])).filter( id => id !== player.id ),
         },
         ...rosters.slice(rosterIdx+1, rosters.length),
     ]

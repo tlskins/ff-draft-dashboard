@@ -472,10 +472,11 @@ const Home: FC = () => {
       .sort((left, right) => left.id.localeCompare(right.id))
   }, [playerRanks])
   const draftTickerActivity = useMemo(() => (
-    [...draftActivity, ...predictionActivity]
+    [...draftActivity]
       .sort((left, right) => left.occurredAt - right.occurredAt)
       .slice(-8)
-  ), [draftActivity, predictionActivity])
+  ), [draftActivity])
+  const latestRunAlert = predictionActivity.at(-1) || null
   const automaticComparisonSet = useMemo(() => buildAdvisorComparisonSet({
     recommendations,
     availablePlayers: analysisAvailablePlayers,
@@ -513,7 +514,7 @@ const Home: FC = () => {
   ])
   const [sortOption, setSortOption] = useState<SortOption>(SortOption.RANKS)
   const [viewPlayerId, setViewPlayerId] = useState<string | null>(null)
-  const [pinnedProfilePlayerId, setPinnedProfilePlayerId] = useState<string | null>(null)
+  const [comparisonQueueIds, setComparisonQueueIds] = useState<string[]>([])
   const [profileModule, setProfileModule] = useState<ProfileModuleId | null>("production")
   const [profileAdvancedDetailsOpen, setProfileAdvancedDetailsOpen] = useState(true)
   const [webMcpMockReviewArchive, setWebMcpMockReviewArchive] =
@@ -524,12 +525,19 @@ const Home: FC = () => {
   const [insightWebMcpRegistration, setInsightWebMcpRegistration] =
     useState<WebMcpRegistrationState>(UNSUPPORTED_WEBMCP_REGISTRATION)
   const focusBoardPlayer = useCallback((playerId: string | null) => {
-    if (!pinnedProfilePlayerId) setViewPlayerId(playerId)
-  }, [pinnedProfilePlayerId])
-  const togglePinnedProfilePlayer = useCallback((playerId: string) => {
-    setPinnedProfilePlayerId(current => current === playerId ? null : playerId)
-    setViewPlayerId(playerId)
-  }, [])
+    if (comparisonQueueIds.length === 0) setViewPlayerId(playerId)
+  }, [comparisonQueueIds.length])
+  const applyComparisonQueue = useCallback((ids: string[]) => {
+    const next = Array.from(new Set(ids)).filter(id => playerLib[id]).slice(0, 3)
+    setComparisonQueueIds(next)
+    comparisonController.setPinnedPlayers?.(next.map(id => playerLib[id]))
+    setViewPlayerId(next[0] || automaticComparisonSet[0]?.player.id || null)
+  }, [automaticComparisonSet, comparisonController, playerLib])
+  const toggleComparisonQueuePlayer = useCallback((playerId: string) => {
+    applyComparisonQueue(comparisonQueueIds.includes(playerId)
+      ? comparisonQueueIds.filter(id => id !== playerId)
+      : [playerId, ...comparisonQueueIds.filter(id => id !== playerId)].slice(0, 3))
+  }, [applyComparisonQueue, comparisonQueueIds])
   const [selectedOptimalRosterIdx, setSelectedOptimalRosterIdx] = useState(0)
   const [analysisOpen, setAnalysisOpen] = useState(false)
   const draftDeskEnabled = isDraftDeskEnabled()
@@ -791,7 +799,7 @@ const Home: FC = () => {
         archive: null,
         error: caught instanceof Error
           ? caught.message
-          : "Completed mock scorecard could not be created",
+          : "Completed draft scorecard could not be created",
       }
     }
   }, [
@@ -1213,9 +1221,7 @@ const Home: FC = () => {
       profile: {
         playerId: currentPlayer?.id || null,
         playerName: currentPlayer?.fullName || null,
-        pinned: Boolean(
-          pinnedProfilePlayerId && pinnedProfilePlayerId === currentPlayer?.id,
-        ),
+        pinned: Boolean(currentPlayer && comparisonQueueIds.includes(currentPlayer.id)),
         module: profileModule || "auto",
         advancedDetailsOpen: profileAdvancedDetailsOpen,
       },
@@ -1265,7 +1271,7 @@ const Home: FC = () => {
     insightAgentState,
     isEditingCustomRanking,
     myPickNum,
-    pinnedProfilePlayerId,
+    comparisonQueueIds,
     playerLib,
     playerTargetsHydrated,
     playerTargets.length,
@@ -1472,8 +1478,14 @@ const Home: FC = () => {
       return toolFailure("not_found", `Player ${input.player_id} is not in the current Drafty universe.`)
     }
     const pin = input.pin !== false
-    setViewPlayerId(player.id)
-    setPinnedProfilePlayerId(pin ? player.id : null)
+    if (pin) {
+      applyComparisonQueue([
+        player.id,
+        ...comparisonQueueIds.filter(id => id !== player.id),
+      ].slice(0, 3))
+    } else {
+      setViewPlayerId(player.id)
+    }
     const nextModule = input.module === undefined
       ? profileModule
       : input.module === "auto" ? null : input.module
@@ -1495,7 +1507,7 @@ const Home: FC = () => {
       `${player.fullName} is shown in the player profile.`,
       "accepted",
     )
-  }, [playerLib, profileAdvancedDetailsOpen, profileModule])
+  }, [applyComparisonQueue, comparisonQueueIds, playerLib, profileAdvancedDetailsOpen, profileModule])
 
   const setWebMcpPlayerTarget = useCallback((input: DraftySetPlayerTargetInput) => {
     const player = playerLib[input.player_id]
@@ -1946,8 +1958,19 @@ const Home: FC = () => {
               />
             </div>
           )}
-          {startupMigrationStatus && (
-            <p className="mb-2 hidden px-3 text-left text-xs text-slate-600 xl:block" role="status">
+          {draftDeskEnabled && latestRunAlert && (
+            <div
+              className={`${draftDeskStyles.runAlertBanner} ${latestRunAlert.tone === "warning" ? draftDeskStyles.runAlertWarning : latestRunAlert.tone === "positive" ? draftDeskStyles.runAlertPositive : ""}`}
+              key={`${latestRunAlert.id}:${latestRunAlert.occurredAt}`}
+              role="status"
+            >
+              <strong>{latestRunAlert.label}</strong>
+              {latestRunAlert.detail && <span>{latestRunAlert.detail}</span>}
+            </div>
+          )}
+          {draftDeskEnabled && startupMigrationStatus && !latestRunAlert
+            && !/canonical profile v2 is current/i.test(startupMigrationStatus) && (
+            <p className={draftDeskStyles.profileStatusBanner} role="status">
               {startupMigrationStatus}
             </p>
           )}
@@ -2020,8 +2043,8 @@ const Home: FC = () => {
                             onSelectPlayer={onSelectPlayer}
                             onPurgePlayer={onPurgeAvailPlayer}
                             setViewPlayerId={focusBoardPlayer}
-                            pinnedPlayerId={pinnedProfilePlayerId}
-                            onPinPlayer={togglePinnedProfilePlayer}
+                            queuedPlayerIds={comparisonQueueIds}
+                            onQueuePlayer={toggleComparisonQueuePlayer}
                             visiblePositions={rankingVisiblePositions}
                             onVisiblePositionsChange={setRankingVisiblePositions}
                             onAdpRoundPageChange={setAdpRoundPage}
@@ -2086,11 +2109,15 @@ const Home: FC = () => {
                               availablePlayers={analysisAvailablePlayers}
                               boardSettings={boardSettings}
                               comparisonController={comparisonController}
+                              comparisonQueuePlayers={comparisonQueueIds.map(id => playerLib[id]).filter(Boolean)}
                               draftPlan={realtimeAdvisor.plan}
                               materialEvent={draftDeskInsightMaterialEvent}
                               myRosterIndex={myPickNum - 1}
                               onAgentStateChange={setInsightAgentState}
                               onInspectPlayer={player => setViewPlayerId(player.id)}
+                              onRemoveComparisonPlayer={playerId => applyComparisonQueue(
+                                comparisonQueueIds.filter(id => id !== playerId),
+                              )}
                               onWebMcpRegistrationStateChange={setInsightWebMcpRegistration}
                               opponentForecast={opponentForecast}
                               playerStatus={playerStatus}

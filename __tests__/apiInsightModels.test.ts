@@ -110,13 +110,16 @@ describe("API-backed insight presentation models", () => {
   })
 
   it("limits rank disagreement to published board rankers", () => {
-    const model = buildRankTierDisagreementModel([player("one")], settings)
+    const model = buildRankTierDisagreementModel([
+      player("one"), player("two"), player("three"), player("four"),
+    ], settings)
     expect(model.state).toBe("ready")
     expect(model.maximumSpread).toBe(9)
     expect(model.players[0].ranks.map(rank => rank.source)).toEqual([
       ThirdPartyRanker.ESPN,
       ThirdPartyRanker.HARRIS,
     ])
+    expect(model.players).toHaveLength(4)
   })
 
   it("surfaces only fresh actionable player status", () => {

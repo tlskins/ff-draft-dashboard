@@ -1,5 +1,5 @@
 import React from "react"
-import {render, screen} from "@testing-library/react"
+import {fireEvent, render, screen} from "@testing-library/react"
 
 import {
   CurrentBoardProjectionSurface,
@@ -103,6 +103,17 @@ describe("compact API insight surfaces", () => {
     const region = screen.getByRole("region", {name: "Rank and tier disagreement"})
     expect(region).toBeTruthy()
     expect(region.textContent).toContain("8-spot spread")
+    fireEvent.change(screen.getByLabelText("Filter disagreement position"), {
+      target: {value: "WR"},
+    })
+    expect(region.textContent).toContain("0 matching players")
+    fireEvent.change(screen.getByLabelText("Filter disagreement position"), {
+      target: {value: "RB"},
+    })
+    fireEvent.change(screen.getByLabelText("Search disagreement players"), {
+      target: {value: "Player One"},
+    })
+    expect(region.textContent).toContain("1 matching players")
   })
 
   it("distinguishes loaded rankings from unrecorded provider freshness", () => {

@@ -32,6 +32,28 @@
   min-width: 0;
 }
 
+.runAlertBanner,
+.profileStatusBanner {
+  width: calc(100% - 20px);
+  margin: 4px 10px;
+  padding: 5px 10px;
+  border: 1px solid #9a7a3d;
+  color: #f7ead0;
+  background: #4b3d27;
+  font-size: 10px;
+  text-align: left;
+}
+.runAlertBanner { animation: run-alert-pulse 850ms ease-out 1; }
+.runAlertBanner strong { margin-right: 8px; text-transform: uppercase; letter-spacing: .05em; }
+.runAlertBanner span { color: #fff4df; }
+.runAlertPositive { border-color: #4d8d72; color: #d7f2e5; background: #29483b; }
+.runAlertWarning { border-color: #d2a34d; color: #fff0cf; background: #594426; }
+.profileStatusBanner { border-color: #647783; color: #d4dde1; background: #29363e; }
+@keyframes run-alert-pulse {
+  0% { filter: brightness(1.8); box-shadow: 0 0 0 3px rgb(232 168 62 / 42%); }
+  100% { filter: brightness(1); box-shadow: none; }
+}
+
 @media (min-width: 1280px) {
   .deskViewport {
     display: flex;
@@ -196,7 +218,7 @@
   grid-template-columns:
     minmax(380px, .95fr)
     minmax(360px, 1fr)
-    minmax(430px, 1.2fr);
+    minmax(365px, 1.02fr);
   gap: 1px;
   overflow: hidden;
   background: var(--desk-divider);
@@ -408,30 +430,13 @@
 .playerCardActions { display: none; align-items: center; gap: 3px; margin-top: 3px; }
 .playerCard:hover .playerCardActions,
 .playerCard:focus-within .playerCardActions { display: flex; }
+.playerCard:hover,
+.playerCard:focus-within { min-height: 54px; z-index: 1; }
 .playerCardActions button,
 .playerCardActions select { min-height: 18px; padding: 1px 3px; border: 1px solid #b8c1c5; border-radius: 2px; color: #36556a; background: #f4f3ef; font-size: 7px; line-height: 1; }
-.playerCardPin {
-  position: absolute;
-  top: 2px;
-  right: 3px;
-  display: none;
-  width: auto;
-  min-width: 31px;
-  height: 18px;
-  padding: 1px 4px;
-  border: 1px solid #9dabb1;
-  border-radius: 2px;
-  color: #315e75;
-  background: #f4f3ef;
-  font-size: 7px;
-  font-weight: 750;
-  line-height: 1;
-}
-.playerCard:hover .playerCardPin,
-.playerCard:focus-within .playerCardPin,
-.playerCardPin[aria-pressed="true"] { display: grid; place-items: center; }
-.playerCard:hover .tierFlag,
-.playerCard:focus-within .tierFlag { margin-right: 36px; }
+.playerCardQueue { display: inline-grid; width: 20px; place-items: center; }
+.playerCardQueue svg { width: 12px; height: 12px; }
+.playerCardQueue[aria-pressed="true"] { color: #fff; border-color: #315e75; background: #315e75; }
 .adpTimingCue { flex: 0 0 auto; padding: 1px 3px; border-radius: 2px; font-size: 6px; font-weight: 750; letter-spacing: .02em; }
 .adpTimingEarly { color: #71541d; background: #eee0bd; }
 .adpTimingRange { color: #315e75; background: #d6e5eb; }
@@ -983,34 +988,20 @@
 .dockModeToggle button:not([aria-pressed="true"]):hover { background: #26313a; }
 .dockModeContent { min-width: 0; flex: 1 1 auto; }
 
-.rosterSlots,
-.leagueNeedList {
-  display: flex;
-  min-width: 0;
-  align-items: center;
+.rosterMatrix {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 3px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
-.rosterSlots > span,
-.leagueNeedRow {
-  min-width: 0;
-  padding: 4px 5px;
-  border-left: 2px solid #53626b;
-  color: #aeb9bf;
-  background: #29353d;
-  font-size: 8px;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-.rosterSlots strong,
-.leagueNeedRow strong { margin-right: 3px; color: #f2f4f4; font-weight: 650; }
-.rosterSlots .emptySlot { color: #849198; background: #253038; }
-.leagueNeedRow { display: flex; flex: 1 1 auto; justify-content: space-between; gap: 3px; }
-.rosterDetails { margin-top: 3px; color: #94a2aa; font-size: 7px; }
-.rosterDetails summary { display: inline; cursor: pointer; }
-.rosterDetails ul { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin: 3px 0 0; padding: 0; list-style: none; }
+.rosterMatrix section { min-width: 0; background: #29353d; }
+.rosterMatrix section > strong { display: block; padding: 2px 4px; color: #f2f4f4; background: #202a31; font-size: 7px; }
+.rosterMatrix section > span { display: flex; min-width: 0; justify-content: space-between; gap: 3px; padding: 2px 4px; overflow: hidden; border-top: 1px solid #36444d; color: #c5cdd2; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.rosterMatrix section > span small { flex: 0 0 auto; color: #e0b66d; font-size: 7px; font-weight: 700; }
+.rosterMatrix .emptySlot { color: #76858e; }
+.leagueNeedTable { width: 100%; border-collapse: separate; border-spacing: 2px; font-size: 7px; text-align: center; }
+.leagueNeedTable th { color: #aeb9bf; font-weight: 650; }
+.leagueNeedTable thead th { color: #f2f4f4; }
+.leagueNeedTable td { padding: 2px 4px; color: #f2f4f4; background: color-mix(in srgb, #315f4c calc(var(--need-fill) * 100%), #6c3d32); font-weight: 750; }
 .dockRound { overflow-x: auto; }
 .dockRound table { width: 100%; border-collapse: separate; border-spacing: 2px; }
 .dockRound tr { display: flex; }

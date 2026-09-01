@@ -87,8 +87,8 @@ interface RankingsBoardProps {
   rankingProfileControls: RankingProfileControls
   compact?: boolean
   hideCompactModeControl?: boolean
-  pinnedPlayerId?: string | null
-  onPinPlayer?: (playerId: string) => void
+  queuedPlayerIds?: readonly string[]
+  onQueuePlayer?: (playerId: string) => void
   visiblePositions?: readonly RankingLanePosition[]
   onVisiblePositionsChange?: (positions: RankingLanePosition[]) => void
   adpRoundPage?: number
@@ -152,8 +152,8 @@ const RankingsBoard = ({
   rankingProfileControls,
   compact = false,
   hideCompactModeControl = false,
-  pinnedPlayerId,
-  onPinPlayer,
+  queuedPlayerIds,
+  onQueuePlayer,
   visiblePositions,
   onVisiblePositionsChange,
   adpRoundPage: controlledAdpRoundPage,
@@ -230,8 +230,8 @@ const RankingsBoard = ({
     addPlayerTarget,
     removePlayerTarget,
     compact,
-    pinnedPlayerId,
-    onPinPlayer,
+    queuedPlayerIds,
+    onQueuePlayer,
     visiblePositions,
     onVisiblePositionsChange,
   }
@@ -277,7 +277,7 @@ const RankingsBoard = ({
           myPicks={myPicks}
           onSelectPlayer={onSelectPlayer}
           onAdpRoundPageChange={setAdpRoundPage}
-          onPinPlayer={onPinPlayer}
+          onQueuePlayer={onQueuePlayer}
           playerLib={playerLib}
           playerRanks={playerRanks}
           playerTargets={playerTargets}
@@ -287,7 +287,7 @@ const RankingsBoard = ({
           replacePlayerTargets={replacePlayerTargets}
           setViewPlayerId={setViewPlayerId}
           viewPlayerId={viewPlayerId}
-          pinnedPlayerId={pinnedPlayerId}
+          queuedPlayerIds={queuedPlayerIds}
           filterRankedBelowAdp={filterRankedBelowAdp}
           onFilterRankedBelowAdpChange={setFilterRankedBelowAdp}
         />
@@ -300,8 +300,8 @@ const RankingsBoard = ({
           boardSettings={boardSettings}
           currPick={currPick}
           fantasySettings={fantasySettings}
-          onPinPlayer={onPinPlayer}
-          pinnedPlayerId={pinnedPlayerId}
+          onQueuePlayer={onQueuePlayer}
+          queuedPlayerIds={queuedPlayerIds}
           playerLib={playerLib}
           playerRanks={playerRanks}
           playerTargets={playerTargets}

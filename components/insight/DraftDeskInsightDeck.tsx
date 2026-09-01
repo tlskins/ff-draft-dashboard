@@ -93,6 +93,8 @@ export interface DraftDeskInsightDeckProps {
   myRosterIndex: number
   draftPlan: DraftPlanDocument | null
   onInspectPlayer: (player: Player) => void
+  comparisonQueuePlayers?: readonly Player[]
+  onRemoveComparisonPlayer?: (playerId: string) => void
   playerTargets?: readonly PlayerTarget[]
   visibleTierPositions?: readonly TierLandscapePosition[]
   onVisibleTierPositionsChange?: (positions: TierLandscapePosition[]) => void
@@ -154,6 +156,8 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
   myRosterIndex,
   draftPlan,
   onInspectPlayer,
+  comparisonQueuePlayers = [],
+  onRemoveComparisonPlayer,
   playerTargets = [],
   visibleTierPositions = DEFAULT_TIER_POSITIONS,
   onVisibleTierPositionsChange,
@@ -287,8 +291,8 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
     [comparisonPlayers, playerStatus],
   )
   const rankTierDisagreement = useMemo(
-    () => buildRankTierDisagreementModel(comparisonPlayers, settings),
-    [comparisonPlayers, settings],
+    () => buildRankTierDisagreementModel(availablePlayers, settings),
+    [availablePlayers, settings],
   )
   const sourceReadiness = useMemo(
     () => buildSourceReadinessInsightModel(
@@ -374,10 +378,12 @@ const DraftDeskInsightDeck: React.FC<DraftDeskInsightDeckProps> = ({
 
   return (
     <InsightDeck
+      comparisonQueuePlayers={comparisonQueuePlayers}
       controller={controller}
       defaultExpandedViewId="current_tier_market"
       expandedSlot={expandedSlot}
       onExpandedSlotChange={setExpandedSlot}
+      onRemoveComparisonPlayer={onRemoveComparisonPlayer}
       renderView={viewId => {
         switch (viewId) {
           case "candidate_comparison":

@@ -196,17 +196,12 @@ describe("Phase 14A desk components", () => {
 
     fireEvent.click(screen.getByRole("button", {name: "Your roster"}))
     expect(screen.getByTestId("draft-dock-roster").textContent).toContain("Observed roster slots")
-    expect(screen.getByTestId("draft-dock-roster").textContent).toContain("FLEX")
+    expect(screen.getByTestId("draft-dock-roster").textContent).toContain("DST")
     expect(tape.textContent).toContain("#5 · 1 away")
-    const rosterDetails = screen.getByText("Expand roster detail").closest("details")
-    expect(rosterDetails?.open).toBe(false)
-    fireEvent.click(screen.getByText("Expand roster detail"))
-    expect(rosterDetails?.open).toBe(true)
-    expect(tape.textContent).toContain("#5 · 1 away")
-
     fireEvent.click(screen.getByRole("button", {name: "League needs"}))
-    expect(screen.getByTestId("draft-dock-league-needs").textContent).toContain("Other teams")
-    expect(screen.getByTestId("draft-dock-league-needs").textContent).toContain("FLEX")
+    expect(screen.getByTestId("draft-dock-league-needs").textContent).toContain("Teams missing each positional roster slot")
+    expect(screen.getByTestId("draft-dock-league-needs").textContent).toContain("DST")
+    expect(screen.getAllByRole("row")).toHaveLength(5)
     expect(tape.textContent).toContain("#5 · 1 away")
   })
 

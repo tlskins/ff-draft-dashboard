@@ -16,7 +16,7 @@
   display: grid;
   min-height: 0;
   flex: 1 1 auto;
-  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-columns: 280px minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -28,6 +28,13 @@
 .historyList {
   display: grid;
   gap: 4px;
+}
+
+.historyTitle {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .reviewContent {
@@ -65,6 +72,29 @@
 .rosterList {
   column-gap: 16px;
   row-gap: 4px;
+}
+
+.rosterList li {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.rosterList li span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rosterList li small {
+  flex: 0 0 auto;
+  color: #4b5563;
+  font-size: .72rem;
+  font-weight: 700;
 }
 
 .deltaGrid {

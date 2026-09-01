@@ -58,8 +58,8 @@ const RankingView = ({
   removePlayerTarget,
   onEditRankings,
   compact = false,
-  pinnedPlayerId,
-  onPinPlayer,
+  queuedPlayerIds,
+  onQueuePlayer,
   visiblePositions,
   onVisiblePositionsChange,
   filterRankedBelowAdp,
@@ -69,7 +69,7 @@ const RankingView = ({
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
   const [isRosterVisible, setIsRosterVisible] = useState(false)
   const [animatingOutPlayers, setAnimatingOutPlayers] = useState<Set<string>>(new Set())
-  const { AnyAiFillCheckCircle, AnyBsLink, AnyTiDelete } = getIconTypes()
+  const { AnyAiFillCheckCircle, AnyTiDelete } = getIconTypes()
   const draftBoard = useMemo(() => getDraftBoard(
     playerRanks,
     predictedPicks,
@@ -126,10 +126,17 @@ const RankingView = ({
       && !target
     return (
       <DraftDeskPlayerCard
-        actions={focused && !animating ? <>
-          <button aria-label={`Purge ${player.fullName}`} className={`${styles.focusRing} rounded border border-rose-300 px-1 text-rose-700 hover:bg-rose-50`} onClick={() => onPurgePlayer(player)} type="button"><AnyTiDelete size={16} /></button>
-          <button aria-label={`Draft ${player.fullName}`} className={`${styles.focusRing} rounded border border-emerald-300 px-1 text-emerald-700 hover:bg-emerald-50`} onClick={() => selectPlayer(player)} type="button"><AnyAiFillCheckCircle size={16} /></button>
-          <button aria-label={`Open ${player.fullName} game log`} className={`${styles.focusRing} rounded border border-sky-300 px-1 text-sky-700 hover:bg-sky-50`} onClick={() => window.open(`https://www.fantasypros.com/nfl/games/${player.firstName.toLowerCase()}-${player.lastName.toLowerCase()}.php`)} type="button"><AnyBsLink size={16} /></button>
+        actions={!animating ? <>
+          <button aria-label={`Purge ${player.fullName}`} className={`${styles.focusRing} rounded border border-rose-300 px-1 text-rose-700 hover:bg-rose-50`} onClick={event => { event.stopPropagation(); onPurgePlayer(player) }} type="button"><AnyTiDelete size={16} /></button>
+          <button aria-label={`Draft ${player.fullName}`} className={`${styles.focusRing} rounded border border-emerald-300 px-1 text-emerald-700 hover:bg-emerald-50`} onClick={event => { event.stopPropagation(); selectPlayer(player) }} type="button"><AnyAiFillCheckCircle size={16} /></button>
+          <button onClick={event => {
+            event.stopPropagation()
+            if (target) removePlayerTarget(player.id)
+            else addPlayerTarget(
+              player,
+              Math.max(1, myCurrentRound(currPick, myPickNum, fantasySettings.numTeams)),
+            )
+          }} type="button">{target ? "Un-target" : "Target"}</button>
         </> : undefined}
         className={`${animating ? "opacity-40" : ""} ${mutedByRankAdpFilter ? styles.playerCardRankAdpMuted : ""}`}
         compact={compact}
@@ -138,8 +145,8 @@ const RankingView = ({
         key={`${player.id}-${index}`}
         boardSettings={boardSettings}
         onFocusPlayer={id => !animating && setViewPlayerId(id)}
-        onPinPlayer={onPinPlayer}
-        pinned={pinnedPlayerId === player.id}
+        onQueuePlayer={onQueuePlayer}
+        queued={queuedPlayerIds?.includes(player.id)}
         player={player}
         currentPick={currPick}
         leadingRank={metrics.posRank || index + 1}

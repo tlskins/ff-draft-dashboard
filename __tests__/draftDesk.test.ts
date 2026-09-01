@@ -1,5 +1,6 @@
 import {
   DEFAULT_DRAFT_DESK_PANE_PLACEMENT,
+  buildDraftDeskLeagueNeedMatrix,
   buildDraftDeskLeagueNeeds,
   buildDraftDeskRosterSlots,
   createDraftDeskInsightMaterialEvent,
@@ -73,6 +74,24 @@ describe("Phase 14A draft desk presentation state", () => {
     })
     expect(needs.find(need => need.label === "FLEX")?.description)
       .toMatch(/not assigned to RB or WR/)
+  })
+
+  it("counts four positional depth rows across every league roster", () => {
+    const needs = buildDraftDeskLeagueNeedMatrix([
+      roster({QB: [], RB: ["mine-rb"], K: ["mine-k"]}),
+      roster({QB: ["other-qb"], RB: ["other-rb-1", "other-rb-2"], DST: ["other-dst"]}),
+      roster({QB: ["third-qb", "third-qb-2"], RB: []}),
+    ])
+
+    expect(needs).toHaveLength(24)
+    expect(needs.find(need => need.position === "QB" && need.slot === 1))
+      .toMatchObject({teamsMissing: 1, teamCount: 3})
+    expect(needs.find(need => need.position === "QB" && need.slot === 2))
+      .toMatchObject({teamsMissing: 2, teamCount: 3})
+    expect(needs.find(need => need.position === "K" && need.slot === 1))
+      .toMatchObject({teamsMissing: 2, teamCount: 3})
+    expect(needs.find(need => need.position === "DST" && need.slot === 1))
+      .toMatchObject({teamsMissing: 2, teamCount: 3})
   })
 
   it("leaves the candidate off when the feature flag is absent or false", () => {

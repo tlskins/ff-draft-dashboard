@@ -326,7 +326,7 @@ describe("deterministic draft recommendations", () => {
     const roster = createRosters(settings.numTeams)[0]
     drafted.forEach(draftedPlayer => {
       roster.picks.push(draftedPlayer.id)
-      roster[draftedPlayer.position as keyof typeof roster].push(
+      roster[draftedPlayer.position as keyof typeof roster]!.push(
         draftedPlayer.id,
       )
     })

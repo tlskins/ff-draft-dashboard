@@ -305,9 +305,22 @@ export const useRanks = ({
   // funcs
 
   const onRecalculatePlayerRanks = useCallback(() => {
-    const nextPlayerRanks = createPlayerRanks(Object.values(playerLib), settings, boardSettings)
-    setPlayerRanks(nextPlayerRanks)
-  }, [settings, boardSettings, playerLib])
+    setPlayerRanks(currentRanks => {
+      const unavailablePlayerIds = new Set([
+        ...draftHistory.filter((id): id is string => Boolean(id)),
+        ...currentRanks.Purge.map(player => player.id),
+      ])
+      const nextPlayerRanks = createPlayerRanks(
+        Object.values(playerLib).filter(player => !unavailablePlayerIds.has(player.id)),
+        settings,
+        boardSettings,
+      )
+      nextPlayerRanks.Purge = currentRanks.Purge.filter(player => (
+        !draftHistory.includes(player.id)
+      ))
+      return nextPlayerRanks
+    })
+  }, [settings, boardSettings, playerLib, draftHistory])
   const onSetRanker = (ranker: FantasyRanker) => {
     setBoardSettings({ ...boardSettings, ranker })
   }

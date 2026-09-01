@@ -14,6 +14,11 @@ export const appendDraftActivity = (
   limit = 8,
 ): DraftActivityItem[] => {
   const byId = new Map(current.map(item => [item.id, item]))
-  additions.forEach(item => byId.set(item.id, item))
+  additions.forEach(item => {
+    // Repeated deterministic alerts are still new observations. Reinsert the
+    // key so the ticker and center banner treat the changed event as latest.
+    byId.delete(item.id)
+    byId.set(item.id, item)
+  })
   return Array.from(byId.values()).slice(-limit)
 }

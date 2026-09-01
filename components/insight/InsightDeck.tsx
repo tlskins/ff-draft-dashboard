@@ -48,6 +48,8 @@ export interface InsightDeckProps {
   onExpandedSlotChange?: (
     slot: typeof VISIBLE_INSIGHT_DECK_SLOTS[number] | null,
   ) => void
+  comparisonQueuePlayers?: readonly {id: string; fullName: string}[]
+  onRemoveComparisonPlayer?: (playerId: string) => void
 }
 
 const InsightDeck: React.FC<InsightDeckProps> = ({
@@ -56,6 +58,8 @@ const InsightDeck: React.FC<InsightDeckProps> = ({
   renderView,
   expandedSlot: controlledExpandedSlot,
   onExpandedSlotChange,
+  comparisonQueuePlayers = [],
+  onRemoveComparisonPlayer,
 }) => {
   const selectionSignature = VISIBLE_INSIGHT_DECK_SLOTS.map(slot => (
     controller.state.slots[slot].selection?.viewId || "none"
@@ -111,6 +115,18 @@ const InsightDeck: React.FC<InsightDeckProps> = ({
   const renderedViewIds = new Set<InsightViewId>()
 
   return <section aria-label="Draft insight deck" className={styles.deck}>
+    <div aria-label="Players in comparison view" className={styles.playerQueue}>
+      <span>Players in view</span>
+      {comparisonQueuePlayers.length > 0 ? comparisonQueuePlayers.map(player => (
+        <button
+          aria-label={`Remove ${player.fullName} from player comparison queue`}
+          key={player.id}
+          onClick={() => onRemoveComparisonPlayer?.(player.id)}
+          title="Remove from comparison queue"
+          type="button"
+        >{player.fullName} <b aria-hidden="true">×</b></button>
+      )) : <em>Auto · targets / top board</em>}
+    </div>
     <div className={`${styles.slotList} ${
       expandedSlot === "primary_decision"
         ? styles.slotListPrimaryExpanded

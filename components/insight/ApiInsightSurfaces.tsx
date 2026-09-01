@@ -1,4 +1,4 @@
-import React, {useState} from "react"
+import React, {useMemo, useState} from "react"
 
 import type {IntraPositionPresentationModel} from "../../behavior/analysis/intraPosition"
 import type {DraftRecommendationSet} from "../../behavior/draft-advisor/recommendations"
@@ -271,27 +271,67 @@ export const HistoricalProductionSurface: React.FC<{
 
 export const RankTierDisagreementSurface: React.FC<{
   model: RankTierDisagreementModel
-}> = ({model}) => model.state !== "ready" ? (
-  <StateMessage state={model.state} reason={model.unavailableReason} />
-) : (
-  <section aria-label="Rank and tier disagreement">
-    <p className={styles.caption}>Positional ranks from published board sources; lower is better.</p>
-    <ul className={styles.disagreementList}>
-      {model.players.map(player => (
-        <li key={player.id}>
-          <div><strong>{player.name}</strong><span>{player.position} · {player.rankSpread}-spot spread</span></div>
-          <div className={styles.sourceRanks}>
-            {player.ranks.map(rank => (
-              <span key={rank.source}>
-                {rank.source} <b>{rank.rank}</b>{rank.tier === null ? "" : ` · T${rank.tier}`}
-              </span>
-            ))}
-          </div>
-        </li>
-      ))}
-    </ul>
-  </section>
-)
+}> = ({model}) => {
+  const [query, setQuery] = useState("")
+  const [position, setPosition] = useState("ALL")
+  const [sourceA, setSourceA] = useState("ALL")
+  const [sourceB, setSourceB] = useState("ALL")
+  const [sort, setSort] = useState("spread")
+  const [limit, setLimit] = useState(10)
+  const sources = useMemo(() => Array.from(new Set(
+    model.players.flatMap(player => player.ranks.map(rank => rank.source)),
+  )).sort(), [model.players])
+  const displayed = useMemo(() => model.players.flatMap(player => {
+    if (position !== "ALL" && player.position !== position) return []
+    if (query && !player.name.toLowerCase().includes(query.toLowerCase())) return []
+    const selectedRanks = sourceA !== "ALL" && sourceB !== "ALL"
+      ? player.ranks.filter(rank => rank.source === sourceA || rank.source === sourceB)
+      : player.ranks
+    if (selectedRanks.length < 2) return []
+    const values = selectedRanks.map(rank => rank.rank)
+    return [{...player, ranks: selectedRanks, rankSpread: Math.max(...values) - Math.min(...values)}]
+  }).sort((left, right) => sort === "rank"
+    ? Math.min(...left.ranks.map(rank => rank.rank)) - Math.min(...right.ranks.map(rank => rank.rank))
+    : sort === "name" ? left.name.localeCompare(right.name)
+      : right.rankSpread - left.rankSpread || left.name.localeCompare(right.name)), [model.players, position, query, sort, sourceA, sourceB])
+  if (model.state !== "ready") return (
+    <StateMessage state={model.state} reason={model.unavailableReason} />
+  )
+  return (
+    <section aria-label="Rank and tier disagreement">
+      <p className={styles.caption}>Explore positional-rank gaps; lower ranks are better.</p>
+      <div className={styles.disagreementControls}>
+        <input aria-label="Search disagreement players" onChange={event => setQuery(event.target.value)} placeholder="Search player" type="search" value={query} />
+        <select aria-label="Filter disagreement position" onChange={event => setPosition(event.target.value)} value={position}>
+          <option value="ALL">All positions</option>{["QB", "RB", "WR", "TE"].map(value => <option key={value}>{value}</option>)}
+        </select>
+        <select aria-label="First ranking source" onChange={event => setSourceA(event.target.value)} value={sourceA}>
+          <option value="ALL">All sources</option>{sources.map(value => <option key={value}>{value}</option>)}
+        </select>
+        <select aria-label="Second ranking source" onChange={event => setSourceB(event.target.value)} value={sourceB}>
+          <option value="ALL">All sources</option>{sources.filter(value => value !== sourceA).map(value => <option key={value}>{value}</option>)}
+        </select>
+        <select aria-label="Sort disagreements" onChange={event => setSort(event.target.value)} value={sort}>
+          <option value="spread">Largest gap</option><option value="rank">Best rank</option><option value="name">Player name</option>
+        </select>
+      </div>
+      <p className={styles.resultCount}>{displayed.length} matching players</p>
+      <ul className={styles.disagreementList}>
+        {displayed.slice(0, limit).map(player => (
+          <li key={player.id}>
+            <div><strong>{player.name}</strong><span>{player.position} · {player.rankSpread}-spot spread</span></div>
+            <div className={styles.sourceRanks}>
+              {player.ranks.map(rank => (
+                <span key={rank.source}>{rank.source} <b>{rank.rank}</b>{rank.tier === null ? "" : ` · T${rank.tier}`}</span>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ul>
+      {displayed.length > limit && <button className={styles.showMore} onClick={() => setLimit(value => value + 10)} type="button">Show more</button>}
+    </section>
+  )
+}
 
 export const PlayerStatusInsightSurface: React.FC<{
   model: PlayerStatusInsightModel

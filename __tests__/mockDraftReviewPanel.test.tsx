@@ -3,7 +3,7 @@ import {join} from "path"
 import {fireEvent, render, screen, waitFor} from "@testing-library/react"
 import fixture from "./fixtures/completed-draft-replay.json"
 
-import {MockDraftReviewPanel} from "../components/MockDraftReviewPanel"
+import {draftScorecardTitle, MockDraftReviewPanel} from "../components/MockDraftReviewPanel"
 import {createCompletedMockArchive} from "../behavior/mockDraft/archive"
 import {readLocalCompletedMocks} from "../behavior/mockDraft/archive"
 import type {RecordedCompletedDraftReplay} from "../behavior/draft-advisor/completedDraftReplay"
@@ -18,13 +18,13 @@ const archive = createCompletedMockArchive({
   completedAt: "2026-08-30T18:00:00Z",
 })
 
-describe("completed mock review panel", () => {
+describe("completed draft scorecard panel", () => {
   beforeEach(() => localStorage.clear())
 
   it("opens a dense scorecard and recalculates a position path", () => {
     render(<MockDraftReviewPanel currentArchive={archive} season={2026} user={null} />)
-    fireEvent.click(screen.getByRole("button", {name: /Mock review/}))
-    expect(screen.getByRole("dialog", {name: "Season 2026 mock draft review"})).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", {name: /Draft scorecards/}))
+    expect(screen.getByRole("dialog", {name: "Season 2026 draft scorecards"})).toBeTruthy()
     expect(screen.getAllByText("Tier capital").length).toBeGreaterThan(0)
     expect(screen.getAllByText("Starter quality").length).toBeGreaterThan(0)
     expect(screen.getByText(/Best alternate/)).toBeTruthy()
@@ -67,10 +67,10 @@ describe("completed mock review panel", () => {
     )
 
     expect(screen.queryByRole("dialog")).toBeNull()
-    expect(screen.getByRole("complementary", {name: "Unreviewed mock draft results"}))
+    expect(screen.getByRole("complementary", {name: "Unreviewed draft results"}))
       .toBeTruthy()
     const reminder = screen.getByRole("complementary", {
-      name: "Unreviewed mock draft results",
+      name: "Unreviewed draft results",
     }) as HTMLElement
     expect(reminder.className).toContain("bg-gray-900")
     expect(reminder.className).toContain("text-white")
@@ -80,19 +80,19 @@ describe("completed mock review panel", () => {
     expect(reminder.style.width).toBe("calc(100vw - 32px)")
     expect(reminder.style.zIndex).toBe("1050")
     fireEvent.click(screen.getByRole("button", {name: "Review"}))
-    expect(await screen.findByRole("dialog", {name: "Season 2026 mock draft review"})).toBeTruthy()
+    expect(await screen.findByRole("dialog", {name: "Season 2026 draft scorecards"})).toBeTruthy()
     await waitFor(() => expect(screen.queryByRole("complementary", {
-      name: "Unreviewed mock draft results",
+      name: "Unreviewed draft results",
     })).toBeNull())
     expect(screen.getByRole("status").textContent)
-      .toBe("Completed mocks saved and synced.")
+      .toBe("Completed drafts saved and synced.")
   })
 
   it("renders an opaque, two-column review surface with supported palette utilities", () => {
     render(<MockDraftReviewPanel currentArchive={archive} season={2026} user={null} />)
-    fireEvent.click(screen.getByRole("button", {name: /Mock review/}))
+    fireEvent.click(screen.getByRole("button", {name: /Draft scorecards/}))
 
-    const dialog = screen.getByRole("dialog", {name: "Season 2026 mock draft review"})
+    const dialog = screen.getByRole("dialog", {name: "Season 2026 draft scorecards"})
     expect(dialog.className).toContain("bg-gray-100")
     expect(dialog.className).toContain("text-gray-900")
     expect(dialog.className).not.toContain("slate")
@@ -101,12 +101,12 @@ describe("completed mock review panel", () => {
     expect(dialog.className).toContain("reviewDialog")
     expect(dialog.parentElement?.className).toContain("reviewOverlay")
 
-    const reviewLayout = screen.getByText("Mock history").closest("aside")?.parentElement
+    const reviewLayout = screen.getByText("Draft history").closest("aside")?.parentElement
     expect(reviewLayout?.className).toContain("reviewLayout")
     expect(reviewLayout?.style.gridTemplateColumns).toBe("")
     expect(screen.getByText("Actual scorecard").closest("main")?.className)
       .toContain("reviewContent")
-    expect(screen.getByRole("navigation", {name: "Mock review views"}).className)
+    expect(screen.getByRole("navigation", {name: "Draft scorecard views"}).className)
       .toContain("reviewTabs")
   })
 
@@ -127,7 +127,7 @@ describe("completed mock review panel", () => {
 
   it("closes from the dialog control", () => {
     render(<MockDraftReviewPanel currentArchive={archive} season={2026} user={null} />)
-    fireEvent.click(screen.getByRole("button", {name: /Mock review/}))
+    fireEvent.click(screen.getByRole("button", {name: /Draft scorecards/}))
     fireEvent.click(screen.getByRole("button", {name: "Close"}))
     expect(screen.queryByRole("dialog")).toBeNull()
   })
@@ -141,7 +141,7 @@ describe("completed mock review panel", () => {
         user={null}
       />,
     )
-    fireEvent.click(screen.getByRole("button", {name: /Mock review/}))
+    fireEvent.click(screen.getByRole("button", {name: /Draft scorecards/}))
 
     expect(screen.getByRole("status").textContent).toContain(
       "Scorecard could not be created: Opponent projection is unavailable",
@@ -152,13 +152,13 @@ describe("completed mock review panel", () => {
 
   it("imports a validated recovered archive into local mock history", async () => {
     render(<MockDraftReviewPanel season={2026} user={null} />)
-    fireEvent.click(screen.getByRole("button", {name: /Mock review/}))
+    fireEvent.click(screen.getByRole("button", {name: /Draft scorecards/}))
     const file = new File(
       [JSON.stringify(archive)],
       "recovered-mock.json",
       {type: "application/json"},
     )
-    fireEvent.change(screen.getByLabelText("Import completed mock"), {
+    fireEvent.change(screen.getByLabelText("Import completed draft"), {
       target: {files: [file]},
     })
 
@@ -166,5 +166,29 @@ describe("completed mock review panel", () => {
       .toBe("Imported locally."))
     expect(readLocalCompletedMocks(localStorage, 2026)).toEqual([archive])
     expect(screen.getByText("Actual roster")).toBeTruthy()
+  })
+
+  it("keeps the selected scorecard view through receipt refreshes", () => {
+    const view = render(<MockDraftReviewPanel currentArchive={archive} season={2026} user={null} />)
+    fireEvent.click(screen.getByRole("button", {name: /Draft scorecards/}))
+    fireEvent.click(screen.getByRole("button", {name: "Pick decisions"}))
+    expect(screen.getByText("Actual versus best-alternate decisions")).toBeTruthy()
+
+    view.rerender(<MockDraftReviewPanel
+      archiveSyncState="syncing"
+      currentArchive={{...archive}}
+      season={2026}
+      user={null}
+    />)
+    expect(screen.getByText("Actual versus best-alternate decisions")).toBeTruthy()
+    expect(screen.queryByText("Actual roster")).toBeNull()
+  })
+
+  it("removes generic provider titles while preserving a captured league name", () => {
+    expect(draftScorecardTitle(
+      "ESPN Fantasy Football Draft - Fried Chicken League",
+      "espn",
+      "2026-08-31T18:00:00Z",
+    )).toBe("Fried Chicken League")
   })
 })

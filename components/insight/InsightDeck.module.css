@@ -8,6 +8,25 @@
   font-variant-numeric: tabular-nums;
 }
 
+.playerQueue {
+  display: flex;
+  min-height: 26px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 5px;
+  overflow-x: auto;
+  border: 1px solid #bac3c6;
+  background: #e8ebea;
+  white-space: nowrap;
+}
+.playerQueue > span { color: #617078; font-size: 8px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.playerQueue button { padding: 2px 5px; border: 1px solid #9cabb1; border-radius: 2px; color: #294e62; background: #f4f3ef; font-size: 9px; font-weight: 650; }
+.playerQueue button:hover { border-color: #2e668e; background: #e2edf1; }
+.playerQueue button:focus-visible { outline: 2px solid #2e668e; outline-offset: 1px; }
+.playerQueue b { margin-left: 2px; }
+.playerQueue em { color: #64737a; font-size: 9px; font-style: normal; }
+
 .slotHeader {
   display: flex;
   min-width: 0;

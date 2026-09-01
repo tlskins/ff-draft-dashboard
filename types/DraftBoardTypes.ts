@@ -59,8 +59,8 @@ export interface SharedViewProps {
   addPlayerTarget: (player: Player, targetAsEarlyAsRound: number) => void
   removePlayerTarget: (playerId: string) => void
   compact?: boolean
-  pinnedPlayerId?: string | null
-  onPinPlayer?: (playerId: string) => void
+  queuedPlayerIds?: readonly string[]
+  onQueuePlayer?: (playerId: string) => void
   visiblePositions?: readonly RankingLanePosition[]
   onVisiblePositionsChange?: (positions: RankingLanePosition[]) => void
 }

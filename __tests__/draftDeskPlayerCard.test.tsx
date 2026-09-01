@@ -37,7 +37,7 @@ const player: Player = {
 describe("Draft Desk shared player card", () => {
   it("keeps position identity, rank, tier, ADP, target, and urgency in one dense row", () => {
     const onFocusPlayer = jest.fn()
-    const onPinPlayer = jest.fn()
+    const onQueuePlayer = jest.fn()
     render(
       <DraftDeskPlayerCard
         boardSettings={{ranker: ThirdPartyRanker.HARRIS, adpRanker: ThirdPartyADPRanker.ESPN}}
@@ -45,7 +45,7 @@ describe("Draft Desk shared player card", () => {
         fantasySettings={settings}
         leadingRank={5}
         onFocusPlayer={onFocusPlayer}
-        onPinPlayer={onPinPlayer}
+        onQueuePlayer={onQueuePlayer}
         player={player}
         currentPick={1}
         rankContext="RB5 · #12"
@@ -70,8 +70,8 @@ describe("Draft Desk shared player card", () => {
       .toContain("At risk before your following pick")
     expect(screen.getByLabelText("1.4 rounds before ESPN ADP").textContent)
       .toBe("1.4 RD EARLY")
-    fireEvent.click(screen.getByRole("button", {name: "Lock Alpha Runner in player profile"}))
-    expect(onPinPlayer).toHaveBeenCalledWith("runner")
+    fireEvent.click(screen.getByRole("button", {name: "Add Alpha Runner to player comparison queue"}))
+    expect(onQueuePlayer).toHaveBeenCalledWith("runner")
     expect(onFocusPlayer).not.toHaveBeenCalled()
     expect(screen.queryByText("At risk before your following pick")).toBeNull()
     fireEvent.click(screen.getByRole("group"))

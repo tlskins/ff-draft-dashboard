@@ -12,8 +12,8 @@ interface DraftDeskPlayerCardProps {
   boardSettings: BoardSettings
   focused?: boolean
   onFocusPlayer?: (playerId: string) => void
-  onPinPlayer?: (playerId: string) => void
-  pinned?: boolean
+  onQueuePlayer?: (playerId: string) => void
+  queued?: boolean
   target?: PlayerTarget
   rankContext?: string
   urgency?: string
@@ -52,8 +52,8 @@ const DraftDeskPlayerCard = ({
   boardSettings,
   focused = false,
   onFocusPlayer,
-  onPinPlayer,
-  pinned = false,
+  onQueuePlayer,
+  queued = false,
   target,
   rankContext,
   urgency,
@@ -152,18 +152,23 @@ const DraftDeskPlayerCard = ({
           </div>
         )}
         {dock && <p className={styles.playerCardMeta}>{player.team}</p>}
-        {actions && <div className={styles.playerCardActions}>{actions}</div>}
-        {onPinPlayer && !dock && <button
-          aria-label={`${pinned ? "Unlock" : "Lock"} ${player.fullName} in player profile`}
-          aria-pressed={pinned}
-          className={styles.playerCardPin}
-          onClick={event => {
-            event.stopPropagation()
-            onPinPlayer(player.id)
-          }}
-          title={pinned ? "Unlock player profile" : "Lock player profile"}
-          type="button"
-        >{pinned ? "Unlock" : "Lock"}</button>}
+        {(actions || (onQueuePlayer && !dock)) && <div className={styles.playerCardActions}>
+          {actions}
+          {onQueuePlayer && !dock && <button
+            aria-label={`${queued ? "Remove" : "Add"} ${player.fullName} ${queued ? "from" : "to"} player comparison queue`}
+            aria-pressed={queued}
+            className={styles.playerCardQueue}
+            onClick={event => {
+              event.stopPropagation()
+              onQueuePlayer(player.id)
+            }}
+            title={queued ? "Remove from comparison queue" : "View and compare player"}
+            type="button"
+          ><svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
+            <path d="M2.2 10s2.8-4.5 7.8-4.5 7.8 4.5 7.8 4.5-2.8 4.5-7.8 4.5S2.2 10 2.2 10Z" fill={queued ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5" />
+            <circle cx="10" cy="10" fill={queued ? "white" : "currentColor"} r="2.1" />
+          </svg></button>}
+        </div>}
       </div>
     </div>
   )

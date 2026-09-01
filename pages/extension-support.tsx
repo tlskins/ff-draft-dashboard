@@ -18,7 +18,7 @@ const ExtensionSupport = () => (
       <title>Drafty setup and support</title>
       <meta
         name="description"
-        content="Install Drafty Draft Sync, connect a live fantasy draft, synchronize rankings and targets, and review completed mocks."
+        content="Install Drafty Draft Sync, connect a live fantasy draft, synchronize rankings and targets, and review completed drafts."
       />
     </Head>
     <main className={styles.page}>
@@ -27,7 +27,7 @@ const ExtensionSupport = () => (
         <h1>Setup, drafting, and support</h1>
         <p>
           Version {DRAFTY_EXTENSION_VERSION} is approved and available from the Chrome Web Store.
-          Use this guide for the dashboard, published extension, cross-device sync, and mock review.
+          Use this guide for the dashboard, published extension, cross-device sync, and draft scorecards.
         </p>
         <div className={styles.actions}>
           <a className={styles.primaryAction} href={DRAFTY_EXTENSION_STORE_URL}>

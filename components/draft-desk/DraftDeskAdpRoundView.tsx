@@ -30,8 +30,8 @@ interface DraftDeskAdpRoundViewProps {
   currentPage?: number
   onCurrentPageChange?: (page: number) => void
   currPick?: number
-  pinnedPlayerId?: string | null
-  onPinPlayer?: (playerId: string) => void
+  queuedPlayerIds?: readonly string[]
+  onQueuePlayer?: (playerId: string) => void
   filterRankedBelowAdp?: boolean
   onFilterRankedBelowAdpChange?: (enabled: boolean) => void
 }
@@ -92,8 +92,8 @@ const DraftDeskAdpRoundView = ({
   currentPage: controlledCurrentPage,
   onCurrentPageChange,
   currPick = 1,
-  pinnedPlayerId,
-  onPinPlayer,
+  queuedPlayerIds,
+  onQueuePlayer,
   filterRankedBelowAdp = false,
   onFilterRankedBelowAdpChange,
 }: DraftDeskAdpRoundViewProps) => {
@@ -222,8 +222,8 @@ const DraftDeskAdpRoundView = ({
                 key={player.id}
                 leadingRank={index + 1}
                 onFocusPlayer={setViewPlayerId}
-                onPinPlayer={onPinPlayer}
-                pinned={pinnedPlayerId === player.id}
+                onQueuePlayer={onQueuePlayer}
+                queued={queuedPlayerIds?.includes(player.id)}
                 player={player}
                 currentPick={currPick}
                 rankContext={`Target round ${target.targetAsEarlyAsRound}`}
@@ -259,8 +259,8 @@ const DraftDeskAdpRoundView = ({
                     key={player.id}
                     leadingRank={metrics.overallRank || "—"}
                     onFocusPlayer={setViewPlayerId}
-                    onPinPlayer={onPinPlayer}
-                    pinned={pinnedPlayerId === player.id}
+                    onQueuePlayer={onQueuePlayer}
+                    queued={queuedPlayerIds?.includes(player.id)}
                     player={player}
                     currentPick={currPick}
                     rankContext={`Rank ${metrics.overallRank || "—"} · ADP ${metrics.adp ? getRoundAndPickShortText(metrics.adp, fantasySettings.numTeams) : "—"}`}

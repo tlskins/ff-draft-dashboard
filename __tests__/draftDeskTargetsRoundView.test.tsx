@@ -28,7 +28,7 @@ const baseProps: any = {
   boardSettings: {ranker: ThirdPartyRanker.HARRIS, adpRanker: "ESPN"},
   currPick: 1,
   fantasySettings: {ppr: true, numTeams: 12},
-  onPinPlayer: jest.fn(),
+  onQueuePlayer: jest.fn(),
   playerLib: Object.fromEntries(players.map(player => [player.id, player])),
   playerRanks: {QB: [], RB: players, WR: [], TE: [], Purge: [], availPlayersByOverallRank: players, availPlayersByAdp: players},
   playerTargets: players.map(player => ({playerId: player.id, targetAsEarlyAsRound: 1})),

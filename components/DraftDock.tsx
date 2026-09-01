@@ -3,9 +3,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react"
 import type { BoardSettings, FantasySettings, Player } from "../types"
 import type { Roster } from "../behavior/draft"
 import {
-  buildDraftDeskLeagueNeeds,
-  buildDraftDeskRosterSlots,
+  buildDraftDeskLeagueNeedMatrix,
+  DRAFT_DESK_NEED_POSITIONS,
 } from "../behavior/draftDesk"
+import {getPlayerMetrics} from "../behavior/draft"
 import DraftDeskPlayerCard from "./shared/DraftDeskPlayerCard"
 import DeskSegmentedControl from "./draft-desk/DeskSegmentedControl"
 import styles from "./DraftDesk.module.css"
@@ -78,8 +79,7 @@ const DraftDock = ({
   const [mode, setMode] = useState<DraftDockMode>("roster")
   const dockRef = useRef<HTMLElement>(null)
   const ownRoster = rosters[myPickNum - 1]
-  const slots = useMemo(() => buildDraftDeskRosterSlots(ownRoster, settings), [ownRoster, settings])
-  const needs = useMemo(() => buildDraftDeskLeagueNeeds(rosters, myPickNum - 1, settings), [myPickNum, rosters, settings])
+  const needs = useMemo(() => buildDraftDeskLeagueNeedMatrix(rosters), [rosters])
   const recentPlayerIds = useMemo(() => draftHistory.filter(Boolean).slice(-6) as string[], [draftHistory])
   const nextMyPick = myPicks.find(pick => pick >= currPick) || null
   const picksAway = nextMyPick === null ? null : nextMyPick - currPick
@@ -88,12 +88,10 @@ const DraftDock = ({
     const slot = ((pick - 1) % settings.numTeams) + 1
     return `${round}.${String(slot).padStart(2, "0")}`
   }
-  const rosterPlayerForSlot = (position: string, id: string): Player | null => {
-    if (position === "FLEX") return null
-    const slot = Number(id.split("-")[1] || 1) - 1
-    const playerId = ownRoster?.[position as "QB" | "RB" | "WR" | "TE"]?.[slot]
-    return playerId ? playerLib[playerId] || null : null
-  }
+  const rosterColumns = DRAFT_DESK_NEED_POSITIONS.map(position => ({
+    position,
+    players: (ownRoster?.[position] || []).map(id => playerLib[id]).filter(Boolean),
+  }))
 
   useEffect(() => {
     const dock = dockRef.current
@@ -122,7 +120,7 @@ const DraftDock = ({
               <p className={styles.dockLabel}>Your next pick</p>
               <p className={styles.dockMetric}>
                 {draftComplete ? "No remaining picks" : nextMyPick === null ? "Not scheduled" : formatPick(nextMyPick)}
-                {!draftComplete && nextMyPick !== null && <small>{picksAway === 0 ? "On the clock" : `${picksAway} away`}</small>}
+                {!draftComplete && nextMyPick !== null && <small>#{nextMyPick} · {picksAway === 0 ? "On the clock" : `${picksAway} away`}</small>}
                 {!draftComplete && nextMyPick !== null && picksAway !== null && <span className="sr-only">#{nextMyPick} · {picksAway} away</span>}
               </p>
             </div>
@@ -163,15 +161,41 @@ const DraftDock = ({
               {mode === "roster" && (
                 <section aria-label="Your roster slot summary" data-testid="draft-dock-roster">
                   <p className="sr-only">Observed roster slots — counts are not probabilities.</p>
-                  <div className={styles.rosterSlots}>{slots.map(slot => {
-                    const rosterPlayer = rosterPlayerForSlot(slot.position, slot.id)
-                    return <span className={`${slot.filled ? "" : styles.emptySlot} ${slot.position === "QB" ? styles.positionQB : slot.position === "RB" ? styles.positionRB : slot.position === "WR" ? styles.positionWR : slot.position === "TE" ? styles.positionTE : ""}`} key={slot.id}><strong>{slot.label}</strong>{rosterPlayer ? playerShortName(rosterPlayer.fullName) : slot.filled ? "Filled" : "Empty"}</span>
-                  })}</div>
-                  <details className={styles.rosterDetails}><summary className={styles.focusRing}>Expand roster detail</summary><ul>{["QB", "RB", "WR", "TE"].map(position => <li key={position}><strong>{position}</strong>: {(ownRoster?.[position as "QB" | "RB" | "WR" | "TE"] || []).map(id => playerLib[id]?.fullName || "Unknown").join(", ") || "—"}</li>)}</ul></details>
+                  <div className={styles.rosterMatrix}>
+                    {rosterColumns.map(column => <section key={column.position}>
+                      <strong>{column.position}</strong>
+                      {column.players.length > 0 ? column.players.map(player => {
+                        const tier = getPlayerMetrics(player, settings, boardSettings).tier?.tierNumber
+                        return <span key={player.id} title={player.fullName}>
+                          {playerShortName(player.fullName)} <small>{tier ? `T${tier}` : "T—"}</small>
+                        </span>
+                      }) : <span className={styles.emptySlot}>—</span>}
+                    </section>)}
+                  </div>
                 </section>
               )}
               {mode === "needs" && (
-                <section aria-label="League starter needs" data-testid="draft-dock-league-needs"><p className="sr-only">Other teams&apos; observed starter slots, not model probabilities.</p><ul className={styles.leagueNeedList}>{needs.map(need => <li className={styles.leagueNeedRow} key={need.id}><strong>{need.label}</strong><span>{need.teamsMissing} missing</span></li>)}</ul></section>
+                <section aria-label="League roster needs" data-testid="draft-dock-league-needs">
+                  <p className="sr-only">All teams&apos; observed positional depth, not model probabilities.</p>
+                  <table className={styles.leagueNeedTable}>
+                    <caption className="sr-only">Teams missing each positional roster slot</caption>
+                    <thead><tr><th>Slot</th>{DRAFT_DESK_NEED_POSITIONS.map(position => <th key={position}>{position}</th>)}</tr></thead>
+                    <tbody>{[1, 2, 3, 4].map(slot => <tr key={slot}>
+                      <th>{slot}</th>
+                      {DRAFT_DESK_NEED_POSITIONS.map(position => {
+                        const need = needs.find(item => item.position === position && item.slot === slot)!
+                        const filled = need.teamCount - need.teamsMissing
+                        const filledRatio = need.teamCount > 0 ? filled / need.teamCount : 0
+                        return <td
+                          data-filled-ratio={filledRatio.toFixed(2)}
+                          key={position}
+                          style={{"--need-fill": filledRatio} as React.CSSProperties}
+                          title={`${need.teamsMissing} of ${need.teamCount} teams missing ${position}${slot}`}
+                        ><span className="sr-only">{position}{slot}: </span>{need.teamsMissing}</td>
+                      })}
+                    </tr>)}</tbody>
+                  </table>
+                </section>
               )}
             </div>
           </section>

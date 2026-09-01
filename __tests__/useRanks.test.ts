@@ -63,6 +63,67 @@ describe("useRanks live-draft fallbacks", () => {
     ).toContain(fallbackPlayer.id)
   })
 
+  it("keeps drafted players unavailable when a late unranked kicker rebuilds the library", async () => {
+    const rankedPlayer = (id: string, rank: number): Player => ({
+      id,
+      firstName: id,
+      lastName: "Runner",
+      fullName: `${id} Runner`,
+      team: NFLTeam.BUF,
+      position: FantasyPosition.RUNNING_BACK,
+      ranks: {
+        [ThirdPartyRanker.HARRIS]: {
+          playerId: id,
+          ranker: ThirdPartyRanker.HARRIS,
+          position: FantasyPosition.RUNNING_BACK,
+          pprOverallRank: rank,
+          pprPositionRank: rank,
+        },
+        [ThirdPartyADPRanker.ESPN]: {
+          playerId: id,
+          ranker: ThirdPartyADPRanker.ESPN,
+          position: FantasyPosition.RUNNING_BACK,
+          adp: rank,
+        },
+      },
+    })
+    const alpha = rankedPlayer("alpha", 1)
+    const beta = rankedPlayer("beta", 2)
+    const rankings: Rankings = {
+      players: [alpha, beta],
+      rankingsSummaries: [],
+      cachedAt: "2026-08-31T10:00:00Z",
+      editedAt: "",
+      settings,
+    }
+    const kicker: Player = {
+      id: "late-kicker",
+      firstName: "Late",
+      lastName: "Kicker",
+      fullName: "Late Kicker",
+      team: NFLTeam.BUF,
+      position: FantasyPosition.KICKER,
+      ranks: {},
+    }
+    const {result} = renderHook(() => useRanks({settings, myPickNum: 2}))
+
+    act(() => result.current.onLoadPlayers(rankings))
+    await waitFor(() => expect(result.current.playerRanks.RB.map(player => player.id))
+      .toEqual(["alpha", "beta"]))
+    act(() => result.current.onDraftPlayer(alpha.id, 1))
+    await waitFor(() => expect(result.current.playerRanks.RB.map(player => player.id))
+      .toEqual(["beta"]))
+
+    act(() => result.current.onDraftPlayer(kicker.id, 131, kicker, 0))
+
+    await waitFor(() => {
+      expect(result.current.playerRanks.RB.map(player => player.id)).toEqual(["beta"])
+      expect(result.current.playerRanks.availPlayersByOverallRank.map(player => player.id))
+        .not.toContain("alpha")
+      expect(result.current.rosters[0][FantasyPosition.KICKER]).toContain(kicker.id)
+    })
+  })
+
   it("hydrates targets without mounting an ADP view and persists target edits", async () => {
     localStorage.setItem(PLAYER_TARGETS_STORAGE_KEY, JSON.stringify([
       {playerId: "saved-player", targetAsEarlyAsRound: 4},

@@ -207,7 +207,7 @@ export const useDraftyMockReviewWebMcp = (
   contextRef.current = context
   const tools = useMemo<WebMCP.ModelContextTool[]>(() => [{
     name: DRAFTY_WEBMCP_MOCK_TOOL_NAMES[0],
-    title: "List Drafty completed mocks",
+    title: "List Drafty completed drafts",
     description: "List compact owner-scoped completed mock drafts for the active or requested fantasy season.",
     inputSchema: {
       type: "object",
@@ -292,7 +292,7 @@ export const useDraftyMockReviewWebMcp = (
     },
   }, {
     name: DRAFTY_WEBMCP_MOCK_TOOL_NAMES[2],
-    title: "Open Drafty mock review",
+    title: "Open Drafty draft scorecard",
     description: "Open one completed mock in Drafty's visible scorecard dialog by stable mock ID and fantasy season.",
     inputSchema: {
       type: "object",
@@ -321,7 +321,7 @@ export const useDraftyMockReviewWebMcp = (
           season: archive.season,
           mock_id: archive.mock_id,
           open: true,
-        }, `Opened Drafty mock review ${archive.mock_id}.`, "accepted")
+        }, `Opened Drafty draft scorecard ${archive.mock_id}.`, "accepted")
       } catch (error) {
         return webMcpInputErrorResponse(error)
       }

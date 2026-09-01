@@ -18,6 +18,7 @@ export interface AdvisorComparisonController {
   restoreAuto: () => void
   addPinnedPlayer: (player: Player) => void
   removePinnedPlayer: (playerId: string) => void
+  setPinnedPlayers?: (players: Player[]) => void
 }
 
 export const useAdvisorComparisonController = ({
@@ -126,6 +127,32 @@ export const useAdvisorComparisonController = ({
     announcePinnedUpdate(next)
   }, [announcePinnedUpdate, pinnedItems])
 
+  const setPinnedPlayers = useCallback((players: Player[]) => {
+    const seen = new Set<string>()
+    const next = players.filter(player => {
+      if (!player.id || seen.has(player.id)) return false
+      seen.add(player.id)
+      return true
+    }).slice(0, MAX_ADVISOR_COMPARISON_PLAYERS)
+      .map(createManualComparisonItem)
+    if (next.length === 0) {
+      const latest = latestAutomaticSet.current.slice(0, MAX_ADVISOR_COMPARISON_PLAYERS)
+      setPinnedItems([])
+      setCommittedAutomaticSet(latest)
+      setMode("auto")
+      announcementCount.current += 1
+      setAnnouncement(
+        `Automatic comparison restored: ${latest.map(item => (
+          item.player.fullName
+        )).join(", ") || "no available players"}. Update ${announcementCount.current}.`,
+      )
+      return
+    }
+    setPinnedItems(next)
+    setMode("pinned")
+    announcePinnedUpdate(next)
+  }, [announcePinnedUpdate])
+
   const items = useMemo(() => mode === "auto"
     ? committedAutomaticSet
     : pinnedItems, [committedAutomaticSet, mode, pinnedItems])
@@ -138,5 +165,6 @@ export const useAdvisorComparisonController = ({
     restoreAuto,
     addPinnedPlayer,
     removePinnedPlayer,
+    setPinnedPlayers,
   }
 }

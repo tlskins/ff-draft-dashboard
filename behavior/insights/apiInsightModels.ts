@@ -116,7 +116,7 @@ export const buildRankTierDisagreementModel = (
     ThirdPartyRanker.HARRIS,
     ThirdPartyRanker.CUSTOM,
   ])
-  const compared = players.slice(0, 3).flatMap(player => {
+  const compared = players.flatMap(player => {
     const scoringFormat = scoringFormatFor(settings)
     const ranks = Object.entries(player.ranks || {})
       .filter(([source]) => publishedSources.has(source))
@@ -151,7 +151,7 @@ export const buildRankTierDisagreementModel = (
     players: compared,
     maximumSpread,
     ...(compared.length === 0 ? {
-      unavailableReason: "The current comparison set does not have two positional ranking sources per player.",
+      unavailableReason: "The available board does not have two positional ranking sources per player.",
     } : {}),
   }
 }

@@ -33,6 +33,10 @@ const Harness = ({
   const controller = useAdvisorComparisonController({automaticSet, materialEventKey})
   return <>
     <p data-testid="profile-focus">{profileFocus}</p>
+    <button onClick={() => controller.setPinnedPlayers?.([
+      players[3], players[1], players[0], players[2],
+    ])} type="button">Apply player queue</button>
+    <button onClick={() => controller.setPinnedPlayers?.([])} type="button">Clear player queue</button>
     <AdvisorComparisonSurface availablePlayers={players} controller={controller} />
   </>
 }
@@ -155,5 +159,23 @@ describe("Phase 14B Auto and Pinned interaction", () => {
     expect(within(list).queryByText("delta Player")).toBeNull()
     expect(view.getByTestId("advisor-comparison-live-region").textContent)
       .toContain("Automatic comparison restored")
+  })
+
+  it("uses an ordered three-player queue and restores Auto when it empties", async () => {
+    const view = render(<Harness automaticSet={set("alpha", "bravo", "charlie")} materialEventKey="draft:empty" />)
+    fireEvent.click(view.getByRole("button", {name: "Apply player queue"}))
+    let list = view.getByRole("list")
+    expect(within(list).getAllByRole("listitem").map(item => item.textContent)).toEqual([
+      expect.stringContaining("delta Player"),
+      expect.stringContaining("bravo Player"),
+      expect.stringContaining("alpha Player"),
+    ])
+    expect(view.getByRole("button", {name: "Pinned"}).getAttribute("aria-pressed")).toBe("true")
+
+    fireEvent.click(view.getByRole("button", {name: "Clear player queue"}))
+    await waitFor(() => expect(view.getByText("charlie Player")).toBeTruthy())
+    list = view.getByRole("list")
+    expect(within(list).queryByText("delta Player")).toBeNull()
+    expect(view.getByRole("button", {name: "Auto"}).getAttribute("aria-pressed")).toBe("true")
   })
 })

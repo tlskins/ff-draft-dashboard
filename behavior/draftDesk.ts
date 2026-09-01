@@ -68,6 +68,41 @@ export interface DraftDeskLeagueNeed {
   description: string
 }
 
+export const DRAFT_DESK_NEED_POSITIONS = [
+  FantasyPosition.QUARTERBACK,
+  FantasyPosition.RUNNING_BACK,
+  FantasyPosition.WIDE_RECEIVER,
+  FantasyPosition.TIGHT_END,
+  FantasyPosition.KICKER,
+  FantasyPosition.DEFENSE,
+] as const
+
+export type DraftDeskNeedPosition = typeof DRAFT_DESK_NEED_POSITIONS[number]
+
+export interface DraftDeskLeagueNeedCell {
+  position: DraftDeskNeedPosition
+  slot: number
+  teamsMissing: number
+  teamCount: number
+}
+
+export const buildDraftDeskLeagueNeedMatrix = (
+  rosters: Roster[],
+  depth = 4,
+): DraftDeskLeagueNeedCell[] => DRAFT_DESK_NEED_POSITIONS.flatMap(position => (
+  Array.from({length: depth}, (_, index) => {
+    const slot = index + 1
+    return {
+      position,
+      slot,
+      teamsMissing: rosters.filter(roster => (
+        (roster[position] || []).length < slot
+      )).length,
+      teamCount: rosters.length,
+    }
+  })
+))
+
 const starterDefinitions = (
   settings: FantasySettings,
 ): Array<{position: StarterPosition, required: number}> => [

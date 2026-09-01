@@ -41,6 +41,28 @@ const POSITIONS: Array<{value: ReviewPosition; label: string}> = [
 const playerName = (fixture: RecordedCompletedDraftReplay, id: string): string =>
   fixture.players.find(player => player.id === id)?.name || id
 
+const playerTier = (fixture: RecordedCompletedDraftReplay, id: string): number | null => {
+  const tier = fixture.players.find(player => player.id === id)?.userTier
+  return typeof tier === "number" && Number.isInteger(tier) && tier > 0 ? tier : null
+}
+
+export const draftScorecardTitle = (
+  title: string | null | undefined,
+  platform: string,
+  completedAt: string,
+): string => {
+  const cleaned = (title || "")
+    .replace(/^ESPN\s+Fantasy\s+Football\s+Draft\s*(?:[-–—:|]\s*)?/i, "")
+    .replace(/^Fantasy\s+Football\s+Draft\s*(?:[-–—:|]\s*)?/i, "")
+    .trim()
+  if (cleaned) return cleaned
+  const date = new Date(completedAt)
+  const dateLabel = Number.isNaN(date.valueOf())
+    ? "Completed draft"
+    : date.toLocaleDateString(undefined, {month: "short", day: "numeric", year: "numeric"})
+  return `${platform === "UNKNOWN" ? "Draft" : platform} · ${dateLabel}`
+}
+
 const signed = (value: number): string => `${value > 0 ? "+" : ""}${value.toFixed(1)}`
 
 const tierSummary = (tiers: Record<string, number>): string => Object.entries(tiers)
@@ -52,10 +74,10 @@ type ReviewView = "overview" | "position" | "picks" | "alternatives" | "method"
 
 const readTextFile = (file: File): Promise<string> => new Promise((resolve, reject) => {
   const reader = new FileReader()
-  reader.onerror = () => reject(new Error("Completed mock file could not be read"))
+  reader.onerror = () => reject(new Error("Completed draft file could not be read"))
   reader.onload = () => typeof reader.result === "string"
     ? resolve(reader.result)
-    : reject(new Error("Completed mock file is not text"))
+    : reject(new Error("Completed draft file is not text"))
   reader.readAsText(file)
 })
 
@@ -111,17 +133,17 @@ export const MockDraftReviewPanel = ({
   }, [])
 
   const archiveSyncCopy = archiveSyncState === "saving_local"
-    ? "Saving completed mock locally…"
+    ? "Saving completed draft locally…"
     : archiveSyncState === "saved_local"
       ? user ? "Saved locally; waiting to sync." : "Saved on this device."
       : archiveSyncState === "syncing"
-        ? "Syncing completed mocks…"
+        ? "Syncing completed drafts…"
         : archiveSyncState === "synced"
-          ? "Completed mocks saved and synced."
+          ? "Completed drafts saved and synced."
           : archiveSyncState === "offline"
             ? "Saved locally; cloud sync will retry."
             : archiveSyncState === "error"
-              ? "Completed mock sync needs attention."
+              ? "Completed draft sync needs attention."
               : null
 
   const local = useMemo(() => {
@@ -150,16 +172,16 @@ export const MockDraftReviewPanel = ({
     setError(null)
     setImportStatus(null)
     try {
-      if (file.size > 5_000_000) throw new Error("Completed mock import exceeds 5 MB")
+      if (file.size > 5_000_000) throw new Error("Completed draft import exceeds 5 MB")
       const value = JSON.parse(await readTextFile(file)) as unknown
       if (!isLocalCompletedMockArchive(value)) {
-        throw new Error("Completed mock import does not satisfy the archive contract")
+        throw new Error("Completed draft import does not satisfy the archive contract")
       }
       const replayErrors = validateCompletedDraftReplay(
         value.replay as unknown as RecordedCompletedDraftReplay,
       )
       if (replayErrors.length) {
-        throw new Error(`Completed mock replay is invalid: ${replayErrors[0]}`)
+        throw new Error(`Completed draft replay is invalid: ${replayErrors[0]}`)
       }
       storeLocalCompletedMock(localStorage, value)
       setReviewSeason(value.season)
@@ -181,7 +203,7 @@ export const MockDraftReviewPanel = ({
         setImportStatus("Imported locally; cloud sync will retry automatically.")
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Completed mock import failed")
+      setError(caught instanceof Error ? caught.message : "Completed draft import failed")
     }
   }, [user])
 
@@ -189,6 +211,10 @@ export const MockDraftReviewPanel = ({
     if (!open) return
     closeRef.current?.focus()
     setReviewView("overview")
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
     setSelected(current => current && current.season === reviewSeason
       ? current
       : local[0] || null)
@@ -209,7 +235,7 @@ export const MockDraftReviewPanel = ({
         if (active) setSummaries(result.mocks)
       })
       .catch(caught => {
-        if (active) setError(caught instanceof Error ? caught.message : "Mock history is unavailable")
+        if (active) setError(caught instanceof Error ? caught.message : "Draft history is unavailable")
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -242,7 +268,7 @@ export const MockDraftReviewPanel = ({
         replay: record.replay,
       })
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Completed mock is unavailable")
+      setError(caught instanceof Error ? caught.message : "Completed draft is unavailable")
     } finally {
       setLoading(false)
     }
@@ -268,7 +294,7 @@ export const MockDraftReviewPanel = ({
         mock_id: item.mock_id,
         completed_at: item.completed_at,
         platform: replay.source?.platform || "UNKNOWN",
-        title: replay.source?.title || "Completed mock draft",
+        title: replay.source?.title || "Completed draft",
         team_count: replay.settings.numTeams,
         user_draft_slot: replay.targetRosterIndex + 1,
         pick_count: replay.actualPicks.length,
@@ -368,7 +394,7 @@ export const MockDraftReviewPanel = ({
       {showUnreviewedBanner && latestUnreviewed
         && dismissedBannerId !== latestUnreviewed.mock_id && (
         <aside
-          aria-label="Unreviewed mock draft results"
+          aria-label="Unreviewed draft results"
           className="fixed bottom-24 left-1/2 flex -translate-x-1/2 items-center justify-between gap-4 rounded border border-blue-400 bg-gray-900 px-4 py-3 text-left text-white shadow-2xl"
           style={{
             backgroundColor: "#111827",
@@ -379,9 +405,9 @@ export const MockDraftReviewPanel = ({
         >
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wider text-blue-300">
-              Mock results ready{unreviewedSummaries.length > 1 ? ` · ${unreviewedSummaries.length} unreviewed` : ""}
+              Draft results ready{unreviewedSummaries.length > 1 ? ` · ${unreviewedSummaries.length} unreviewed` : ""}
             </p>
-            <p className="truncate text-sm font-bold">{latestUnreviewed.title}</p>
+            <p className="truncate text-sm font-bold">{draftScorecardTitle(latestUnreviewed.title, latestUnreviewed.platform, latestUnreviewed.completed_at)}</p>
             <p className="text-xs text-gray-300">
               {latestUnreviewed.team_count} teams · slot {latestUnreviewed.user_draft_slot} · Review the scorecard and legal alternate paths.
             </p>
@@ -395,7 +421,7 @@ export const MockDraftReviewPanel = ({
               Review
             </button>
             <button
-              aria-label="Dismiss mock review reminder for this session"
+              aria-label="Dismiss draft scorecard reminder for this session"
               className="rounded border border-gray-500 px-3 py-2 text-sm font-semibold hover:bg-gray-800"
               onClick={() => setDismissedBannerId(latestUnreviewed.mock_id)}
               type="button"
@@ -411,7 +437,7 @@ export const MockDraftReviewPanel = ({
           onClick={() => setOpen(true)}
           type="button"
         >
-          Mock review{unreviewedSummaries.length
+          Draft scorecards{unreviewedSummaries.length
             ? ` (${unreviewedSummaries.length} new)`
             : allSummaries.length ? ` (${allSummaries.length})` : ""}
         </button>
@@ -425,7 +451,7 @@ export const MockDraftReviewPanel = ({
           style={{zIndex: 1100}}
         >
           <section
-            aria-label={`Season ${reviewSeason} mock draft review`}
+            aria-label={`Season ${reviewSeason} draft scorecards`}
             aria-modal="true"
             className={`${reviewStyles.reviewDialog} flex flex-col overflow-hidden rounded border border-gray-500 bg-gray-100 text-gray-900 shadow-2xl`}
             role="dialog"
@@ -433,7 +459,7 @@ export const MockDraftReviewPanel = ({
             <header className={`${reviewStyles.reviewHeader} flex items-center justify-between border-b border-gray-400 bg-gray-800 px-4 py-2 text-gray-50`}>
               <div>
                 <p className="text-xs uppercase tracking-wider text-blue-300">Season {reviewSeason}</p>
-                <h2 className="text-lg font-bold">Completed mock scorecards</h2>
+                <h2 className="text-lg font-bold">Draft scorecards</h2>
               </div>
               <button
                 className="rounded border border-gray-400 px-3 py-1 text-sm font-semibold"
@@ -448,13 +474,13 @@ export const MockDraftReviewPanel = ({
               <aside className={`${reviewStyles.reviewHistory} border-r border-gray-300 bg-gray-200 p-2 text-gray-900`}>
                 <div className="flex items-center justify-between gap-2 px-2 py-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                    Mock history
+                    Draft history
                   </p>
                   <label className="cursor-pointer rounded border border-gray-400 bg-white px-2 py-1 text-xs font-semibold">
                     Import
                     <input
                       accept="application/json,.json"
-                      aria-label="Import completed mock"
+                      aria-label="Import completed draft"
                       className="sr-only"
                       onChange={event => void importCompletedMock(event)}
                       type="file"
@@ -479,7 +505,7 @@ export const MockDraftReviewPanel = ({
                   </p>
                 )}
                 {!loading && !currentArchiveError && allSummaries.length === 0 && (
-                  <p className="px-2 py-2 text-sm text-gray-600">Complete a mock to create the first scorecard.</p>
+                  <p className="px-2 py-2 text-sm text-gray-600">Complete a draft to create the first scorecard.</p>
                 )}
                 <div className={reviewStyles.historyList}>
                   {allSummaries.map(summary => (
@@ -494,7 +520,9 @@ export const MockDraftReviewPanel = ({
                         {!summary.reviewed_at && !localReceipts[summary.mock_id] && (
                           <span aria-label="Unreviewed" className="h-2 w-2 shrink-0 rounded-full bg-blue-600" />
                         )}
-                        <strong className="block min-w-0 truncate">{summary.title}</strong>
+                        <strong className={reviewStyles.historyTitle} title={summary.title}>
+                          {draftScorecardTitle(summary.title, summary.platform, summary.completed_at)}
+                        </strong>
                       </span>
                       <span className="block text-xs text-gray-600">
                         {summary.team_count} teams · slot {summary.user_draft_slot} · {new Date(summary.completed_at).toLocaleDateString()}
@@ -535,7 +563,7 @@ export const MockDraftReviewPanel = ({
                         ))}
                       </div>
                     </div>
-                    <nav aria-label="Mock review views" className={`${reviewStyles.reviewTabs} my-3 border-b border-gray-300 pb-2`}>
+                    <nav aria-label="Draft scorecard views" className={`${reviewStyles.reviewTabs} my-3 border-b border-gray-300 pb-2`}>
                       {([
                         ["overview", "Overview"],
                         ["position", "Position capital"],
@@ -576,9 +604,15 @@ export const MockDraftReviewPanel = ({
                               {review.actual.totals.starterCount}/{review.actual.totals.requiredStarterSlots} starters · {signed(review.actual.totals.starterProjectedPointsAboveReplacement)} starter projected points above replacement
                             </p>
                             <ol className={`${reviewStyles.rosterList} mt-2 text-sm`}>
-                              {review.actual.selectedPlayerIds.map((id, index) => (
-                                <li key={id}>{index + 1}. {playerName(selected.replay as unknown as RecordedCompletedDraftReplay, id)}</li>
-                              ))}
+                              {review.actual.selectedPlayerIds.map((id, index) => {
+                                const fixture = selected.replay as unknown as RecordedCompletedDraftReplay
+                                const tier = playerTier(fixture, id)
+                                const position = fixture.players.find(player => player.id === id)?.position
+                                return <li key={id}>
+                                  <span>{index + 1}. {playerName(fixture, id)}</span>
+                                  <small>{position || "—"}{tier ? ` · Tier ${tier}` : " · Tier —"}</small>
+                                </li>
+                              })}
                             </ol>
                           </section>
                           <section className="rounded border border-blue-400 bg-blue-50 p-3">
