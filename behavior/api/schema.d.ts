@@ -875,6 +875,9 @@ export interface components {
             matched_players: number;
             published_outlooks: number;
             published_injury_statuses: number;
+            rankings_refreshed?: boolean;
+            published_rankings?: number;
+            published_adp?: number;
         };
         RankingArtifactSource: {
             id: string;
