@@ -84,7 +84,7 @@ export const DRAFTY_HELP_CATALOG: Record<DraftyHelpTopic, DraftyHelpArticle> = {
       "Open Drafty and set the team count, draft slot, scoring format, starters, ranking source, and ADP source before the draft starts.",
       "Choose Position, ADP round, or Targets on the rankings board; save targets or custom positional ranks as needed.",
       "Sign in with Google only if rankings, targets, and completed draft scorecards should synchronize across devices.",
-      "For a live draft, open ESPN or NFL.com in the same Chrome profile and connect the detected room from Drafty's bottom dock.",
+      "For a live draft, open ESPN or NFL.com in the same Chrome profile. When Drafty detects the room, confirm your randomized draft position and the detected league format before connecting.",
       "After any draft completes, open Draft scorecards to inspect the result and deterministic alternate paths.",
     ],
     notes: [
@@ -111,7 +111,7 @@ export const DRAFTY_HELP_CATALOG: Record<DraftyHelpTopic, DraftyHelpArticle> = {
       "Confirm the extension popup identifies Drafty Draft Sync and the current published version.",
       "Open Drafty and a supported ESPN or NFL.com draft room.",
       "If either tab was open before installation, reload both tabs once.",
-      "Return to Drafty and select Connect beside the detected draft in the bottom dock.",
+      "Return to Drafty, select your randomized draft position in the confirmation dialog, review the detected league size, scoring, and roster format, then select Confirm and connect.",
     ],
     notes: [
       "The published extension replaces local-development builds named FF Draft Pulse.",

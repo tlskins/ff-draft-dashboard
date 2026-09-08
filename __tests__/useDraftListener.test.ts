@@ -294,6 +294,79 @@ describe("useDraftListener", () => {
     expect(setDraftStarted).toHaveBeenCalledWith(true)
   })
 
+  it("keeps the user-confirmed slot and format authoritative for later snapshots", () => {
+    const onDraftMetadata = jest.fn()
+    const {result} = renderHook(() => useDraftListener({
+      playerLib: {
+        "4362628": {
+          id: "4362628", firstName: "Ja'Marr", lastName: "Chase",
+          fullName: "Ja'Marr Chase", team: NFLTeam.CIN,
+          position: FantasyPosition.WIDE_RECEIVER, ranks: {},
+        },
+      },
+      playersByPosByTeam: {},
+      settings: {numTeams: 12},
+      onDraftPlayer: jest.fn(),
+      onDraftMetadata,
+      setCurrPick: jest.fn(),
+      setDraftStarted: jest.fn(),
+    }))
+    const sendSnapshot = () => window.dispatchEvent(new MessageEvent("message", {
+      source: window,
+      data: {
+        type: "FF_DRAFT_DASHBOARD",
+        payload: {
+          version: 1,
+          kind: "draft-snapshot",
+          sentAt: 500,
+          draft: {
+            id: "ESPN:confirmed-format",
+            title: "10-Team PPR Draft",
+            platform: "ESPN",
+            capturedAt: 500,
+            sourceUrl: "https://fantasy.espn.com/football/draft?teamId=1",
+            numTeams: 10,
+            targetRosterIndex: 0,
+            scoringFormat: "PPR",
+            picks: [],
+          },
+        },
+      },
+    }))
+
+    act(sendSnapshot)
+    expect(result.current.pendingDraft?.targetRosterIndex).toBeNull()
+    act(() => result.current.acceptPendingDraft({
+      numTeams: 10,
+      targetRosterIndex: 6,
+      scoringFormat: "HALF_PPR",
+      rosterSettings: {
+        numStartingQbs: 1,
+        numStartingRbs: 2,
+        numStartingWrs: 3,
+        numStartingTes: 1,
+        numFlex: 2,
+        numBenchPlayers: 6,
+        unsupportedLineupSlots: [],
+        source: "user_confirmed",
+      },
+    }))
+
+    expect(onDraftMetadata).toHaveBeenLastCalledWith(expect.objectContaining({
+      numTeams: 10,
+      targetRosterIndex: 6,
+      scoringFormat: "HALF_PPR",
+      rosterSettings: expect.objectContaining({source: "user_confirmed"}),
+    }))
+
+    act(sendSnapshot)
+    expect(onDraftMetadata).toHaveBeenCalledTimes(2)
+    expect(onDraftMetadata).toHaveBeenLastCalledWith(expect.objectContaining({
+      targetRosterIndex: 6,
+      scoringFormat: "HALF_PPR",
+    }))
+  })
+
   it("merges every pending pick before the user accepts the draft", () => {
     const onDraftPlayer = jest.fn()
     const setCurrPick = jest.fn()
@@ -451,7 +524,7 @@ describe("useDraftListener", () => {
     ]))
   })
 
-  it("uses ESPN league metadata instead of stale dashboard settings", () => {
+  it("uses user-confirmed league metadata instead of stale source settings", () => {
     const onDraftPlayer = jest.fn()
     const onDraftMetadata = jest.fn()
     const setCurrPick = jest.fn()
@@ -510,7 +583,21 @@ describe("useDraftListener", () => {
       }))
     })
 
-    act(() => result.current.acceptPendingDraft())
+    act(() => result.current.acceptPendingDraft({
+      numTeams: 10,
+      targetRosterIndex: 8,
+      scoringFormat: "PPR",
+      rosterSettings: {
+        numStartingQbs: 1,
+        numStartingRbs: 2,
+        numStartingWrs: 2,
+        numStartingTes: 1,
+        numFlex: 1,
+        numBenchPlayers: 5,
+        unsupportedLineupSlots: [],
+        source: "user_confirmed",
+      },
+    }))
 
     expect(onDraftMetadata).toHaveBeenCalledWith(
       expect.objectContaining({

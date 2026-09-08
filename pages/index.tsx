@@ -34,6 +34,7 @@ import DraftDeskInsightDeck from "../components/insight/DraftDeskInsightDeck"
 import CloudProfileControl from "../components/CloudProfileControl"
 import {MockDraftReviewPanel} from "../components/MockDraftReviewPanel"
 import {DraftyChromeAgentConsole} from "../components/DraftyChromeAgentConsole"
+import {DraftConnectionConfirmationDialog} from "../components/DraftConnectionConfirmationDialog"
 import draftDeskStyles from "../components/DraftDesk.module.css"
 
 import { useRanks } from '../behavior/hooks/useRanks'
@@ -1856,6 +1857,15 @@ const Home: FC = () => {
     >
       <PageHead />
       <DraftyChromeAgentConsole />
+      {pendingDraft && (
+        <DraftConnectionConfirmationDialog
+          currentDraftSlot={myPickNum}
+          currentSettings={settings}
+          draft={pendingDraft}
+          onConfirm={acceptPendingDraft}
+          onIgnore={ignorePendingDraft}
+        />
+      )}
       {draftDeskEnabled && (
         <MockDraftReviewPanel
           archiveSyncError={completedMockArchiveSync.error}
@@ -2380,18 +2390,23 @@ const Home: FC = () => {
           rosters={rosters}
           settings={settings}
           boardSettings={boardSettings}
-          connected={draftCaptureState === "live"}
+          connected={draftCaptureState === "live" && !pendingDraft}
           draftComplete={dashboardDraftComplete}
           totalPicks={activeDraftSnapshot?.completion?.totalPicks}
           activity={draftTickerActivity}
-          connectionDetail={dashboardDraftComplete ? "Final board captured" : draftCaptureState === "live" ? "Pick feed current" : "Local board current"}
-          connectionLabel={dashboardDraftComplete ? "ESPN draft complete" : draftCaptureState === "live" ? "ESPN connected" : "Draft feed ready"}
+          connectionDetail={pendingDraft
+            ? "Confirm your draft position and league format"
+            : dashboardDraftComplete
+              ? "Final board captured"
+              : draftCaptureState === "live" ? "Pick feed current" : "Local board current"}
+          connectionLabel={pendingDraft
+            ? "Draft setup required"
+            : dashboardDraftComplete
+              ? "ESPN draft complete"
+              : draftCaptureState === "live" ? "ESPN connected" : "Draft feed ready"}
           draftHistory={draftHistory}
           myPickNum={myPickNum}
           myPicks={myPicks}
-          pendingDraftTitle={pendingDraft?.title || null}
-          onAcceptDraft={acceptPendingDraft}
-          onIgnoreDraft={ignorePendingDraft}
           onRemovePick={onRemovePick}
           onHeightChange={onDraftDeskDockHeightChange}
           setCurrPick={setCurrPick}

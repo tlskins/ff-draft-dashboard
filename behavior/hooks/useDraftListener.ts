@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
+  DraftConnectionConfirmation,
   DraftSourceHealth,
   DraftSnapshot,
   normalizeDraftFeedMessage,
@@ -45,11 +46,31 @@ interface UseDraftListenerProps {
 
 interface DraftDecision {
   listening: boolean | null
+  confirmation?: DraftConnectionConfirmation
 }
 
 const LISTENER_STALE_AFTER_MS = 7_000
 const SOURCE_HEALTH_STALE_AFTER_MS = 40_000
 const MAX_PENDING_PERSISTENCE_EVENTS = 500
+
+const withDraftConfirmation = (
+  snapshot: DraftSnapshot,
+  confirmation: DraftConnectionConfirmation,
+): DraftSnapshot => ({
+  ...snapshot,
+  numTeams: confirmation.numTeams,
+  targetRosterIndex: confirmation.targetRosterIndex,
+  scoringFormat: confirmation.scoringFormat,
+  rosterSettings: confirmation.rosterSettings,
+  ...(snapshot.completion ? {
+    completion: {
+      ...snapshot.completion,
+      numTeams: confirmation.numTeams,
+      targetRosterIndex: confirmation.targetRosterIndex,
+      scoringFormat: confirmation.scoringFormat,
+    },
+  } : {}),
+})
 
 export const useDraftListener = ({
   playerLib,
@@ -263,17 +284,23 @@ export const useDraftListener = ({
     setPendingDraft(snapshot)
   }, [])
 
-  const acceptPendingDraft = useCallback(() => {
+  const acceptPendingDraft = useCallback((
+    confirmation?: DraftConnectionConfirmation,
+  ) => {
     const snapshot = pendingDraftRef.current
     if (!snapshot) return
     const decision = decisions.current[snapshot.id]
     if (!decision) return
     decision.listening = true
+    if (confirmation) decision.confirmation = confirmation
     setActiveDraftListenerTitle(snapshot.title)
     setActiveDraftSessionId(snapshot.id)
     pendingDraftRef.current = null
     setPendingDraft(null)
-    const acceptedSnapshot = pendingSnapshots.current[snapshot.id] || snapshot
+    const bufferedSnapshot = pendingSnapshots.current[snapshot.id] || snapshot
+    const acceptedSnapshot = confirmation
+      ? withDraftConfirmation(bufferedSnapshot, confirmation)
+      : bufferedSnapshot
     onDraftMetadata?.(acceptedSnapshot)
     applySnapshot(acceptedSnapshot)
     delete pendingSnapshots.current[snapshot.id]
@@ -342,8 +369,11 @@ export const useDraftListener = ({
       // Reapply canonical source metadata for an already accepted draft. This
       // lets a hot-reloaded dashboard repair format state from the next ESPN
       // snapshot without asking the user to reconnect the source.
-      onDraftMetadata?.(draft)
-      applySnapshot(draft)
+      const acceptedDraft = decision.confirmation
+        ? withDraftConfirmation(draft, decision.confirmation)
+        : draft
+      onDraftMetadata?.(acceptedDraft)
+      applySnapshot(acceptedDraft)
     }
   }, [applySnapshot, bufferSnapshot, onDraftMetadata, playerLib, promptForDraft])
 

@@ -50,7 +50,14 @@ export interface DraftRosterSettings {
   numFlex: number
   numBenchPlayers: number
   unsupportedLineupSlots: string[]
-  source: "espn_league_settings"
+  source: "espn_league_settings" | "user_confirmed"
+}
+
+export interface DraftConnectionConfirmation {
+  numTeams: number
+  targetRosterIndex: number
+  scoringFormat: "STANDARD" | "HALF_PPR" | "PPR"
+  rosterSettings: DraftRosterSettings
 }
 
 export type DraftSourceHealthStatus =
@@ -145,53 +152,6 @@ const espnTeamCount = (draft: Record<string, unknown>): number | null => {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null
 }
 
-/**
- * ESPN's draft URL identifies the viewer's team using a one-based `teamId`.
- * Normalize it once at the untrusted window-message boundary so the rest of
- * the dashboard only ever receives the zero-based roster index it expects.
- */
-const espnTargetRosterIndex = (
-  draft: Record<string, unknown>,
-): number | null => {
-  const numTeams = espnTeamCount(draft)
-  if (!numTeams) return null
-
-  // Preserve a canonical target index from a pre-URL-metadata extension.
-  // Once a source URL is supplied, the URL is the authoritative conversion
-  // source and malformed URL/query data deliberately fails closed.
-  if (typeof draft.sourceUrl !== "string") {
-    return typeof draft.targetRosterIndex === "number"
-      && Number.isSafeInteger(draft.targetRosterIndex)
-      && draft.targetRosterIndex >= 0
-      && draft.targetRosterIndex < numTeams
-      ? draft.targetRosterIndex
-      : null
-  }
-
-  let sourceUrl: URL
-  try {
-    sourceUrl = new URL(draft.sourceUrl)
-  } catch {
-    return null
-  }
-
-  if (
-    sourceUrl.protocol !== "https:"
-    || sourceUrl.hostname !== "fantasy.espn.com"
-    || !sourceUrl.pathname.startsWith("/football/draft")
-  ) return null
-
-  const teamId = sourceUrl.searchParams.get("teamId")
-  if (!teamId || !/^[1-9]\d*$/.test(teamId)) return null
-
-  const targetRosterIndex = Number(teamId) - 1
-  return Number.isSafeInteger(targetRosterIndex)
-    && targetRosterIndex >= 0
-    && targetRosterIndex < numTeams
-    ? targetRosterIndex
-    : null
-}
-
 const normalizeDraftSnapshot = (
   draft: Record<string, unknown>,
 ): DraftSnapshot => {
@@ -201,7 +161,13 @@ const normalizeDraftSnapshot = (
 
   return {
     ...draft,
-    targetRosterIndex: espnTargetRosterIndex(draft),
+    // ESPN's URL `teamId` identifies the fantasy team, not its randomized
+    // draft-order slot. Require an explicit user confirmation instead of
+    // silently treating team 1 as pick 1.
+    targetRosterIndex: null,
+    ...(isRecord(draft.completion) ? {
+      completion: {...draft.completion, targetRosterIndex: null},
+    } : {}),
     rosterSettings: normalizeRosterSettings(draft.rosterSettings),
   } as unknown as DraftSnapshot
 }

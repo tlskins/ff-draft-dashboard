@@ -563,7 +563,11 @@ export const MockDraftReviewPanel = ({
                         <p className="text-xs text-gray-600">{selected.ranking_source} ranks · {selected.adp_source} ADP</p>
                         <p className="text-xs font-medium text-gray-700">
                           Captured format · {review.actual.totals.requiredStarterSlots} starters: {capturedFormat(selected.replay as unknown as RecordedCompletedDraftReplay)}
-                          {((selected.replay as unknown as RecordedCompletedDraftReplay).source?.rosterSettingsSource === "espn_league_settings") ? " · ESPN verified" : " · dashboard configured"}
+                          {((selected.replay as unknown as RecordedCompletedDraftReplay).source?.rosterSettingsSource === "espn_league_settings")
+                            ? " · ESPN verified"
+                            : ((selected.replay as unknown as RecordedCompletedDraftReplay).source?.rosterSettingsSource === "user_confirmed")
+                              ? " · user confirmed"
+                              : " · dashboard configured"}
                         </p>
                       </div>
                       <div className={`${reviewStyles.positionSelectors} flex gap-2`}>

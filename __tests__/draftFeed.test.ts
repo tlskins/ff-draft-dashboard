@@ -104,7 +104,7 @@ describe("draft feed compatibility", () => {
     })).toBeNull()
   })
 
-  it("derives ESPN's zero-based target roster from a valid one-based URL team id", () => {
+  it("does not mistake ESPN's team id for the user's randomized draft slot", () => {
     const event = normalizeDraftFeedMessage({
       type: "FF_DRAFT_DASHBOARD",
       payload: {
@@ -118,6 +118,16 @@ describe("draft feed compatibility", () => {
           capturedAt: 500,
           sourceUrl: "https://fantasy.espn.com/football/draft?leagueId=236942237&seasonId=2026&teamId=3&memberId=private",
           numTeams: 10,
+          completion: {
+            complete: false,
+            totalPicks: 160,
+            numRounds: 16,
+            numTeams: 10,
+            platformRosterSize: 16,
+            targetRosterIndex: 0,
+            excludedPositions: ["K", "D/ST"],
+            scoringFormat: "PPR",
+          },
           picks: [],
         },
       },
@@ -125,7 +135,10 @@ describe("draft feed compatibility", () => {
 
     expect(event).toMatchObject({
       kind: "draft-snapshot",
-      draft: { targetRosterIndex: 2 },
+      draft: {
+        targetRosterIndex: null,
+        completion: {targetRosterIndex: null},
+      },
     })
   })
 
