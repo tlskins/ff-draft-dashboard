@@ -32,6 +32,68 @@
   min-width: 0;
 }
 
+.draftConnectionBackdrop {
+  position: fixed;
+  z-index: 1900;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgb(9 15 20 / 82%);
+}
+
+.draftConnectionDialog {
+  width: 100%;
+  max-width: 672px;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  border: 2px solid #2e668e;
+  border-radius: 6px;
+  color: #17202a;
+  background: #f4f3ef;
+  box-shadow: 0 22px 70px rgb(0 0 0 / 48%);
+}
+
+.draftConnectionHeader {
+  padding: 12px 16px;
+  border-bottom: 1px solid #36434c;
+  color: #f4f6f7;
+  background: #1c252c;
+}
+.draftConnectionEyebrow { margin: 0; color: #8bc2e6; font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.draftConnectionHeader h2 { margin: 2px 0 0; font-size: 20px; font-weight: 750; line-height: 1.2; }
+.draftConnectionTitle { margin: 4px 0 0; overflow: hidden; color: #c7d0d5; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.draftConnectionForm { display: grid; gap: 16px; padding: 16px; background: #f4f3ef; }
+.draftConnectionWarning { margin: 0; padding: 8px 12px; border: 1px solid #cda34e; border-radius: 4px; color: #513a13; background: #fff4d6; font-size: 13px; line-height: 1.4; }
+.draftConnectionPrimaryFields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.draftConnectionField,
+.draftConnectionRosterField { display: grid; gap: 4px; color: #24323a; font-weight: 700; }
+.draftConnectionField { font-size: 13px; }
+.draftConnectionControl,
+.draftConnectionRosterControl { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid #89969d; border-radius: 4px; color: #17202a; background: #fff; }
+.draftConnectionControl { min-height: 38px; padding: 7px 9px; font-size: 15px; }
+.draftConnectionSlotControl { border: 2px solid #2e668e; }
+.draftConnectionRoster { margin: 0; padding: 12px; border: 1px solid #c4cbce; border-radius: 4px; background: #fff; }
+.draftConnectionRoster legend { padding: 0 4px; color: #24323a; font-size: 13px; font-weight: 750; }
+.draftConnectionRosterFields { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.draftConnectionRosterField { font-size: 11px; }
+.draftConnectionRosterControl { min-height: 34px; padding: 5px 7px; font-size: 15px; }
+.draftConnectionControl:focus-visible,
+.draftConnectionRosterControl:focus-visible,
+.draftConnectionActions button:focus-visible { outline: 2px solid #2e668e; outline-offset: 2px; }
+.draftConnectionActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-top: 12px; border-top: 1px solid #c4cbce; }
+.draftConnectionActions button { min-height: 36px; padding: 7px 14px; border-radius: 4px; font-size: 13px; font-weight: 750; }
+.draftConnectionSecondaryAction { border: 1px solid #89969d; color: #34434b; background: #fff; }
+.draftConnectionSecondaryAction:hover { background: #e9ebeb; }
+.draftConnectionPrimaryAction { border: 1px solid #245574; color: #fff; background: #2e668e; }
+.draftConnectionPrimaryAction:hover { background: #245574; }
+
+@media (max-width: 639px) {
+  .draftConnectionPrimaryFields { grid-template-columns: 1fr; }
+  .draftConnectionRosterFields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
 .runAlertBanner,
 .profileStatusBanner {
   width: calc(100% - 20px);
@@ -925,6 +987,7 @@
   border-radius: 0 0 6px 6px;
   color: #f1f3f4;
   background: var(--desk-chrome-soft);
+  transition: background-color 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
 }
 
 .dockLayout {
@@ -946,6 +1009,22 @@
 .dockRecentPicks,
 .dockConnection { padding: 5px 8px; }
 .dockPickClock { border-bottom: 1px solid #39464f; }
+.dockNextPick { transition: background-color 240ms ease, box-shadow 240ms ease; }
+.dockNextPick[data-pick-urgency="approaching"] { background: #3e292b; }
+.dockNextPick[data-pick-urgency="near"] { background: #58262a; }
+.dockNextPick[data-pick-urgency="imminent"] { background: #76252b; box-shadow: inset 3px 0 0 #ef7d7d; }
+.dockNextPick[data-pick-urgency="on-clock"] { background: #9f2028; box-shadow: inset 3px 0 0 #ffb0b0; }
+.dockNextPick[data-pick-urgency]:not([data-pick-urgency="idle"]) .dockLabel { color: #ffd5d7; }
+.dockNextPick[data-pick-urgency]:not([data-pick-urgency="idle"]) .dockMetric,
+.dockNextPick[data-pick-urgency]:not([data-pick-urgency="idle"]) .dockMetric small { color: #fff; }
+.draftDockOnClock { border-color: #d46a70; background: #6d1f24; box-shadow: 0 0 0 2px rgb(220 73 81 / 28%); }
+.draftDockOnClock .dockPickStack,
+.draftDockOnClock .dockRecentPicks,
+.draftDockOnClock .dockContent,
+.draftDockOnClock .dockConnection { border-color: #a4484d; background: #6d1f24; }
+.draftDockOnClock .dockPickClock { border-color: #a4484d; }
+.draftDockOnClock .dockLabel,
+.draftDockOnClock .dockConnection small { color: #ffd5d7; }
 .dockLabel { color: #97a4ac; font-size: 8px; font-weight: 500; letter-spacing: .05em; line-height: 1.2; text-transform: uppercase; }
 .dockMetric { margin: 2px 0 0; color: #f1f3f4; font-size: 12px; font-weight: 650; line-height: 1.2; }
 .dockMetric small { margin-left: 7px; color: #bdc7cc; font-size: 9px; font-weight: 450; }

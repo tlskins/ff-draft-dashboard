@@ -54,6 +54,8 @@ describe("Draft connection confirmation", () => {
 
     expect(screen.getByRole("dialog", {name: "Confirm your draft setup"}))
       .toBeTruthy()
+    expect(screen.getByRole("dialog", {name: "Confirm your draft setup"}).className)
+      .toContain("draftConnectionDialog")
     expect((screen.getByLabelText("Your draft position") as HTMLSelectElement).value).toBe("7")
     expect((screen.getByLabelText("League size") as HTMLSelectElement).value).toBe("10")
     expect((screen.getByLabelText("Scoring") as HTMLSelectElement).value).toBe("ppr")

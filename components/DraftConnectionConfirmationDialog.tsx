@@ -6,6 +6,7 @@ import type {
   DraftSnapshot,
 } from "../behavior/draft-feed/types"
 import type {FantasySettings, ScoringFormat} from "../types"
+import styles from "./DraftDesk.module.css"
 
 
 interface DraftConnectionConfirmationDialogProps {
@@ -127,30 +128,30 @@ export const DraftConnectionConfirmationDialog = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[1900] flex items-center justify-center bg-slate-950/70 p-3">
+    <div className={styles.draftConnectionBackdrop}>
       <section
         aria-labelledby="draft-connection-title"
         aria-modal="true"
-        className="max-h-[calc(100vh-1.5rem)] w-full max-w-2xl overflow-y-auto rounded-md border-2 border-blue-500 bg-slate-50 text-left text-slate-900 shadow-2xl"
+        className={styles.draftConnectionDialog}
         role="dialog"
       >
-        <header className="border-b border-slate-300 bg-slate-900 px-4 py-3 text-white">
-          <p className="text-xs font-bold uppercase tracking-wider text-blue-300">Live draft found</p>
-          <h2 className="text-xl font-bold" id="draft-connection-title">Confirm your draft setup</h2>
-          <p className="mt-1 truncate text-sm text-slate-300" title={draft.title}>{draft.title}</p>
+        <header className={styles.draftConnectionHeader}>
+          <p className={styles.draftConnectionEyebrow}>Live draft found</p>
+          <h2 id="draft-connection-title">Confirm your draft setup</h2>
+          <p className={styles.draftConnectionTitle} title={draft.title}>{draft.title}</p>
         </header>
 
-        <form className="grid gap-4 p-4" onSubmit={submit}>
-          <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm">
+        <form className={styles.draftConnectionForm} onSubmit={submit}>
+          <p className={styles.draftConnectionWarning}>
             ESPN&apos;s team ID is not your randomized draft position. Select the
             position shown in the draft room before Drafty applies any picks.
           </p>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <label className="grid gap-1 text-sm font-bold">
+          <div className={styles.draftConnectionPrimaryFields}>
+            <label className={styles.draftConnectionField}>
               League size
               <select
-                className="rounded border border-slate-400 bg-white px-2 py-2 text-base"
+                className={styles.draftConnectionControl}
                 onChange={event => updateTeamCount(Number(event.target.value))}
                 ref={firstControl}
                 value={teamCount}
@@ -158,10 +159,10 @@ export const DraftConnectionConfirmationDialog = ({
                 {teamCountOptions.map(value => <option key={value} value={value}>{value} teams</option>)}
               </select>
             </label>
-            <label className="grid gap-1 text-sm font-bold">
+            <label className={styles.draftConnectionField}>
               Your draft position
               <select
-                className="rounded border-2 border-blue-500 bg-white px-2 py-2 text-base"
+                className={`${styles.draftConnectionControl} ${styles.draftConnectionSlotControl}`}
                 onChange={event => setDraftSlot(Number(event.target.value))}
                 value={draftSlot}
               >
@@ -170,10 +171,10 @@ export const DraftConnectionConfirmationDialog = ({
                 ))}
               </select>
             </label>
-            <label className="grid gap-1 text-sm font-bold">
+            <label className={styles.draftConnectionField}>
               Scoring
               <select
-                className="rounded border border-slate-400 bg-white px-2 py-2 text-base"
+                className={styles.draftConnectionControl}
                 onChange={event => setScoringFormat(event.target.value as ScoringFormat)}
                 value={scoringFormat}
               >
@@ -184,14 +185,14 @@ export const DraftConnectionConfirmationDialog = ({
             </label>
           </div>
 
-          <fieldset className="rounded border border-slate-300 bg-white p-3">
-            <legend className="px-1 text-sm font-bold">Starting lineup and bench</legend>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          <fieldset className={styles.draftConnectionRoster}>
+            <legend>Starting lineup and bench</legend>
+            <div className={styles.draftConnectionRosterFields}>
               {rosterFields.map(field => (
-                <label className="grid gap-1 text-xs font-bold" key={field.key}>
+                <label className={styles.draftConnectionRosterField} key={field.key}>
                   {field.label}
                   <input
-                    className="min-w-0 rounded border border-slate-400 px-2 py-1.5 text-base"
+                    className={styles.draftConnectionRosterControl}
                     max={30}
                     min={0}
                     onChange={event => updateRosterField(
@@ -207,22 +208,22 @@ export const DraftConnectionConfirmationDialog = ({
           </fieldset>
 
           {rosterSettings.unsupportedLineupSlots.length > 0 && (
-            <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm">
+            <p className={styles.draftConnectionWarning}>
               ESPN also reported unsupported lineup slots: {rosterSettings.unsupportedLineupSlots.join(", ")}.
               Drafty will preserve the board but will not model those slots.
             </p>
           )}
 
-          <div className="flex flex-wrap justify-end gap-2 border-t border-slate-300 pt-3">
+          <div className={styles.draftConnectionActions}>
             <button
-              className="rounded border border-slate-400 bg-white px-4 py-2 text-sm font-bold hover:bg-slate-100"
+              className={styles.draftConnectionSecondaryAction}
               onClick={onIgnore}
               type="button"
             >
               Ignore this draft
             </button>
             <button
-              className="rounded bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800"
+              className={styles.draftConnectionPrimaryAction}
               type="submit"
             >
               Confirm and connect
@@ -233,4 +234,3 @@ export const DraftConnectionConfirmationDialog = ({
     </div>
   )
 }
-

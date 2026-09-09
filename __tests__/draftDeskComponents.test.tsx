@@ -2,7 +2,7 @@ import React from "react"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 import DraftDeskAppBar from "../components/DraftDeskAppBar"
-import DraftDock from "../components/DraftDock"
+import DraftDock, {getDraftPickUrgency} from "../components/DraftDock"
 import {
   FantasyPosition,
   NFLTeam,
@@ -38,6 +38,16 @@ const roster = (values: Partial<Roster>): Roster => ({
 })
 
 describe("Phase 14A desk components", () => {
+  it("escalates next-pick urgency until the full dock is on-clock red", () => {
+    expect(getDraftPickUrgency(null, false)).toBe("idle")
+    expect(getDraftPickUrgency(9, false)).toBe("idle")
+    expect(getDraftPickUrgency(8, false)).toBe("approaching")
+    expect(getDraftPickUrgency(4, false)).toBe("near")
+    expect(getDraftPickUrgency(2, false)).toBe("imminent")
+    expect(getDraftPickUrgency(0, false)).toBe("on-clock")
+    expect(getDraftPickUrgency(0, true)).toBe("idle")
+  })
+
   it("renders the configured starting quarterback count", () => {
     render(
       <DraftDeskAppBar
@@ -186,6 +196,10 @@ describe("Phase 14A desk components", () => {
     )
 
     const tape = screen.getByTestId("draft-dock-tape")
+    expect(screen.getByTestId("draft-dock").getAttribute("data-pick-urgency"))
+      .toBe("imminent")
+    expect(screen.getByText("Your next pick").parentElement
+      ?.getAttribute("data-pick-urgency")).toBe("imminent")
     expect(tape.textContent).toContain("#4")
     expect(tape.textContent).toContain("#5 · 1 away")
     expect(screen.getByTestId("draft-dock-roster")).toBeTruthy()

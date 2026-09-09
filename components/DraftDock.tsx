@@ -49,6 +49,24 @@ const modeLabels: Array<{id: DraftDockMode, label: string}> = [
   {id: "needs", label: "League needs"},
 ]
 
+export type DraftPickUrgency =
+  | "idle"
+  | "approaching"
+  | "near"
+  | "imminent"
+  | "on-clock"
+
+export const getDraftPickUrgency = (
+  picksAway: number | null,
+  draftComplete: boolean,
+): DraftPickUrgency => {
+  if (draftComplete || picksAway === null || picksAway > 8) return "idle"
+  if (picksAway === 0) return "on-clock"
+  if (picksAway <= 2) return "imminent"
+  if (picksAway <= 4) return "near"
+  return "approaching"
+}
+
 const DraftDock = ({
   roundIdx,
   currRoundPick,
@@ -83,6 +101,7 @@ const DraftDock = ({
   const recentPlayerIds = useMemo(() => draftHistory.filter(Boolean).slice(-6) as string[], [draftHistory])
   const nextMyPick = myPicks.find(pick => pick >= currPick) || null
   const picksAway = nextMyPick === null ? null : nextMyPick - currPick
+  const pickUrgency = getDraftPickUrgency(picksAway, draftComplete)
   const formatPick = (pick: number): string => {
     const round = Math.floor((pick - 1) / settings.numTeams) + 1
     const slot = ((pick - 1) % settings.numTeams) + 1
@@ -105,7 +124,13 @@ const DraftDock = ({
   }, [onHeightChange])
 
   return (
-    <aside aria-label="Draft dock" className={`${styles.desk} ${styles.draftDock} z-40 hidden xl:block`} data-testid="draft-dock" ref={dockRef}>
+    <aside
+      aria-label="Draft dock"
+      className={`${styles.desk} ${styles.draftDock} ${pickUrgency === "on-clock" ? styles.draftDockOnClock : ""} z-40 hidden xl:block`}
+      data-pick-urgency={pickUrgency}
+      data-testid="draft-dock"
+      ref={dockRef}
+    >
       <div className={styles.dockLayout} data-testid="draft-dock-tape">
           <section className={styles.dockPickStack} aria-label="Draft pick status">
             <div className={styles.dockPickClock}>
@@ -116,7 +141,7 @@ const DraftDock = ({
                   : "Final board captured"
                 : <>Pick {formatPick(currPick)} <small>#{currPick}</small></>}</p>
             </div>
-            <div className={styles.dockNextPick}>
+            <div className={styles.dockNextPick} data-pick-urgency={pickUrgency}>
               <p className={styles.dockLabel}>Your next pick</p>
               <p className={styles.dockMetric}>
                 {draftComplete ? "No remaining picks" : nextMyPick === null ? "Not scheduled" : formatPick(nextMyPick)}
